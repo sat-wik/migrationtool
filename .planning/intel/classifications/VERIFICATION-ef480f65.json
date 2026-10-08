@@ -1,0 +1,13 @@
+{
+  "source_path": "/home/claude/migrationtool/docs/research/VERIFICATION.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Fact-check: product spec and literature map",
+  "summary": "Fact-check of the product spec and literature map against primary sources, listing verified and corrected claims and six technical risks the spec omits.",
+  "scope": ["product spec", "literature map", "CRA regulation dates", "Ferrocene", "c2rust", "Hayroll", "TRACTOR benchmark", "Kani", "KLEE", "LLVM version lock", "host-versus-target ABI"],
+  "cross_refs": ["docs/specs/product-spec.md", "docs/research/literature-map.md"],
+  "locked": false,
+  "precedence": 1,
+  "notes": ""
+}

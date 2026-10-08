@@ -1,0 +1,13 @@
+{
+  "source_path": "/home/claude/migrationtool/docs/research/literature-map.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Validated C-to-Rust Migration: Literature Map, Hardest Problems, and the Human/AI Split (as of October 2026)",
+  "summary": "Literature survey of C-to-Rust migration tools and LLM systems, ranking validation challenges and mapping human versus AI responsibilities. Research output, not a decision record.",
+  "scope": ["C-to-Rust migration", "equivalence validation", "undefined behavior", "c2rust", "LLM-based translation", "agentic translation pipelines", "embedded/IoT", "TRACTOR benchmark", "CRUST-Bench", "formal equivalence checking", "unsafe/FFI boundary", "human/AI responsibility split"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": 3,
+  "notes": ""
+}
