@@ -1,0 +1,13 @@
+docs:
+  - path: docs/adr/0001-tool-implementation-language.md
+    type: ADR
+    precedence: 0
+  - path: docs/research/VERIFICATION.md
+    type: DOC
+    precedence: 1
+  - path: docs/specs/product-spec.md
+    type: SPEC
+    precedence: 2
+  - path: docs/research/literature-map.md
+    type: DOC
+    precedence: 3
