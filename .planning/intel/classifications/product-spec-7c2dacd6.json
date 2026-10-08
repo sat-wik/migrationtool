@@ -1,0 +1,13 @@
+{
+  "source_path": "/home/claude/migrationtool/docs/specs/product-spec.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Validated C-to-Rust Migration: Getting Started and Product Spec",
+  "summary": "Product spec for a validated C-to-Rust migration service: modules, acceptance criteria, evidence deliverables, deployment modes, roadmap, and go/no-go gates.",
+  "scope": ["C-to-Rust migration", "Arm Cortex-M firmware parsers", "equivalence validation harness", "translator pipeline", "c2rust", "Hayroll", "KLEE", "Kani", "UB policy manager", "evidence bundle", "continuous equivalence CI", "Ferrocene", "on-prem deployment"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": 2,
+  "notes": ""
+}

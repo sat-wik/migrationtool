@@ -1,4 +1,13 @@
 {
+  "permissions": {
+    "allow": [
+      "Read(.planning/*)",
+      "Edit(.planning/*)",
+      "Read(STATE.md)",
+      "Edit(STATE.md)",
+      "Bash(node .claude/gsd-core/bin/gsd-tools.cjs generate-claude-md)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -190,13 +199,5 @@
   },
   "worktree": {
     "baseRef": "head"
-  },
-  "permissions": {
-    "allow": [
-      "Read(.planning/*)",
-      "Edit(.planning/*)",
-      "Read(STATE.md)",
-      "Edit(STATE.md)"
-    ]
   }
 }
