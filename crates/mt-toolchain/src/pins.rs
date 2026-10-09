@@ -13,8 +13,9 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use regex::RegexBuilder;
 use serde::{Deserialize, Serialize};
+
+use crate::version::{self, VersionError};
 
 /// The only schema version this crate understands.
 pub const PINS_SCHEMA_VERSION: u32 = 1;
@@ -582,9 +583,6 @@ const MAX_LLVM_MAJOR: u32 = 19;
 /// Words that mark a value nobody filled in.
 const PLACEHOLDER_WORDS: [&str; 5] = ["todo", "tbd", "fixme", "placeholder", "discover"];
 
-/// Compiled-regex size limit (threat T-01-10): 1 MiB.
-const REGEX_SIZE_LIMIT: usize = 1024 * 1024;
-
 fn finish(mut issues: Vec<String>) -> Result<(), PinsError> {
     issues.sort();
     issues.dedup();
@@ -721,19 +719,15 @@ fn walk_strings(value: &serde_json::Value, path: &str, issues: &mut Vec<String>)
 }
 
 fn check_regex(issues: &mut Vec<String>, field: &str, pattern: &str, group: &str) {
-    match RegexBuilder::new(pattern)
-        .size_limit(REGEX_SIZE_LIMIT)
-        .build()
-    {
-        Err(err) => issues.push(format!(
-            "{field}: invalid regex: {}",
-            err.to_string().replace('\n', " ")
-        )),
-        Ok(regex) => {
-            if !regex.capture_names().flatten().any(|name| name == group) {
-                issues.push(format!("{field}: regex has no `{group}` named group"));
-            }
+    match version::compile_pattern(pattern, group) {
+        Ok(_) => {}
+        Err(VersionError::MissingGroup { .. }) => {
+            issues.push(format!("{field}: regex has no `{group}` named group"));
         }
+        Err(VersionError::Regex { source, .. }) => issues.push(format!(
+            "{field}: invalid regex: {}",
+            source.to_string().replace('\n', " ")
+        )),
     }
 }
 
