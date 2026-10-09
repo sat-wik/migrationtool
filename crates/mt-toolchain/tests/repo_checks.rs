@@ -31,8 +31,34 @@ fn repo_root() -> PathBuf {
 /// Symlinks are never followed. Only `.git`, `target` and `research` directly
 /// under `root` are skipped.
 fn find_python_files(root: &Path) -> Vec<PathBuf> {
-    let _ = (root, PYTHON_EXTENSIONS, ROOT_SKIPS);
-    Vec::new()
+    let mut found = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for entry in fs::read_dir(&dir).unwrap() {
+            let entry = entry.unwrap();
+            let file_type = entry.file_type().unwrap();
+            if file_type.is_symlink() {
+                continue;
+            }
+            let path = entry.path();
+            if file_type.is_dir() {
+                let name = entry.file_name();
+                let skipped =
+                    dir == root && ROOT_SKIPS.contains(&name.to_str().unwrap_or_default());
+                if !skipped {
+                    stack.push(path);
+                }
+            } else if path
+                .extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|e| PYTHON_EXTENSIONS.contains(&e))
+            {
+                found.push(path.strip_prefix(root).unwrap().to_path_buf());
+            }
+        }
+    }
+    found.sort();
+    found
 }
 
 /// Every regular file under `dir` with the given extension, recursively, never
