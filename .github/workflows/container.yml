@@ -1,0 +1,476 @@
+# The toolchain image: built twice on separate runners, checked live, checked
+# against an off-pin copy, and used to build the no_std smoke crate (TOOL-01 to
+# TOOL-04, CONTEXT D-06, D-22, D-23). Docker exists only here (CONTEXT
+# specifics), so this workflow is where every container-level claim is proven.
+#
+# Log and artifact hosts are not reachable from cloud sessions, so each job also
+# publishes its evidence as job annotations (titles check-a, negative-pin,
+# manifest-a, manifest-b, manifest-compare, smoke, tool-outputs, and on failure
+# "image-a build tail", "image-b build tail" and manifest-diff).
+#
+# Action commit SHAs are pinned here because GitHub resolves `uses:` before any
+# step can read container/pins.toml; every other pin comes from that file.
+name: container
+
+on:
+  push:
+    paths:
+      - container/Dockerfile
+      - container/pins.toml
+      - container/smoke/**
+      - crates/**
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - .github/workflows/container.yml
+  pull_request:
+    paths:
+      - container/Dockerfile
+      - container/pins.toml
+      - container/smoke/**
+      - crates/**
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - .github/workflows/container.yml
+  workflow_dispatch:
+  # Weekly, to catch snapshot, download and registry rot between pin bumps.
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # A static musl `mt` runs on the image's older glibc (RESEARCH Pitfall 10); it
+  # is mounted into the image at run time and never baked into it.
+  mt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      buildkit_image: ${{ steps.ci-pins.outputs.BUILDKIT_IMAGE }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # With no arguments rustup installs the toolchain named by rust-toolchain.toml.
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Build mt as a static binary
+        run: cargo build --release --locked -p mt-cli --target x86_64-unknown-linux-musl
+
+      # Values are only ever read as data: never evaluated by the shell.
+      - name: Render the pins and assemble the bundle
+        id: ci-pins
+        run: |
+          set -euo pipefail
+          mt=target/x86_64-unknown-linux-musl/release/mt
+          "$mt" toolchain build-args --pins container/pins.toml --scope ci >> "$GITHUB_OUTPUT"
+          mkdir -p "$RUNNER_TEMP/bundle"
+          cp "$mt" "$RUNNER_TEMP/bundle/mt"
+          "$mt" toolchain build-args --pins container/pins.toml > "$RUNNER_TEMP/bundle/image-args.txt"
+          ls -l "$RUNNER_TEMP/bundle"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mt-bundle
+          path: ${{ runner.temp }}/bundle
+          if-no-files-found: error
+          retention-days: 7
+
+  image-a:
+    needs: mt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      # A multi-gigabyte image plus its build cache does not fit the default
+      # runner disk (RESEARCH Pitfall 13).
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mt-bundle
+          path: ${{ runner.temp }}/bundle
+
+      - name: Make mt executable (artifacts do not keep the mode)
+        run: chmod +x "$RUNNER_TEMP/bundle/mt"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=${{ needs.mt.outputs.buildkit_image }}
+
+      - name: Write the annotation and docker helpers
+        run: |
+          cat > "$RUNNER_TEMP/ci-lib.sh" <<'LIB'
+          # annotate LEVEL TITLE FILE: FILE as one annotation (text escaped, at most 48000 bytes).
+          annotate() {
+            local level=$1 title=$2 file=$3 text
+            text=$(head -c 48000 "$file")
+            text=${text//'%'/'%25'}
+            text=${text//$'\r'/'%0D'}
+            text=${text//$'\n'/'%0A'}
+            printf '::%s title=%s::%s\n' "$level" "$title" "$text"
+          }
+          # run_mt PINS_FILE MT_ARGS...: run the mounted mt in the image with no
+          # network, as an unprivileged user, with only /out and /tmp writable.
+          run_mt() {
+            local pins=$1
+            shift
+            docker run --rm --network none --user 65534:65534 --read-only \
+              --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
+              -v "$pins:/opt/mt/pins.toml:ro" \
+              -v "$RUNNER_TEMP/out:/out" \
+              mt-toolchain:ci mt "$@"
+          }
+          LIB
+          mkdir -p "$RUNNER_TEMP/out"
+          chmod 0777 "$RUNNER_TEMP/out"
+
+      - name: Build the image (target final)
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          args=()
+          while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            args+=(--build-arg "${line%%=*}=${line#*=}")
+          done < "$RUNNER_TEMP/bundle/image-args.txt"
+          LOG="$RUNNER_TEMP/build-a.log"
+          set +e
+          docker buildx build --platform linux/amd64 --target final --load --progress=plain \
+            --tag mt-toolchain:ci "${args[@]}" container 2>&1 | tee "$LOG"
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            tail -n 100 "$LOG" > "$RUNNER_TEMP/build-tail.txt"
+            annotate error "image-a build tail" "$RUNNER_TEMP/build-tail.txt"
+            exit "$rc"
+          fi
+          docker image ls mt-toolchain:ci
+
+      # TOOL-01, TOOL-02: every pinned tool's exact version from inside the image.
+      # --network none only proves the image needs no downloads for this check;
+      # it is not the D-19 network-isolation feature, which stays out of Phase 1.
+      - name: Live check inside the image
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          run_mt "$GITHUB_WORKSPACE/container/pins.toml" toolchain check --pins /opt/mt/pins.toml \
+            --capture-outputs /out/tool-outputs.toml \
+            --capture-label "captured in CI image-a, run ${GITHUB_RUN_ID}" \
+            > "$out/check-a.txt" 2> "$out/check-a.err"
+          rc=$?
+          set -e
+          {
+            cat "$out/check-a.txt"
+            echo "exit code: $rc"
+            if [ -s "$out/check-a.err" ]; then echo "--- stderr"; cat "$out/check-a.err"; fi
+          } > "$out/check-a-notice.txt"
+          cat "$out/check-a-notice.txt"
+          if [ -s "$out/tool-outputs.toml" ]; then
+            split -C 45000 -d -a 2 "$out/tool-outputs.toml" "$out/tool-outputs.part."
+            parts=("$out"/tool-outputs.part.*)
+            for i in "${!parts[@]}"; do
+              title=tool-outputs
+              if [ "${#parts[@]}" -gt 1 ]; then title="tool-outputs part $((i + 1)) of ${#parts[@]}"; fi
+              annotate notice "$title" "${parts[$i]}"
+            done
+          fi
+          if [ "$rc" -ne 0 ]; then
+            annotate error check-a "$out/check-a-notice.txt"
+            exit 1
+          fi
+          annotate notice check-a "$out/check-a-notice.txt"
+
+      # TOOL-02: the same check against a pins copy whose LLVM major is moved
+      # consistently to another major in 16..=19 must fail with exit 1.
+      - name: Off-pin check (negative-pin)
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          major=$(sed -n 's/^major = \([0-9][0-9]*\)$/\1/p' container/pins.toml | head -n 1)
+          [ -n "$major" ] || { echo "cannot read [llvm] major from container/pins.toml"; exit 1; }
+          if [ "$major" -eq 19 ]; then other=18; else other=$((major + 1)); fi
+          mkdir -p "$RUNNER_TEMP/offpin"
+          sed -E -e "s/^major = ${major}\$/major = ${other}/" \
+                 -e "s/(llvm-|clang-cpp|clang-)${major}([^0-9]|\$)/\1${other}\2/g" \
+                 container/pins.toml > "$RUNNER_TEMP/offpin/pins.toml"
+          if cmp -s container/pins.toml "$RUNNER_TEMP/offpin/pins.toml"; then
+            echo "the off-pin copy is identical to the pins; the check would prove nothing"
+            exit 1
+          fi
+          set +e
+          run_mt "$RUNNER_TEMP/offpin/pins.toml" toolchain check --pins /opt/mt/pins.toml \
+            > "$out/negative-pin.txt" 2> "$out/negative-pin.err"
+          rc=$?
+          set -e
+          ok=true
+          [ "$rc" -eq 1 ] || ok=false
+          grep -E '^klee +.*MISMATCH' "$out/negative-pin.txt" > /dev/null || ok=false
+          grep -E '^rustc_bitcode +.*MISMATCH' "$out/negative-pin.txt" > /dev/null || ok=false
+          {
+            echo "pins copy: LLVM major ${major} -> ${other}"
+            cat "$out/negative-pin.txt"
+            echo "exit code: $rc (required: exactly 1, with MISMATCH on klee and rustc_bitcode)"
+            if [ -s "$out/negative-pin.err" ]; then echo "--- stderr"; cat "$out/negative-pin.err"; fi
+          } > "$out/negative-pin-notice.txt"
+          cat "$out/negative-pin-notice.txt"
+          if [ "$ok" = true ]; then
+            annotate notice negative-pin "$out/negative-pin-notice.txt"
+          else
+            annotate error negative-pin "$out/negative-pin-notice.txt"
+            exit 1
+          fi
+
+      # TOOL-03: the manifest of build A.
+      - name: Manifest of build A
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          run_mt "$GITHUB_WORKSPACE/container/pins.toml" toolchain manifest --pins /opt/mt/pins.toml \
+            --out /out/manifest-a.json > /dev/null 2> "$out/manifest-a.err"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            { echo "mt toolchain manifest exit code: $rc"; cat "$out/manifest-a.err"; } > "$out/manifest-a-notice.txt"
+            annotate error manifest-a "$out/manifest-a-notice.txt"
+            exit 1
+          fi
+          {
+            echo "sha256 $(sha256sum "$out/manifest-a.json" | cut -d' ' -f1)"
+            cat "$out/manifest-a.json"
+          } > "$out/manifest-a-notice.txt"
+          cat "$out/manifest-a-notice.txt"
+          annotate notice manifest-a "$out/manifest-a-notice.txt"
+
+      # TOOL-04: the no_std crate for thumbv7em-none-eabihf and the C side with
+      # arm-none-eabi-gcc, inside the image, with the repository mounted read-only.
+      - name: Smoke build for thumbv7em-none-eabihf
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          script='set -euo pipefail
+          cargo build --locked --release --target thumbv7em-none-eabihf --manifest-path container/smoke/Cargo.toml
+          arm-none-eabi-gcc --version | head -n 1
+          arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Os -c container/smoke/smoke.c -o /tmp/smoke.o
+          echo "--- arm-none-eabi-nm libmt_smoke.a"
+          arm-none-eabi-nm "$CARGO_TARGET_DIR/thumbv7em-none-eabihf/release/libmt_smoke.a" | grep -E " T mt_smoke_add\$"
+          echo "--- arm-none-eabi-nm smoke.o"
+          arm-none-eabi-nm /tmp/smoke.o | grep -E " U mt_smoke_add\$"'
+          smoke() {
+            docker run --rm --network none --user "$1" --read-only \
+              --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$GITHUB_WORKSPACE:/work:ro" -w /work \
+              -e CARGO_HOME=/tmp/cargo -e CARGO_TARGET_DIR=/tmp/target \
+              mt-toolchain:ci bash -c "$script"
+          }
+          who="unprivileged user 65534"
+          set +e
+          smoke 65534:65534 > "$out/smoke.txt" 2>&1
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            # The documented fallback: the read-only rustup home may not be usable
+            # by an unprivileged user. The reason is published, never hidden.
+            { echo "unprivileged run failed with exit code $rc:"; tail -n 40 "$out/smoke.txt"; } > "$out/smoke-unprivileged.txt"
+            annotate warning "smoke unprivileged failure" "$out/smoke-unprivileged.txt"
+            who="root (the unprivileged run failed, see the warning)"
+            smoke 0:0 > "$out/smoke.txt" 2>&1
+            rc=$?
+          fi
+          set -e
+          { echo "ran as: $who"; cat "$out/smoke.txt"; echo "exit code: $rc"; } > "$out/smoke-notice.txt"
+          cat "$out/smoke-notice.txt"
+          if [ "$rc" -ne 0 ]; then
+            annotate error smoke "$out/smoke-notice.txt"
+            exit 1
+          fi
+          annotate notice smoke "$out/smoke-notice.txt"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: image-a-evidence
+          path: |
+            ${{ runner.temp }}/out/manifest-a.json
+            ${{ runner.temp }}/out/tool-outputs.toml
+          if-no-files-found: warn
+          retention-days: 7
+
+  # A second, independent build: separate runner, no shared cache (D-06).
+  image-b:
+    needs: mt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mt-bundle
+          path: ${{ runner.temp }}/bundle
+
+      - name: Make mt executable (artifacts do not keep the mode)
+        run: chmod +x "$RUNNER_TEMP/bundle/mt"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=${{ needs.mt.outputs.buildkit_image }}
+
+      - name: Write the annotation and docker helpers
+        run: |
+          cat > "$RUNNER_TEMP/ci-lib.sh" <<'LIB'
+          # annotate LEVEL TITLE FILE: FILE as one annotation (text escaped, at most 48000 bytes).
+          annotate() {
+            local level=$1 title=$2 file=$3 text
+            text=$(head -c 48000 "$file")
+            text=${text//'%'/'%25'}
+            text=${text//$'\r'/'%0D'}
+            text=${text//$'\n'/'%0A'}
+            printf '::%s title=%s::%s\n' "$level" "$title" "$text"
+          }
+          # run_mt PINS_FILE MT_ARGS...: run the mounted mt in the image with no
+          # network, as an unprivileged user, with only /out and /tmp writable.
+          run_mt() {
+            local pins=$1
+            shift
+            docker run --rm --network none --user 65534:65534 --read-only \
+              --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
+              -v "$pins:/opt/mt/pins.toml:ro" \
+              -v "$RUNNER_TEMP/out:/out" \
+              mt-toolchain:ci mt "$@"
+          }
+          LIB
+          mkdir -p "$RUNNER_TEMP/out"
+          chmod 0777 "$RUNNER_TEMP/out"
+
+      - name: Build the image from scratch (no cache, fresh pulls)
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          args=()
+          while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            args+=(--build-arg "${line%%=*}=${line#*=}")
+          done < "$RUNNER_TEMP/bundle/image-args.txt"
+          LOG="$RUNNER_TEMP/build-b.log"
+          set +e
+          docker buildx build --platform linux/amd64 --target final --load --progress=plain \
+            --no-cache --pull --tag mt-toolchain:ci "${args[@]}" container 2>&1 | tee "$LOG"
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            tail -n 100 "$LOG" > "$RUNNER_TEMP/build-tail.txt"
+            annotate error "image-b build tail" "$RUNNER_TEMP/build-tail.txt"
+            exit "$rc"
+          fi
+
+      - name: Manifest of build B
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          run_mt "$GITHUB_WORKSPACE/container/pins.toml" toolchain manifest --pins /opt/mt/pins.toml \
+            --out /out/manifest-b.json > /dev/null 2> "$out/manifest-b.err"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            { echo "mt toolchain manifest exit code: $rc"; cat "$out/manifest-b.err"; } > "$out/manifest-b-notice.txt"
+            annotate error manifest-b "$out/manifest-b-notice.txt"
+            exit 1
+          fi
+          {
+            echo "sha256 $(sha256sum "$out/manifest-b.json" | cut -d' ' -f1)"
+            cat "$out/manifest-b.json"
+          } > "$out/manifest-b-notice.txt"
+          cat "$out/manifest-b-notice.txt"
+          annotate notice manifest-b "$out/manifest-b-notice.txt"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: image-b-evidence
+          path: ${{ runner.temp }}/out/manifest-b.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  # TOOL-03: two independent builds from the same inputs, identical manifests.
+  compare:
+    needs: [image-a, image-b]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mt-bundle
+          path: ${{ runner.temp }}/bundle
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: image-a-evidence
+          path: ${{ runner.temp }}/a
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: image-b-evidence
+          path: ${{ runner.temp }}/b
+
+      - name: Compare the manifests
+        shell: bash
+        run: |
+          annotate() {
+            local level=$1 title=$2 file=$3 text
+            text=$(head -c 48000 "$file")
+            text=${text//'%'/'%25'}
+            text=${text//$'\r'/'%0D'}
+            text=${text//$'\n'/'%0A'}
+            printf '::%s title=%s::%s\n' "$level" "$title" "$text"
+          }
+          chmod +x "$RUNNER_TEMP/bundle/mt"
+          a="$RUNNER_TEMP/a/manifest-a.json"
+          b="$RUNNER_TEMP/b/manifest-b.json"
+          set +e
+          "$RUNNER_TEMP/bundle/mt" toolchain manifest-diff "$a" "$b" > "$RUNNER_TEMP/diff-summary.txt" 2>&1
+          rc=$?
+          set -e
+          cat "$RUNNER_TEMP/diff-summary.txt"
+          if [ "$rc" -ne 0 ]; then
+            {
+              echo "mt toolchain manifest-diff exit code: $rc"
+              cat "$RUNNER_TEMP/diff-summary.txt"
+              diff -u "$a" "$b" || true
+            } > "$RUNNER_TEMP/diff-notice.txt"
+            annotate error manifest-diff "$RUNNER_TEMP/diff-notice.txt"
+            exit 1
+          fi
+          echo "manifest-a.json and manifest-b.json are byte-identical; sha256 $(sha256sum "$a" | cut -d' ' -f1)" > "$RUNNER_TEMP/compare-notice.txt"
+          cat "$RUNNER_TEMP/compare-notice.txt"
+          annotate notice manifest-compare "$RUNNER_TEMP/compare-notice.txt"
