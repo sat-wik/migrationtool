@@ -1,0 +1,45 @@
+# cargo-deny policy (TOOL-01, ADR-0001). Verified with cargo-deny 0.20.2.
+
+[graph]
+targets = ["x86_64-unknown-linux-gnu", "x86_64-unknown-linux-musl"]
+
+[advisories]
+version = 2
+yanked = "deny"
+
+[licenses]
+version = 2
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+]
+confidence-threshold = 0.93
+unused-allowed-license = "allow"
+
+[licenses.private]
+# Workspace crates are publish = false and carry no licence field.
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# Path dependencies between workspace crates.
+allow-wildcard-paths = true
+deny = [
+    { crate = "clang-sys", reason = "analysers run as pinned subprocesses, never linked (ADR-0001, TOOL-01)" },
+    { crate = "llvm-sys", reason = "analysers run as pinned subprocesses, never linked (ADR-0001, TOOL-01)" },
+    { crate = "inkwell", reason = "analysers run as pinned subprocesses, never linked (ADR-0001, TOOL-01)" },
+    { crate = "z3", reason = "analysers run as pinned subprocesses, never linked (ADR-0001, TOOL-01)" },
+    { crate = "z3-sys", reason = "analysers run as pinned subprocesses, never linked (ADR-0001, TOOL-01)" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
