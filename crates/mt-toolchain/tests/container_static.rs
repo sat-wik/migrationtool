@@ -556,3 +556,191 @@ fn tool_03_discovery_package_list_matches_apt_pins() {
         "the packages pin-discovery.yml resolves must be exactly the [apt] keys"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Image stages (plan 01-07): the apt set, LLVM literals and COPY sources.
+// ---------------------------------------------------------------------------
+
+/// The `RUN` instructions of stage `stage` that install packages with `apt-get`.
+fn stage_apt_installs(text: &str, stage: &str) -> Vec<String> {
+    let mut current = String::new();
+    let mut found = Vec::new();
+    for (keyword, rest) in dockerfile_instructions(text) {
+        match keyword.as_str() {
+            "FROM" => {
+                let tokens: Vec<&str> = rest.split_whitespace().collect();
+                current = tokens
+                    .iter()
+                    .position(|t| t.eq_ignore_ascii_case("as"))
+                    .and_then(|at| tokens.get(at + 1))
+                    .map(|name| (*name).to_owned())
+                    .unwrap_or_default();
+            }
+            "RUN" if current == stage && rest.contains("apt-get install") => found.push(rest),
+            _ => {}
+        }
+    }
+    found
+}
+
+/// The pinned apt packages that the `apt-base` install command does not name, with
+/// `${LLVM_MAJOR}` replaced by `major` the way the build argument does.
+fn apt_install_gaps(dockerfile: &str, apt_keys: &[String], major: u32) -> Vec<String> {
+    let major = major.to_string();
+    let installs = stage_apt_installs(dockerfile, "apt-base");
+    let named: BTreeSet<String> = installs
+        .iter()
+        .flat_map(|run| run.split_whitespace())
+        .map(|word| word.replace("${LLVM_MAJOR}", &major))
+        .map(|word| word.trim_end_matches(';').to_owned())
+        .collect();
+    apt_keys
+        .iter()
+        .filter(|key| !named.contains(key.as_str()))
+        .cloned()
+        .collect()
+}
+
+/// Every `llvm-N`, `clang-N` or `clang-cppN` literal in `text`.
+fn llvm_major_literals(text: &str) -> Vec<String> {
+    let literal = regex::Regex::new(r"(?:llvm-|clang-cpp|clang-)\d+").unwrap();
+    literal
+        .find_iter(text)
+        .map(|found| found.as_str().to_owned())
+        .collect()
+}
+
+/// Every `COPY`/`ADD` that does not copy from an earlier stage.
+fn copy_issues(text: &str) -> Vec<String> {
+    let mut stages: Vec<String> = Vec::new();
+    let mut issues = Vec::new();
+    for (keyword, rest) in dockerfile_instructions(text) {
+        match keyword.as_str() {
+            "FROM" => {
+                let tokens: Vec<&str> = rest.split_whitespace().collect();
+                if let Some(at) = tokens.iter().position(|t| t.eq_ignore_ascii_case("as"))
+                    && let Some(name) = tokens.get(at + 1)
+                {
+                    stages.push((*name).to_owned());
+                }
+            }
+            "ADD" => issues.push(format!("ADD is not allowed: {rest}")),
+            "COPY" => {
+                let from = rest
+                    .split_whitespace()
+                    .find_map(|word| word.strip_prefix("--from="));
+                match from {
+                    Some(name) if stages.iter().any(|s| s == name) => {}
+                    Some(name) => issues.push(format!(
+                        "COPY --from={name} is not an earlier stage of this file: {rest}"
+                    )),
+                    None => issues.push(format!("COPY without --from reads the context: {rest}")),
+                }
+            }
+            _ => {}
+        }
+    }
+    issues
+}
+
+#[test]
+fn tool_03_dockerfile_installs_every_apt_pin() {
+    let pins = container_pins();
+    let keys: Vec<String> = pins.apt.keys().cloned().collect();
+    assert!(
+        !keys.is_empty(),
+        "no [apt] pins; the check would be vacuous"
+    );
+    let dockerfile = read_repo_file("container/Dockerfile");
+    assert!(
+        !stage_apt_installs(&dockerfile, "apt-base").is_empty(),
+        "stage apt-base has no `apt-get install`"
+    );
+    assert_eq!(
+        apt_install_gaps(&dockerfile, &keys, pins.llvm.major),
+        Vec::<String>::new(),
+        "every [apt] key must be named in the apt-base install command"
+    );
+
+    // A package left out of the install command is reported, and so is a
+    // Dockerfile with no apt-base stage at all.
+    let missing = "FROM x AS apt-base\nRUN apt-get install --yes clang-${LLVM_MAJOR} bear\n";
+    let want = vec![
+        "clang-16".to_owned(),
+        "llvm-16".to_owned(),
+        "bear".to_owned(),
+    ];
+    assert_eq!(apt_install_gaps(missing, &want, 16), vec!["llvm-16"]);
+    assert_eq!(apt_install_gaps("FROM x AS other\n", &want, 16), want);
+    // Installing in another stage does not count.
+    let elsewhere = "FROM x AS build-base\nRUN apt-get install --yes bear\n";
+    assert_eq!(
+        apt_install_gaps(elsewhere, &["bear".to_owned()], 16),
+        vec!["bear"]
+    );
+}
+
+#[test]
+fn tool_02_dockerfile_has_no_llvm_major_literal() {
+    let dockerfile = read_repo_file("container/Dockerfile");
+    assert_eq!(
+        llvm_major_literals(&dockerfile),
+        Vec::<String>::new(),
+        "the LLVM major reaches the Dockerfile only as ${{LLVM_MAJOR}}"
+    );
+    assert!(
+        dockerfile.contains("${LLVM_MAJOR}"),
+        "the Dockerfile must use ${{LLVM_MAJOR}}; the check would be vacuous"
+    );
+
+    // What must be refused and accepted.
+    for bad in [
+        "apt-get install clang-16",
+        "/usr/lib/llvm-16/bin",
+        "libclang-cpp16-dev",
+        "# llvm-18",
+    ] {
+        assert!(
+            !llvm_major_literals(bad).is_empty(),
+            "{bad} must be refused"
+        );
+    }
+    for good in [
+        "clang-${LLVM_MAJOR}",
+        "/usr/lib/llvm-${LLVM_MAJOR}/bin",
+        "libclang-cpp${LLVM_MAJOR}-dev",
+        "llvm-link",
+    ] {
+        assert!(llvm_major_literals(good).is_empty(), "{good} must pass");
+    }
+}
+
+#[test]
+fn tool_03_dockerfile_copies_only_between_stages() {
+    let dockerfile = read_repo_file("container/Dockerfile");
+    assert_eq!(copy_issues(&dockerfile), Vec::<String>::new());
+    assert!(
+        dockerfile_instructions(&dockerfile)
+            .iter()
+            .any(|(keyword, _)| keyword == "COPY"),
+        "the Dockerfile has no COPY; the check would be vacuous"
+    );
+
+    // What must be refused and accepted.
+    let stage = "FROM a AS one\nFROM one AS two\n";
+    for bad in [
+        "COPY file /file\n",
+        "ADD file /file\n",
+        "ADD --from=one /a /b\n",
+        "COPY --from=later /a /b\n",
+        "COPY --from=debian:12 /a /b\n",
+    ] {
+        assert!(
+            !copy_issues(&format!("{stage}{bad}")).is_empty(),
+            "{bad} must be refused"
+        );
+    }
+    assert!(copy_issues(&format!("{stage}COPY --from=one /a /b\n")).is_empty());
+    // A stage defined after the COPY is not "earlier".
+    assert!(!copy_issues("FROM a AS one\nCOPY --from=two /a /b\nFROM a AS two\n").is_empty());
+}
