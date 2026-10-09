@@ -52,7 +52,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Building the container image twice from the same inputs produces identical tool-version manifests, and every base image and tool source is pinned by digest, commit or checksum with no floating tags.
   4. Inside the container a trivial `no_std` crate builds for `thumbv7em-none-eabihf`, the workspace launches an analyser through the subprocess runner with stdout, stderr, exit status and version stamp captured, and a repository check fails on any Python source outside `research/`.
 
-**Plans:** 5/8 plans executed
+**Plans:** 6/8 plans executed
 
 Plans:
 **Wave 1**
@@ -67,7 +67,7 @@ Plans:
 - [x] 01-05-PLAN.md — Full check rules (single LLVM major, bitcode rustc bound), manifest and manifest-diff, `mt toolchain hash` (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 01-06-PLAN.md — Real container/pins.toml, PROJECT D-15/D-16 and decision gate, Dockerfile base stage, ci and pin-discovery workflows, discovery round trip (wave 4)
+- [x] 01-06-PLAN.md — Real container/pins.toml, PROJECT D-15/D-16 and decision gate, Dockerfile base stage, ci and pin-discovery workflows, discovery round trip (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 01-07-PLAN.md — Full Dockerfile, container workflow (live check, off-pin check, double build and manifest diff, smoke), CI to green (wave 5)
@@ -231,7 +231,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Pinned Toolchain Container | 5/8 | In Progress | - |
+| 1. Pinned Toolchain Container | 6/8 | In Progress | - |
 | 2. Test Bed and Build Capture | 0/0 | Not started | - |
 | 3. Equivalence Contract and Test-Vector Schema | 0/0 | Not started | - |
 | 4. UB Detection and Decision Log | 0/0 | Not started | - |

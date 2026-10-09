@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 01
 current_phase_name: Pinned Toolchain Container
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-10-09T16:34:18.669Z"
+stopped_at: Completed 01-06-PLAN.md
+last_updated: "2026-10-09T17:28:42.946Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 01 execution started
-state_head: 8b942550f9c965c73bb3927d7cd65300d2a06924
+state_head: 23fc266a1528458c7044fcc0df9daf773b8e0826
 progress:
   total_phases: 12
   completed_phases: 0
   total_plans: 8
-  completed_plans: 0
+  completed_plans: 6
 ---
 
 # Project State
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-10-07)
 ## Current Position
 
 Phase: 01 (Pinned Toolchain Container) — EXECUTING
-Plan: 1 of 8
-Status: Executing Phase 01
+Plan: 2 of 8
+Status: Ready to execute
 Last activity: 2026-10-09 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -53,6 +53,11 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: n/a
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01 P06 | 12 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -65,6 +70,8 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Init]: Differential harness runs ILP32 with `-funsigned-char`, separate ASan+UBSan and MSan builds (D-06, D-07)
 - [Init]: R1 is a required spike; R2 is time-boxed and may slip to v2.0 (D-10)
 - [Init]: MVP "full evidence" excludes Kani proofs (D-14, assumption A-01, awaiting founder confirmation)
+- [Phase 01]: D-15: provisional pin llvm=16 bitcode-rustc=1.72.1 recorded in PROJECT.md; D-16: runner.rs is the only std::process module — CONTEXT D-01, D-03, D-21: one LLVM major for all C-side tools, gate fails cargo test if either value moves without a matching decision line
+- [Phase 01]: qemu_arm and qemu_system_arm expect the full apt candidate version; confirm against real banner in 01-07 — Plan 01-06 wording; the +b3 binNMU suffix may not appear in the banner, a risk settled by the first container capture
 
 ### Pending Todos
 
@@ -95,6 +102,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-08T05:53:09.933Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-pinned-toolchain-container/01-CONTEXT.md
+Last session: 2026-10-09T17:28:42.895Z
+Stopped at: Completed 01-06-PLAN.md
+Resume file: None
