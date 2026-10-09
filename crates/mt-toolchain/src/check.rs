@@ -4,7 +4,9 @@
 use std::path::Path;
 use std::time::Duration;
 
-use crate::pins::{Pins, ToolPinStatus};
+use std::collections::BTreeMap;
+
+use crate::pins::{LlvmPins, Pins, PinsError, ToolPinStatus};
 use crate::runner::{self, RunRequest, RunnerConfig, RunnerError};
 use crate::version::{self, VersionError};
 
@@ -22,6 +24,8 @@ pub enum ToolStatus {
     Missing,
     /// The tool is deliberately absent (CONTEXT D-10); never a failure.
     NotInstalled,
+    /// The run timed out, could not be supervised, or its output was not drained.
+    NotProven,
 }
 
 impl ToolStatus {
@@ -33,6 +37,7 @@ impl ToolStatus {
             Self::Mismatch => "MISMATCH",
             Self::Missing => "MISSING",
             Self::NotInstalled => "not_installed",
+            Self::NotProven => "not proven",
         }
     }
 
@@ -54,13 +59,81 @@ pub struct ToolRow {
     pub actual: Option<String>,
     /// The verdict.
     pub status: ToolStatus,
+    /// The LLVM major the row reports, where one applies.
+    pub llvm_major: Option<u32>,
+    /// Why the row has its status, built from parsed values only.
+    pub detail: Option<String>,
 }
 
 /// The result of a whole check.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CheckReport {
-    /// One row per tool, in key order.
+    /// One row per item, in key order.
     pub rows: Vec<ToolRow>,
+    /// The LLVM pin the rows were judged against.
+    pub llvm: LlvmPins,
+}
+
+/// What one command run produced, before any rule is applied to it.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Observation {
+    /// The observation key.
+    pub key: String,
+    /// Captured standard output (lossy UTF-8).
+    pub stdout: String,
+    /// Captured standard error (lossy UTF-8).
+    pub stderr: String,
+    /// Exit code; `None` when the child was killed by a signal.
+    pub exit_code: Option<i32>,
+    /// True when the runner killed the child for exceeding its timeout.
+    pub timed_out: bool,
+    /// True when the program does not exist.
+    pub missing: bool,
+    /// A supervision failure (spawn refused, output not drained, i/o error).
+    pub error: Option<String>,
+    /// A second command observed for this one (the LLVM probe).
+    pub probe: Option<Box<Observation>>,
+}
+
+impl Observation {
+    /// A command that ran and exited 0 with the given output.
+    #[must_use]
+    pub fn ran(key: &str, stdout: &str, stderr: &str) -> Self {
+        Self {
+            key: key.to_owned(),
+            stdout: stdout.to_owned(),
+            stderr: stderr.to_owned(),
+            exit_code: Some(0),
+            ..Self::default()
+        }
+    }
+
+    /// A command that was killed for exceeding its timeout.
+    #[must_use]
+    pub fn timed_out(key: &str) -> Self {
+        Self {
+            key: key.to_owned(),
+            timed_out: true,
+            ..Self::default()
+        }
+    }
+
+    /// A command whose program does not exist.
+    #[must_use]
+    pub fn missing(key: &str) -> Self {
+        Self {
+            key: key.to_owned(),
+            missing: true,
+            ..Self::default()
+        }
+    }
+
+    /// This observation with `probe` attached.
+    #[must_use]
+    pub fn with_probe(mut self, probe: Self) -> Self {
+        self.probe = Some(Box::new(probe));
+        self
+    }
 }
 
 impl CheckReport {
@@ -99,6 +172,12 @@ impl CheckReport {
         }
         out
     }
+
+    /// The `llvm pin:` line.
+    #[must_use]
+    pub fn pin_line(&self) -> String {
+        String::new()
+    }
 }
 
 /// Why a check could not be carried out (as opposed to a tool being off its pin).
@@ -122,6 +201,12 @@ pub enum CheckError {
         #[source]
         source: RunnerError,
     },
+    /// The pins are not complete enough to check a container against.
+    #[error(transparent)]
+    Pins(#[from] PinsError),
+    /// The capture file could not be rendered.
+    #[error("cannot render the capture file: {0}")]
+    Capture(#[from] toml::ser::Error),
 }
 
 /// Check every tool in `pins` and report one row per tool.
@@ -149,6 +234,8 @@ pub fn run_check(pins: &Pins, cwd: &Path) -> Result<CheckReport, CheckError> {
                 expected: "-".to_owned(),
                 actual: None,
                 status: ToolStatus::NotInstalled,
+                llvm_major: None,
+                detail: None,
             });
             continue;
         }
@@ -197,7 +284,43 @@ pub fn run_check(pins: &Pins, cwd: &Path) -> Result<CheckReport, CheckError> {
             expected: spec.expect.clone(),
             actual,
             status,
+            llvm_major: None,
+            detail: None,
         });
     }
-    Ok(CheckReport { rows })
+    Ok(CheckReport {
+        rows,
+        llvm: pins.llvm.clone(),
+    })
+}
+
+/// Run every pinned command through the runner and record what happened.
+///
+/// # Errors
+/// [`CheckError`] when a command cannot be set up.
+pub fn observe(_pins: &Pins, _cwd: &Path) -> Result<BTreeMap<String, Observation>, CheckError> {
+    // Placeholder for the RED commit; the real implementation follows.
+    Ok(BTreeMap::new())
+}
+
+/// Render observations as a TOML capture file (one table per observation key).
+///
+/// # Errors
+/// [`CheckError::Capture`] if TOML serialization fails.
+pub fn capture_toml(
+    _observations: &BTreeMap<String, Observation>,
+    _label: &str,
+) -> Result<String, CheckError> {
+    // Placeholder for the RED commit; the real implementation follows.
+    Ok(String::new())
+}
+
+/// Judge `observations` against `pins`. Pure: no process is started.
+#[must_use]
+pub fn evaluate(pins: &Pins, _observations: &BTreeMap<String, Observation>) -> CheckReport {
+    // Placeholder for the RED commit; the real implementation follows.
+    CheckReport {
+        rows: Vec::new(),
+        llvm: pins.llvm.clone(),
+    }
 }

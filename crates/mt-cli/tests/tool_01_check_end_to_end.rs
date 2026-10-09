@@ -1,12 +1,29 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
-//! TOOL-01 tracer: the built `mt` binary, launched through the runner, drives
-//! `mt toolchain check` against a pins file whose one tool is a fake `/bin/sh`
-//! version command.
+//! TOOL-01 / TOOL-02: the built `mt` binary, launched through the runner,
+//! drives `mt toolchain check` against a hermetic fake container tree. Every
+//! pinned tool is a small `/bin/sh` script in a temporary directory that prints
+//! a recorded version text, so the whole check (pins validation, runner,
+//! parsing, LLVM rules, table, exit code) is proven without Docker.
 
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use mt_toolchain::runner::{self, RunRequest, RunnerConfig};
+
+/// The complete, valid pins used by the library tests; the fake container is
+/// laid out to match it after its `/opt/` and `/usr/` prefixes are moved.
+const FULL_PINS: &str = include_str!("../../mt-toolchain/tests/fixtures/pins-full.toml");
+
+/// Tests write executable scripts and then spawn them. Holding this lock for a
+/// whole test keeps another test's `fork` from briefly sharing a script's write
+/// descriptor, which would make the exec fail with "text file busy".
+static EXEC_LOCK: Mutex<()> = Mutex::new(());
+
+fn serialized() -> MutexGuard<'static, ()> {
+    EXEC_LOCK.lock().unwrap_or_else(PoisonError::into_inner)
+}
 
 struct Outcome {
     code: Option<i32>,
@@ -74,6 +91,7 @@ fn run_mt(pins: &str) -> Outcome {
 
 /// Write `pins` to a temp dir and run `mt toolchain <action> --pins <file>`.
 fn run_mt_action(action: &str, pins: &str) -> Outcome {
+    let _guard = serialized();
     let dir = tempfile::tempdir().unwrap();
     let pins_path = dir.path().join("pins.toml");
     std::fs::write(&pins_path, pins).unwrap();
@@ -104,9 +122,134 @@ fn run_mt_with_path(cwd: &Path, action: &str, pins_path: &Path) -> Outcome {
     }
 }
 
+const CLANG_OUT: &str = "Debian clang version 16.0.6 (15~deb12u1)\nTarget: x86_64-pc-linux-gnu\n";
+const KLEE_OUT: &str = "KLEE 3.2 (https://klee-se.org)\n  Build mode: RelWithDebInfo (Asserts: OFF)\n\nLLVM (http://llvm.org/):\n  LLVM version 16.0.6\n  Host CPU: skylake-avx512\n";
+const LDD_OUT: &str = "\tlinux-vdso.so.1 (0x00007ffc4a5f1000)\n\tlibclang-cpp.so.16 => /usr/lib/llvm-16/lib/libclang-cpp.so.16 (0x00007f1c2e800000)\n\tlibLLVM-16.so.1 => /usr/lib/llvm-16/lib/libLLVM-16.so.1 (0x00007f1c2a000000)\n";
+const ARM_OUT: &str =
+    "arm-none-eabi-gcc (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623\n";
+const QEMU_USER_OUT: &str = "qemu-arm version 7.2.15 (Debian 1:7.2+dfsg-7+deb12u18)\n";
+const QEMU_SYSTEM_OUT: &str = "QEMU emulator version 7.2.15 (Debian 1:7.2+dfsg-7+deb12u18)\n";
+const RUSTC_TOOL_OUT: &str = "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.0\nLLVM version: 23.1.1\n";
+const RUSTC_BITCODE_OUT: &str = "rustc 1.72.1 (d5c2e9c34 2023-09-13)\nbinary: rustc\ncommit-hash: d5c2e9c342b358556da91d61ed4133f6f50fc0c3\ncommit-date: 2023-09-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.72.1\nLLVM version: 16.0.5\n";
+const DPKG_OUT: &str = "bear\t3.1.1-1\tinstalled\nclang-16\t1:16.0.6-15~deb12u1\tinstalled\nlibclang-16-dev\t1:16.0.6-15~deb12u1\tinstalled\nlibclang-cpp16-dev\t1:16.0.6-15~deb12u1\tinstalled\nlibllvm16\t1:16.0.6-15~deb12u1\tinstalled\nlibz3-dev\t4.8.12-3.1\tinstalled\nllvm-16\t1:16.0.6-15~deb12u1\tinstalled\nllvm-16-dev\t1:16.0.6-15~deb12u1\tinstalled\nqemu-system-arm\t1:7.2+dfsg-7+deb12u18\tinstalled\nqemu-user\t1:7.2+dfsg-7+deb12u18\tinstalled\n";
+
+/// A script that ignores its arguments and prints `text` on stdout.
+fn prints(text: &str) -> String {
+    format!("cat <<'MT_EOF'\n{text}MT_EOF\n")
+}
+
+/// A script that requires its arguments to be exactly `args`, then prints `text`.
+fn expects_args_then_prints(args: &str, text: &str) -> String {
+    format!(
+        "[ \"$*\" = '{args}' ] || {{ echo \"unexpected arguments: $*\" >&2; exit 64; }}\n{}",
+        prints(text)
+    )
+}
+
+/// The fake `rustup`: answers `--version`, `default` and `target list` and
+/// insists on the arguments and environment the check is supposed to use.
+fn rustup_script() -> String {
+    format!(
+        "case \"$*\" in\n\
+         '--version') {version} ;;\n\
+         'default') [ -n \"$RUSTUP_HOME\" ] || exit 65; echo '1.99.0-x86_64-unknown-linux-gnu (default)' ;;\n\
+         'target list --installed --toolchain 1.99.0') [ -n \"$RUSTUP_HOME\" ] || exit 65; printf '%s\\n' thumbv7em-none-eabihf x86_64-unknown-linux-gnu x86_64-unknown-linux-musl ;;\n\
+         'target list --installed --toolchain 1.72.1') [ -n \"$RUSTUP_HOME\" ] || exit 65; printf '%s\\n' x86_64-unknown-linux-gnu ;;\n\
+         *) echo \"unexpected arguments: $*\" >&2; exit 64 ;;\n\
+         esac\n",
+        version = "echo 'rustup 1.29.1 (b3c2e5f7a 2026-09-10)'"
+    )
+}
+
+/// A fake container: every tool in `pins-full.toml` as a script under a temp dir.
+struct FakeContainer {
+    dir: tempfile::TempDir,
+}
+
+impl FakeContainer {
+    fn new() -> Self {
+        let fake = Self {
+            dir: tempfile::tempdir().unwrap(),
+        };
+        fake.script("usr/lib/llvm-16/bin/clang", &prints(CLANG_OUT));
+        fake.script("usr/lib/llvm-16/bin/llvm-config", &prints("16.0.6\n"));
+        fake.script("opt/klee/bin/klee", &prints(KLEE_OUT));
+        fake.script("opt/cargo-tools/bin/c2rust", &prints("c2rust 0.22.1\n"));
+        fake.script("usr/bin/ldd", &prints(LDD_OUT));
+        fake.script("usr/bin/bear", &prints("bear 3.1.1\n"));
+        fake.script(
+            "opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc",
+            &prints(ARM_OUT),
+        );
+        fake.script("usr/bin/qemu-arm", &prints(QEMU_USER_OUT));
+        fake.script("usr/bin/qemu-system-arm", &prints(QEMU_SYSTEM_OUT));
+        fake.script(
+            "opt/cargo/bin/cargo",
+            &expects_args_then_prints("mutants --version", "cargo-mutants 27.1.0\n"),
+        );
+        fake.script("opt/cargo/bin/rustup", &rustup_script());
+        fake.script(
+            "opt/rustup/toolchains/1.99.0-x86_64-unknown-linux-gnu/bin/rustc",
+            &expects_args_then_prints("-vV", RUSTC_TOOL_OUT),
+        );
+        fake.script(
+            "opt/rustup/toolchains/1.72.1-x86_64-unknown-linux-gnu/bin/rustc",
+            &expects_args_then_prints("-vV", RUSTC_BITCODE_OUT),
+        );
+        // dpkg-query must be called as `-W -f=<format>`; its rows come from a data file.
+        fake.write("usr/bin/dpkg-query.rows", DPKG_OUT);
+        let rows = fake.path("usr/bin/dpkg-query.rows");
+        fake.script(
+            "usr/bin/dpkg-query",
+            &format!(
+                "[ \"$1\" = '-W' ] || exit 64\n\
+                 [ \"$2\" = '-f=${{Package}}\\t${{Version}}\\t${{db:Status-Status}}\\n' ] || {{ echo \"unexpected format: $2\" >&2; exit 64; }}\n\
+                 cat '{}'\n",
+                rows.display()
+            ),
+        );
+        fake
+    }
+
+    fn path(&self, relative: &str) -> PathBuf {
+        self.dir.path().join(relative)
+    }
+
+    fn write(&self, relative: &str, text: &str) {
+        let path = self.path(relative);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, text).unwrap();
+    }
+
+    /// Write an executable `/bin/sh` script.
+    fn script(&self, relative: &str, body: &str) {
+        self.write(relative, &format!("#!/bin/sh\n{body}"));
+        std::fs::set_permissions(self.path(relative), std::fs::Permissions::from_mode(0o755))
+            .unwrap();
+    }
+
+    /// `pins-full.toml` with its `/opt/` and `/usr/` prefixes moved into the fake tree.
+    fn pins(&self) -> String {
+        let root = self.dir.path().to_str().unwrap();
+        FULL_PINS
+            .replace("/opt/", "@ROOT@/opt/")
+            .replace("/usr/", "@ROOT@/usr/")
+            .replace("@ROOT@", root)
+    }
+
+    /// Run `mt toolchain check` on the given pins text.
+    fn check(&self, pins: &str) -> Outcome {
+        let pins_path = self.path("pins.toml");
+        std::fs::write(&pins_path, pins).unwrap();
+        run_mt_with_path(self.dir.path(), "check", &pins_path)
+    }
+}
+
 #[test]
 fn tool_01_check_end_to_end_reports_ok_and_exits_zero() {
-    let out = run_mt(&pins_text("/bin/sh", "1.2.3"));
+    let _guard = serialized();
+    let fake = FakeContainer::new();
+    let out = fake.check(&fake.pins());
     assert_eq!(
         out.code,
         Some(0),
@@ -114,13 +257,34 @@ fn tool_01_check_end_to_end_reports_ok_and_exits_zero() {
         out.stdout,
         out.stderr
     );
-    assert!(out.stdout.contains("fake_tool"), "stdout: {}", out.stdout);
-    assert!(out.stdout.contains("OK"), "stdout: {}", out.stdout);
+    assert!(out.stdout.contains("result: OK"), "stdout: {}", out.stdout);
+    for needle in [
+        "klee",
+        "rustc_bitcode",
+        "rust_default",
+        "llvm_packages",
+        "apt:clang-16",
+        "hayroll",
+        "kani",
+        "not_installed",
+        "llvm pin: 16 (provisional, decision D-15)",
+    ] {
+        assert!(out.stdout.contains(needle), "{needle}: {}", out.stdout);
+    }
+    assert!(!out.stdout.contains("MISMATCH"), "stdout: {}", out.stdout);
+    assert!(!out.stdout.contains("Host CPU"), "stdout: {}", out.stdout);
 }
 
 #[test]
 fn tool_01_check_end_to_end_reports_mismatch_and_exits_one() {
-    let out = run_mt(&pins_text("/bin/sh", "9.9.9"));
+    let _guard = serialized();
+    let fake = FakeContainer::new();
+    // klee still says 3.2 but links LLVM 17: the single-LLVM-major rule fires.
+    fake.script(
+        "opt/klee/bin/klee",
+        &prints(&KLEE_OUT.replace("LLVM version 16.0.6", "LLVM version 17.0.1")),
+    );
+    let out = fake.check(&fake.pins());
     assert_eq!(
         out.code,
         Some(1),
@@ -128,14 +292,26 @@ fn tool_01_check_end_to_end_reports_mismatch_and_exits_one() {
         out.stdout,
         out.stderr
     );
-    assert!(out.stdout.contains("fake_tool"), "stdout: {}", out.stdout);
-    assert!(out.stdout.contains("MISMATCH"), "stdout: {}", out.stdout);
-    assert!(out.stdout.contains("1.2.3"), "stdout: {}", out.stdout);
+    let klee = out
+        .stdout
+        .lines()
+        .find(|l| l.starts_with("klee"))
+        .unwrap_or_else(|| panic!("no klee row in: {}", out.stdout));
+    assert!(klee.contains("MISMATCH"), "{klee}");
+    assert!(klee.contains("17"), "{klee}");
+    assert!(
+        out.stdout.contains("result: FAILED (1 rows)"),
+        "stdout: {}",
+        out.stdout
+    );
 }
 
 #[test]
 fn tool_01_check_end_to_end_reports_missing_tool_and_exits_one() {
-    let out = run_mt(&pins_text("/nonexistent/fake-tool", "1.2.3"));
+    let _guard = serialized();
+    let fake = FakeContainer::new();
+    std::fs::remove_file(fake.path("usr/bin/bear")).unwrap();
+    let out = fake.check(&fake.pins());
     assert_eq!(
         out.code,
         Some(1),
@@ -143,13 +319,42 @@ fn tool_01_check_end_to_end_reports_missing_tool_and_exits_one() {
         out.stdout,
         out.stderr
     );
-    assert!(out.stdout.contains("fake_tool"), "stdout: {}", out.stdout);
-    assert!(out.stdout.contains("MISSING"), "stdout: {}", out.stdout);
+    let bear = out
+        .stdout
+        .lines()
+        .find(|l| l.starts_with("bear"))
+        .unwrap_or_else(|| panic!("no bear row in: {}", out.stdout));
+    assert!(bear.contains("MISSING"), "{bear}");
+    assert!(
+        out.stdout.contains("result: FAILED (1 rows)"),
+        "stdout: {}",
+        out.stdout
+    );
 }
 
 #[test]
 fn tool_01_check_end_to_end_rejects_invalid_pins_with_exit_two() {
-    let out = run_mt("this is = not [valid toml");
+    let _guard = serialized();
+    let fake = FakeContainer::new();
+
+    // Incomplete pins: no [tool.bear] table.
+    let pins = fake.pins();
+    let start = pins.find("[tool.bear]").unwrap();
+    let end = pins.find("[tool.c2rust]").unwrap();
+    let incomplete = format!("{}{}", &pins[..start], &pins[end..]);
+    let out = fake.check(&incomplete);
+    assert_eq!(
+        out.code,
+        Some(2),
+        "stdout: {} stderr: {}",
+        out.stdout,
+        out.stderr
+    );
+    assert!(out.stderr.contains("tool.bear"), "stderr: {}", out.stderr);
+    assert!(out.stdout.is_empty(), "stdout: {}", out.stdout);
+
+    // Pins that are not even TOML.
+    let out = fake.check("this is = not [valid toml");
     assert_eq!(
         out.code,
         Some(2),
