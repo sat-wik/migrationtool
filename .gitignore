@@ -1,2 +1,6 @@
 /target/
 /container/smoke/target/
+
+# Local runtime state: Claude Code agent worktrees and the GSD session claim
+/.claude/worktrees/
+/.planning/milestone.lock
