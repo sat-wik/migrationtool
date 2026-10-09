@@ -4,13 +4,9 @@
 use std::path::Path;
 use std::time::Duration;
 
-use regex::{Regex, RegexBuilder};
-
-use crate::pins::{Pins, ToolSpec};
+use crate::pins::{Pins, ToolPinStatus};
 use crate::runner::{self, RunRequest, RunnerConfig, RunnerError};
-
-/// Compiled-regex size limit (threat T-01-05): 1 MiB.
-const REGEX_SIZE_LIMIT: usize = 1024 * 1024;
+use crate::version::{self, VersionError};
 
 /// Wall-clock limit for one version command.
 const VERSION_TIMEOUT: Duration = Duration::from_secs(120);
@@ -24,6 +20,8 @@ pub enum ToolStatus {
     Mismatch,
     /// The program does not exist.
     Missing,
+    /// The tool is deliberately absent (CONTEXT D-10); never a failure.
+    NotInstalled,
 }
 
 impl ToolStatus {
@@ -34,7 +32,14 @@ impl ToolStatus {
             Self::Ok => "OK",
             Self::Mismatch => "MISMATCH",
             Self::Missing => "MISSING",
+            Self::NotInstalled => "not_installed",
         }
+    }
+
+    /// True for statuses that do not fail a report.
+    #[must_use]
+    pub fn is_pass(self) -> bool {
+        matches!(self, Self::Ok | Self::NotInstalled)
     }
 }
 
@@ -59,10 +64,10 @@ pub struct CheckReport {
 }
 
 impl CheckReport {
-    /// True only when every row is [`ToolStatus::Ok`].
+    /// True when every row is [`ToolStatus::Ok`] or [`ToolStatus::NotInstalled`].
     #[must_use]
     pub fn passed(&self) -> bool {
-        self.rows.iter().all(|row| row.status == ToolStatus::Ok)
+        self.rows.iter().all(|row| row.status.is_pass())
     }
 
     /// One line per tool: key, expected, actual (`-` when unknown), status.
@@ -99,20 +104,14 @@ impl CheckReport {
 /// Why a check could not be carried out (as opposed to a tool being off its pin).
 #[derive(Debug, thiserror::Error)]
 pub enum CheckError {
-    /// A tool's `version_regex` is not a valid (or is an oversized) regex.
-    #[error("tool {key}: invalid version_regex: {source}")]
-    Regex {
+    /// A tool's `version_regex` is unusable: invalid, oversized, or without a `version` group.
+    #[error("tool {key}: version_regex: {source}")]
+    Version {
         /// The tool key.
         key: String,
-        /// The regex error.
+        /// Why the pattern cannot be used.
         #[source]
-        source: regex::Error,
-    },
-    /// A tool's `version_regex` has no `version` named group.
-    #[error("tool {key}: version_regex has no `version` named group")]
-    NoVersionGroup {
-        /// The tool key.
-        key: String,
+        source: VersionError,
     },
     /// The runner failed for a reason other than the program being absent.
     #[error("tool {key}: {source}")]
@@ -123,34 +122,6 @@ pub enum CheckError {
         #[source]
         source: RunnerError,
     },
-}
-
-fn compile(key: &str, spec: &ToolSpec) -> Result<Regex, CheckError> {
-    let regex = RegexBuilder::new(&spec.version_regex)
-        .size_limit(REGEX_SIZE_LIMIT)
-        .build()
-        .map_err(|source| CheckError::Regex {
-            key: key.to_owned(),
-            source,
-        })?;
-    if regex
-        .capture_names()
-        .flatten()
-        .any(|name| name == "version")
-    {
-        Ok(regex)
-    } else {
-        Err(CheckError::NoVersionGroup {
-            key: key.to_owned(),
-        })
-    }
-}
-
-fn extract(regex: &Regex, text: &str) -> Option<String> {
-    regex
-        .captures(text)
-        .and_then(|caps| caps.name("version"))
-        .map(|m| m.as_str().to_owned())
 }
 
 /// Check every tool in `pins` and report one row per tool.
@@ -172,14 +143,28 @@ pub fn run_check(pins: &Pins, cwd: &Path) -> Result<CheckReport, CheckError> {
     };
     let mut rows = Vec::with_capacity(pins.tool.len());
     for (key, spec) in &pins.tool {
-        let regex = compile(key, spec)?;
+        if spec.status == ToolPinStatus::NotInstalled {
+            rows.push(ToolRow {
+                key: key.clone(),
+                expected: "-".to_owned(),
+                actual: None,
+                status: ToolStatus::NotInstalled,
+            });
+            continue;
+        }
+        let regex = version::compile_pattern(&spec.version_regex, "version").map_err(|source| {
+            CheckError::Version {
+                key: key.clone(),
+                source,
+            }
+        })?;
         let mut argv = vec![spec.bin.clone().into()];
         argv.extend(spec.version_args.iter().map(Into::into));
         let request = RunRequest {
             tool_name: key.clone(),
             argv,
             cwd: cwd.to_path_buf(),
-            extra_env: std::collections::BTreeMap::new(),
+            extra_env: spec.env.clone(),
             tool_version: Some(spec.expect.clone()),
         };
         let (actual, status) = match runner::run(&cfg, &request) {
@@ -197,7 +182,9 @@ pub fn run_check(pins: &Pins, cwd: &Path) -> Result<CheckReport, CheckError> {
                 } else {
                     let stdout = String::from_utf8_lossy(&output.stdout);
                     let stderr = String::from_utf8_lossy(&output.stderr);
-                    match extract(&regex, &stdout).or_else(|| extract(&regex, &stderr)) {
+                    let found = version::extract(&regex, "version", &stdout)
+                        .or_else(|| version::extract(&regex, "version", &stderr));
+                    match found {
                         Some(version) if version == spec.expect => (Some(version), ToolStatus::Ok),
                         Some(version) => (Some(version), ToolStatus::Mismatch),
                         None => (None, ToolStatus::Mismatch),
