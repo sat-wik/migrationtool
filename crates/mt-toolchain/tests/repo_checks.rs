@@ -173,3 +173,128 @@ fn tool_01_never_links_an_analyser_library() {
         "analyser binding crates in Cargo.lock (analysers run as subprocesses only): {linked:?}"
     );
 }
+
+/// The lint table every emitted crate carries (docs/specs/emitted-rust-rules.md section 6).
+const EMITTED_LINTS: &str = r#"
+[rust]
+unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "deny"
+
+[clippy]
+all = { level = "deny", priority = -1 }
+undocumented_unsafe_blocks = "deny"
+arithmetic_side_effects = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+std_instead_of_core = "deny"
+alloc_instead_of_core = "deny"
+indexing_slicing = "warn"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+cast_possible_wrap = "warn"
+"#;
+
+/// Read and parse a TOML manifest, failing with a clear message when it is absent.
+fn read_manifest(path: &Path) -> toml::Table {
+    assert!(path.is_file(), "{} is missing", path.display());
+    fs::read_to_string(path).unwrap().parse().unwrap()
+}
+
+/// The lines of `source` that are neither blank nor line comments.
+fn code_lines(source: &str) -> Vec<&str> {
+    source
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with("//"))
+        .collect()
+}
+
+#[test]
+fn tool_04_smoke_crate_has_emitted_rust_shape() {
+    let smoke = repo_root().join("container/smoke");
+    let manifest = read_manifest(&smoke.join("Cargo.toml"));
+
+    let crate_types: Vec<&str> = manifest["lib"]["crate-type"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect();
+    assert_eq!(crate_types, ["staticlib", "rlib"]);
+
+    assert_eq!(manifest["package"]["edition"].as_str(), Some("2021"));
+    let dependencies = manifest["dependencies"].as_table().unwrap();
+    assert!(dependencies.is_empty(), "smoke crate has dependencies");
+    for profile in ["dev", "release"] {
+        assert_eq!(
+            manifest["profile"][profile]["panic"].as_str(),
+            Some("abort"),
+            "profile.{profile}.panic"
+        );
+    }
+    let default_features: Vec<&str> = manifest["features"]["default"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect();
+    assert_eq!(default_features, ["panic-handler"]);
+
+    let expected_lints: toml::Table = EMITTED_LINTS.parse().unwrap();
+    assert_eq!(
+        manifest["lints"].as_table().unwrap(),
+        &expected_lints,
+        "lint table differs from docs/specs/emitted-rust-rules.md section 6"
+    );
+
+    let lib_rs = fs::read_to_string(smoke.join("src/lib.rs")).unwrap();
+    assert_eq!(code_lines(&lib_rs).first().copied(), Some("#![no_std]"));
+
+    let lines: Vec<&str> = lib_rs.lines().map(str::trim).collect();
+    let handlers: Vec<usize> = lines
+        .iter()
+        .enumerate()
+        .filter(|(_, line)| **line == "#[panic_handler]")
+        .map(|(index, _)| index)
+        .collect();
+    assert_eq!(handlers.len(), 1, "expected exactly one #[panic_handler]");
+    assert_eq!(
+        lines[handlers[0] - 1],
+        "#[cfg(feature = \"panic-handler\")]",
+        "#[panic_handler] must sit directly under the panic-handler feature gate"
+    );
+
+    let with_unsafe: Vec<String> = files_with_extension(&smoke.join("src"), "rs")
+        .into_iter()
+        .filter(|path| fs::read_to_string(path).unwrap().contains("unsafe"))
+        .map(|path| path.file_name().unwrap().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(with_unsafe, ["ffi.rs"], "unsafe is allowed only in ffi.rs");
+}
+
+#[test]
+fn tool_04_smoke_crate_is_outside_the_workspace() {
+    let root = repo_root();
+    let smoke = read_manifest(&root.join("container/smoke/Cargo.toml"));
+    assert!(
+        smoke.get("workspace").is_some_and(toml::Value::is_table),
+        "smoke Cargo.toml needs its own [workspace] table"
+    );
+
+    let workspace = read_manifest(&root.join("Cargo.toml"));
+    let strings = |key: &str| -> Vec<String> {
+        workspace["workspace"][key]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap().to_owned())
+            .collect()
+    };
+    assert!(strings("exclude").contains(&"container/smoke".to_owned()));
+    assert!(!strings("members").contains(&"container/smoke".to_owned()));
+}
