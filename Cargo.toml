@@ -1,0 +1,30 @@
+[workspace]
+resolver = "3"
+members = ["crates/mt-toolchain", "crates/mt-cli"]
+# The no_std smoke crate (plan 01-04) is its own workspace root and must never
+# become part of the tool workspace.
+exclude = ["container/smoke"]
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+# No licence field: the project licence is a founder decision, and cargo-deny
+# ignores private crates.
+publish = false
+
+[workspace.dependencies]
+anyhow = "1.0.104"
+clap = { version = "4.6.7", features = ["derive"] }
+regex = "1.13.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+sha2 = "0.11.0"
+tempfile = "3.27.0"
+thiserror = "2.0.21"
+toml = "=1.1.7"
+
+[workspace.lints.clippy]
+# building-the-tool.md section 4: no unwrap/expect outside tests. A justified
+# exception carries an allow attribute plus a comment stating the invariant.
+unwrap_used = "deny"
+expect_used = "deny"
