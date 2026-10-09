@@ -50,7 +50,17 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. One LLVM major in 16-19 is recorded as the pin for clang, KLEE and c2rust, the version check fails if any of them reports a different major, and the pinned rustc reports an LLVM at or below 19 (recorded as provisional until the Phase 6 R1 spike).
   3. Building the container image twice from the same inputs produces identical tool-version manifests, and every base image and tool source is pinned by digest, commit or checksum with no floating tags.
   4. Inside the container a trivial `no_std` crate builds for `thumbv7em-none-eabihf`, the workspace launches an analyser through the subprocess runner with stdout, stderr, exit status and version stamp captured, and a repository check fails on any Python source outside `research/`.
-**Plans**: TBD
+**Plans:** 8 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Tracer: `mt toolchain check` end to end through the subprocess runner; runner contract hardening (wave 1)
+- [ ] 01-02-PLAN.md — Founder gates: c2rust package legitimacy and CI push mode (wave 1, checkpoints)
+- [ ] 01-03-PLAN.md — pins.toml schema v1, validation, version/LLVM parsers, `mt toolchain build-args` (wave 2)
+- [ ] 01-04-PLAN.md — Repository guards (no Python, process confinement, forbid unsafe, no analyser bindings), cargo-deny, no_std smoke crate (wave 2)
+- [ ] 01-05-PLAN.md — Full check rules (single LLVM major, bitcode rustc bound), manifest and manifest-diff, `mt toolchain hash` (wave 3)
+- [ ] 01-06-PLAN.md — Real container/pins.toml, PROJECT D-15/D-16 and decision gate, Dockerfile base stage, ci and pin-discovery workflows, discovery round trip (wave 4)
+- [ ] 01-07-PLAN.md — Full Dockerfile, container workflow (live check, off-pin check, double build and manifest diff, smoke), CI to green (wave 5)
+- [ ] 01-08-PLAN.md — GHCR publish by digest, container README, recorded container reference (wave 6)
 
 ### Phase 2: Test Bed and Build Capture
 **Goal**: A pinned test bed of 10-20 real C parsers can be rebuilt exactly, per shipped configuration, for Cortex-M with GCC.
