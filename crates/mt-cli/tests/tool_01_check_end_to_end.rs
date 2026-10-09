@@ -137,11 +137,11 @@ const KLEE_OUT: &str = "KLEE 3.2 (https://klee-se.org)\n  Build mode: RelWithDeb
 const LDD_OUT: &str = "\tlinux-vdso.so.1 (0x00007ffc4a5f1000)\n\tlibclang-cpp.so.16 => /usr/lib/llvm-16/lib/libclang-cpp.so.16 (0x00007f1c2e800000)\n\tlibLLVM-16.so.1 => /usr/lib/llvm-16/lib/libLLVM-16.so.1 (0x00007f1c2a000000)\n";
 const ARM_OUT: &str =
     "arm-none-eabi-gcc (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623\n";
-const QEMU_USER_OUT: &str = "qemu-arm version 7.2.15 (Debian 1:7.2+dfsg-7+deb12u18)\n";
-const QEMU_SYSTEM_OUT: &str = "QEMU emulator version 7.2.15 (Debian 1:7.2+dfsg-7+deb12u18)\n";
+const QEMU_USER_OUT: &str = "qemu-arm version 7.2.22 (Debian 1:7.2+dfsg-7+deb12u18+b3)\n";
+const QEMU_SYSTEM_OUT: &str = "QEMU emulator version 7.2.22 (Debian 1:7.2+dfsg-7+deb12u18+b3)\n";
 const RUSTC_TOOL_OUT: &str = "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.0\nLLVM version: 23.1.1\n";
 const RUSTC_BITCODE_OUT: &str = "rustc 1.72.1 (d5c2e9c34 2023-09-13)\nbinary: rustc\ncommit-hash: d5c2e9c342b358556da91d61ed4133f6f50fc0c3\ncommit-date: 2023-09-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.72.1\nLLVM version: 16.0.5\n";
-const DPKG_OUT: &str = "bear\t3.1.1-1\tinstalled\nclang-16\t1:16.0.6-15~deb12u1\tinstalled\nlibclang-16-dev\t1:16.0.6-15~deb12u1\tinstalled\nlibclang-cpp16-dev\t1:16.0.6-15~deb12u1\tinstalled\nlibllvm16\t1:16.0.6-15~deb12u1\tinstalled\nlibz3-dev\t4.8.12-3.1\tinstalled\nllvm-16\t1:16.0.6-15~deb12u1\tinstalled\nllvm-16-dev\t1:16.0.6-15~deb12u1\tinstalled\nqemu-system-arm\t1:7.2+dfsg-7+deb12u18\tinstalled\nqemu-user\t1:7.2+dfsg-7+deb12u18\tinstalled\n";
+const DPKG_OUT: &str = "bear\t3.1.1-1\tinstalled\nclang-16\t1:16.0.6-15~deb12u1\tinstalled\nlibclang-16-dev\t1:16.0.6-15~deb12u1\tinstalled\nlibclang-cpp16-dev\t1:16.0.6-15~deb12u1\tinstalled\nlibllvm16\t1:16.0.6-15~deb12u1\tinstalled\nlibz3-4\t4.8.12-3.1\tinstalled\nllvm-16\t1:16.0.6-15~deb12u1\tinstalled\nllvm-16-dev\t1:16.0.6-15~deb12u1\tinstalled\nqemu-system-arm\t1:7.2+dfsg-7+deb12u18+b3\tinstalled\nqemu-user\t1:7.2+dfsg-7+deb12u18+b3\tinstalled\n";
 
 /// A script that ignores its arguments and prints `text` on stdout.
 fn prints(text: &str) -> String {
@@ -184,7 +184,7 @@ impl FakeContainer {
         fake.script("usr/lib/llvm-16/bin/clang", &prints(CLANG_OUT));
         fake.script("usr/lib/llvm-16/bin/llvm-config", &prints("16.0.6\n"));
         fake.script("opt/klee/bin/klee", &prints(KLEE_OUT));
-        fake.script("opt/cargo-tools/bin/c2rust", &prints("c2rust 0.22.1\n"));
+        fake.script("opt/cargo-tools/bin/c2rust", &prints("C2Rust 0.22.1\n"));
         fake.script("usr/bin/ldd", &prints(LDD_OUT));
         fake.script("usr/bin/bear", &prints("bear 3.1.1\n"));
         fake.script(

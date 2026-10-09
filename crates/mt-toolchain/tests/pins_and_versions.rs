@@ -160,8 +160,8 @@ fn tool_03_pins_reject_placeholders_and_unknown_fields() {
 
     // Regex fields are exempt from the placeholder rule.
     outcome(&mutate(
-        "version_regex = 'c2rust (?P<version>\\d+\\.\\d+\\.\\d+)'",
-        "version_regex = 'c2rust TODO (?P<version>\\d+\\.\\d+\\.\\d+)'",
+        "version_regex = 'C2Rust (?P<version>\\d+\\.\\d+\\.\\d+)'",
+        "version_regex = 'C2Rust TODO (?P<version>\\d+\\.\\d+\\.\\d+)'",
     ))
     .expect("regex fields may contain marker words");
 
@@ -431,7 +431,14 @@ fn tool_02_parses_llvm_major_from_tool_outputs() {
     let re = version::compile_pattern(rule.regex.as_deref().unwrap(), "major").unwrap();
     let major = first_match(&re, "major", &recorded["klee"]).expect("LLVM line");
     assert_eq!(major, "16");
-    assert!(recorded["klee"].stdout.contains("Host CPU:"));
+    // The captured KLEE banner has a single LLVM line; a banner that also prints
+    // a `Host CPU:` line (as other KLEE builds do) must still yield the LLVM major.
+    assert!(recorded["klee"].stdout.contains("LLVM version 16.0.6"));
+    let with_cpu = format!("{}  Host CPU: skylake-avx512\n", recorded["klee"].stdout);
+    assert_eq!(
+        version::extract(&re, "major", &with_cpu).as_deref(),
+        Some("16")
+    );
 
     // c2rust: the ldd probe.
     let rule = pins.tool["c2rust"]
@@ -505,14 +512,20 @@ fn tool_02_parses_rustc_vv_release_commit_and_llvm() {
 fn tool_02_parses_dpkg_query_and_llvm_family_majors() {
     let recorded = outputs();
     let packages = version::parse_dpkg_query(&recorded["dpkg_query"].stdout);
-    assert_eq!(packages.len(), 17, "one package per line: {packages:?}");
-    assert_eq!(
-        packages[1],
-        DpkgPackage {
+    let lines = recorded["dpkg_query"]
+        .stdout
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .count();
+    assert!(lines > 100, "the capture is the whole image inventory");
+    assert_eq!(packages.len(), lines, "one package per line");
+    assert!(
+        packages.contains(&DpkgPackage {
             name: "clang-16".to_owned(),
             version: "1:16.0.6-15~deb12u1".to_owned(),
             status: "installed".to_owned(),
-        }
+        }),
+        "clang-16 row"
     );
 
     let majors = version::llvm_family_majors(&packages);

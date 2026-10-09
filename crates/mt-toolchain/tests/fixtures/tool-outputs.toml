@@ -1,151 +1,366 @@
 # Tool version outputs used by the mt-toolchain parser tests.
 #
-# Every table records where its text came from in `source`:
-#   - "captured ...": produced by running the real tool.
-#   - "representative: ...": taken from the format described in
-#     01-RESEARCH.md ("Version commands and parse targets"); the real output
-#     could not be produced in a Docker-less session. A CI capture (plan 01-07)
-#     replaces each representative entry.
-
-[clang]
-source = "representative: 01-RESEARCH.md version table (ASSUMED, replace with CI capture)"
-stdout = '''
-Debian clang version 16.0.6 (15~deb12u1)
-Target: x86_64-pc-linux-gnu
-Thread model: posix
-InstalledDir: /usr/lib/llvm-16/bin
-'''
-stderr = ""
-
-[llvm_config]
-source = "representative: 01-RESEARCH.md version table (ASSUMED, replace with CI capture)"
-stdout = '''
-16.0.6
-'''
-stderr = ""
-
-[klee]
-source = "representative: 01-RESEARCH.md version table and KLEE v3.2 PrintVersion.cpp (ASSUMED, replace with CI capture)"
-stdout = '''
-KLEE 3.2 (https://klee-se.org)
-  Build mode: RelWithDebInfo (Asserts: OFF)
-  Build revision: unknown
-
-LLVM (http://llvm.org/):
-  LLVM version 16.0.6
-  Optimized build.
-  Default target: x86_64-pc-linux-gnu
-  Host CPU: skylake-avx512
-'''
-stderr = ""
-
-[c2rust]
-source = "representative: 01-RESEARCH.md version table (ASSUMED, replace with CI capture)"
-stdout = '''
-c2rust 0.22.1
-'''
-stderr = ""
-
-[c2rust_ldd]
-source = "representative: ldd output for a c2rust linked to Debian LLVM 16 (ASSUMED, replace with CI capture)"
-stdout = '''
-	linux-vdso.so.1 (0x00007ffc4a5f1000)
-	libclang-cpp.so.16 => /usr/lib/llvm-16/lib/libclang-cpp.so.16 (0x00007f1c2e800000)
-	libLLVM-16.so.1 => /usr/lib/llvm-16/lib/libLLVM-16.so.1 (0x00007f1c2a000000)
-	libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f1c29e00000)
-	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f1c29c00000)
-'''
-stderr = ""
-
-[bear]
-source = "representative: 01-RESEARCH.md version table (ASSUMED, replace with CI capture)"
-stdout = '''
-bear 3.1.1
-'''
-stderr = ""
+# Every table records where its text came from in `source`. All entries below
+# were captured by `mt toolchain check --capture-outputs` inside the CI image
+# (container workflow, job image-a, run 37969688167); the test
+# tool_02_container_pins_regexes_parse_captured_outputs refuses any source that
+# says "representative". Regenerate by copying the `tool-outputs` annotations of
+# a green container run into this file (the header comment excepted).
 
 [arm_gcc]
-source = "representative: 01-RESEARCH.md version table (ASSUMED, replace with CI capture)"
-stdout = '''
+source = "captured in CI image-a, run 37969688167"
+stdout = """
 arm-none-eabi-gcc (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623
 Copyright (C) 2024 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-'''
+
+"""
 stderr = ""
 
-[qemu_system_arm]
-source = "representative: 01-RESEARCH.md version table (ASSUMED, replace with CI capture)"
-stdout = '''
-QEMU emulator version 7.2.15 (Debian 1:7.2+dfsg-7+deb12u18)
-Copyright (c) 2003-2022 Fabrice Bellard and the QEMU Project developers
-'''
+[bear]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+bear 3.1.1
+"""
 stderr = ""
 
-[qemu_arm]
-source = "representative: 01-RESEARCH.md version table (ASSUMED, replace with CI capture)"
-stdout = '''
-qemu-arm version 7.2.15 (Debian 1:7.2+dfsg-7+deb12u18)
-Copyright (c) 2003-2022 Fabrice Bellard and the QEMU Project developers
-'''
+[c2rust]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+C2Rust 0.22.1
+"""
+stderr = ""
+
+[c2rust_ldd]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+\tlinux-vdso.so.1 (0x00007f6bc777f000)
+\tlibclang-cpp.so.16 => /lib/x86_64-linux-gnu/libclang-cpp.so.16 (0x00007f6bc32ff000)
+\tlibLLVM-16.so.1 => /lib/x86_64-linux-gnu/libLLVM-16.so.1 (0x00007f6bbbcd2000)
+\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f6bbbab8000)
+\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f6bbba98000)
+\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f6bbb8b6000)
+\t/lib64/ld-linux-x86-64.so.2 (0x00007f6bc7781000)
+\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f6bbb7d4000)
+\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007f6bbb7c8000)
+\tlibedit.so.2 => /lib/x86_64-linux-gnu/libedit.so.2 (0x00007f6bbb78e000)
+\tlibz3.so.4 => /lib/x86_64-linux-gnu/libz3.so.4 (0x00007f6bba159000)
+\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f6bba13a000)
+\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007f6bba07e000)
+\tlibtinfo.so.6 => /lib/x86_64-linux-gnu/libtinfo.so.6 (0x00007f6bba049000)
+\tlibxml2.so.2 => /lib/x86_64-linux-gnu/libxml2.so.2 (0x00007f6bb9e9d000)
+\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007f6bb9e87000)
+\tlibicuuc.so.72 => /lib/x86_64-linux-gnu/libicuuc.so.72 (0x00007f6bb9c89000)
+\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007f6bb9c5a000)
+\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007f6bb9c4b000)
+\tlibicudata.so.72 => /lib/x86_64-linux-gnu/libicudata.so.72 (0x00007f6bb7e79000)
+"""
 stderr = ""
 
 [cargo_mutants]
-source = "representative: `cargo mutants --version`, 01-RESEARCH.md version table (ASSUMED, replace with CI capture)"
-stdout = '''
+source = "captured in CI image-a, run 37969688167"
+stdout = """
 cargo-mutants 27.1.0
-'''
+"""
 stderr = ""
 
-[rustup]
-source = "representative: `rustup --version`, 01-RESEARCH.md version table (ASSUMED, replace with CI capture)"
-stdout = '''
-rustup 1.29.1 (b3c2e5f7a 2026-09-10)
-'''
-stderr = '''
-info: This is the version for the rustup toolchain manager, not the rustc compiler.
-info: The currently active `rustc` version is `rustc 1.99.0 (b940084d7 2026-09-28)`
-'''
-
-[rustup_default]
-source = "representative: `rustup default` with RUSTUP_HOME set (ASSUMED, replace with CI capture)"
-stdout = '''
-1.99.0-x86_64-unknown-linux-gnu (default)
-'''
+[clang]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+Debian clang version 16.0.6 (15~deb12u1)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-16/bin
+"""
 stderr = ""
 
-[rustup_targets_tool]
-source = "representative: `rustup target list --installed --toolchain 1.99.0` (ASSUMED, replace with CI capture)"
-stdout = '''
-thumbv7em-none-eabihf
-x86_64-unknown-linux-gnu
-x86_64-unknown-linux-musl
-'''
+[dpkg_query]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+adduser\t3.134\tinstalled
+apt\t2.6.1\tinstalled
+base-files\t12.4+deb12u15\tinstalled
+base-passwd\t3.6.1\tinstalled
+bash\t5.2.15-2+b13\tinstalled
+bear\t3.1.1-1\tinstalled
+binutils\t2.40-2\tinstalled
+binutils-common\t2.40-2\tinstalled
+binutils-x86-64-linux-gnu\t2.40-2\tinstalled
+bsdutils\t1:2.38.1-5+deb12u3\tinstalled
+ca-certificates\t20250419~deb12u1\tinstalled
+clang-16\t1:16.0.6-15~deb12u1\tinstalled
+coreutils\t9.1-1\tinstalled
+dash\t0.5.12-2\tinstalled
+debconf\t1.5.82\tinstalled
+debian-archive-keyring\t2023.3+deb12u2\tinstalled
+debianutils\t5.7-0.5~deb12u1\tinstalled
+diffutils\t1:3.8-4\tinstalled
+dpkg\t1.21.23\tinstalled
+e2fsprogs\t1.47.0-2+b2\tinstalled
+findutils\t4.9.0-4\tinstalled
+gcc-12-base\t12.2.0-14+deb12u1\tinstalled
+gpgv\t2.2.40-1.1+deb12u2\tinstalled
+grep\t3.8-5\tinstalled
+gzip\t1.12-1\tinstalled
+hostname\t3.23+nmu1\tinstalled
+icu-devtools\t72.1-3+deb12u1\tinstalled
+init-system-helpers\t1.65.2+deb12u1\tinstalled
+iso-codes\t4.15.0-1\tinstalled
+libabsl20220623\t20220623.1-1+deb12u2\tinstalled
+libacl1\t2.3.1-3\tinstalled
+libaio1\t0.3.113-4\tinstalled
+libapt-pkg6.0\t2.6.1\tinstalled
+libasan8\t12.2.0-14+deb12u1\tinstalled
+libasound2\t1.2.8-1+b1\tinstalled
+libasound2-data\t1.2.8-1\tinstalled
+libatomic1\t12.2.0-14+deb12u1\tinstalled
+libattr1\t1:2.5.1-4\tinstalled
+libaudit-common\t1:3.0.9-1\tinstalled
+libaudit1\t1:3.0.9-1\tinstalled
+libbinutils\t2.40-2\tinstalled
+libblkid1\t2.38.1-5+deb12u3\tinstalled
+libbpf1\t1:1.1.2-0+deb12u1\tinstalled
+libbrlapi0.8\t6.5-7+deb12u1\tinstalled
+libbrotli1\t1.0.9-2+b6\tinstalled
+libbsd0\t0.11.7-2\tinstalled
+libbz2-1.0\t1.0.8-5+b1\tinstalled
+libc-ares2\t1.18.1-3\tinstalled
+libc-bin\t2.36-9+deb12u14\tinstalled
+libc-dev-bin\t2.36-9+deb12u14\tinstalled
+libc6\t2.36-9+deb12u14\tinstalled
+libc6-dev\t2.36-9+deb12u14\tinstalled
+libcacard0\t1:2.8.0-3\tinstalled
+libcap-ng0\t0.8.3-1+b3\tinstalled
+libcap2\t1:2.66-4+deb12u3+b1\tinstalled
+libcap2-bin\t1:2.66-4+deb12u3+b1\tinstalled
+libcapstone4\t4.0.2-5\tinstalled
+libclang-16-dev\t1:16.0.6-15~deb12u1\tinstalled
+libclang-common-16-dev\t1:16.0.6-15~deb12u1\tinstalled
+libclang-cpp16\t1:16.0.6-15~deb12u1\tinstalled
+libclang-cpp16-dev\t1:16.0.6-15~deb12u1\tinstalled
+libclang1-16\t1:16.0.6-15~deb12u1\tinstalled
+libcom-err2\t1.47.0-2+b2\tinstalled
+libcrypt-dev\t1:4.4.33-2\tinstalled
+libcrypt1\t1:4.4.33-2\tinstalled
+libctf-nobfd0\t2.40-2\tinstalled
+libctf0\t2.40-2\tinstalled
+libcurl4\t7.88.1-10+deb12u15\tinstalled
+libdaxctl1\t76.1-1\tinstalled
+libdb5.3\t5.3.28+dfsg2-1\tinstalled
+libdebconfclient0\t0.270\tinstalled
+libdrm-common\t2.4.114-1\tinstalled
+libdrm2\t2.4.114-1+b1\tinstalled
+libdw1\t0.188-2.1\tinstalled
+libear\t3.1.1-1\tinstalled
+libedit2\t3.1-20221030-2\tinstalled
+libelf1\t0.188-2.1\tinstalled
+libepoxy0\t1.5.10-1\tinstalled
+libexecs0\t1.3-2\tinstalled
+libexpat1\t2.5.0-1+deb12u4\tinstalled
+libext2fs2\t1.47.0-2+b2\tinstalled
+libfdt1\t1.6.1-4+b1\tinstalled
+libffi-dev\t3.4.4-1\tinstalled
+libffi8\t3.4.4-1\tinstalled
+libfmt9\t9.1.0+ds1-2\tinstalled
+libfuse3-3\t3.14.0-4\tinstalled
+libgbm1\t22.3.6-1+deb12u2\tinstalled
+libgc1\t1:8.2.2-3\tinstalled
+libgcc-12-dev\t12.2.0-14+deb12u1\tinstalled
+libgcc-s1\t12.2.0-14+deb12u1\tinstalled
+libgcrypt20\t1.10.1-3+deb12u1\tinstalled
+libglib2.0-0\t2.74.6-2+deb12u9\tinstalled
+libgmp10\t2:6.2.1+dfsg1-1.1\tinstalled
+libgnutls30\t3.7.9-2+deb12u7\tinstalled
+libgomp1\t12.2.0-14+deb12u1\tinstalled
+libgpg-error0\t1.46-1\tinstalled
+libgprofng0\t2.40-2\tinstalled
+libgrpc++1.51\t1.51.1-3+b1\tinstalled
+libgrpc29\t1.51.1-3+b1\tinstalled
+libgssapi-krb5-2\t1.20.1-2+deb12u5\tinstalled
+libgstreamer-plugins-base1.0-0\t1.22.0-3+deb12u6\tinstalled
+libgstreamer1.0-0\t1.22.0-2+deb12u1\tinstalled
+libhogweed6\t3.8.1-2\tinstalled
+libibverbs1\t44.0-2\tinstalled
+libicu-dev\t72.1-3+deb12u1\tinstalled
+libicu72\t72.1-3+deb12u1\tinstalled
+libidn2-0\t2.3.3-1+b1\tinstalled
+libitm1\t12.2.0-14+deb12u1\tinstalled
+libjansson4\t2.14-2\tinstalled
+libjpeg62-turbo\t1:2.1.5-2\tinstalled
+libk5crypto3\t1.20.1-2+deb12u5\tinstalled
+libkeyutils1\t1.6.3-2\tinstalled
+libkmod2\t30+20221128-1\tinstalled
+libkrb5-3\t1.20.1-2+deb12u5\tinstalled
+libkrb5support0\t1.20.1-2+deb12u5\tinstalled
+libldap-2.5-0\t2.5.13+dfsg-5\tinstalled
+libllvm16\t1:16.0.6-15~deb12u1\tinstalled
+liblsan0\t12.2.0-14+deb12u1\tinstalled
+liblz4-1\t1.9.4-1\tinstalled
+liblzma5\t5.4.1-1+deb12u2\tinstalled
+libmd0\t1.0.4-2\tinstalled
+libmount1\t2.38.1-5+deb12u3\tinstalled
+libncurses-dev\t6.4-4\tinstalled
+libncurses6\t6.4-4\tinstalled
+libncursesw6\t6.4-4\tinstalled
+libndctl6\t76.1-1\tinstalled
+libnettle8\t3.8.1-2\tinstalled
+libnghttp2-14\t1.52.0-1+deb12u3\tinstalled
+libnl-3-200\t3.7.0-0.2+b1\tinstalled
+libnl-route-3-200\t3.7.0-0.2+b1\tinstalled
+libnsl-dev\t1.3.0-2\tinstalled
+libnsl2\t1.3.0-2\tinstalled
+libnspr4\t2:4.35-1\tinstalled
+libnss3\t2:3.87.1-1+deb12u4\tinstalled
+libnuma1\t2.0.16-1\tinstalled
+libobjc-12-dev\t12.2.0-14+deb12u1\tinstalled
+libobjc4\t12.2.0-14+deb12u1\tinstalled
+libopus0\t1.3.1-3\tinstalled
+liborc-0.4-0\t1:0.4.33-2\tinstalled
+libp11-kit0\t0.24.1-2\tinstalled
+libpam-modules\t1.5.2-6+deb12u2\tinstalled
+libpam-modules-bin\t1.5.2-6+deb12u2\tinstalled
+libpam-runtime\t1.5.2-6+deb12u2\tinstalled
+libpam0g\t1.5.2-6+deb12u2\tinstalled
+libpcre2-8-0\t10.42-1+deb12u2\tinstalled
+libpcsclite1\t1.9.9-2\tinstalled
+libpfm4\t4.13.0-1\tinstalled
+libpixman-1-0\t0.42.2-1\tinstalled
+libpmem1\t1.12.1-2\tinstalled
+libpng16-16\t1.6.39-2+deb12u5\tinstalled
+libprotobuf32\t3.21.12-3+deb12u1\tinstalled
+libprotoc32\t3.21.12-3+deb12u1\tinstalled
+libpsl5\t0.21.2-1\tinstalled
+libpython3-stdlib\t3.11.2-1+b1\tinstalled
+libpython3.11-minimal\t3.11.2-6+deb12u8\tinstalled
+libpython3.11-stdlib\t3.11.2-6+deb12u8\tinstalled
+libquadmath0\t12.2.0-14+deb12u1\tinstalled
+librdmacm1\t44.0-2\tinstalled
+libre2-9\t20220601+dfsg-1+b1\tinstalled
+libreadline8\t8.2-1.3\tinstalled
+librtmp1\t2.4+20151223.gitfa8646d.1-2+b2\tinstalled
+libsasl2-2\t2.1.28+dfsg-10\tinstalled
+libsasl2-modules-db\t2.1.28+dfsg-10\tinstalled
+libseccomp2\t2.5.4-1+deb12u1\tinstalled
+libselinux1\t3.4-1+b6\tinstalled
+libsemanage-common\t3.4-1\tinstalled
+libsemanage2\t3.4-1+b5\tinstalled
+libsepol2\t3.4-2.1\tinstalled
+libslirp0\t4.7.0-1\tinstalled
+libsmartcols1\t2.38.1-5+deb12u3\tinstalled
+libsndio7.0\t1.9.0-0.3+b2\tinstalled
+libspdlog1.10\t1:1.10.0+ds-0.4\tinstalled
+libspice-server1\t0.15.1-1\tinstalled
+libsqlite3-0\t3.40.1-2+deb12u2\tinstalled
+libss2\t1.47.0-2+b2\tinstalled
+libssh2-1\t1.10.0-3+deb12u1\tinstalled
+libssl3\t3.0.22-1~deb12u1\tinstalled
+libstdc++-12-dev\t12.2.0-14+deb12u1\tinstalled
+libstdc++6\t12.2.0-14+deb12u1\tinstalled
+libsystemd0\t252.39-1~deb12u2\tinstalled
+libtasn1-6\t4.19.0-2+deb12u1\tinstalled
+libtinfo6\t6.4-4\tinstalled
+libtirpc-common\t1.3.3+ds-1\tinstalled
+libtirpc-dev\t1.3.3+ds-1\tinstalled
+libtirpc3\t1.3.3+ds-1\tinstalled
+libtsan2\t12.2.0-14+deb12u1\tinstalled
+libubsan1\t12.2.0-14+deb12u1\tinstalled
+libudev1\t252.39-1~deb12u2\tinstalled
+libunistring2\t1.0-2\tinstalled
+libunwind8\t1.6.2-3\tinstalled
+liburing2\t2.3-3\tinstalled
+libusb-1.0-0\t2:1.0.26-1\tinstalled
+libusbredirparser1\t0.13.0-2\tinstalled
+libuuid1\t2.38.1-5+deb12u3\tinstalled
+libvdeplug2\t4.0.1-4\tinstalled
+libwayland-server0\t1.21.0-1\tinstalled
+libxml2\t2.9.14+dfsg-1.3~deb12u6\tinstalled
+libxml2-dev\t2.9.14+dfsg-1.3~deb12u6\tinstalled
+libxxhash0\t0.8.1-1\tinstalled
+libyaml-0-2\t0.2.5-1\tinstalled
+libz3-4\t4.8.12-3.1\tinstalled
+libz3-dev\t4.8.12-3.1\tinstalled
+libzstd1\t1.5.4+dfsg2-5\tinstalled
+linux-libc-dev\t6.1.187-1\tinstalled
+llvm-16\t1:16.0.6-15~deb12u1\tinstalled
+llvm-16-dev\t1:16.0.6-15~deb12u1\tinstalled
+llvm-16-linker-tools\t1:16.0.6-15~deb12u1\tinstalled
+llvm-16-runtime\t1:16.0.6-15~deb12u1\tinstalled
+llvm-16-tools\t1:16.0.6-15~deb12u1\tinstalled
+login\t1:4.13+dfsg1-1+deb12u2\tinstalled
+logsave\t1.47.0-2+b2\tinstalled
+make\t4.3-4.1\tinstalled
+mawk\t1.3.4.20200120-3.1\tinstalled
+media-types\t10.0.0\tinstalled
+mount\t2.38.1-5+deb12u3\tinstalled
+ncurses-base\t6.4-4\tinstalled
+ncurses-bin\t6.4-4\tinstalled
+openssl\t3.0.22-1~deb12u1\tinstalled
+passwd\t1:4.13+dfsg1-1+deb12u2\tinstalled
+perl-base\t5.36.0-7+deb12u3\tinstalled
+python3\t3.11.2-1+b1\tinstalled
+python3-minimal\t3.11.2-1+b1\tinstalled
+python3-pkg-resources\t66.1.1-1+deb12u2\tinstalled
+python3-pygments\t2.14.0+dfsg-1\tinstalled
+python3-yaml\t6.0-3+b2\tinstalled
+python3.11\t3.11.2-6+deb12u8\tinstalled
+python3.11-minimal\t3.11.2-6+deb12u8\tinstalled
+qemu-system-arm\t1:7.2+dfsg-7+deb12u18+b3\tinstalled
+qemu-system-common\t1:7.2+dfsg-7+deb12u18+b3\tinstalled
+qemu-system-data\t1:7.2+dfsg-7+deb12u18\tinstalled
+qemu-user\t1:7.2+dfsg-7+deb12u18+b3\tinstalled
+readline-common\t8.2-1.3\tinstalled
+rpcsvc-proto\t1.4.3-1\tinstalled
+sed\t4.9-1+deb12u1\tinstalled
+sysvinit-utils\t3.06-4\tinstalled
+tar\t1.34+dfsg-1.2+deb12u1\tinstalled
+tzdata\t2026c-0+deb12u1\tinstalled
+usr-is-merged\t37~deb12u1\tinstalled
+util-linux\t2.38.1-5+deb12u3\tinstalled
+util-linux-extra\t2.38.1-5+deb12u3\tinstalled
+xz-utils\t5.4.1-1+deb12u2\tinstalled
+zlib1g\t1:1.2.13.dfsg-1\tinstalled
+"""
 stderr = ""
 
-[rustup_targets_bitcode]
-source = "representative: `rustup target list --installed --toolchain 1.72.1` (ASSUMED, replace with CI capture)"
-stdout = '''
-x86_64-unknown-linux-gnu
-'''
+[klee]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+KLEE 3.2 (https://klee-se.org/)
+  Build mode: Release (Asserts: OFF)
+  Build revision: 92ee8201a050184aacaaeef645ade491f5c93c41
+
+Debian LLVM version 16.0.6
+  Optimized build.
+"""
 stderr = ""
 
-[rustc_tool]
-source = "captured in cloud session 2026-10-09: rustc +1.99.0 -vV"
-stdout = '''
-rustc 1.99.0 (b940084d7 2026-09-28)
-binary: rustc
-commit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4
-commit-date: 2026-09-28
-host: x86_64-unknown-linux-gnu
-release: 1.99.0
-LLVM version: 23.1.1
-'''
+[llvm_config]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+16.0.6
+"""
+stderr = ""
+
+[qemu_arm]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+qemu-arm version 7.2.22 (Debian 1:7.2+dfsg-7+deb12u18+b3)
+Copyright (c) 2003-2022 Fabrice Bellard and the QEMU Project developers
+"""
+stderr = ""
+
+[qemu_system_arm]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+QEMU emulator version 7.2.22 (Debian 1:7.2+dfsg-7+deb12u18+b3)
+Copyright (c) 2003-2022 Fabrice Bellard and the QEMU Project developers
+"""
 stderr = ""
 
 [rustc_bitcode]
-source = "captured in cloud session 2026-10-09: rustc +1.72.1 -vV"
-stdout = '''
+source = "captured in CI image-a, run 37969688167"
+stdout = """
 rustc 1.72.1 (d5c2e9c34 2023-09-13)
 binary: rustc
 commit-hash: d5c2e9c342b358556da91d61ed4133f6f50fc0c3
@@ -153,29 +368,51 @@ commit-date: 2023-09-13
 host: x86_64-unknown-linux-gnu
 release: 1.72.1
 LLVM version: 16.0.5
-'''
+"""
 stderr = ""
 
-# dpkg-query -W -f='${Package}\t${Version}\t${db:Status-Status}\n'
-[dpkg_query]
-source = "representative: dpkg-query format from 01-RESEARCH.md apt and LLVM-family rules (ASSUMED, replace with CI capture)"
-stdout = '''
-bear	3.1.1-1	installed
-clang-16	1:16.0.6-15~deb12u1	installed
-libclang-16-dev	1:16.0.6-15~deb12u1	installed
-libclang-common-16-dev	1:16.0.6-15~deb12u1	installed
-libclang-cpp16	1:16.0.6-15~deb12u1	installed
-libclang-cpp16-dev	1:16.0.6-15~deb12u1	installed
-libclang1-16	1:16.0.6-15~deb12u1	installed
-libllvm16	1:16.0.6-15~deb12u1	installed
-libllvm18	1:18.1.8-12	not-installed
-libz3-dev	4.8.12-3.1	installed
-llvm-16	1:16.0.6-15~deb12u1	installed
-llvm-16-dev	1:16.0.6-15~deb12u1	installed
-llvm-16-linker-tools	1:16.0.6-15~deb12u1	installed
-llvm-16-runtime	1:16.0.6-15~deb12u1	installed
-llvm-runtime	1:14.0-55.7~deb12u1	config-files
-qemu-system-arm	1:7.2+dfsg-7+deb12u18	installed
-qemu-user	1:7.2+dfsg-7+deb12u18	installed
-'''
+[rustc_tool]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+rustc 1.99.0 (b940084d7 2026-09-28)
+binary: rustc
+commit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4
+commit-date: 2026-09-28
+host: x86_64-unknown-linux-gnu
+release: 1.99.0
+LLVM version: 23.1.1
+"""
+stderr = ""
+
+[rustup]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+rustup 1.29.1 (d95a37b6a 2026-08-13)
+"""
+stderr = """
+info: This is the version for the rustup toolchain manager, not the rustc compiler.
+info: the currently active `rustc` version is `rustc 1.99.0 (b940084d7 2026-09-28)`
+"""
+
+[rustup_default]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+1.99.0-x86_64-unknown-linux-gnu (default)
+"""
+stderr = ""
+
+[rustup_targets_bitcode]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+x86_64-unknown-linux-gnu
+"""
+stderr = ""
+
+[rustup_targets_tool]
+source = "captured in CI image-a, run 37969688167"
+stdout = """
+thumbv7em-none-eabihf
+x86_64-unknown-linux-gnu
+x86_64-unknown-linux-musl
+"""
 stderr = ""

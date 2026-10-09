@@ -8,11 +8,12 @@
 //! is built from.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use mt_toolchain::pins::{LlvmStatus, Pins, SourcePin, ToolPinStatus};
+use mt_toolchain::check::{Observation, ToolStatus, evaluate};
+use mt_toolchain::pins::{LLVM_RULE_TOOLS, LlvmSource, LlvmStatus, Pins, SourcePin, ToolPinStatus};
 
 /// The repository root: two levels above this crate's manifest directory.
 fn repo_root() -> PathBuf {
@@ -743,4 +744,120 @@ fn tool_03_dockerfile_copies_only_between_stages() {
     assert!(copy_issues(&format!("{stage}COPY --from=one /a /b\n")).is_empty());
     // A stage defined after the COPY is not "earlier".
     assert!(!copy_issues("FROM a AS one\nCOPY --from=two /a /b\nFROM a AS two\n").is_empty());
+}
+
+// ---------------------------------------------------------------------------
+// Real outputs: the container pins against what the CI image printed.
+// ---------------------------------------------------------------------------
+
+/// One recorded command in `fixtures/tool-outputs.toml`.
+#[derive(serde::Deserialize)]
+struct CapturedOutput {
+    source: String,
+    stdout: String,
+    stderr: String,
+}
+
+/// The captured fixtures as observations, with each LLVM probe's output attached
+/// to the tool it belongs to (the probe key is the tool key plus the probe
+/// program's file name, `c2rust_ldd`).
+fn captured_observations(pins: &Pins) -> BTreeMap<String, Observation> {
+    let text = read_repo_file("crates/mt-toolchain/tests/fixtures/tool-outputs.toml");
+    let captured: BTreeMap<String, CapturedOutput> = toml::from_str(&text).unwrap();
+    let mut observations: BTreeMap<String, Observation> = captured
+        .iter()
+        .map(|(key, record)| {
+            (
+                key.clone(),
+                Observation::ran(key, &record.stdout, &record.stderr),
+            )
+        })
+        .collect();
+    for (key, spec) in &pins.tool {
+        if spec.status != ToolPinStatus::Installed {
+            continue;
+        }
+        let Some(rule) = &spec.llvm else { continue };
+        if rule.source != LlvmSource::Probe {
+            continue;
+        }
+        let program = Path::new(&rule.argv[0])
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap();
+        let probe_key = format!("{key}_{program}");
+        let probe = observations
+            .remove(&probe_key)
+            .unwrap_or_else(|| panic!("no captured output {probe_key} for the {key} LLVM probe"));
+        let tool = observations
+            .remove(key)
+            .unwrap_or_else(|| panic!("no captured output for {key}"));
+        observations.insert(key.clone(), tool.with_probe(probe));
+    }
+    observations
+}
+
+#[test]
+fn tool_02_container_pins_regexes_parse_captured_outputs() {
+    let pins = container_pins();
+    let text = read_repo_file("crates/mt-toolchain/tests/fixtures/tool-outputs.toml");
+    let captured: BTreeMap<String, CapturedOutput> = toml::from_str(&text).unwrap();
+    assert!(!captured.is_empty(), "no captured outputs");
+    for (key, record) in &captured {
+        assert!(
+            !record.source.contains("representative"),
+            "{key}: still a representative output, not a capture"
+        );
+        assert!(
+            !record.stdout.is_empty() || !record.stderr.is_empty(),
+            "{key}: captured nothing"
+        );
+    }
+
+    let observations = captured_observations(&pins);
+    let report = evaluate(&pins, &observations);
+    assert!(
+        report.passed(),
+        "the container pins do not accept the captured outputs:\n{}",
+        report.render_table()
+    );
+
+    // Every installed tool yields exactly its expected version, and every LLVM
+    // rule yields the pinned major.
+    for (key, spec) in &pins.tool {
+        if spec.status != ToolPinStatus::Installed {
+            continue;
+        }
+        let row = report
+            .rows
+            .iter()
+            .find(|row| &row.key == key)
+            .unwrap_or_else(|| panic!("no row for tool {key}"));
+        assert_eq!(row.status, ToolStatus::Ok, "{key}: {:?}", row.detail);
+        assert_eq!(
+            row.actual.as_deref(),
+            Some(spec.expect.as_str()),
+            "{key}: parsed version"
+        );
+        if spec.llvm.is_some() {
+            assert_eq!(
+                row.llvm_major,
+                Some(pins.llvm.major),
+                "{key}: LLVM major from the captured output"
+            );
+        }
+    }
+    for key in LLVM_RULE_TOOLS {
+        assert!(
+            pins.tool[key].llvm.is_some(),
+            "{key} must carry an LLVM rule"
+        );
+    }
+
+    // A capture of another LLVM major must be refused, so the test cannot pass
+    // by ignoring the output.
+    let mut other = observations.clone();
+    let clang = other.get_mut("clang").unwrap();
+    clang.stdout = clang.stdout.replace("16.0.6", "17.0.6");
+    assert!(!evaluate(&pins, &other).passed());
 }

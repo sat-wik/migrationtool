@@ -84,11 +84,11 @@ commit = "d393c16f3eb30d0c47e6f9d92db62272f0ec4dc7"
 "clang-16" = "1:16.0.6-15~deb12u1"
 "libclang-16-dev" = "1:16.0.6-15~deb12u1"
 "libclang-cpp16-dev" = "1:16.0.6-15~deb12u1"
-"libz3-dev" = "4.8.12-3.1"
+"libz3-4" = "4.8.12-3.1"
 "llvm-16" = "1:16.0.6-15~deb12u1"
 "llvm-16-dev" = "1:16.0.6-15~deb12u1"
-"qemu-system-arm" = "1:7.2+dfsg-7+deb12u18"
-"qemu-user" = "1:7.2+dfsg-7+deb12u18"
+"qemu-system-arm" = "1:7.2+dfsg-7+deb12u18+b3"
+"qemu-user" = "1:7.2+dfsg-7+deb12u18+b3"
 
 [ci]
 cargo_deny_version = "0.20.2"
@@ -109,12 +109,12 @@ expect = "3.1.1"
 [tool.c2rust]
 bin = "/opt/cargo-tools/bin/c2rust"
 version_args = ["--version"]
-version_regex = 'c2rust (?P<version>\d+\.\d+\.\d+)'
+version_regex = 'C2Rust (?P<version>\d+\.\d+\.\d+)'
 expect = "0.22.1"
 
 [tool.c2rust.llvm]
 source = "probe"
-argv = ["/usr/bin/ldd", "/opt/cargo-tools/bin/c2rust"]
+argv = ["/usr/bin/ldd", "/opt/cargo-tools/bin/c2rust-transpile"]
 regex = 'lib(?:clang-cpp\.so\.|LLVM-)(?P<major>\d+)'
 
 [tool.cargo_mutants]
@@ -165,14 +165,14 @@ source = "version"
 [tool.qemu_arm]
 bin = "/usr/bin/qemu-arm"
 version_args = ["--version"]
-version_regex = 'qemu-arm version (?P<version>\S+) '
-expect = "7.2.15"
+version_regex = '\(Debian (?P<version>[^)]+)\)'
+expect = "1:7.2+dfsg-7+deb12u18+b3"
 
 [tool.qemu_system_arm]
 bin = "/usr/bin/qemu-system-arm"
 version_args = ["--version"]
-version_regex = 'QEMU emulator version (?P<version>\S+) '
-expect = "7.2.15"
+version_regex = '\(Debian (?P<version>[^)]+)\)'
+expect = "1:7.2+dfsg-7+deb12u18+b3"
 
 [tool.rustup]
 bin = "/opt/cargo/bin/rustup"

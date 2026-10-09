@@ -253,13 +253,21 @@ fn tool_02_check_flags_second_llvm_major_package() {
     assert_eq!(packages.status, ToolStatus::Ok, "{packages:?}");
     assert_eq!(packages.llvm_major, Some(16));
 
+    // A package of another major that dpkg lists as not installed is ignored.
     let mut obs = good_observations();
-    edit_stdout(
-        &mut obs,
-        "dpkg_query",
-        "libllvm18\t1:18.1.8-12\tnot-installed",
-        "libllvm18\t1:18.1.8-12\tinstalled",
-    );
+    obs.get_mut("dpkg_query")
+        .expect("dpkg_query observation")
+        .stdout
+        .push_str("libllvm18\t1:18.1.8-12\tnot-installed\n");
+    let report = eval(&obs);
+    assert_eq!(row(&report, "llvm_packages").status, ToolStatus::Ok);
+
+    // The same package installed is the second LLVM major the rule forbids.
+    let mut obs = good_observations();
+    obs.get_mut("dpkg_query")
+        .expect("dpkg_query observation")
+        .stdout
+        .push_str("libllvm18\t1:18.1.8-12\tinstalled\n");
     let report = eval(&obs);
     let packages = row(&report, "llvm_packages");
     assert_eq!(packages.status, ToolStatus::Mismatch);
@@ -465,19 +473,19 @@ fn tool_03_check_apt_rows_flag_missing_and_wrong_versions() {
     edit_stdout(
         &mut obs,
         "dpkg_query",
-        "qemu-user\t1:7.2+dfsg-7+deb12u18",
-        "qemu-user\t1:7.2+dfsg-7+deb12u17",
+        "qemu-user\t1:7.2+dfsg-7+deb12u18+b3",
+        "qemu-user\t1:7.2+dfsg-7+deb12u17+b3",
     );
     edit_stdout(
         &mut obs,
         "dpkg_query",
-        "libz3-dev\t4.8.12-3.1\tinstalled",
-        "libz3-dev\t4.8.12-3.1\tconfig-files",
+        "libz3-4\t4.8.12-3.1\tinstalled",
+        "libz3-4\t4.8.12-3.1\tconfig-files",
     );
     let report = eval(&obs);
     assert_eq!(row(&report, "apt:bear").status, ToolStatus::Missing);
     assert_eq!(row(&report, "apt:qemu-user").status, ToolStatus::Mismatch);
-    assert_eq!(row(&report, "apt:libz3-dev").status, ToolStatus::Missing);
+    assert_eq!(row(&report, "apt:libz3-4").status, ToolStatus::Missing);
     assert_eq!(row(&report, "apt:llvm-16").status, ToolStatus::Ok);
     assert!(!report.passed());
 
