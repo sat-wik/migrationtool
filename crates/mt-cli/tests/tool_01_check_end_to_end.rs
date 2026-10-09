@@ -6,6 +6,7 @@
 //! parsing, LLVM rules, table, exit code) is proven without Docker.
 
 use std::collections::BTreeMap;
+use std::ffi::OsString;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, PoisonError};
@@ -99,16 +100,25 @@ fn run_mt_action(action: &str, pins: &str) -> Outcome {
 }
 
 fn run_mt_with_path(cwd: &Path, action: &str, pins_path: &Path) -> Outcome {
-    let cfg = RunnerConfig::new("/usr/bin:/bin", "1791158400");
-    let request = RunRequest {
-        tool_name: "mt".to_owned(),
-        argv: vec![
-            env!("CARGO_BIN_EXE_mt").into(),
+    run_mt_args(
+        cwd,
+        &[
             "toolchain".into(),
             action.into(),
             "--pins".into(),
             pins_path.as_os_str().to_owned(),
         ],
+    )
+}
+
+/// Run the built `mt` with `args` (everything after the program name) through the runner.
+fn run_mt_args(cwd: &Path, args: &[OsString]) -> Outcome {
+    let cfg = RunnerConfig::new("/usr/bin:/bin", "1791158400");
+    let mut argv: Vec<OsString> = vec![env!("CARGO_BIN_EXE_mt").into()];
+    argv.extend(args.iter().cloned());
+    let request = RunRequest {
+        tool_name: "mt".to_owned(),
+        argv,
         cwd: cwd.to_path_buf(),
         extra_env: BTreeMap::new(),
         tool_version: None,
@@ -422,4 +432,110 @@ fn tool_03_build_args_end_to_end_prints_sorted_lines_and_rejects_bad_pins() {
         out.stderr
     );
     assert!(out.stdout.is_empty(), "stdout: {}", out.stdout);
+}
+
+fn os(text: &str) -> OsString {
+    text.into()
+}
+
+#[test]
+fn tool_03_manifest_end_to_end_is_byte_stable_and_diff_locates_the_change() {
+    let _guard = serialized();
+    let fake = FakeContainer::new();
+    let cwd = fake.dir.path();
+    let pins_path = fake.path("pins.toml");
+    std::fs::write(&pins_path, fake.pins()).unwrap();
+    let manifest_to = |name: &str| {
+        let out_path = fake.path(name);
+        let out = run_mt_args(
+            cwd,
+            &[
+                os("toolchain"),
+                os("manifest"),
+                os("--pins"),
+                pins_path.clone().into_os_string(),
+                os("--out"),
+                out_path.clone().into_os_string(),
+            ],
+        );
+        (out, out_path)
+    };
+    let diff = |a: &Path, b: &Path| {
+        run_mt_args(
+            cwd,
+            &[
+                os("toolchain"),
+                os("manifest-diff"),
+                a.as_os_str().to_owned(),
+                b.as_os_str().to_owned(),
+            ],
+        )
+    };
+
+    // Two runs over the same container give byte-identical manifests.
+    let (first, a) = manifest_to("a.json");
+    assert_eq!(first.code, Some(0), "stderr: {}", first.stderr);
+    let (second, b) = manifest_to("b.json");
+    assert_eq!(second.code, Some(0), "stderr: {}", second.stderr);
+    let (text_a, text_b) = (
+        std::fs::read_to_string(&a).unwrap(),
+        std::fs::read_to_string(&b).unwrap(),
+    );
+    assert_eq!(text_a, text_b);
+    assert!(text_a.contains("\"schema_version\": 1"), "{text_a}");
+    assert!(text_a.contains("\"status\": \"provisional\""), "{text_a}");
+    assert!(!text_a.contains("Host CPU"), "{text_a}");
+    let same = diff(&a, &b);
+    assert_eq!(
+        same.code,
+        Some(0),
+        "stdout: {} stderr: {}",
+        same.stdout,
+        same.stderr
+    );
+
+    // Without --out the manifest goes to stdout and the check table to stderr.
+    let printed = run_mt_args(
+        cwd,
+        &[
+            os("toolchain"),
+            os("manifest"),
+            os("--pins"),
+            pins_path.clone().into_os_string(),
+        ],
+    );
+    assert_eq!(printed.code, Some(0), "stderr: {}", printed.stderr);
+    assert_eq!(printed.stdout, text_a);
+    assert!(printed.stderr.contains("result: OK"), "{}", printed.stderr);
+
+    // klee drifts to LLVM 17: the check fails (exit 1) but the manifest is still
+    // written so CI can diff it, and the diff names the klee row.
+    fake.script(
+        "opt/klee/bin/klee",
+        &prints(&KLEE_OUT.replace("LLVM version 16.0.6", "LLVM version 17.0.1")),
+    );
+    let (drifted, c) = manifest_to("c.json");
+    assert_eq!(drifted.code, Some(1), "stderr: {}", drifted.stderr);
+    assert!(
+        c.exists(),
+        "manifest must be written even when the check fails"
+    );
+    let found = diff(&a, &c);
+    assert_eq!(found.code, Some(1), "stderr: {}", found.stderr);
+    assert!(
+        found
+            .stdout
+            .starts_with("first difference at observed.klee."),
+        "stdout: {}",
+        found.stdout
+    );
+
+    // Byte-identical files of any kind are "no difference"; differing non-JSON is an error.
+    let same_toml = diff(&pins_path, &pins_path);
+    assert_eq!(same_toml.code, Some(0), "stderr: {}", same_toml.stderr);
+    fake.write("x.txt", "x");
+    fake.write("y.txt", "y");
+    let bad = diff(&fake.path("x.txt"), &fake.path("y.txt"));
+    assert_eq!(bad.code, Some(2), "stdout: {}", bad.stdout);
+    assert!(bad.stderr.contains("JSON"), "stderr: {}", bad.stderr);
 }

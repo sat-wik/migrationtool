@@ -6,6 +6,7 @@
 use std::collections::BTreeMap;
 
 use mt_toolchain::check::{self, CheckReport, Observation, ToolRow, ToolStatus, evaluate};
+use mt_toolchain::manifest::{self, MANIFEST_SCHEMA_VERSION};
 use mt_toolchain::pins::Pins;
 use serde::Deserialize;
 
@@ -508,4 +509,168 @@ fn tool_01_check_capture_roundtrips_observations() {
     assert_eq!(klee["stderr"].as_str(), Some(""));
     let again = check::capture_toml(&obs, "captured in test").expect("capture renders");
     assert_eq!(text, again, "capture is deterministic");
+}
+
+/// The serialized manifest for a set of observations.
+fn manifest_text(observations: &BTreeMap<String, Observation>) -> String {
+    let pins = pins();
+    let report = evaluate(&pins, observations);
+    manifest::to_json(&manifest::build(&pins, &report)).expect("manifest serializes")
+}
+
+#[test]
+fn tool_03_manifest_is_byte_stable_and_diff_detects_change() {
+    let first = manifest_text(&good_observations());
+    let second = manifest_text(&good_observations());
+    assert_eq!(first, second, "same inputs must give identical bytes");
+    assert!(first.ends_with("}\n"), "{first}");
+    assert_eq!(
+        manifest::first_difference(&first, &second).unwrap(),
+        None,
+        "identical manifests have no difference"
+    );
+
+    // One observed version moves: the row's dotted key path is reported.
+    let mut changed = good_observations();
+    edit_stdout(&mut changed, "clang", "version 16.0.6", "version 16.0.7");
+    let moved = manifest_text(&changed);
+    assert_ne!(first, moved);
+    assert_eq!(
+        manifest::first_difference(&first, &moved)
+            .unwrap()
+            .as_deref(),
+        Some("observed.clang.actual")
+    );
+
+    // A row present on one side only is located at the row.
+    let mut shorter: serde_json::Value = serde_json::from_str(&first).unwrap();
+    shorter["observed"]
+        .as_object_mut()
+        .unwrap()
+        .remove("bear")
+        .unwrap();
+    assert_eq!(
+        manifest::first_difference(&first, &shorter.to_string())
+            .unwrap()
+            .as_deref(),
+        Some("observed.bear")
+    );
+
+    // Arrays are compared by index; anything that is not JSON is an error,
+    // never "no difference".
+    assert_eq!(
+        manifest::first_difference("[1,2]", "[1,3]")
+            .unwrap()
+            .as_deref(),
+        Some("[1]")
+    );
+    assert!(manifest::first_difference(&first, "not json").is_err());
+}
+
+#[test]
+fn tool_03_manifest_contains_no_raw_output_or_timestamps() {
+    let text = manifest_text(&good_observations());
+    for raw in [
+        "Host CPU",
+        "skylake",
+        "Build mode",
+        "/usr/lib/llvm",
+        "linux-vdso",
+    ] {
+        assert!(
+            !text.contains(raw),
+            "raw tool output {raw:?} leaked:\n{text}"
+        );
+    }
+    assert!(
+        text.contains(&format!("\"schema_version\": {MANIFEST_SCHEMA_VERSION}")),
+        "{text}"
+    );
+    assert!(text.contains("\"status\": \"provisional\""), "{text}");
+    assert!(text.contains("\"decision\": \"D-15\""), "{text}");
+
+    // No key records a run, a time or an output; no value looks like a date.
+    let value: serde_json::Value = serde_json::from_str(&text).unwrap();
+    let date = regex::Regex::new(r"\d{4}-\d{2}-\d{2}").unwrap();
+    let mut stack = vec![(String::new(), &value)];
+    while let Some((path, node)) = stack.pop() {
+        match node {
+            serde_json::Value::Object(map) => {
+                for (key, child) in map {
+                    let lower = key.to_lowercase();
+                    for banned in [
+                        "time", "date", "stdout", "stderr", "argv", "env", "exit", "hash",
+                    ] {
+                        assert!(
+                            !lower.contains(banned) || key == "snapshot_timestamp",
+                            "key {path}.{key} looks like run data"
+                        );
+                    }
+                    stack.push((format!("{path}.{key}"), child));
+                }
+            }
+            serde_json::Value::Array(items) => {
+                for (i, child) in items.iter().enumerate() {
+                    stack.push((format!("{path}[{i}]"), child));
+                }
+            }
+            serde_json::Value::String(s) => {
+                assert!(!date.is_match(s), "{path} looks like a date: {s}");
+            }
+            _ => {}
+        }
+    }
+}
+
+#[test]
+fn tool_03_manifest_carries_pins_sources_and_parsed_rows_with_sorted_keys() {
+    let text = manifest_text(&good_observations());
+    let value: serde_json::Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(value["image"]["platform"], "linux/amd64");
+    assert_eq!(value["llvm"]["major"], 16);
+    assert_eq!(value["llvm"]["max_major"], 19);
+    assert_eq!(value["rust"]["bitcode"]["llvm"], "16.0.5");
+    assert_eq!(
+        value["sources"]["klee"]["commit"],
+        "92ee8201a050184aacaaeef645ade491f5c93c41"
+    );
+    assert_eq!(value["sources"]["klee"]["kind"], "git");
+    assert_eq!(value["observed"]["klee"]["status"], "OK");
+    assert_eq!(value["observed"]["klee"]["actual"], "3.2");
+    assert_eq!(value["observed"]["klee"]["llvm_major"], 16);
+    assert_eq!(value["observed"]["rustc_bitcode"]["llvm_major"], 16);
+    assert_eq!(value["observed"]["hayroll"]["status"], "not_installed");
+    assert!(
+        value["observed"]["hayroll"]["detail"]
+            .as_str()
+            .unwrap()
+            .contains("licence unconfirmed")
+    );
+    // Every package row and every tool row is present.
+    assert_eq!(
+        value["observed"]["apt:clang-16"]["actual"],
+        "1:16.0.6-15~deb12u1"
+    );
+    assert_eq!(value["observed"].as_object().unwrap().len(), 27);
+
+    // Top-level keys appear in sorted order in the text.
+    let top: Vec<&str> = text
+        .lines()
+        .filter(|l| l.starts_with("  \""))
+        .filter_map(|l| l.trim_start().split('"').nth(1))
+        .collect();
+    let mut sorted = top.clone();
+    sorted.sort_unstable();
+    assert_eq!(top, sorted);
+    assert_eq!(
+        top,
+        [
+            "image",
+            "llvm",
+            "observed",
+            "rust",
+            "schema_version",
+            "sources"
+        ]
+    );
 }
