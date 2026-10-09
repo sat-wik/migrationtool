@@ -539,3 +539,61 @@ fn tool_03_manifest_end_to_end_is_byte_stable_and_diff_locates_the_change() {
     assert_eq!(bad.code, Some(2), "stdout: {}", bad.stdout);
     assert!(bad.stderr.contains("JSON"), "stderr: {}", bad.stderr);
 }
+
+#[test]
+fn tool_03_hash_end_to_end_prints_digest_and_enforces_expect() {
+    let _guard = serialized();
+    let dir = tempfile::tempdir().unwrap();
+    let cwd = dir.path();
+    // sha256("abc"), the FIPS 180-2 test vector.
+    const ABC: &str = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+    let file = dir.path().join("pin.txt");
+    std::fs::write(&file, "abc").unwrap();
+    let url = format!("file://{}", file.display());
+    let hash = |extra: &[&str]| {
+        let mut args = vec![os("toolchain"), os("hash"), os(&url)];
+        args.extend(extra.iter().map(|a| os(a)));
+        run_mt_args(cwd, &args)
+    };
+
+    let plain = hash(&[]);
+    assert_eq!(plain.code, Some(0), "stderr: {}", plain.stderr);
+    assert_eq!(plain.stdout, format!("{ABC}  {url}\n"));
+
+    let matching = hash(&["--expect", ABC, "--timeout-secs", "30"]);
+    assert_eq!(matching.code, Some(0), "stderr: {}", matching.stderr);
+
+    let wrong = "0".repeat(64);
+    let mismatch = hash(&["--expect", &wrong]);
+    assert_eq!(mismatch.code, Some(1), "stdout: {}", mismatch.stdout);
+    assert!(mismatch.stderr.contains(ABC), "stderr: {}", mismatch.stderr);
+
+    // An --expect that is not a sha256 is a usage error, not a mismatch.
+    let malformed = hash(&["--expect", "abc"]);
+    assert_eq!(malformed.code, Some(2), "stdout: {}", malformed.stdout);
+
+    // Insecure schemes are refused before curl runs.
+    let insecure = run_mt_args(
+        cwd,
+        &[os("toolchain"), os("hash"), os("http://example.com/x")],
+    );
+    assert_eq!(insecure.code, Some(2), "stdout: {}", insecure.stdout);
+    assert!(insecure.stdout.is_empty(), "stdout: {}", insecure.stdout);
+    assert!(
+        insecure.stderr.contains("https://"),
+        "stderr: {}",
+        insecure.stderr
+    );
+
+    // A fetch that fails never prints a digest.
+    let missing = run_mt_args(
+        cwd,
+        &[
+            os("toolchain"),
+            os("hash"),
+            os(&format!("file://{}/nope", dir.path().display())),
+        ],
+    );
+    assert_eq!(missing.code, Some(2), "stderr: {}", missing.stderr);
+    assert!(missing.stdout.is_empty(), "stdout: {}", missing.stdout);
+}

@@ -9,6 +9,7 @@
 
 pub mod build_args;
 pub mod check;
+pub mod fetch;
 pub mod manifest;
 pub mod pins;
 pub mod runner;

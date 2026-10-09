@@ -6,6 +6,7 @@
 use std::collections::BTreeMap;
 
 use mt_toolchain::check::{self, CheckReport, Observation, ToolRow, ToolStatus, evaluate};
+use mt_toolchain::fetch;
 use mt_toolchain::manifest::{self, MANIFEST_SCHEMA_VERSION};
 use mt_toolchain::pins::Pins;
 use serde::Deserialize;
@@ -673,4 +674,78 @@ fn tool_03_manifest_carries_pins_sources_and_parsed_rows_with_sorted_keys() {
             "sources"
         ]
     );
+}
+
+/// Lowercase hex sha256 computed in the test, independently of the helper.
+fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
+fn file_url(path: &std::path::Path) -> String {
+    format!("file://{}", path.display())
+}
+
+#[test]
+fn tool_03_hash_helper_matches_sha256_of_content() {
+    let dir = tempfile::tempdir().unwrap();
+    let timeout = std::time::Duration::from_secs(60);
+
+    // Larger than the runner's pipe chunk, so streaming is exercised.
+    let big: Vec<u8> = (0..300_000u32).map(|i| (i % 251) as u8).collect();
+    let small = b"pin bump\n".to_vec();
+    for (name, bytes) in [
+        ("big.bin", big),
+        ("small.txt", small),
+        ("empty", Vec::new()),
+    ] {
+        let path = dir.path().join(name);
+        std::fs::write(&path, &bytes).unwrap();
+        let digest = fetch::sha256_of_url(&file_url(&path), timeout)
+            .unwrap_or_else(|e| panic!("{name}: {e}"));
+        assert_eq!(digest, sha256_hex(&bytes), "{name}");
+    }
+    // The well-known digest of empty input, as a cross-check of the test helper itself.
+    assert_eq!(
+        sha256_hex(b""),
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    );
+}
+
+#[test]
+fn tool_03_hash_helper_rejects_non_https_urls() {
+    let timeout = std::time::Duration::from_secs(5);
+    for url in [
+        "http://example.com/pin.tar.xz",
+        "ftp://example.com/pin.tar.xz",
+        "/etc/passwd",
+        "relative/path.tar",
+        "file:/etc/passwd",
+        "HTTPS://example.com/x",
+        "-o/tmp/overwritten",
+        "gopher://example.com/",
+        "",
+    ] {
+        match fetch::sha256_of_url(url, timeout) {
+            Err(fetch::FetchError::UnsupportedScheme { url: rejected }) => {
+                assert_eq!(rejected, url);
+            }
+            other => panic!("{url:?} should be refused before curl runs, got {other:?}"),
+        }
+    }
+}
+
+#[test]
+fn tool_03_hash_helper_never_reports_a_digest_for_a_failed_fetch() {
+    let dir = tempfile::tempdir().unwrap();
+    let missing = dir.path().join("does-not-exist");
+    match fetch::sha256_of_url(&file_url(&missing), std::time::Duration::from_secs(30)) {
+        Err(fetch::FetchError::Failed { exit_code }) => {
+            assert!(exit_code.is_some_and(|code| code != 0), "{exit_code:?}");
+        }
+        other => panic!("a failed fetch must be an error, got {other:?}"),
+    }
 }
