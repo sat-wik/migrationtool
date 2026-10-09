@@ -69,20 +69,25 @@ expect = "{expect}"
 
 /// Write `pins` to a temp dir and run `mt toolchain check --pins <file>` through the runner.
 fn run_mt(pins: &str) -> Outcome {
+    run_mt_action("check", pins)
+}
+
+/// Write `pins` to a temp dir and run `mt toolchain <action> --pins <file>`.
+fn run_mt_action(action: &str, pins: &str) -> Outcome {
     let dir = tempfile::tempdir().unwrap();
     let pins_path = dir.path().join("pins.toml");
     std::fs::write(&pins_path, pins).unwrap();
-    run_mt_with_path(dir.path(), &pins_path)
+    run_mt_with_path(dir.path(), action, &pins_path)
 }
 
-fn run_mt_with_path(cwd: &Path, pins_path: &Path) -> Outcome {
+fn run_mt_with_path(cwd: &Path, action: &str, pins_path: &Path) -> Outcome {
     let cfg = RunnerConfig::new("/usr/bin:/bin", "1791158400");
     let request = RunRequest {
         tool_name: "mt".to_owned(),
         argv: vec![
             env!("CARGO_BIN_EXE_mt").into(),
             "toolchain".into(),
-            "check".into(),
+            action.into(),
             "--pins".into(),
             pins_path.as_os_str().to_owned(),
         ],
@@ -153,5 +158,63 @@ fn tool_01_check_end_to_end_rejects_invalid_pins_with_exit_two() {
         out.stderr
     );
     assert!(out.stderr.contains("pins"), "stderr: {}", out.stderr);
+    assert!(out.stdout.is_empty(), "stdout: {}", out.stdout);
+}
+
+#[test]
+fn tool_03_check_end_to_end_rejects_placeholder_pins_with_exit_two() {
+    let pins = pins_text("/bin/sh", "1.2.3").replace(
+        "base = \"debian:bookworm-20261005-slim\"",
+        "base = \"TODO\"",
+    );
+    let out = run_mt(&pins);
+    assert_eq!(
+        out.code,
+        Some(2),
+        "stdout: {} stderr: {}",
+        out.stdout,
+        out.stderr
+    );
+    assert!(out.stderr.contains("image.base"), "stderr: {}", out.stderr);
+    assert!(out.stderr.contains("placeholder"), "stderr: {}", out.stderr);
+    assert!(out.stdout.is_empty(), "stdout: {}", out.stdout);
+}
+
+#[test]
+fn tool_03_build_args_end_to_end_prints_sorted_lines_and_rejects_bad_pins() {
+    let out = run_mt_action("build-args", &pins_text("/bin/sh", "1.2.3"));
+    assert_eq!(
+        out.code,
+        Some(0),
+        "stdout: {} stderr: {}",
+        out.stdout,
+        out.stderr
+    );
+    let names: Vec<&str> = out
+        .stdout
+        .lines()
+        .map(|line| line.split_once('=').unwrap().0)
+        .collect();
+    let mut sorted = names.clone();
+    sorted.sort_unstable();
+    assert_eq!(names, sorted, "stdout: {}", out.stdout);
+    assert!(
+        out.stdout.contains("LLVM_MAJOR=16\n"),
+        "stdout: {}",
+        out.stdout
+    );
+
+    let spaced = pins_text("/bin/sh", "1.2.3").replace(
+        "tool_path = \"/usr/bin:/bin\"",
+        "tool_path = \"/usr/bin /bin\"",
+    );
+    let out = run_mt_action("build-args", &spaced);
+    assert_eq!(
+        out.code,
+        Some(2),
+        "stdout: {} stderr: {}",
+        out.stdout,
+        out.stderr
+    );
     assert!(out.stdout.is_empty(), "stdout: {}", out.stdout);
 }
