@@ -3,13 +3,14 @@
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::time::Duration;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
 use mt_toolchain::build_args::{self, Scope};
 use mt_toolchain::check::{capture_toml, run_check, run_check_observed};
-use mt_toolchain::manifest;
 use mt_toolchain::pins::{Pins, PinsError};
+use mt_toolchain::{fetch, manifest};
 
 #[derive(Debug, Parser)]
 #[command(name = "mt", about = "migrationtool", version)]
@@ -84,6 +85,20 @@ enum ToolchainAction {
         /// Write the manifest here instead of stdout.
         #[arg(long)]
         out: Option<PathBuf>,
+    },
+    /// Print the sha256 of an https:// or file:// URL (a pin-bump helper): the
+    /// digest and the URL, separated by two spaces. Exit 0 on success, 1 when
+    /// --expect differs, 2 for a refused scheme, a malformed --expect or a
+    /// failed fetch.
+    Hash {
+        /// The URL to hash.
+        url: String,
+        /// The digest it must have (64 hex digits).
+        #[arg(long)]
+        expect: Option<String>,
+        /// Give up after this many seconds.
+        #[arg(long, default_value_t = 1800, value_parser = clap::value_parser!(u64).range(1..))]
+        timeout_secs: u64,
     },
     /// Compare two manifests. Exit 0 when the files are byte-identical, 1 after
     /// printing `first difference at <dotted.path>` otherwise, 2 when they
@@ -178,6 +193,31 @@ fn manifest_diff_command(first: &Path, second: &Path) -> anyhow::Result<bool> {
     Ok(false)
 }
 
+/// True when no `--expect` was given or the digest equals it.
+fn hash_command(url: &str, expect: Option<&str>, timeout_secs: u64) -> anyhow::Result<bool> {
+    let expected = match expect {
+        None => None,
+        Some(text) => {
+            let lower = text.to_ascii_lowercase();
+            anyhow::ensure!(
+                lower.len() == 64 && lower.bytes().all(|b| b.is_ascii_hexdigit()),
+                "--expect must be 64 hexadecimal digits, found {text:?}"
+            );
+            Some(lower)
+        }
+    };
+    let digest =
+        fetch::sha256_of_url(url, Duration::from_secs(timeout_secs)).context("hashing the URL")?;
+    println!("{digest}  {url}");
+    match expected {
+        Some(want) if want != digest => {
+            eprintln!("error: expected {want}, got {digest}");
+            Ok(false)
+        }
+        _ => Ok(true),
+    }
+}
+
 fn build_args_command(pins_path: &Path, scope: Scope) -> anyhow::Result<()> {
     let pins = load_validated(pins_path, Completeness::Valid)?;
     let lines = build_args::render_lines(&pins, scope).context("rendering build arguments")?;
@@ -201,6 +241,11 @@ fn main() -> ExitCode {
         ToolchainAction::Manifest { pins, out } => {
             manifest_command(&pins, out.as_deref()).map(|passed| u8::from(!passed))
         }
+        ToolchainAction::Hash {
+            url,
+            expect,
+            timeout_secs,
+        } => hash_command(&url, expect.as_deref(), timeout_secs).map(|ok| u8::from(!ok)),
         ToolchainAction::ManifestDiff { first, second } => {
             manifest_diff_command(&first, &second).map(|identical| u8::from(!identical))
         }
