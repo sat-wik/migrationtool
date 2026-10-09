@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
 use mt_toolchain::build_args::{self, Scope};
-use mt_toolchain::check::run_check;
+use mt_toolchain::check::{capture_toml, run_check_observed};
 use mt_toolchain::pins::{Pins, PinsError};
 
 #[derive(Debug, Parser)]
@@ -46,12 +46,21 @@ impl From<ScopeArg> for Scope {
 
 #[derive(Debug, Subcommand)]
 enum ToolchainAction {
-    /// Compare every live tool with its pin. Exit 0 when all match, 1 on drift,
-    /// 2 when the pins file cannot be read or is invalid.
+    /// Compare every pinned item (tools, Rust toolchains, apt packages, the LLVM
+    /// major) with its live value. Exit 0 when all match, 1 on drift, a missing
+    /// item or an unproven one, 2 when the pins file cannot be read, is invalid
+    /// or is incomplete.
     Check {
         /// Path to the pins file.
         #[arg(long)]
         pins: PathBuf,
+        /// Also write every command's output to this TOML file, in the layout
+        /// of the representative test fixtures.
+        #[arg(long)]
+        capture_outputs: Option<PathBuf>,
+        /// Text recorded as `source` in the capture file.
+        #[arg(long, requires = "capture_outputs")]
+        capture_label: Option<String>,
     },
     /// Print the pins as sorted NAME=value Docker build arguments. Exit 0 on
     /// success, 2 when the pins are invalid or a value is unsafe to pass.
@@ -65,11 +74,24 @@ enum ToolchainAction {
     },
 }
 
+/// How much of the pins file must be present.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Completeness {
+    /// Every value valid (enough to render build arguments).
+    Valid,
+    /// Valid and describing the whole container (required to check one).
+    Complete,
+}
+
 /// Load a pins file and validate every value, printing each issue on its own line.
-fn load_validated(pins_path: &Path) -> anyhow::Result<Pins> {
+fn load_validated(pins_path: &Path, completeness: Completeness) -> anyhow::Result<Pins> {
     let pins = Pins::load(pins_path)
         .with_context(|| format!("loading pins from {}", pins_path.display()))?;
-    if let Err(err) = pins.validate() {
+    let verdict = match completeness {
+        Completeness::Valid => pins.validate(),
+        Completeness::Complete => pins.validate_complete(),
+    };
+    if let Err(err) = verdict {
         if let PinsError::Invalid { issues } = &err {
             for issue in issues {
                 eprintln!("error: invalid pins: {issue}");
@@ -80,16 +102,27 @@ fn load_validated(pins_path: &Path) -> anyhow::Result<Pins> {
     Ok(pins)
 }
 
-fn check(pins_path: &Path) -> anyhow::Result<bool> {
-    let pins = load_validated(pins_path)?;
+fn check(
+    pins_path: &Path,
+    capture_outputs: Option<&Path>,
+    capture_label: Option<&str>,
+) -> anyhow::Result<bool> {
+    let pins = load_validated(pins_path, Completeness::Complete)?;
     let cwd = std::env::current_dir().context("reading the current directory")?;
-    let report = run_check(&pins, &cwd).context("running the toolchain check")?;
+    let (report, observations) =
+        run_check_observed(&pins, &cwd).context("running the toolchain check")?;
+    if let Some(path) = capture_outputs {
+        let label = capture_label.unwrap_or("captured by mt toolchain check");
+        let text = capture_toml(&observations, label).context("rendering the capture file")?;
+        std::fs::write(path, text)
+            .with_context(|| format!("writing the capture file {}", path.display()))?;
+    }
     print!("{}", report.render_table());
     Ok(report.passed())
 }
 
 fn build_args_command(pins_path: &Path, scope: Scope) -> anyhow::Result<()> {
-    let pins = load_validated(pins_path)?;
+    let pins = load_validated(pins_path, Completeness::Valid)?;
     let lines = build_args::render_lines(&pins, scope).context("rendering build arguments")?;
     print!("{lines}");
     Ok(())
@@ -99,7 +132,12 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     let Group::Toolchain { action } = cli.group;
     let result = match action {
-        ToolchainAction::Check { pins } => check(&pins).map(|passed| u8::from(!passed)),
+        ToolchainAction::Check {
+            pins,
+            capture_outputs,
+            capture_label,
+        } => check(&pins, capture_outputs.as_deref(), capture_label.as_deref())
+            .map(|passed| u8::from(!passed)),
         ToolchainAction::BuildArgs { pins, scope } => {
             build_args_command(&pins, scope.into()).map(|()| 0)
         }
