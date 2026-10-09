@@ -861,3 +861,208 @@ fn tool_02_container_pins_regexes_parse_captured_outputs() {
     clang.stdout = clang.stdout.replace("16.0.6", "17.0.6");
     assert!(!evaluate(&pins, &other).passed());
 }
+
+// ---------------------------------------------------------------------------
+// Publishing (plan 01-08): the README's honest claims and the push job's scope.
+// ---------------------------------------------------------------------------
+
+/// Words PROJECT D-13 reserves, plus the phrase CONTEXT D-06 rules out. They
+/// live in this test only, so the README can be scanned for them.
+const README_FORBIDDEN: &[&str] = &[
+    "certified",
+    "certify",
+    "compliant",
+    "compliance",
+    "bit-for-bit reproducible",
+];
+
+/// The forbidden words and phrases found in `text`, compared case-insensitively.
+fn forbidden_claims(text: &str) -> Vec<&'static str> {
+    let lowered = text.to_lowercase();
+    README_FORBIDDEN
+        .iter()
+        .copied()
+        .filter(|word| lowered.contains(word))
+        .collect()
+}
+
+#[test]
+fn tool_03_container_readme_states_manifest_identical_and_makes_no_certification_claim() {
+    let readme = read_repo_file("container/README.md");
+    assert!(
+        readme.contains("manifest-identical"),
+        "the README must state the guarantee as manifest-identical builds"
+    );
+    assert!(
+        readme.contains("provisional"),
+        "the README must say the LLVM and bitcode-rustc pins are provisional"
+    );
+    assert_eq!(
+        forbidden_claims(&readme),
+        Vec::<&str>::new(),
+        "the README makes a claim the project forbids"
+    );
+
+    // What must be refused, whatever the case, and what must pass.
+    for bad in [
+        "The image is Certified.",
+        "a COMPLIANT toolchain",
+        "bit-for-bit Reproducible builds",
+        "we certify it",
+    ] {
+        assert!(!forbidden_claims(bad).is_empty(), "{bad} must be refused");
+    }
+    assert!(forbidden_claims("manifest-identical builds only").is_empty());
+}
+
+#[test]
+fn tool_03_container_readme_documents_the_required_sections() {
+    let readme = read_repo_file("container/README.md");
+    let headings: Vec<&str> = readme
+        .lines()
+        .filter_map(|line| line.strip_prefix("## "))
+        .collect();
+    for want in [
+        "Pulling and running on Apple Silicon",
+        "Local build fallback",
+        "Bumping pins",
+        "Notices",
+        "Current image",
+    ] {
+        assert!(
+            headings.contains(&want),
+            "the README has no `## {want}` heading, got {headings:?}"
+        );
+    }
+    for needle in [
+        "mt toolchain hash",
+        "--platform linux/amd64",
+        "mt toolchain build-args",
+        "Hayroll",
+        "Kani",
+    ] {
+        assert!(
+            readme.contains(needle),
+            "the README never mentions {needle}"
+        );
+    }
+}
+
+#[test]
+fn tool_03_container_readme_references_the_image_by_digest_only() {
+    const IMAGE: &str = "ghcr.io/sat-wik/migrationtool-toolchain";
+    let readme = read_repo_file("container/README.md");
+    let mut found = 0;
+    for (at, _) in readme.match_indices(IMAGE) {
+        found += 1;
+        assert!(
+            readme[at + IMAGE.len()..].starts_with("@sha256:"),
+            "a reference to the image near byte {at} is not by digest"
+        );
+    }
+    assert!(found > 0, "the README names no image reference");
+
+    // A recorded digest is 64 lowercase hex digits, and a tag is refused.
+    let recorded = regex::Regex::new(&format!(r"{IMAGE}@sha256:([0-9a-f]+)\b")).unwrap();
+    for captures in recorded.captures_iter(&readme) {
+        let digest = &captures[1];
+        assert_eq!(digest.len(), 64, "{digest} is not a full sha256 digest");
+    }
+}
+
+/// The text of job `job` in a workflow: from its two-space-indented key to the next job.
+fn workflow_job_text<'a>(workflow: &'a str, job: &str) -> &'a str {
+    let key = format!("\n  {job}:\n");
+    let start = workflow
+        .find(&key)
+        .unwrap_or_else(|| panic!("no job {job}"))
+        + 1;
+    let rest = &workflow[start + key.len() - 1..];
+    let next = regex::Regex::new(r"(?m)^  [A-Za-z][A-Za-z0-9_-]*:\s*$").unwrap();
+    let end = next
+        .find(rest)
+        .map_or(workflow.len(), |m| start + key.len() - 1 + m.start());
+    &workflow[start..end]
+}
+
+#[test]
+fn tool_03_workflow_publishes_by_digest_with_least_privilege() {
+    let workflow = read_repo_file(".github/workflows/container.yml");
+
+    // Write access to packages exists once, in image-a, and nowhere else.
+    assert_eq!(
+        workflow.matches("packages: write").count(),
+        1,
+        "`packages: write` must appear exactly once"
+    );
+    let image_a = workflow_job_text(&workflow, "image-a");
+    assert!(
+        image_a.contains("packages: write"),
+        "`packages: write` must be in the image-a job"
+    );
+    for other in ["mt", "image-b", "compare"] {
+        assert!(
+            !workflow_job_text(&workflow, other).contains("packages:"),
+            "job {other} must not grant any package permission"
+        );
+    }
+
+    // Only the workflow's own token: no other secret, no personal access token.
+    let secret = regex::Regex::new(r"secrets\.([A-Za-z0-9_]+)").unwrap();
+    let used: BTreeSet<String> = secret
+        .captures_iter(&workflow)
+        .map(|c| c[1].to_owned())
+        .collect();
+    assert_eq!(used, BTreeSet::from(["GITHUB_TOKEN".to_owned()]));
+
+    // The login is SHA-pinned (checked for every `uses:` by the SHA test),
+    // happens in image-a only, never for a pull_request, and the push follows it.
+    let login = image_a
+        .find("docker/login-action@")
+        .expect("image-a must log in with docker/login-action");
+    assert_eq!(workflow.matches("docker/login-action@").count(), 1);
+    let guard = "if: ${{ github.event_name != 'pull_request' }}";
+    assert!(
+        image_a[..login]
+            .rfind(guard)
+            .is_some_and(|at| login - at < 200),
+        "the login step must be skipped for pull_request events"
+    );
+    let push = image_a
+        .find("docker push")
+        .expect("image-a must push the image");
+    assert!(push > login, "the push must come after the login");
+    let publish = image_a
+        .find("id: publish")
+        .expect("the push step must have the id `publish`");
+    let publish_run = publish + image_a[publish..].find("run:").expect("publish has a run");
+    assert!(
+        image_a[publish..publish_run].contains(guard),
+        "the push step must itself be skipped for pull_request events"
+    );
+    assert!(image_a.contains("ghcr.io/sat-wik/migrationtool-toolchain"));
+    assert!(image_a.contains("{{index .RepoDigests 0}}"));
+    assert!(
+        !image_a[push..].contains("docker build") && !image_a[push..].contains("buildx build"),
+        "the pushed image is never rebuilt for publishing"
+    );
+
+    // The digest is announced twice: when pushed, and as verified only in the
+    // compare job, after manifest-diff succeeded.
+    assert!(image_a.contains("annotate notice image-digest"));
+    let compare = workflow_job_text(&workflow, "compare");
+    let diff = compare
+        .find("manifest-diff")
+        .expect("compare runs manifest-diff");
+    let verified = compare
+        .find("annotate notice verified-image")
+        .expect("compare must publish the verified-image notice");
+    assert!(
+        verified > diff,
+        "verified-image must follow the manifest diff"
+    );
+    assert!(
+        compare[diff..verified].contains("exit 1"),
+        "a manifest difference must fail the job before verified-image is published"
+    );
+}

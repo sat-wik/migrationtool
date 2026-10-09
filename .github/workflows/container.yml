@@ -5,8 +5,9 @@
 #
 # Log and artifact hosts are not reachable from cloud sessions, so each job also
 # publishes its evidence as job annotations (titles check-a, negative-pin,
-# manifest-a, manifest-b, manifest-compare, smoke, tool-outputs, and on failure
-# "image-a build tail", "image-b build tail" and manifest-diff).
+# manifest-a, manifest-b, manifest-compare, smoke, tool-outputs, image-digest,
+# verified-image, and on failure "image-a build tail", "image-b build tail" and
+# manifest-diff). `verified-image` is the digest reference later phases use.
 #
 # Action commit SHAs are pinned here because GitHub resolves `uses:` before any
 # step can read container/pins.toml; every other pin comes from that file.
@@ -88,6 +89,13 @@ jobs:
     needs: mt
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    # The only job that can publish: it alone holds write access to packages,
+    # through the workflow's own GITHUB_TOKEN (CONTEXT D-24, threat T-01-26).
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_ref: ${{ steps.publish.outputs.image_ref }}
     steps:
       # A multi-gigabyte image plus its build cache does not fit the default
       # runner disk (RESEARCH Pitfall 13).
@@ -357,6 +365,54 @@ jobs:
           fi
           annotate notice smoke "$out/smoke-notice.txt"
 
+      # CONTEXT D-24: the image that just passed the check, off-pin check, manifest
+      # and smoke steps is pushed as it is (never rebuilt for publishing) and
+      # referenced by digest. These two steps carry no status function, so they run
+      # only when every step above succeeded, and never for a pull_request.
+      - name: Log in to GHCR
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push the verified image and read its digest
+        id: publish
+        if: ${{ github.event_name != 'pull_request' }}
+        shell: bash
+        env:
+          IMAGE: ghcr.io/sat-wik/migrationtool-toolchain
+          COMMIT: ${{ github.sha }}
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          docker tag mt-toolchain:ci "${IMAGE}:sha-${COMMIT}"
+          set +e
+          docker push "${IMAGE}:sha-${COMMIT}" > "$out/push.txt" 2>&1
+          rc=$?
+          set -e
+          cat "$out/push.txt"
+          if [ "$rc" -ne 0 ]; then
+            { echo "docker push exit code: $rc"; tail -n 40 "$out/push.txt"; } > "$out/push-notice.txt"
+            annotate error image-digest "$out/push-notice.txt"
+            exit 1
+          fi
+          ref=$(docker inspect --format '{{index .RepoDigests 0}}' "${IMAGE}:sha-${COMMIT}")
+          digest=${ref#*@}
+          if [ "${ref%@*}" != "$IMAGE" ] || ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+            { echo "RepoDigests entry is not a ${IMAGE} digest reference:"; echo "$ref"; } > "$out/digest-notice.txt"
+            annotate error image-digest "$out/digest-notice.txt"
+            exit 1
+          fi
+          {
+            echo "$ref"
+            echo "pushed as ${IMAGE}:sha-${COMMIT}; announced as verified only after the compare job"
+          } > "$out/digest-notice.txt"
+          cat "$out/digest-notice.txt"
+          annotate notice image-digest "$out/digest-notice.txt"
+          echo "image_ref=${ref}" >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -510,6 +566,9 @@ jobs:
 
       - name: Compare the manifests
         shell: bash
+        env:
+          # Empty unless image-a pushed (never for a pull_request).
+          IMAGE_REF: ${{ needs.image-a.outputs.image_ref }}
         run: |
           annotate() {
             local level=$1 title=$2 file=$3 dir n i label text
@@ -552,3 +611,17 @@ jobs:
           echo "manifest-a.json and manifest-b.json are byte-identical; sha256 $(sha256sum "$a" | cut -d' ' -f1)" > "$RUNNER_TEMP/compare-notice.txt"
           cat "$RUNNER_TEMP/compare-notice.txt"
           annotate notice manifest-compare "$RUNNER_TEMP/compare-notice.txt"
+          # The pushed image is announced as the verified one only here, after the
+          # manifest-diff above succeeded (CONTEXT D-24, threat T-01-27).
+          if [ -n "$IMAGE_REF" ]; then
+            if ! printf '%s' "$IMAGE_REF" | grep -Eq '^ghcr\.io/sat-wik/migrationtool-toolchain@sha256:[0-9a-f]{64}$'; then
+              echo "image-a published a malformed reference: $IMAGE_REF"
+              exit 1
+            fi
+            {
+              echo "$IMAGE_REF"
+              echo "manifest sha256 $(sha256sum "$a" | cut -d' ' -f1)"
+            } > "$RUNNER_TEMP/verified-notice.txt"
+            cat "$RUNNER_TEMP/verified-notice.txt"
+            annotate notice verified-image "$RUNNER_TEMP/verified-notice.txt"
+          fi
