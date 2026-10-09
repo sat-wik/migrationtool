@@ -149,6 +149,8 @@ For the open-source test bed the UB-decision approver is recorded as the founder
 - **D-12:** Correctness never depends on which model translated the code; the validation engine decides what ships (SPEC deployment design rule, ADR-0001).
 - **D-13:** The tool never claims a product or module is certified or compliant (SPEC).
 - **D-14:** For the MVP, "full evidence" means the five-term definition in the "MVP Definition of Full Evidence" section; bounded Kani proofs are excluded until milestone v2.0 (roadmapper proposal, assumption A-01 pending founder confirmation).
+- **D-15:** Phase 1 provisional pin: llvm=16 bitcode-rustc=1.72.1 for clang, KLEE, c2rust and the KLEE bitcode toolchain (phase 01 CONTEXT D-01, D-03); revisited at the Phase 6 R1 verdict; refines D-08 and supersedes nothing. Changing either value needs a new decision line with matching tokens (phase 01 CONTEXT D-21).
+- **D-16:** crates/mt-toolchain/src/runner.rs is the only module allowed to use std::process; every other external process goes through runner::run. Clarifies docs/guidelines/building-the-tool.md section 4; enforced by clippy disallowed-types and tool_01_command_only_in_runner_module.
 </decisions>
 
 ## Key Decisions
@@ -160,6 +162,7 @@ For the open-source test bed the UB-decision approver is recorded as the founder
 | ILP32 target-matched differential harness (D-06) | A default x86-64 host can agree with the Rust and disagree with the target | Pending — validated in Phase 5 |
 | Separate ASan+UBSan and MSan builds (D-07) | MSan cannot share a build with ASan | Pending — Phase 4 |
 | Single LLVM pin in 16-19 (D-08) | KLEE, Hayroll and c2rust version limits | Pending — provisional in Phase 1, final after R1 in Phase 6 |
+| Provisional pin llvm=16, bitcode rustc 1.72.1 (D-15) | LLVM 16 is the major KLEE 3.2 recommends, and rustc 1.72.1 reports LLVM 16.0.5, within the bitcode bound of at most 19 | Provisional — final after the Phase 6 R1 verdict |
 | Hayroll behind an adapter, licence-gated (D-09) | Licence unconfirmed; keep it swappable | Pending — Phase 8 |
 | R1 required spike, R2 time-boxed (D-10) | Both are unproven; each decides how the evidence layer is built | Pending — Phase 6 |
 | MVP "full evidence" excludes Kani (D-14) | Kani is spec-v1 and R2 is unproven | Assumed — confirm (A-01) |
