@@ -3,10 +3,33 @@
 //! the build-argument rendering and the tool-output parsers. Everything here
 //! runs in plain `cargo test`: no Docker, no network, no external process.
 
+use std::collections::BTreeMap;
+
 use mt_toolchain::build_args::{self, Scope};
-use mt_toolchain::pins::Pins;
+use mt_toolchain::pins::{LlvmSource, Pins, ToolPinStatus};
+use mt_toolchain::version::{self, DpkgPackage, LlvmVersion};
+use serde::Deserialize;
 
 const FULL: &str = include_str!("fixtures/pins-full.toml");
+const OUTPUTS: &str = include_str!("fixtures/tool-outputs.toml");
+
+/// One recorded tool invocation: where the text came from and what it printed.
+#[derive(Debug, Deserialize)]
+struct Recorded {
+    source: String,
+    stdout: String,
+    stderr: String,
+}
+
+fn outputs() -> BTreeMap<String, Recorded> {
+    toml::from_str(OUTPUTS).expect("tool-outputs.toml parses")
+}
+
+/// The first `group` match in stdout, then stderr (the order `mt toolchain check` uses).
+fn first_match(re: &regex::Regex, group: &str, recorded: &Recorded) -> Option<String> {
+    version::extract(re, group, &recorded.stdout)
+        .or_else(|| version::extract(re, group, &recorded.stderr))
+}
 
 /// Replace `from` with `to` in the full fixture, asserting `from` is present.
 fn mutate(from: &str, to: &str) -> String {
@@ -382,4 +405,244 @@ fn tool_03_build_args_reject_values_with_whitespace() {
     // A clean file still renders.
     let clean = Pins::parse(FULL).unwrap();
     build_args::render(&clean, Scope::Image).unwrap();
+}
+
+#[test]
+fn tool_02_parses_llvm_major_from_tool_outputs() {
+    let pins = Pins::parse(FULL).unwrap();
+    let recorded = outputs();
+
+    // clang and llvm-config: the major is the first component of the version.
+    for key in ["clang", "llvm_config"] {
+        let spec = &pins.tool[key];
+        let re = version::compile_pattern(&spec.version_regex, "version").unwrap();
+        let found = first_match(&re, "version", &recorded[key]).expect("version line");
+        assert_eq!(
+            version::llvm_major_from_version(&found),
+            Some(16),
+            "{key}: {found}"
+        );
+    }
+
+    // klee: the LLVM version line; the `Host CPU:` line is ignored.
+    let klee = &pins.tool["klee"];
+    let rule = klee.llvm.as_ref().expect("klee has an LLVM rule");
+    assert_eq!(rule.source, LlvmSource::Output);
+    let re = version::compile_pattern(rule.regex.as_deref().unwrap(), "major").unwrap();
+    let major = first_match(&re, "major", &recorded["klee"]).expect("LLVM line");
+    assert_eq!(major, "16");
+    assert!(recorded["klee"].stdout.contains("Host CPU:"));
+
+    // c2rust: the ldd probe.
+    let rule = pins.tool["c2rust"]
+        .llvm
+        .as_ref()
+        .expect("c2rust has a rule");
+    assert_eq!(rule.source, LlvmSource::Probe);
+    let re = version::compile_pattern(rule.regex.as_deref().unwrap(), "major").unwrap();
+    assert_eq!(
+        first_match(&re, "major", &recorded["c2rust_ldd"]).as_deref(),
+        Some("16")
+    );
+
+    // The two rustc toolchains differ: the tool rustc must never be the bitcode compiler.
+    let tool = version::parse_rustc_vv(&recorded["rustc_tool"].stdout).expect("rustc_tool");
+    assert_eq!(tool.llvm.map(|v| v.major), Some(23));
+    let bitcode =
+        version::parse_rustc_vv(&recorded["rustc_bitcode"].stdout).expect("rustc_bitcode");
+    assert_eq!(bitcode.llvm.map(|v| v.major), Some(16));
+}
+
+#[test]
+fn tool_02_parses_rustc_vv_release_commit_and_llvm() {
+    let text = "rustc 1.72.1 (d5c2e9c34 2023-09-13)\nbinary: rustc\ncommit-hash: d5c2e9c342b358556da91d61ed4133f6f50fc0c3\ncommit-date: 2023-09-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.72.1\nLLVM version: 16.0.5\n";
+    let parsed = version::parse_rustc_vv(text).expect("parses");
+    assert_eq!(parsed.release, "1.72.1");
+    assert_eq!(
+        parsed.commit_hash,
+        "d5c2e9c342b358556da91d61ed4133f6f50fc0c3"
+    );
+    let llvm = parsed.llvm.expect("LLVM line present");
+    assert_eq!(
+        llvm,
+        LlvmVersion {
+            major: 16,
+            minor: 0,
+            patch: 5
+        }
+    );
+    assert_eq!(llvm.to_string(), "16.0.5");
+
+    // The captured fixture agrees with the literal text.
+    let captured = version::parse_rustc_vv(&outputs()["rustc_bitcode"].stdout).unwrap();
+    assert_eq!(captured, parsed);
+
+    // No LLVM line (a rustc built without LLVM information) still parses.
+    let without = "rustc 1.72.1 (d5c2e9c34 2023-09-13)\nbinary: rustc\ncommit-hash: d5c2e9c342b358556da91d61ed4133f6f50fc0c3\nrelease: 1.72.1\n";
+    let parsed = version::parse_rustc_vv(without).expect("parses without LLVM");
+    assert_eq!(parsed.llvm, None);
+    assert_eq!(parsed.release, "1.72.1");
+
+    // Text that is not `rustc -vV` output is rejected, not guessed at.
+    assert_eq!(version::parse_rustc_vv(""), None);
+    assert_eq!(version::parse_rustc_vv("command not found\n"), None);
+    assert_eq!(
+        version::parse_rustc_vv("release: 1.72.1\nLLVM version: sixteen\n"),
+        None
+    );
+
+    // LLVM triples.
+    assert_eq!(
+        version::parse_llvm_version("23.1.1").map(|v| v.major),
+        Some(23)
+    );
+    assert_eq!(version::parse_llvm_version("16.0"), None);
+    assert_eq!(version::parse_llvm_version("16.0.x"), None);
+    assert_eq!(version::parse_llvm_version(""), None);
+}
+
+#[test]
+fn tool_02_parses_dpkg_query_and_llvm_family_majors() {
+    let recorded = outputs();
+    let packages = version::parse_dpkg_query(&recorded["dpkg_query"].stdout);
+    assert_eq!(packages.len(), 17, "one package per line: {packages:?}");
+    assert_eq!(
+        packages[1],
+        DpkgPackage {
+            name: "clang-16".to_owned(),
+            version: "1:16.0.6-15~deb12u1".to_owned(),
+            status: "installed".to_owned(),
+        }
+    );
+
+    let majors = version::llvm_family_majors(&packages);
+    for name in [
+        "clang-16",
+        "libclang1-16",
+        "libclang-cpp16",
+        "libllvm16",
+        "libclang-common-16-dev",
+        "llvm-16-dev",
+    ] {
+        assert_eq!(majors.get(name), Some(&16), "{name}: {majors:?}");
+    }
+    // Not installed, or installed without a major in the name, or not LLVM at all.
+    for name in [
+        "libllvm18",
+        "llvm-runtime",
+        "bear",
+        "qemu-user",
+        "libz3-dev",
+    ] {
+        assert!(!majors.contains_key(name), "{name} must be ignored");
+    }
+
+    // A second installed major is visible to the caller.
+    let extra = version::parse_dpkg_query("libllvm18\t1:18.1.8-12\tinstalled\n");
+    let mut all = packages;
+    all.extend(extra);
+    let majors = version::llvm_family_majors(&all);
+    assert_eq!(majors.get("libllvm18"), Some(&18));
+
+    // Malformed lines are skipped; blank input is empty.
+    assert!(version::parse_dpkg_query("").is_empty());
+    assert_eq!(
+        version::parse_dpkg_query("no-tabs-here\nbear\t3.1.1-1\tinstalled\n").len(),
+        1
+    );
+
+    // Debian versions: drop the epoch and the revision.
+    assert_eq!(version::upstream_version("1:16.0.6-15~deb12u1"), "16.0.6");
+    assert_eq!(
+        version::upstream_version("1:7.2+dfsg-7+deb12u18"),
+        "7.2+dfsg"
+    );
+    assert_eq!(version::upstream_version("3.1.1-1"), "3.1.1");
+    assert_eq!(version::upstream_version("4.8.12"), "4.8.12");
+}
+
+#[test]
+fn tool_02_fixture_pins_regexes_parse_fixture_outputs() {
+    let pins = Pins::parse(FULL).unwrap();
+    let recorded = outputs();
+
+    for (key, entry) in &recorded {
+        assert!(!entry.source.trim().is_empty(), "{key}: source is empty");
+    }
+    assert!(recorded["rustc_bitcode"].source.contains("captured"));
+    assert!(
+        recorded["rustc_bitcode"]
+            .stdout
+            .contains("LLVM version: 16.0.5")
+    );
+    assert!(recorded["rustc_tool"].source.contains("captured"));
+
+    let mut checked = 0;
+    for (key, spec) in &pins.tool {
+        if spec.status == ToolPinStatus::NotInstalled {
+            continue;
+        }
+        let output = recorded
+            .get(key)
+            .unwrap_or_else(|| panic!("no fixture output for tool {key}"));
+        let re = version::compile_pattern(&spec.version_regex, "version")
+            .unwrap_or_else(|e| panic!("{key}: {e}"));
+        let found = first_match(&re, "version", output)
+            .unwrap_or_else(|| panic!("{key}: version regex did not match its fixture"));
+        assert_eq!(found, spec.expect, "{key}");
+
+        if let Some(rule) = &spec.llvm {
+            let major = match rule.source {
+                LlvmSource::Version => version::llvm_major_from_version(&found),
+                LlvmSource::Output | LlvmSource::Probe => {
+                    let text = if rule.source == LlvmSource::Probe {
+                        &recorded[&format!("{key}_ldd")]
+                    } else {
+                        output
+                    };
+                    let re = version::compile_pattern(rule.regex.as_deref().unwrap(), "major")
+                        .unwrap_or_else(|e| panic!("{key}: {e}"));
+                    first_match(&re, "major", text).and_then(|m| m.parse::<u32>().ok())
+                }
+            };
+            assert_eq!(major, Some(pins.llvm.major), "{key}: LLVM major");
+        }
+        checked += 1;
+    }
+    assert_eq!(
+        checked, 10,
+        "every installed tool in the fixture was checked"
+    );
+}
+
+#[test]
+fn tool_02_compile_pattern_and_extract_edge_cases() {
+    // A valid pattern without the required group is rejected, naming the group.
+    let err = version::compile_pattern(r"v(\d+)", "version").expect_err("no named group");
+    assert!(err.to_string().contains("version"), "error: {err}");
+
+    // A syntax error is reported, not unwrapped.
+    assert!(version::compile_pattern("(unclosed", "version").is_err());
+
+    // A pattern whose compiled form exceeds the 1 MiB limit is rejected (T-01-10).
+    assert!(
+        version::compile_pattern(r"(?P<version>\w{1000}){1000}", "version").is_err(),
+        "an oversized regex must be refused"
+    );
+
+    // extract returns the group, or None when nothing matches.
+    let re = version::compile_pattern(r"v(?P<version>\d+\.\d+)", "version").unwrap();
+    assert_eq!(
+        version::extract(&re, "version", "tool v3.2 ready").as_deref(),
+        Some("3.2")
+    );
+    assert_eq!(version::extract(&re, "version", "no version here"), None);
+    assert_eq!(version::extract(&re, "other", "tool v3.2"), None);
+
+    // The first dot component, and nothing else, is the major.
+    assert_eq!(version::llvm_major_from_version("16.0.6"), Some(16));
+    assert_eq!(version::llvm_major_from_version("3.2"), Some(3));
+    assert_eq!(version::llvm_major_from_version("16"), Some(16));
+    assert_eq!(version::llvm_major_from_version(""), None);
+    assert_eq!(version::llvm_major_from_version("x.1"), None);
 }

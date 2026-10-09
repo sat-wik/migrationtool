@@ -11,3 +11,4 @@ pub mod build_args;
 pub mod check;
 pub mod pins;
 pub mod runner;
+pub mod version;
