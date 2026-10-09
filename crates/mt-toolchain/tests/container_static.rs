@@ -218,3 +218,291 @@ fn tool_03_tool_expectations_agree_with_sources() {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Dockerfile and workflow lints (TOOL-03): nothing floats, nothing is unchecked.
+// ---------------------------------------------------------------------------
+
+/// Hosts whose package or key material is not fixed by a snapshot timestamp.
+const FLOATING_APT_HOSTS: &[&str] = &["deb.debian.org", "security.debian.org", "apt.llvm.org"];
+
+/// Dockerfile instructions as `(KEYWORD, arguments)`: comment lines dropped and
+/// continuation lines joined, the way the Dockerfile parser reads them.
+fn dockerfile_instructions(text: &str) -> Vec<(String, String)> {
+    let mut joined = Vec::new();
+    let mut current = String::new();
+    for raw in text.lines() {
+        let line = raw.trim();
+        if line.starts_with('#') || line.is_empty() {
+            continue;
+        }
+        if let Some(head) = line.strip_suffix('\\') {
+            current.push_str(head);
+            current.push(' ');
+            continue;
+        }
+        current.push_str(line);
+        joined.push(std::mem::take(&mut current));
+    }
+    if !current.is_empty() {
+        joined.push(current);
+    }
+    joined
+        .into_iter()
+        .map(
+            |instruction| match instruction.split_once(char::is_whitespace) {
+                Some((keyword, rest)) => (keyword.to_uppercase(), rest.trim().to_owned()),
+                None => (instruction.to_uppercase(), String::new()),
+            },
+        )
+        .collect()
+}
+
+/// The checks that apply to one `RUN` instruction.
+fn run_issues(run: &str, issues: &mut Vec<String>) {
+    let curl = regex::Regex::new(r"(?:^|[\s;&|(])curl\s+-").unwrap();
+    let pipe_to_shell = regex::Regex::new(r"\|\s*(?:sudo\s+)?(?:ba|da|z)?sh\b").unwrap();
+    let pinned_version = regex::Regex::new(r#"--version\s+"?="#).unwrap();
+    if pipe_to_shell.is_match(run) {
+        issues.push(format!("RUN pipes into a shell: {run}"));
+    }
+    if curl.is_match(run) && !run.contains("sha256sum -c") {
+        issues.push(format!("RUN uses curl without `sha256sum -c`: {run}"));
+    }
+    if run.contains("git clone") && !run.contains("rev-parse HEAD") {
+        issues.push(format!(
+            "RUN clones without checking `rev-parse HEAD`: {run}"
+        ));
+    }
+    if run.contains("cargo install") && !(run.contains("--locked") && pinned_version.is_match(run))
+    {
+        issues.push(format!(
+            "RUN cargo install lacks `--locked` or an exact `--version =`: {run}"
+        ));
+    }
+}
+
+/// Every way `text` lets something float: tags, frontends, unchecked downloads
+/// and apt sources outside the snapshot archive.
+fn dockerfile_issues(text: &str) -> Vec<String> {
+    let mut issues = Vec::new();
+    let syntax = regex::Regex::new(r"(?im)^\s*#\s*syntax\s*=").unwrap();
+    if syntax.is_match(text) {
+        issues.push("a syntax directive pulls a floating frontend".to_owned());
+    }
+    let apt_source = regex::Regex::new(r"\bdeb\s+(?:\[[^\]]*\]\s+)?https?://\S+").unwrap();
+    let mut stages: Vec<String> = Vec::new();
+    for (keyword, rest) in dockerfile_instructions(text) {
+        if rest.contains(":latest") {
+            issues.push(format!("{keyword} uses :latest: {rest}"));
+        }
+        for host in FLOATING_APT_HOSTS {
+            if rest.contains(host) {
+                issues.push(format!("{keyword} names the floating host {host}"));
+            }
+        }
+        for source in apt_source.find_iter(&rest) {
+            if !source.as_str().contains("snapshot.debian.org") {
+                issues.push(format!(
+                    "apt source outside snapshot.debian.org: {}",
+                    source.as_str()
+                ));
+            }
+        }
+        match keyword.as_str() {
+            "FROM" => {
+                let tokens: Vec<&str> = rest.split_whitespace().collect();
+                let flags = tokens.iter().take_while(|t| t.starts_with("--")).count();
+                let image = tokens.get(flags).copied();
+                let platform = tokens[..flags]
+                    .iter()
+                    .find_map(|t| t.strip_prefix("--platform="));
+                match image {
+                    None => issues.push("FROM without an image".to_owned()),
+                    Some(name) if stages.iter().any(|s| s == name) => {}
+                    Some(name) => {
+                        if name != "${BASE_REF}@${BASE_DIGEST}" || platform != Some("${PLATFORM}") {
+                            issues.push(format!(
+                                "FROM {rest}: an external image must be `--platform=${{PLATFORM}} ${{BASE_REF}}@${{BASE_DIGEST}}`"
+                            ));
+                        }
+                    }
+                }
+                let alias = tokens
+                    .get(flags + 1)
+                    .filter(|t| t.eq_ignore_ascii_case("as"))
+                    .and_then(|_| tokens.get(flags + 2));
+                if let Some(alias) = alias {
+                    stages.push((*alias).to_owned());
+                }
+            }
+            "RUN" => run_issues(&rest, &mut issues),
+            _ => {}
+        }
+    }
+    issues
+}
+
+/// `(global ARG names, problems)`: the ARGs declared before the first `FROM`, and
+/// every `ARG` anywhere in the file that carries a default value.
+fn dockerfile_args(text: &str) -> (Vec<String>, Vec<String>) {
+    let mut global = Vec::new();
+    let mut problems = Vec::new();
+    let mut seen_from = false;
+    for (keyword, rest) in dockerfile_instructions(text) {
+        match keyword.as_str() {
+            "FROM" => seen_from = true,
+            "ARG" => {
+                if rest.contains('=') {
+                    problems.push(format!("ARG {rest}: build arguments must have no default"));
+                }
+                let name = rest.split('=').next().unwrap_or_default().trim().to_owned();
+                if !seen_from {
+                    global.push(name);
+                }
+            }
+            _ => {}
+        }
+    }
+    (global, problems)
+}
+
+/// Problems with the `uses:` values of one workflow file.
+fn workflow_use_issues(file: &str, text: &str) -> (usize, Vec<String>) {
+    let line = regex::Regex::new(r"^\s*(?:-\s+)?uses:\s*(\S+)").unwrap();
+    let pinned =
+        regex::Regex::new(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_./-]+)?@[0-9a-f]{40}$")
+            .unwrap();
+    let mut count = 0;
+    let mut issues = Vec::new();
+    for raw in text.lines() {
+        let Some(captures) = line.captures(raw) else {
+            continue;
+        };
+        count += 1;
+        let value = captures[1].trim_matches(['"', '\'']);
+        if value.starts_with("docker://") {
+            issues.push(format!("{file}: docker:// reference {value}"));
+        } else if !pinned.is_match(value) {
+            issues.push(format!(
+                "{file}: {value} is not pinned to a 40-hex commit SHA"
+            ));
+        }
+    }
+    (count, issues)
+}
+
+#[test]
+fn tool_03_dockerfile_has_no_floating_references() {
+    let dockerfile = read_repo_file("container/Dockerfile");
+    assert_eq!(dockerfile_issues(&dockerfile), Vec::<String>::new());
+
+    // What must be refused.
+    let digest = format!("sha256:{}", "a".repeat(64));
+    let refused = [
+        ("syntax directive", "# syntax=docker/dockerfile:1\nFROM --platform=${PLATFORM} ${BASE_REF}@${BASE_DIGEST} AS a\n".to_owned()),
+        ("floating tag", "FROM --platform=${PLATFORM} debian:latest AS a\n".to_owned()),
+        ("digest without platform", format!("FROM debian@{digest} AS a\n")),
+        ("unnamed stage", "FROM --platform=${PLATFORM} ${BASE_REF}@${BASE_DIGEST} AS a\nFROM b\n".to_owned()),
+        ("curl without checksum", "FROM --platform=${PLATFORM} ${BASE_REF}@${BASE_DIGEST} AS a\nRUN curl -fsSL https://example.org/x -o /x\n".to_owned()),
+        ("pipe into sh", "FROM --platform=${PLATFORM} ${BASE_REF}@${BASE_DIGEST} AS a\nRUN echo hi | sh\n".to_owned()),
+        ("clone without commit check", "FROM --platform=${PLATFORM} ${BASE_REF}@${BASE_DIGEST} AS a\nRUN git clone --depth 1 https://example.org/r /r\n".to_owned()),
+        ("install without --locked", "FROM --platform=${PLATFORM} ${BASE_REF}@${BASE_DIGEST} AS a\nRUN cargo install foo --version =1.0.0\n".to_owned()),
+        ("install without exact version", "FROM --platform=${PLATFORM} ${BASE_REF}@${BASE_DIGEST} AS a\nRUN cargo install --locked foo\n".to_owned()),
+        ("apt source off snapshot", "FROM --platform=${PLATFORM} ${BASE_REF}@${BASE_DIGEST} AS a\nRUN echo \"deb http://deb.debian.org/debian bookworm main\" > /etc/apt/sources.list\n".to_owned()),
+    ];
+    for (name, text) in refused {
+        assert!(
+            !dockerfile_issues(&text).is_empty(),
+            "{name} must be refused"
+        );
+    }
+
+    // What must be accepted: a `curl` package name is not a download, and a
+    // checked download, a checked clone and a pinned install are fine.
+    let accepted = "FROM --platform=${PLATFORM} ${BASE_REF}@${BASE_DIGEST} AS a\n\
+        FROM a AS b\n\
+        RUN apt-get install -y curl git\n\
+        RUN curl -fsSLO https://example.org/x \\\n && echo \"h  x\" | sha256sum -c -\n\
+        RUN git clone --branch t https://example.org/r /r \\\n && test \"$(git -C /r rev-parse HEAD)\" = c\n\
+        RUN cargo install --locked foo --version =1.0.0\n\
+        RUN echo \"deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/x/ s main\"\n";
+    assert_eq!(dockerfile_issues(accepted), Vec::<String>::new());
+}
+
+#[test]
+fn tool_03_dockerfile_args_match_pins() {
+    let pins = container_pins();
+    let rendered =
+        mt_toolchain::build_args::render(&pins, mt_toolchain::build_args::Scope::Image).unwrap();
+    let want: BTreeSet<String> = rendered.keys().cloned().collect();
+
+    let (global, problems) = dockerfile_args(&read_repo_file("container/Dockerfile"));
+    assert_eq!(problems, Vec::<String>::new());
+    let got: BTreeSet<String> = global.iter().cloned().collect();
+    assert_eq!(
+        global.len(),
+        got.len(),
+        "a global ARG is declared twice: {global:?}"
+    );
+    assert_eq!(
+        got.difference(&want).collect::<Vec<_>>(),
+        Vec::<&String>::new(),
+        "the Dockerfile declares ARGs that `mt toolchain build-args` does not render"
+    );
+    assert_eq!(
+        want.difference(&got).collect::<Vec<_>>(),
+        Vec::<&String>::new(),
+        "`mt toolchain build-args` renders keys the Dockerfile does not declare"
+    );
+
+    // A default value is refused wherever it appears.
+    let (_, problems) = dockerfile_args("ARG A=1\nFROM x\nARG B=2\n");
+    assert_eq!(problems.len(), 2);
+}
+
+#[test]
+fn tool_03_workflows_pin_actions_by_commit_sha() {
+    let dir = repo_root().join(".github/workflows");
+    let mut files: Vec<PathBuf> = fs::read_dir(&dir)
+        .unwrap_or_else(|err| panic!("cannot read {}: {err}", dir.display()))
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| {
+            path.extension()
+                .is_some_and(|ext| ext == "yml" || ext == "yaml")
+        })
+        .collect();
+    files.sort();
+    assert!(
+        !files.is_empty(),
+        "no workflow files under .github/workflows"
+    );
+
+    let mut uses = 0;
+    let mut issues = Vec::new();
+    for path in &files {
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        let (count, found) = workflow_use_issues(&name, &fs::read_to_string(path).unwrap());
+        uses += count;
+        issues.extend(found);
+    }
+    assert!(uses > 0, "no `uses:` found; the check would be vacuous");
+    assert_eq!(issues, Vec::<String>::new());
+
+    // What must be refused and accepted.
+    let sha = "3d3c42e5aac5ba805825da76410c181273ba90b1";
+    for bad in [
+        "uses: actions/checkout@v4".to_owned(),
+        format!("uses: actions/checkout@{}", sha.to_uppercase()),
+        format!("uses: actions/checkout@{}", &sha[..39]),
+        format!("- uses: docker://alpine@sha256:{}", "a".repeat(64)),
+        "uses: ./local-action".to_owned(),
+    ] {
+        assert!(
+            !workflow_use_issues("t.yml", &bad).1.is_empty(),
+            "{bad} must be refused"
+        );
+    }
+    let good = format!("- uses: actions/checkout@{sha} # v7.0.1\n  uses: owner/repo/sub@{sha}\n");
+    assert_eq!(workflow_use_issues("t.yml", &good), (2, Vec::new()));
+}

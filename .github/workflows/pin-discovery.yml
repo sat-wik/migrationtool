@@ -1,0 +1,129 @@
+# Pin discovery (plan 01-06). The Debian snapshot archive and developer.arm.com
+# are reachable from GitHub runners but not from cloud sessions, so this
+# workflow resolves what only they can: the exact apt candidate versions at the
+# pinned snapshot timestamp, and the official Arm checksum. The result is
+# published as a job annotation titled `pin-discovery` (the Actions log and
+# artifact hosts are not reachable from cloud sessions) and in the step summary.
+#
+# Action commit SHAs are pinned here because GitHub resolves `uses:` before any
+# step can read container/pins.toml; every other pin comes from that file.
+name: pin-discovery
+
+on:
+  push:
+    paths:
+      - container/pins.toml
+      - container/Dockerfile
+      - .github/workflows/pin-discovery.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Build mt
+        run: cargo build --locked -p mt-cli
+
+      # Values are only ever read as data: never evaluated by the shell.
+      - name: Render the pins
+        id: ci-pins
+        run: |
+          target/debug/mt toolchain build-args --pins container/pins.toml --scope ci >> "$GITHUB_OUTPUT"
+          target/debug/mt toolchain build-args --pins container/pins.toml > "$RUNNER_TEMP/image-args.txt"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=${{ steps.ci-pins.outputs.BUILDKIT_IMAGE }}
+
+      - name: Build the snapshot-sources stage
+        run: |
+          args=()
+          while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            args+=(--build-arg "${line%%=*}=${line#*=}")
+          done < "$RUNNER_TEMP/image-args.txt"
+          docker buildx build --platform linux/amd64 --target snapshot-sources --load \
+            --tag mt-snapshot-sources "${args[@]}" container
+
+      - name: Resolve package versions and the Arm checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOG="$RUNNER_TEMP/discovery.log"
+          : > "$LOG"
+          # A text file as annotation message text: %, CR and LF escaped.
+          escape() {
+            local text
+            text=$(cat "$1")
+            text=${text//'%'/'%25'}
+            text=${text//$'\r'/'%0D'}
+            text=${text//$'\n'/'%0A'}
+            printf '%s' "$text"
+          }
+          fail() {
+            printf '%s\n' "$*" >> "$LOG"
+            { echo "pin-discovery failed"; tail -n 60 "$LOG"; } > "$RUNNER_TEMP/failure.txt"
+            echo "::error title=pin-discovery-failure::$(escape "$RUNNER_TEMP/failure.txt")"
+            exit 1
+          }
+          trap 'fail "unexpected failure of: ${BASH_COMMAND} (line ${LINENO})"' ERR
+
+          arg() { grep -m1 "^$1=" "$RUNNER_TEMP/image-args.txt" | cut -d= -f2-; }
+          LLVM_MAJOR=$(arg LLVM_MAJOR)
+          ARM_GNU_URL=$(arg ARM_GNU_URL)
+          ARM_GNU_SHA256=$(arg ARM_GNU_SHA256)
+          BASE_REF=$(arg BASE_REF)
+          BASE_DIGEST=$(arg BASE_DIGEST)
+          SNAPSHOT_TIMESTAMP=$(arg SNAPSHOT_TIMESTAMP)
+
+          packages="clang-${LLVM_MAJOR} llvm-${LLVM_MAJOR} llvm-${LLVM_MAJOR}-dev libclang-${LLVM_MAJOR}-dev libclang-cpp${LLVM_MAJOR}-dev bear qemu-system-arm qemu-user libz3-4"
+
+          # Candidate versions from the snapshot sources of the built stage.
+          docker run --rm mt-snapshot-sources sh -c \
+            'apt-get update 1>&2 && apt-cache policy "$@"' sh $packages \
+            > "$RUNNER_TEMP/policy.txt" 2>> "$LOG"
+          awk '/^[^ ].*:$/ { pkg = $1; sub(/:$/, "", pkg) } /^  Candidate:/ { print pkg "\t" $2 }' \
+            "$RUNNER_TEMP/policy.txt" > "$RUNNER_TEMP/candidates.tsv"
+
+          : > "$RUNNER_TEMP/apt.toml"
+          for pkg in $packages; do
+            version=$(awk -F'\t' -v p="$pkg" '$1 == p { print $2 }' "$RUNNER_TEMP/candidates.tsv")
+            if [ -z "$version" ] || [ "$version" = "(none)" ]; then
+              fail "no apt candidate for ${pkg} at the pinned snapshot"
+            fi
+            printf '"%s" = "%s"\n' "$pkg" "$version" >> "$RUNNER_TEMP/apt.toml"
+          done
+
+          # The official Arm checksum against a fresh download and the pinned value.
+          official=$(curl -fsSL "${ARM_GNU_URL}.sha256asc" | awk 'NR == 1 { print $1 }')
+          computed=$(target/debug/mt toolchain hash "$ARM_GNU_URL" | awk '{ print $1 }')
+          if [ -z "$official" ] || [ "$official" != "$computed" ]; then
+            fail "Arm checksum mismatch: official=${official:-none} computed=${computed:-none}"
+          fi
+
+          # Informational: where the base tag points today (for pin bumps).
+          today=$(docker buildx imagetools inspect "$BASE_REF" 2>> "$LOG" | sed -n 's/^Digest:[[:space:]]*//p' | head -n 1 || true)
+
+          {
+            echo "[apt] candidates at snapshot ${SNAPSHOT_TIMESTAMP}"
+            cat "$RUNNER_TEMP/apt.toml"
+            echo "arm_gnu official sha256: ${official}"
+            echo "arm_gnu computed sha256: ${computed}"
+            echo "arm_gnu pinned sha256:   ${ARM_GNU_SHA256}"
+            echo "base digest pinned:      ${BASE_DIGEST}"
+            echo "base digest today:       ${today:-unavailable}"
+          } > "$RUNNER_TEMP/block.txt"
+
+          cat "$RUNNER_TEMP/block.txt" >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=pin-discovery::$(escape "$RUNNER_TEMP/block.txt")"

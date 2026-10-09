@@ -1,0 +1,54 @@
+# Pre-merge checks (CONTEXT D-23). The same commands run locally before a push.
+# Action commit SHAs are pinned here because GitHub resolves `uses:` before any
+# step can read container/pins.toml; every other pin comes from that file.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # With no arguments rustup installs the toolchain named by rust-toolchain.toml.
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --locked
+
+      # The no_std smoke crate is its own workspace root (TOOL-04), so it is built
+      # and linted explicitly on the host; the arm-none-eabi-gcc half runs in the
+      # container.
+      - name: Smoke crate build for thumbv7em-none-eabihf
+        run: cargo build --locked --manifest-path container/smoke/Cargo.toml --target thumbv7em-none-eabihf
+
+      - name: Smoke crate clippy for thumbv7em-none-eabihf
+        run: cargo clippy --locked --manifest-path container/smoke/Cargo.toml --target thumbv7em-none-eabihf -- -D warnings
+
+      - name: Read the CI pins
+        id: ci-pins
+        run: cargo run -q -p mt-cli -- toolchain build-args --pins container/pins.toml --scope ci >> "$GITHUB_OUTPUT"
+
+      - name: Install cargo-deny at the pinned version
+        env:
+          CARGO_DENY_VERSION: ${{ steps.ci-pins.outputs.CARGO_DENY_VERSION }}
+        run: cargo install --locked cargo-deny --version "=${CARGO_DENY_VERSION}"
+
+      - name: Dependency policy
+        run: cargo deny check
