@@ -6,7 +6,7 @@
     {
       "number": "1",
       "name": "Pinned Toolchain Container",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "2",
@@ -69,5 +69,5 @@
     "label": "Advance to the next step",
     "reason": "Phase 01 of 12 · executing"
   },
-  "updated_at": "2026-10-09T16:34:18.686Z"
+  "updated_at": "2026-10-09T17:28:41.781Z"
 }
