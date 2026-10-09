@@ -52,7 +52,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Building the container image twice from the same inputs produces identical tool-version manifests, and every base image and tool source is pinned by digest, commit or checksum with no floating tags.
   4. Inside the container a trivial `no_std` crate builds for `thumbv7em-none-eabihf`, the workspace launches an analyser through the subprocess runner with stdout, stderr, exit status and version stamp captured, and a repository check fails on any Python source outside `research/`.
 
-**Plans:** 8/8 plans executed
+**Plans:** 8/9 plans executed (01-09 is gap closure)
 
 Plans:
 **Wave 1**
@@ -74,6 +74,9 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 - [x] 01-08-PLAN.md — GHCR publish by digest, container README, recorded container reference (wave 6)
+
+**Wave 7** *(gap closure; blocked on Wave 6 completion)*
+- [ ] 01-09-PLAN.md — CR-01 / TOOL-03: Rust toolchains installed by rustup only from a file:// mirror of the sha256-verified channel manifests, c2rust and cargo-mutants installed from the verified .crate with --path, static rules plus an image-a pin-binding gate, CI to green, README digest refreshed (wave 7)
 
 ### Phase 2: Test Bed and Build Capture
 
@@ -231,7 +234,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Pinned Toolchain Container | 8/8 | In Progress | - |
+| 1. Pinned Toolchain Container | 8/9 | In Progress | - |
 | 2. Test Bed and Build Capture | 0/0 | Not started | - |
 | 3. Equivalence Contract and Test-Vector Schema | 0/0 | Not started | - |
 | 4. UB Detection and Decision Log | 0/0 | Not started | - |
