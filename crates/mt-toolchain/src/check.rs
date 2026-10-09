@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use regex::{Regex, RegexBuilder};
 
-use crate::pins::{Pins, ToolSpec};
+use crate::pins::{Pins, ToolPinStatus, ToolSpec};
 use crate::runner::{self, RunRequest, RunnerConfig, RunnerError};
 
 /// Compiled-regex size limit (threat T-01-05): 1 MiB.
@@ -24,6 +24,8 @@ pub enum ToolStatus {
     Mismatch,
     /// The program does not exist.
     Missing,
+    /// The tool is deliberately absent (CONTEXT D-10); never a failure.
+    NotInstalled,
 }
 
 impl ToolStatus {
@@ -34,7 +36,14 @@ impl ToolStatus {
             Self::Ok => "OK",
             Self::Mismatch => "MISMATCH",
             Self::Missing => "MISSING",
+            Self::NotInstalled => "not_installed",
         }
+    }
+
+    /// True for statuses that do not fail a report.
+    #[must_use]
+    pub fn is_pass(self) -> bool {
+        matches!(self, Self::Ok | Self::NotInstalled)
     }
 }
 
@@ -59,10 +68,10 @@ pub struct CheckReport {
 }
 
 impl CheckReport {
-    /// True only when every row is [`ToolStatus::Ok`].
+    /// True when every row is [`ToolStatus::Ok`] or [`ToolStatus::NotInstalled`].
     #[must_use]
     pub fn passed(&self) -> bool {
-        self.rows.iter().all(|row| row.status == ToolStatus::Ok)
+        self.rows.iter().all(|row| row.status.is_pass())
     }
 
     /// One line per tool: key, expected, actual (`-` when unknown), status.
@@ -172,6 +181,15 @@ pub fn run_check(pins: &Pins, cwd: &Path) -> Result<CheckReport, CheckError> {
     };
     let mut rows = Vec::with_capacity(pins.tool.len());
     for (key, spec) in &pins.tool {
+        if spec.status == ToolPinStatus::NotInstalled {
+            rows.push(ToolRow {
+                key: key.clone(),
+                expected: "-".to_owned(),
+                actual: None,
+                status: ToolStatus::NotInstalled,
+            });
+            continue;
+        }
         let regex = compile(key, spec)?;
         let mut argv = vec![spec.bin.clone().into()];
         argv.extend(spec.version_args.iter().map(Into::into));
@@ -179,7 +197,7 @@ pub fn run_check(pins: &Pins, cwd: &Path) -> Result<CheckReport, CheckError> {
             tool_name: key.clone(),
             argv,
             cwd: cwd.to_path_buf(),
-            extra_env: std::collections::BTreeMap::new(),
+            extra_env: spec.env.clone(),
             tool_version: Some(spec.expect.clone()),
         };
         let (actual, status) = match runner::run(&cfg, &request) {
