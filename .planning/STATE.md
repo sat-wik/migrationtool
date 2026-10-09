@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: MVP
 current_phase: 01
 current_phase_name: Pinned Toolchain Container
-status: Ready to execute plan 01-07
-stopped_at: Completed 01-06-PLAN.md
-last_updated: "2026-10-09T17:29:03.561Z"
+status: Ready to execute plan 01-08
+stopped_at: Completed 01-07-PLAN.md
+last_updated: "2026-10-09T19:44:19.134Z"
 last_activity: 2026-10-09
-last_activity_desc: Completed 01-06 container pins, Dockerfile base and CI workflows
-state_head: d039a749d59953ab1ebfcf2582eb616357a3b594
+last_activity_desc: Completed 01-07 container image and CI proofs (container, ci and pin-discovery green)
+state_head: 040455a35c2ef42630349f8cf4202a689a6d1eb9
 progress:
   total_phases: 12
   completed_phases: 0
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-10-07)
 ## Current Position
 
 Phase: 01 (Pinned Toolchain Container) — EXECUTING
-Plan: 7 of 8 (01-06 complete; next 01-07)
-Status: Ready to execute plan 01-07
-Last activity: 2026-10-09 — Completed 01-06 container pins, Dockerfile base and CI workflows
+Plan: 8 of 8 (01-07 complete; next 01-08)
+Status: Ready to execute plan 01-08
+Last activity: 2026-10-09 — Completed 01-07 container image and CI proofs
 
-Progress: [███████░░░] 75%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [███████░░░] 75%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01 P06 | 12 min | 3 tasks | 7 files |
+| Phase 01 P07 | 130 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,8 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Init]: MVP "full evidence" excludes Kani proofs (D-14, assumption A-01, awaiting founder confirmation)
 - [Phase 01]: D-15: provisional pin llvm=16 bitcode-rustc=1.72.1 recorded in PROJECT.md; D-16: runner.rs is the only std::process module — CONTEXT D-01, D-03, D-21: one LLVM major for all C-side tools, gate fails cargo test if either value moves without a matching decision line
 - [Phase 01]: qemu_arm and qemu_system_arm expect the full apt candidate version; confirm against real banner in 01-07 — Plan 01-06 wording; the +b3 binNMU suffix may not appear in the banner, a risk settled by the first container capture
+- [Phase 01]: 01-07: c2rust LLVM probe retargeted to c2rust-transpile (the c2rust dispatcher links no LLVM); version format is 'C2Rust 0.22.1'
+- [Phase 01]: 01-07: QEMU pins use the Debian version in the banner parentheses incl. +b3; fixtures are real CI captures from container run 37969688167
 
 ### Pending Todos
 
@@ -102,6 +105,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-09T17:28:42.895Z
-Stopped at: Completed 01-06-PLAN.md
+Last session: 2026-10-09T19:44:19.084Z
+Stopped at: Completed 01-07-PLAN.md
 Resume file: None
