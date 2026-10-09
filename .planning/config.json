@@ -8,7 +8,8 @@
     "verifier": true,
     "nyquist_validation": true,
     "build_command": "cargo build --workspace",
-    "test_command": "cargo test --workspace"
+    "test_command": "cargo test --workspace",
+    "_auto_chain_active": false
   },
   "parallelization": true,
   "brave_search": false,

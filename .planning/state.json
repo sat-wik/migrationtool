@@ -1,0 +1,73 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": "v1.0 — MVP",
+  "phases": [
+    {
+      "number": "1",
+      "name": "Pinned Toolchain Container",
+      "status": "pending"
+    },
+    {
+      "number": "2",
+      "name": "Test Bed and Build Capture",
+      "status": "pending"
+    },
+    {
+      "number": "3",
+      "name": "Equivalence Contract and Test-Vector Schema",
+      "status": "pending"
+    },
+    {
+      "number": "4",
+      "name": "UB Detection and Decision Log",
+      "status": "pending"
+    },
+    {
+      "number": "5",
+      "name": "Target-Matched Differential Harness",
+      "status": "pending"
+    },
+    {
+      "number": "6",
+      "name": "Symbolic Layer and Analysis Spikes",
+      "status": "pending"
+    },
+    {
+      "number": "7",
+      "name": "Harness Self-Validation and Anti-Gaming Gates",
+      "status": "pending"
+    },
+    {
+      "number": "8",
+      "name": "Translator Front End",
+      "status": "pending"
+    },
+    {
+      "number": "9",
+      "name": "Agentic Two-Stage Translation",
+      "status": "pending"
+    },
+    {
+      "number": "10",
+      "name": "C-ABI Boundary and Integration",
+      "status": "pending"
+    },
+    {
+      "number": "11",
+      "name": "Evidence Bundle and Scoping Report v0",
+      "status": "pending"
+    },
+    {
+      "number": "12",
+      "name": "Public Benchmark and Day-90 Gate",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 1 of 12 · executing"
+  },
+  "updated_at": "2026-10-09T04:33:51.579Z"
+}

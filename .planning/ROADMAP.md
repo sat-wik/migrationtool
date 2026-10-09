@@ -42,6 +42,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Pinned Toolchain Container
+
 **Goal**: Every compiler and analyser the harness and translator need runs as a pinned subprocess inside one reproducible container, on a single pinned LLVM.
 **Depends on**: Nothing (first phase)
 **Requirements**: TOOL-01, TOOL-02, TOOL-03, TOOL-04
@@ -50,19 +51,32 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. One LLVM major in 16-19 is recorded as the pin for clang, KLEE and c2rust, the version check fails if any of them reports a different major, and the pinned rustc reports an LLVM at or below 19 (recorded as provisional until the Phase 6 R1 spike).
   3. Building the container image twice from the same inputs produces identical tool-version manifests, and every base image and tool source is pinned by digest, commit or checksum with no floating tags.
   4. Inside the container a trivial `no_std` crate builds for `thumbv7em-none-eabihf`, the workspace launches an analyser through the subprocess runner with stdout, stderr, exit status and version stamp captured, and a repository check fails on any Python source outside `research/`.
+
 **Plans:** 8 plans
 
 Plans:
+**Wave 1**
 - [ ] 01-01-PLAN.md — Tracer: `mt toolchain check` end to end through the subprocess runner; runner contract hardening (wave 1)
 - [ ] 01-02-PLAN.md — Founder gates: c2rust package legitimacy and CI push mode (wave 1, checkpoints)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-03-PLAN.md — pins.toml schema v1, validation, version/LLVM parsers, `mt toolchain build-args` (wave 2)
 - [ ] 01-04-PLAN.md — Repository guards (no Python, process confinement, forbid unsafe, no analyser bindings), cargo-deny, no_std smoke crate (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 01-05-PLAN.md — Full check rules (single LLVM major, bitcode rustc bound), manifest and manifest-diff, `mt toolchain hash` (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 01-06-PLAN.md — Real container/pins.toml, PROJECT D-15/D-16 and decision gate, Dockerfile base stage, ci and pin-discovery workflows, discovery round trip (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 01-07-PLAN.md — Full Dockerfile, container workflow (live check, off-pin check, double build and manifest diff, smoke), CI to green (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
 - [ ] 01-08-PLAN.md — GHCR publish by digest, container README, recorded container reference (wave 6)
 
 ### Phase 2: Test Bed and Build Capture
+
 **Goal**: A pinned test bed of 10-20 real C parsers can be rebuilt exactly, per shipped configuration, for Cortex-M with GCC.
 **Depends on**: Phase 1
 **Requirements**: BED-01, BED-02, BUILD-01, BUILD-02, BUILD-03
@@ -71,9 +85,11 @@ Plans:
   2. Each target declares its shipped configurations, and the first-RTOS choice (Zephyr or FreeRTOS) is recorded as a decision, even if recorded as deferred because parsers are RTOS-independent.
   3. For every target and configuration the capture command writes a `compile_commands.json` covering every translation unit, and replaying it in the container reproduces the original build output (byte-identical objects, or identical after a documented normalisation); targets that cannot be reproduced are dropped with the cause logged, leaving at least 10.
   4. Each target has a seed corpus extracted from its own tests and fixtures, or at least 10 hand-made seeds (proposed) when it has none.
+
 **Plans**: TBD
 
 ### Phase 3: Equivalence Contract and Test-Vector Schema
+
 **Goal**: "Equivalent" is written down and machine-checkable, and the original C can be run against any test vector to produce a deterministic reference result.
 **Depends on**: Phase 2
 **Requirements**: EQV-01, EQV-02, EQV-03, EQV-04
@@ -82,9 +98,11 @@ Plans:
   2. A vector schema with exactly `argv, stdin, env, stdout, stderr, rc, lib_state_in, lib_state_out, has_ub` validates vectors and round-trips in Rust types; a vector with a single merged `lib_state` is rejected; at least 3 TRACTOR public-corpus vectors load unchanged (corpus used locally only, licence checked in Phase 12 before any redistribution).
   3. At least 10 test-bed targets have an entry-point adapter declaring the function and its argument roles, so bytes in produce return code, output buffer and library state out as a vector.
   4. The C reference executor runs any vector against the target's original C build and stores the result in a schema-valid vector; running the same vector twice gives byte-identical results.
+
 **Plans**: TBD
 
 ### Phase 4: UB Detection and Decision Log
+
 **Goal**: Every input and code site where the original C has undefined or implementation-defined behavior is detected, labelled and recorded with a decision, defaulting to "return an error".
 **Depends on**: Phase 3
 **Requirements**: UB-01, UB-02, UB-03, UB-04, UB-05
@@ -94,9 +112,11 @@ Plans:
   3. A KLEE scan (C side, pinned LLVM) or Frama-C scan of the parser entry functions of at least 3 test-bed targets lists UB sites the corpus never reached, with per-function completion or timeout recorded, and merges them into the UB log tagged with their provenance.
   4. Plain `char` signedness, integer and pointer sizes and the layout of every struct crossing the interface are extracted from the target configuration (not assumed) and logged for sign-off.
   5. The UB decisions log has site or input class, decision, rationale, approver and date for every detected entry, pre-filled with "return error"; the tool refuses to mark a module UB-complete while any entry lacks a decision.
+
 **Plans**: TBD
 
 ### Phase 5: Target-Matched Differential Harness
+
 **Goal**: The original C and a candidate Rust module, linked behind the same C interface, are compared on every fuzz and test input under an ILP32, unsigned-char configuration that matches the Cortex-M target.
 **Depends on**: Phase 4
 **Requirements**: DIFF-01, DIFF-02, DIFF-03, DIFF-04, DIFF-05, DIFF-06, DIFF-07
@@ -106,9 +126,11 @@ Plans:
   3. Inputs tagged `has_ub` are checked against the UB policy (Rust returns the error code) instead of the C output, and a Rust function that crashes or corrupts memory on such an input is reported as a divergence.
   4. Branch coverage of the original C (not the Rust) is reported per function and module against the 90% threshold (proposed), with uncovered branches listed.
   5. Fuzzing is seeded from the test-bed seeds and per-target dictionaries with protocol-aware mutators for at least CBOR and TLV-style formats, and the final corpus replays on an emulated Cortex-M target (Renode preferred; QEMU as a recorded fallback) with the same verdicts as the host run, or the mismatches are recorded as findings.
+
 **Plans**: TBD
 
 ### Phase 6: Symbolic Layer and Analysis Spikes
+
 **Goal**: Decide with evidence whether per-function symbolic equivalence (KLEE on both sides) and Kani with c2rust output as reference are viable, and wire up whatever passes, without letting either block the day-90 path.
 **Depends on**: Phase 5
 **Requirements**: SYM-01, SYM-02, SYM-03
@@ -117,9 +139,11 @@ Plans:
   2. If R1 is GO, a per-function symbolic layer runs on at least 5 test-bed functions and reports equivalent-within-bound, divergent-with-counterexample, or timeout (shown as "not proven", never as a pass) in the same result schema as fuzzing. If NO-GO, the schema reports "symbolic: unavailable" and the full-evidence definition drops the KLEE term (PROJECT.md D-14).
   3. R2 spike verdict (c2rust output as Kani reference) is recorded as GO, NO-GO or "deferred to v2.0" within a 1-week part-time time box (proposed). Proposed GO criteria, all required: Kani loads c2rust output for at least 2 toy C functions including one that calls libc through `extern "C"` using hand-written stubs; proves equivalence to a clean Rust version for inputs of at most 16 bytes within 5 minutes; and returns a counterexample on a planted-bug pair. A missed time box defers it to v2.0 and does not block Phase 7.
   4. Kani's known blind spots (aliasing violations, unaligned dereference, concurrency, inline assembly) appear in the evidence caveat text regardless of the R2 verdict.
+
 **Plans**: TBD
 
 ### Phase 7: Harness Self-Validation and Anti-Gaming Gates
+
 **Goal**: Prove the harness catches what it claims and that translated output cannot pass by cheating, before any translator exists.
 **Depends on**: Phase 5, Phase 6
 **Requirements**: SELF-01, SELF-02, SELF-03, GATE-01, GATE-02, GATE-03, GATE-05, GATE-06
@@ -129,9 +153,11 @@ Plans:
   3. A gate suite rejects planted violations with specific messages: `todo!()`, `unimplemented!()`, an empty non-unit body, `unsafe` outside the boundary module, an `unsafe` block without a SAFETY justification, use of `alloc`, a crate that fails the `thumbv7em-none-eabihf` build, a Clippy warning, a missing rustfmt pass; a clean crate passes.
   4. The held-out corpus is stored outside the agent-visible workspace, is used only for final verdicts, and a negative test shows a sandboxed process cannot read it.
   5. The planted-bug suite and the gate-violation suite run from one command and fail the build if any bug or violation is missed.
+
 **Plans**: TBD
 
 ### Phase 8: Translator Front End
+
 **Goal**: Given a captured build, produce a dependency-ordered translation work plan: unsafe-Rust skeletons where c2rust works, macros through Hayroll only if licensed, a function map, and a gate that every C function is mapped and exercised.
 **Depends on**: Phase 2, Phase 5, Phase 7
 **Requirements**: FRONT-01, FRONT-02, FRONT-03, FRONT-04, FRONT-05, GATE-04
@@ -141,9 +167,11 @@ Plans:
   3. Running the c2rust adapter over every retained test-bed target produces a per-translation-unit success and failure table from the Phase 2 `compile_commands.json`; a failing unit is reported and the module proceeds on the no-skeleton path instead of aborting.
   4. For each module the tool emits a machine-readable translation order from the clang call graph (callees before callers, cycles grouped), and a function map from C names to Rust symbols that is checked for completeness against clang's function list.
   5. The mapped-and-exercised gate rejects a candidate that omits a mapped counterpart or leaves any C function unexercised by the corpus (verified with a planted omission), using C-side coverage from Phase 5.
+
 **Plans**: TBD
 
 ### Phase 9: Agentic Two-Stage Translation
+
 **Goal**: LLM agents translate function by function in dependency order with every step gated, first to faithful Rust and then to idiomatic Rust, and correctness never depends on which model did the work.
 **Depends on**: Phase 7, Phase 8
 **Requirements**: PROV-01, XLATE-01, XLATE-02, XLATE-03, XLATE-04, XLATE-05, XLATE-06
@@ -153,9 +181,11 @@ Plans:
   3. Stage 1: for at least 5 test-bed targets the loop translates in dependency order, runs the compile check, all gates and the differential harness after every function, and produces faithful Rust that passes everything; functions that exhaust their retry budget are reported as stay-in-C candidates and never stubbed; the translation success rate is reported as measured.
   4. Agent runs execute in a sandbox with no access to the held-out corpus, and every prompt, response and gate verdict is logged for audit.
   5. Stage 2 (cut-line item): for at least 3 stage-1 modules the idiomatic refactor runs in small Rust-to-Rust steps, each checked against the previous step and the C at the C interface, failed steps are reverted, and each module is labelled faithful or idiomatic.
+
 **Plans**: TBD
 
 ### Phase 10: C-ABI Boundary and Integration
+
 **Goal**: A translated module drops into the original C build behind the same C interface, and the existing build and tests pass with the Rust swapped in.
 **Depends on**: Phase 9
 **Requirements**: BOUND-01, BOUND-02, BOUND-03, BOUND-04
@@ -164,9 +194,11 @@ Plans:
   2. The tool generates a Cargo crate (static library, `no_std`, `panic=abort`, pinned toolchain file) and Make and CMake hooks that swap one module for the Rust library while the other modules remain C.
   3. For at least 5 test-bed targets, the original full build and existing test suite pass with the Rust module swapped in, for every shipped configuration of that target.
   4. A defined panic handler is in place and a test shows a `has_ub` input returns the policy error through the C interface without relying on unwinding.
+
 **Plans**: TBD
 
 ### Phase 11: Evidence Bundle and Scoping Report v0
+
 **Goal**: Each module leaves with a versioned, re-runnable evidence bundle that states exactly what was and was not shown, and a scoping report can be produced for a C code base.
 **Depends on**: Phase 4, Phase 5, Phase 6, Phase 7, Phase 9, Phase 10
 **Requirements**: EVID-01, EVID-02, EVID-03, EVID-04, EVID-05, ASSESS-01
@@ -176,9 +208,11 @@ Plans:
   3. On a clean checkout in a fresh container, one command re-runs validation from the reproducibility bundle and reproduces the same verdicts for at least 3 modules.
   4. The equivalence report states per method what was and was not done (fuzzing hours, C-side coverage, symbolic results or "unavailable", Kani "not included", divergences and resolutions, tool versions), and a test shows the generator never emits a claim that a product is certified or compliant.
   5. Cut-line item: a scoping report v0 for a C code base outputs the dependency graph, a risk map (external-input entry points, size and complexity, UB pre-scan counts) and feasibility indicators with inline-assembly, `volatile`, hardware-access and compiler-extension users flagged as stay-in-C candidates, and contains no price or effort figure.
+
 **Plans**: TBD
 
 ### Phase 12: Public Benchmark and Day-90 Gate
+
 **Goal**: Publish reproducible numbers on the test bed and TRACTOR's public tests, and compute the technical half of the Day-90 gate.
 **Depends on**: Phase 11
 **Requirements**: BENCH-01, BENCH-02, BENCH-03, BENCH-04
@@ -187,6 +221,7 @@ Plans:
   2. A full-pipeline run across the test bed yields a per-target table: fully evidenced yes or no with the failing term, divergences, remaining `unsafe` count, code size C vs Rust, informational timing, C-side coverage, and share of functions with symbolic results.
   3. A benchmark report is published with method and honest caveats (self-evaluated, test-bed limits), and a third party can reproduce it from the reproducibility bundle.
   4. The Day-90 gate report computes the planted-bug catch rate (must be 100%) and the share of test-bed parsers fully evidenced (must be at least 70%, proposed), takes the pilots-or-LOIs count (at least 2) as a manual business input, and states continue or narrow the niche; v2.0 work does not start unless the verdict is continue.
+
 **Plans**: TBD
 
 ## Progress
