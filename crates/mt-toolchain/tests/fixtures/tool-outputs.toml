@@ -107,6 +107,29 @@ info: This is the version for the rustup toolchain manager, not the rustc compil
 info: The currently active `rustc` version is `rustc 1.99.0 (b940084d7 2026-09-28)`
 '''
 
+[rustup_default]
+source = "representative: `rustup default` with RUSTUP_HOME set (ASSUMED, replace with CI capture)"
+stdout = '''
+1.99.0-x86_64-unknown-linux-gnu (default)
+'''
+stderr = ""
+
+[rustup_targets_tool]
+source = "representative: `rustup target list --installed --toolchain 1.99.0` (ASSUMED, replace with CI capture)"
+stdout = '''
+thumbv7em-none-eabihf
+x86_64-unknown-linux-gnu
+x86_64-unknown-linux-musl
+'''
+stderr = ""
+
+[rustup_targets_bitcode]
+source = "representative: `rustup target list --installed --toolchain 1.72.1` (ASSUMED, replace with CI capture)"
+stdout = '''
+x86_64-unknown-linux-gnu
+'''
+stderr = ""
+
 [rustc_tool]
 source = "captured in cloud session 2026-10-09: rustc +1.99.0 -vV"
 stdout = '''
