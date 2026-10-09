@@ -124,16 +124,19 @@ version_args = ["--version"]
 version_regex = 'bear (?P<version>\d+\.\d+\.\d+)'
 expect = "3.1.1"
 
+# `c2rust --version` prints `C2Rust 0.22.1` (confirmed in the CI image, plan 01-07).
 [tool.c2rust]
 bin = "/opt/cargo-tools/bin/c2rust"
 version_args = ["--version"]
-version_regex = 'c2rust (?P<version>\d+\.\d+\.\d+)'
+version_regex = 'C2Rust (?P<version>\d+\.\d+\.\d+)'
 expect = "0.22.1"
 
-# c2rust links libclang-cpp or libLLVM dynamically; ldd shows which major.
+# The `c2rust` binary is only a dispatcher and links neither clang nor LLVM
+# (CI image capture); `cargo install c2rust` also installs `c2rust-transpile`,
+# which links libclang-cpp or libLLVM dynamically. ldd on it shows which major.
 [tool.c2rust.llvm]
 source = "probe"
-argv = ["/usr/bin/ldd", "/opt/cargo-tools/bin/c2rust"]
+argv = ["/usr/bin/ldd", "/opt/cargo-tools/bin/c2rust-transpile"]
 regex = 'lib(?:clang-cpp\.so\.|LLVM-)(?P<major>\d+)'
 
 # `cargo mutants --version` is the only working spelling (Pitfall 8).

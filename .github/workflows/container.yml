@@ -115,14 +115,28 @@ jobs:
       - name: Write the annotation and docker helpers
         run: |
           cat > "$RUNNER_TEMP/ci-lib.sh" <<'LIB'
-          # annotate LEVEL TITLE FILE: FILE as one annotation (text escaped, at most 48000 bytes).
+          # annotate LEVEL TITLE FILE: FILE as annotations of at most 3800 bytes each (the
+          # API keeps 4096 characters of a message), titled "TITLE (i/n)" when split.
           annotate() {
-            local level=$1 title=$2 file=$3 text
-            text=$(head -c 48000 "$file")
-            text=${text//'%'/'%25'}
-            text=${text//$'\r'/'%0D'}
-            text=${text//$'\n'/'%0A'}
-            printf '::%s title=%s::%s\n' "$level" "$title" "$text"
+            local level=$1 title=$2 file=$3 dir n i label text
+            if [ ! -s "$file" ]; then
+              printf '::%s title=%s::(empty)\n' "$level" "$title"
+              return 0
+            fi
+            dir=$(mktemp -d)
+            split -C 3800 -d -a 3 "$file" "$dir/part."
+            local -a parts=("$dir"/part.*)
+            n=${#parts[@]}
+            for i in "${!parts[@]}"; do
+              label=$title
+              if [ "$n" -gt 1 ]; then label="$title ($((i + 1))/$n)"; fi
+              text=$(cat "${parts[$i]}")
+              text=${text//'%'/'%25'}
+              text=${text//$'\r'/'%0D'}
+              text=${text//$'\n'/'%0A'}
+              printf '::%s title=%s::%s\n' "$level" "$label" "$text"
+            done
+            rm -rf "$dir"
           }
           # run_mt PINS_FILE MT_ARGS...: run the mounted mt in the image with no
           # network, as an unprivileged user, with only /out and /tmp writable.
@@ -141,6 +155,7 @@ jobs:
           chmod 0777 "$RUNNER_TEMP/out"
 
       - name: Build the image (target final)
+        id: build
         shell: bash
         run: |
           source "$RUNNER_TEMP/ci-lib.sh"
@@ -156,16 +171,49 @@ jobs:
           rc=${PIPESTATUS[0]}
           set -e
           if [ "$rc" -ne 0 ]; then
-            tail -n 100 "$LOG" > "$RUNNER_TEMP/build-tail.txt"
+            tail -n 150 "$LOG" | tail -c 11000 > "$RUNNER_TEMP/build-tail.txt"
             annotate error "image-a build tail" "$RUNNER_TEMP/build-tail.txt"
             exit "$rc"
           fi
           docker image ls mt-toolchain:ci
 
+      # What is inside the install trees, so a failing row can be diagnosed from
+      # one run: the c2rust binaries and what they link, the KLEE runtime archives,
+      # every LLVM-family package, and the size of each tree.
+      - name: Inventory of the install trees
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          cat > "$RUNNER_TEMP/inventory.sh" <<'INV'
+          echo "--- /opt/cargo-tools/bin"
+          ls -l /opt/cargo-tools/bin
+          for f in /opt/cargo-tools/bin/*; do
+            echo "--- ldd $f"
+            ldd "$f" 2>&1 | head -n 14
+          done
+          echo "--- KLEE runtime archives"
+          find /opt/klee -name '*.bca' | sort
+          echo "--- LLVM-family packages"
+          dpkg-query -W -f='${Package} ${Version} ${db:Status-Status}\n' 'llvm*' 'clang*' 'libllvm*' 'libclang*' 2>/dev/null | sort
+          echo "--- install tree sizes"
+          du -sh /opt/rustup /opt/cargo /opt/cargo-tools /opt/klee /opt/arm-gnu-toolchain 2>&1
+          INV
+          set +e
+          docker run --rm --network none --user 65534:65534 --read-only --tmpfs /tmp:rw,nosuid,size=64m \
+            -v "$RUNNER_TEMP/inventory.sh:/inventory.sh:ro" mt-toolchain:ci bash /inventory.sh > "$out/inventory.txt" 2>&1
+          rc=$?
+          set -e
+          { cat "$out/inventory.txt"; echo "exit code: $rc"; docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' mt-toolchain:ci; } > "$out/inventory-notice.txt"
+          cat "$out/inventory-notice.txt"
+          annotate notice image-inventory "$out/inventory-notice.txt"
+
       # TOOL-01, TOOL-02: every pinned tool's exact version from inside the image.
       # --network none only proves the image needs no downloads for this check;
       # it is not the D-19 network-isolation feature, which stays out of Phase 1.
       - name: Live check inside the image
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         run: |
           source "$RUNNER_TEMP/ci-lib.sh"
@@ -177,30 +225,31 @@ jobs:
             > "$out/check-a.txt" 2> "$out/check-a.err"
           rc=$?
           set -e
+          cat "$out/check-a.txt"
+          # Runs of spaces are squeezed in the published copy (a message keeps 4096 characters).
           {
-            cat "$out/check-a.txt"
+            sed -E 's/ {2,}/  /g' "$out/check-a.txt"
             echo "exit code: $rc"
             if [ -s "$out/check-a.err" ]; then echo "--- stderr"; cat "$out/check-a.err"; fi
           } > "$out/check-a-notice.txt"
-          cat "$out/check-a-notice.txt"
-          if [ -s "$out/tool-outputs.toml" ]; then
-            split -C 45000 -d -a 2 "$out/tool-outputs.toml" "$out/tool-outputs.part."
-            parts=("$out"/tool-outputs.part.*)
-            for i in "${!parts[@]}"; do
-              title=tool-outputs
-              if [ "${#parts[@]}" -gt 1 ]; then title="tool-outputs part $((i + 1)) of ${#parts[@]}"; fi
-              annotate notice "$title" "${parts[$i]}"
-            done
-          fi
           if [ "$rc" -ne 0 ]; then
             annotate error check-a "$out/check-a-notice.txt"
             exit 1
           fi
           annotate notice check-a "$out/check-a-notice.txt"
 
+      - name: Publish the captured tool outputs
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          test -s "$RUNNER_TEMP/out/tool-outputs.toml"
+          annotate notice tool-outputs "$RUNNER_TEMP/out/tool-outputs.toml"
+
       # TOOL-02: the same check against a pins copy whose LLVM major is moved
       # consistently to another major in 16..=19 must fail with exit 1.
       - name: Off-pin check (negative-pin)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         run: |
           source "$RUNNER_TEMP/ci-lib.sh"
@@ -227,7 +276,7 @@ jobs:
           grep -E '^rustc_bitcode +.*MISMATCH' "$out/negative-pin.txt" > /dev/null || ok=false
           {
             echo "pins copy: LLVM major ${major} -> ${other}"
-            cat "$out/negative-pin.txt"
+            sed -E 's/ {2,}/  /g' "$out/negative-pin.txt"
             echo "exit code: $rc (required: exactly 1, with MISMATCH on klee and rustc_bitcode)"
             if [ -s "$out/negative-pin.err" ]; then echo "--- stderr"; cat "$out/negative-pin.err"; fi
           } > "$out/negative-pin-notice.txt"
@@ -241,6 +290,7 @@ jobs:
 
       # TOOL-03: the manifest of build A.
       - name: Manifest of build A
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         run: |
           source "$RUNNER_TEMP/ci-lib.sh"
@@ -265,6 +315,7 @@ jobs:
       # TOOL-04: the no_std crate for thumbv7em-none-eabihf and the C side with
       # arm-none-eabi-gcc, inside the image, with the repository mounted read-only.
       - name: Smoke build for thumbv7em-none-eabihf
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         run: |
           source "$RUNNER_TEMP/ci-lib.sh"
@@ -346,14 +397,28 @@ jobs:
       - name: Write the annotation and docker helpers
         run: |
           cat > "$RUNNER_TEMP/ci-lib.sh" <<'LIB'
-          # annotate LEVEL TITLE FILE: FILE as one annotation (text escaped, at most 48000 bytes).
+          # annotate LEVEL TITLE FILE: FILE as annotations of at most 3800 bytes each (the
+          # API keeps 4096 characters of a message), titled "TITLE (i/n)" when split.
           annotate() {
-            local level=$1 title=$2 file=$3 text
-            text=$(head -c 48000 "$file")
-            text=${text//'%'/'%25'}
-            text=${text//$'\r'/'%0D'}
-            text=${text//$'\n'/'%0A'}
-            printf '::%s title=%s::%s\n' "$level" "$title" "$text"
+            local level=$1 title=$2 file=$3 dir n i label text
+            if [ ! -s "$file" ]; then
+              printf '::%s title=%s::(empty)\n' "$level" "$title"
+              return 0
+            fi
+            dir=$(mktemp -d)
+            split -C 3800 -d -a 3 "$file" "$dir/part."
+            local -a parts=("$dir"/part.*)
+            n=${#parts[@]}
+            for i in "${!parts[@]}"; do
+              label=$title
+              if [ "$n" -gt 1 ]; then label="$title ($((i + 1))/$n)"; fi
+              text=$(cat "${parts[$i]}")
+              text=${text//'%'/'%25'}
+              text=${text//$'\r'/'%0D'}
+              text=${text//$'\n'/'%0A'}
+              printf '::%s title=%s::%s\n' "$level" "$label" "$text"
+            done
+            rm -rf "$dir"
           }
           # run_mt PINS_FILE MT_ARGS...: run the mounted mt in the image with no
           # network, as an unprivileged user, with only /out and /tmp writable.
@@ -387,7 +452,7 @@ jobs:
           rc=${PIPESTATUS[0]}
           set -e
           if [ "$rc" -ne 0 ]; then
-            tail -n 100 "$LOG" > "$RUNNER_TEMP/build-tail.txt"
+            tail -n 150 "$LOG" | tail -c 11000 > "$RUNNER_TEMP/build-tail.txt"
             annotate error "image-b build tail" "$RUNNER_TEMP/build-tail.txt"
             exit "$rc"
           fi
@@ -447,12 +512,25 @@ jobs:
         shell: bash
         run: |
           annotate() {
-            local level=$1 title=$2 file=$3 text
-            text=$(head -c 48000 "$file")
-            text=${text//'%'/'%25'}
-            text=${text//$'\r'/'%0D'}
-            text=${text//$'\n'/'%0A'}
-            printf '::%s title=%s::%s\n' "$level" "$title" "$text"
+            local level=$1 title=$2 file=$3 dir n i label text
+            if [ ! -s "$file" ]; then
+              printf '::%s title=%s::(empty)\n' "$level" "$title"
+              return 0
+            fi
+            dir=$(mktemp -d)
+            split -C 3800 -d -a 3 "$file" "$dir/part."
+            local -a parts=("$dir"/part.*)
+            n=${#parts[@]}
+            for i in "${!parts[@]}"; do
+              label=$title
+              if [ "$n" -gt 1 ]; then label="$title ($((i + 1))/$n)"; fi
+              text=$(cat "${parts[$i]}")
+              text=${text//'%'/'%25'}
+              text=${text//$'\r'/'%0D'}
+              text=${text//$'\n'/'%0A'}
+              printf '::%s title=%s::%s\n' "$level" "$label" "$text"
+            done
+            rm -rf "$dir"
           }
           chmod +x "$RUNNER_TEMP/bundle/mt"
           a="$RUNNER_TEMP/a/manifest-a.json"
