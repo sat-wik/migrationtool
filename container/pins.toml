@@ -93,6 +93,21 @@ kind = "transitive"
 parent = "c2rust"
 commit = "d393c16f3eb30d0c47e6f9d92db62272f0ec4dc7"
 
+# Exact candidate versions at the pinned snapshot timestamp, taken from the
+# pin-discovery workflow annotation of the run for commit 6916bb2 and re-checked
+# live by `mt toolchain check`. The package list is the one pin-discovery.yml
+# resolves (tool_03_discovery_package_list_matches_apt_pins).
+[apt]
+"bear" = "3.1.1-1"
+"clang-16" = "1:16.0.6-15~deb12u1"
+"libclang-16-dev" = "1:16.0.6-15~deb12u1"
+"libclang-cpp16-dev" = "1:16.0.6-15~deb12u1"
+"libz3-4" = "4.8.12-3.1"
+"llvm-16" = "1:16.0.6-15~deb12u1"
+"llvm-16-dev" = "1:16.0.6-15~deb12u1"
+"qemu-system-arm" = "1:7.2+dfsg-7+deb12u18+b3"
+"qemu-user" = "1:7.2+dfsg-7+deb12u18+b3"
+
 [ci]
 cargo_deny_version = "0.20.2"
 buildkit_image = "moby/buildkit:v0.34.0@sha256:b059f8d7226d0b326bc871af489a5dddf65e36af4d20d14251b072974d9ee87c"
@@ -102,6 +117,12 @@ bin = "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc"
 version_args = ["--version"]
 version_regex = 'Arm GNU Toolchain (?P<version>\d+\.\d+\.Rel\d+)'
 expect = "14.3.Rel1"
+
+[tool.bear]
+bin = "/usr/bin/bear"
+version_args = ["--version"]
+version_regex = 'bear (?P<version>\d+\.\d+\.\d+)'
+expect = "3.1.1"
 
 [tool.c2rust]
 bin = "/opt/cargo-tools/bin/c2rust"
@@ -126,6 +147,16 @@ expect = "27.1.0"
 CARGO_HOME = "/opt/cargo"
 RUSTUP_HOME = "/opt/rustup"
 
+# The expected version is the upstream part of the clang-16 Debian version.
+[tool.clang]
+bin = "/usr/lib/llvm-16/bin/clang"
+version_args = ["--version"]
+version_regex = 'clang version (?P<version>\d+\.\d+\.\d+)'
+expect = "16.0.6"
+
+[tool.clang.llvm]
+source = "version"
+
 [tool.hayroll]
 status = "not_installed"
 reason = "licence unconfirmed (risk R3); adapter gated in Phase 8"
@@ -143,6 +174,30 @@ expect = "3.2"
 [tool.klee.llvm]
 source = "output"
 regex = '(?m)LLVM version (?P<major>\d+)\.\d+\.\d+'
+
+[tool.llvm_config]
+bin = "/usr/lib/llvm-16/bin/llvm-config"
+version_args = ["--version"]
+version_regex = '^(?P<version>\d+\.\d+\.\d+)'
+expect = "16.0.6"
+
+[tool.llvm_config.llvm]
+source = "version"
+
+# Both QEMU binaries are installed: user mode cannot run bare-metal Cortex-M
+# images (RESEARCH correction 1, CONTEXT D-11). The expected version is the full
+# Debian package version the banner prints.
+[tool.qemu_arm]
+bin = "/usr/bin/qemu-arm"
+version_args = ["--version"]
+version_regex = '\(Debian (?P<version>[^)]+)\)'
+expect = "1:7.2+dfsg-7+deb12u18+b3"
+
+[tool.qemu_system_arm]
+bin = "/usr/bin/qemu-system-arm"
+version_args = ["--version"]
+version_regex = '\(Debian (?P<version>[^)]+)\)'
+expect = "1:7.2+dfsg-7+deb12u18+b3"
 
 [tool.rustup]
 bin = "/opt/cargo/bin/rustup"

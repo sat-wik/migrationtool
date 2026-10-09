@@ -206,6 +206,30 @@ fn tool_03_tool_expectations_agree_with_sources() {
         "rustup expect must equal rustup-init"
     );
 
+    // Tools installed from apt: the expected version follows the pinned package.
+    let apt = |package: &str| -> &str { &pins.apt[package] };
+    for (tool, package) in [
+        ("clang", "clang-16"),
+        ("llvm_config", "llvm-16"),
+        ("bear", "bear"),
+    ] {
+        assert_eq!(
+            expect(tool),
+            mt_toolchain::version::upstream_version(apt(package)),
+            "{tool} expect must be the upstream part of the {package} pin"
+        );
+    }
+    for (tool, package) in [
+        ("qemu_system_arm", "qemu-system-arm"),
+        ("qemu_arm", "qemu-user"),
+    ] {
+        assert_eq!(
+            expect(tool),
+            apt(package),
+            "{tool} expect must be the full Debian version of the {package} pin"
+        );
+    }
+
     for (key, spec) in &pins.tool {
         if spec.status != ToolPinStatus::Installed {
             continue;
@@ -505,4 +529,30 @@ fn tool_03_workflows_pin_actions_by_commit_sha() {
     }
     let good = format!("- uses: actions/checkout@{sha} # v7.0.1\n  uses: owner/repo/sub@{sha}\n");
     assert_eq!(workflow_use_issues("t.yml", &good), (2, Vec::new()));
+}
+
+#[test]
+fn tool_03_container_pins_are_complete() {
+    let pins = container_pins();
+    pins.validate_complete().unwrap();
+}
+
+#[test]
+fn tool_03_discovery_package_list_matches_apt_pins() {
+    let pins = container_pins();
+    let workflow = read_repo_file(".github/workflows/pin-discovery.yml");
+    let list = regex::Regex::new(r#"(?m)^\s*packages="([^"]+)"\s*$"#).unwrap();
+    let captures = list
+        .captures(&workflow)
+        .expect("pin-discovery.yml must define a `packages=\"...\"` line");
+    let major = pins.llvm.major.to_string();
+    let discovered: BTreeSet<String> = captures[1]
+        .split_whitespace()
+        .map(|name| name.replace("${LLVM_MAJOR}", &major))
+        .collect();
+    let pinned: BTreeSet<String> = pins.apt.keys().cloned().collect();
+    assert_eq!(
+        discovered, pinned,
+        "the packages pin-discovery.yml resolves must be exactly the [apt] keys"
+    );
 }
