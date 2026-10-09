@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: MVP
 current_phase: 01
 current_phase_name: Pinned Toolchain Container
-status: Ready to execute plan 01-08
-stopped_at: Completed 01-07-PLAN.md
-last_updated: "2026-10-09T19:44:19.134Z"
+status: All 8 plans of phase 01 executed; ready for phase verification
+stopped_at: Completed 01-08-PLAN.md
+last_updated: "2026-10-09T20:04:15.528Z"
 last_activity: 2026-10-09
-last_activity_desc: Completed 01-07 container image and CI proofs (container, ci and pin-discovery green)
-state_head: 040455a35c2ef42630349f8cf4202a689a6d1eb9
+last_activity_desc: Completed 01-08 GHCR publish by digest and container README (container and ci green; verified image recorded)
+state_head: 05336fd957e96b04f3998b6817724895a0cd0a96
 progress:
   total_phases: 12
   completed_phases: 0
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-10-07)
 ## Current Position
 
 Phase: 01 (Pinned Toolchain Container) — EXECUTING
-Plan: 8 of 8 (01-07 complete; next 01-08)
-Status: Ready to execute plan 01-08
-Last activity: 2026-10-09 — Completed 01-07 container image and CI proofs
+Plan: 8 of 8 (all plans executed; phase verification is the orchestrator's next step)
+Status: Ready for phase verification
+Last activity: 2026-10-09 — Completed 01-08 GHCR publish by digest and container README
 
-Progress: [█████████░] 88%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [█████████░] 88%
 |------|----------|-------|-------|
 | Phase 01 P06 | 12 min | 3 tasks | 7 files |
 | Phase 01 P07 | 130 min | 3 tasks | 9 files |
+| Phase 01 P08 | 13 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,7 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 01]: qemu_arm and qemu_system_arm expect the full apt candidate version; confirm against real banner in 01-07 — Plan 01-06 wording; the +b3 binNMU suffix may not appear in the banner, a risk settled by the first container capture
 - [Phase 01]: 01-07: c2rust LLVM probe retargeted to c2rust-transpile (the c2rust dispatcher links no LLVM); version format is 'C2Rust 0.22.1'
 - [Phase 01]: 01-07: QEMU pins use the Debian version in the banner parentheses incl. +b3; fixtures are real CI captures from container run 37969688167
+- [Phase 01]: Plan 01-08: the pushed GHCR image is the exact image that passed the check, off-pin, manifest and smoke steps; container reference ghcr.io/sat-wik/migrationtool-toolchain@sha256:b8032124716db8f2bfdfea5b693665bb57f37972895f038c2948affb5956e46a (container run 37983108094) — Only image-a holds write access to packages via GITHUB_TOKEN; verified-image is announced only after manifest-diff succeeds; consumers pin the digest, never a tag (T-01-26, T-01-27)
 
 ### Pending Todos
 
@@ -105,6 +107,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-09T19:44:19.084Z
-Stopped at: Completed 01-07-PLAN.md
+Last session: 2026-10-09T20:04:10.689Z
+Stopped at: Completed 01-08-PLAN.md
 Resume file: None

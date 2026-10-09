@@ -13,9 +13,9 @@ Milestone v1.0 MVP. Each maps to exactly one roadmap phase.
 
 ### Toolchain and Container (TOOL)
 
-- [ ] **TOOL-01**: The tool is a Rust Cargo workspace that runs every external analyser (clang/LLVM, KLEE, c2rust, Hayroll, Kani, Bear, QEMU) as a pinned subprocess inside the container and never links one as a library; a repository check fails if any Python source exists outside `research/`.
+- [x] **TOOL-01**: The tool is a Rust Cargo workspace that runs every external analyser (clang/LLVM, KLEE, c2rust, Hayroll, Kani, Bear, QEMU) as a pinned subprocess inside the container and never links one as a library; a repository check fails if any Python source exists outside `research/`.
 - [x] **TOOL-02**: One LLVM major version in 16-19 is pinned for all C-side analysis (clang, KLEE, c2rust, Hayroll), and a version check fails if any of them uses a different major or if the rustc used for bitcode reports an LLVM above 19 in `rustc -vV`.
-- [ ] **TOOL-03**: The container image is reproducible: base image, tool sources and Rust toolchain are pinned by digest, commit or checksum, and building twice yields an identical tool-version manifest.
+- [x] **TOOL-03**: The container image is reproducible: base image, tool sources and Rust toolchain are pinned by digest, commit or checksum, and building twice yields an identical tool-version manifest.
 - [x] **TOOL-04**: The container provides arm-none-eabi GCC and the `thumbv7em-none-eabihf` Rust target, and a trivial `no_std` crate builds for that target inside it.
 
 ### Test Bed and Build Capture (BED, BUILD)
@@ -165,9 +165,9 @@ Which phases cover which requirements.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TOOL-01 | Phase 1 | Pending |
+| TOOL-01 | Phase 1 | Complete |
 | TOOL-02 | Phase 1 | Complete |
-| TOOL-03 | Phase 1 | Pending |
+| TOOL-03 | Phase 1 | Complete |
 | TOOL-04 | Phase 1 | Complete |
 | BED-01 | Phase 2 | Pending |
 | BED-02 | Phase 2 | Pending |
