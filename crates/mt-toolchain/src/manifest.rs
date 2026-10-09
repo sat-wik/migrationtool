@@ -1,8 +1,9 @@
 //! The deterministic tool-version manifest (CONTEXT D-06, D-15).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::Serialize;
+use serde_json::Value;
 
 use crate::check::CheckReport;
 use crate::pins::{LlvmStatus, Pins, SourcePin};
@@ -117,10 +118,27 @@ pub enum ManifestError {
     },
 }
 
-/// Build the manifest from the pins and the report produced from the same observations.
+/// Build the manifest from the pins and the report produced from the same
+/// observations. Only parsed values enter it: never raw tool output, run
+/// hashes or times (`klee --version` prints a varying `Host CPU:` line, for one).
 #[must_use]
-pub fn build(pins: &Pins, _report: &CheckReport) -> Manifest {
-    // Placeholder for the RED commit: nothing observed yet.
+pub fn build(pins: &Pins, report: &CheckReport) -> Manifest {
+    let observed = report
+        .rows
+        .iter()
+        .map(|row| {
+            (
+                row.key.clone(),
+                ObservedRow {
+                    status: row.status.as_str().to_owned(),
+                    expected: row.expected.clone(),
+                    actual: row.actual.clone(),
+                    llvm_major: row.llvm_major,
+                    detail: row.detail.clone(),
+                },
+            )
+        })
+        .collect();
     Manifest {
         schema_version: MANIFEST_SCHEMA_VERSION,
         image: ManifestImage {
@@ -129,11 +147,12 @@ pub fn build(pins: &Pins, _report: &CheckReport) -> Manifest {
             base_digest: pins.image.base_digest.clone(),
             snapshot_timestamp: pins.image.snapshot_timestamp.clone(),
         },
+        // The pin the check judged against, labelled with its status and decision.
         llvm: ManifestLlvm {
-            major: pins.llvm.major,
-            max_major: pins.llvm.max_major,
-            status: pins.llvm.status,
-            decision: pins.llvm.decision.clone(),
+            major: report.llvm.major,
+            max_major: report.llvm.max_major,
+            status: report.llvm.status,
+            decision: report.llvm.decision.clone(),
         },
         rust: ManifestRust {
             tool: ManifestToolchain {
@@ -148,24 +167,79 @@ pub fn build(pins: &Pins, _report: &CheckReport) -> Manifest {
             },
         },
         sources: pins.source.clone(),
-        observed: BTreeMap::new(),
+        observed,
     }
 }
 
 /// Pretty JSON with sorted keys and a trailing newline.
 ///
+/// The manifest goes through `serde_json::Value`, whose objects are ordered
+/// maps, so every key at every level is sorted regardless of struct field
+/// order. No header or timestamp is emitted (CONTEXT D-15 makes it optional).
+///
 /// # Errors
 /// [`ManifestError::Serialize`] if serialization fails.
-pub fn to_json(_manifest: &Manifest) -> Result<String, ManifestError> {
-    // Placeholder for the RED commit.
-    Ok("{}\n".to_owned())
+pub fn to_json(manifest: &Manifest) -> Result<String, ManifestError> {
+    let value = serde_json::to_value(manifest)?;
+    let mut text = serde_json::to_string_pretty(&value)?;
+    text.push('\n');
+    Ok(text)
 }
 
-/// The dotted path of the first key (in sorted order) at which two manifests differ.
+/// The dotted path of the first key (in sorted order) at which two manifests
+/// differ, `None` when their contents are equal.
+///
+/// A key present on one side only is reported at that key; array elements are
+/// reported as `path[index]`; a difference at the root is reported as `$`.
 ///
 /// # Errors
 /// [`ManifestError::Parse`] when either text is not JSON.
-pub fn first_difference(_a: &str, _b: &str) -> Result<Option<String>, ManifestError> {
-    // Placeholder for the RED commit.
-    Ok(None)
+pub fn first_difference(a: &str, b: &str) -> Result<Option<String>, ManifestError> {
+    let parse = |text: &str, which: &'static str| {
+        serde_json::from_str::<Value>(text).map_err(|source| ManifestError::Parse { which, source })
+    };
+    let left = parse(a, "first")?;
+    let right = parse(b, "second")?;
+    Ok(difference(&left, &right, ""))
+}
+
+fn difference(left: &Value, right: &Value, path: &str) -> Option<String> {
+    match (left, right) {
+        (Value::Object(l), Value::Object(r)) => {
+            let keys: BTreeSet<&String> = l.keys().chain(r.keys()).collect();
+            for key in keys {
+                let child = if path.is_empty() {
+                    key.clone()
+                } else {
+                    format!("{path}.{key}")
+                };
+                match (l.get(key), r.get(key)) {
+                    (Some(lv), Some(rv)) => {
+                        if let Some(found) = difference(lv, rv, &child) {
+                            return Some(found);
+                        }
+                    }
+                    _ => return Some(child),
+                }
+            }
+            None
+        }
+        (Value::Array(l), Value::Array(r)) => {
+            for index in 0..l.len().max(r.len()) {
+                let child = format!("{path}[{index}]");
+                match (l.get(index), r.get(index)) {
+                    (Some(lv), Some(rv)) => {
+                        if let Some(found) = difference(lv, rv, &child) {
+                            return Some(found);
+                        }
+                    }
+                    _ => return Some(child),
+                }
+            }
+            None
+        }
+        _ if left == right => None,
+        _ if path.is_empty() => Some("$".to_owned()),
+        _ => Some(path.to_owned()),
+    }
 }
