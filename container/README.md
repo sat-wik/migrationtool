@@ -71,8 +71,10 @@ platform explicitly so Docker does not select arm64:
 docker pull --platform linux/amd64 ghcr.io/sat-wik/migrationtool-toolchain@sha256:<digest>
 ```
 
-If the package is private, `docker login ghcr.io` first with a GitHub account
-that may read it (package visibility is a setting of the package on GitHub).
+When the digest below was recorded, the registry served its manifest to an
+anonymous request, so no login should be needed. If a pull is ever refused,
+`docker login ghcr.io` with a GitHub account that may read the package
+(visibility is a setting of the package on GitHub).
 
 You need a **static `mt`** to run inside the image. Either:
 
@@ -184,7 +186,22 @@ is legal advice.
 
 ## Current image
 
-No verified image has been recorded yet. This section is filled in from the
-`verified-image` annotation of the first green `container` workflow run, which
-the `compare` job publishes only after the two manifests were found
-manifest-identical.
+The verified image, published by the `image-a` job and announced as verified by
+the `compare` job of `container` workflow run 37983108094 only after the two
+manifests were found manifest-identical:
+
+```
+ghcr.io/sat-wik/migrationtool-toolchain@sha256:b8032124716db8f2bfdfea5b693665bb57f37972895f038c2948affb5956e46a
+```
+
+- Run id: 37983108094 (jobs `mt`, `image-a`, `image-b` and `compare` all
+  concluded `success`; the pushed image is the one that passed the check,
+  off-pin check, manifest and smoke steps in `image-a`)
+- Commit: 537ef911a8adffac79aa1faf4cec73f5794df829
+- Manifest sha256 (identical for both builds):
+  40e55cc69fa93f238960bad268cfa4ec5775d51f98dd10efcf92741801d7aed3
+
+Later commits that do not touch the Dockerfile, `pins.toml`, the smoke crate,
+the Rust sources or the workflow do not rebuild the image, so this stays the
+current reference until one of those changes; a rebuild publishes a new digest
+and this section is updated with it.
