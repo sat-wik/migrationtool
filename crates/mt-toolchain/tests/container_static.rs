@@ -311,11 +311,31 @@ fn run_issues(run: &str, issues: &mut Vec<String>) {
             "RUN clones without checking `rev-parse HEAD`: {run}"
         ));
     }
-    if run.contains("cargo install") && !(run.contains("--locked") && pinned_version.is_match(run))
-    {
+    if run.contains("cargo install") && !run.contains("--locked") {
+        issues.push(format!("RUN cargo install lacks `--locked`: {run}"));
+    }
+    if run.contains("cargo install") && !pinned_version.is_match(run) {
         issues.push(format!(
-            "RUN cargo install lacks `--locked` or an exact `--version =`: {run}"
+            "RUN cargo install lacks an exact `--version =`: {run}"
         ));
+    }
+    // CR-01: a crate is installed from the .crate file that was checked in this
+    // RUN, unpacked, and not fetched a second time from the registry.
+    if run.contains("cargo install") {
+        let install_path = regex::Regex::new(r"--path[\s=]").unwrap();
+        let tar_extract = regex::Regex::new(
+            r"\btar\s+(?:--[a-z-]+\s+)*(?:-[A-Za-z]*x[A-Za-z]*|x[A-Za-z]*|--extract)(?:\s|$)",
+        )
+        .unwrap();
+        if !install_path.is_match(run) {
+            issues.push(format!(
+                "RUN cargo install lacks `--path`, so it installs from the registry instead of the verified .crate: {run}"
+            ));
+        } else if !(run.contains("sha256sum -c") && tar_extract.is_match(run)) {
+            issues.push(format!(
+                "RUN cargo install --path reads a directory that was not unpacked from a verified .crate in this RUN (needs `sha256sum -c` and a tar extraction): {run}"
+            ));
+        }
     }
 
     // CR-01: a toolchain is installed only from a local mirror of files that were
@@ -501,7 +521,10 @@ fn tool_03_dockerfile_has_no_floating_references() {
         RUN apt-get install -y curl git\n\
         RUN curl -fsSLO https://example.org/x \\\n && echo \"h  x\" | sha256sum -c -\n\
         RUN git clone --branch t https://example.org/r /r \\\n && test \"$(git -C /r rev-parse HEAD)\" = c\n\
-        RUN cargo install --locked foo --version =1.0.0\n\
+        RUN curl -fsSL -o /tmp/crates/x-1.0.0.crate https://static.crates.io/crates/x/x-1.0.0.crate \\\n \
+            && echo \"h  /tmp/crates/x-1.0.0.crate\" | sha256sum -c - \\\n \
+            && tar -xzf /tmp/crates/x-1.0.0.crate --no-same-owner -C /tmp/crates \\\n \
+            && cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x\n\
         RUN echo \"deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/x/ s main\"\n";
     assert_eq!(dockerfile_issues(accepted), Vec::<String>::new());
 }
@@ -530,6 +553,31 @@ const CR01_RUSTUP_RUN: &str = r##"set -eux; \
     rustup toolchain list; \
     rm -f /tmp/channel-rust-*.toml; \
     chmod -R a+rX "${RUSTUP_HOME}" "${CARGO_HOME}""##;
+
+/// `RUN` arguments of the cargo-tools stage as the Dockerfile had them before
+/// CR-01 was fixed, copied verbatim: each .crate is downloaded and checked, and
+/// then `cargo install` fetches the crate again from the registry.
+const CR01_CARGO_RUN: &str = r##"set -eux; \
+    : "${LLVM_MAJOR:?}" "${RUST_TOOL_VERSION:?}" "${TINYCBOR_COMMIT:?}"; \
+    for spec in "${C2RUST_NAME}:${C2RUST_VERSION}:${C2RUST_SHA256}" "${CARGO_MUTANTS_NAME}:${CARGO_MUTANTS_VERSION}:${CARGO_MUTANTS_SHA256}"; do \
+      name="${spec%%:*}"; \
+      rest="${spec#*:}"; \
+      version="${rest%%:*}"; \
+      sha="${rest#*:}"; \
+      curl -fsSL --retry 5 --retry-delay 5 -o "/tmp/${name}-${version}.crate" "https://static.crates.io/crates/${name}/${name}-${version}.crate"; \
+      echo "${sha}  /tmp/${name}-${version}.crate" | sha256sum -c -; \
+    done; \
+    llvm_bin="/usr/lib/llvm-${LLVM_MAJOR}/bin"; \
+    export RUSTUP_TOOLCHAIN="${RUST_TOOL_VERSION}" \
+           LLVM_CONFIG_PATH="${llvm_bin}/llvm-config" \
+           CLANG_PATH="${llvm_bin}/clang" \
+           LIBCLANG_PATH="/usr/lib/llvm-${LLVM_MAJOR}/lib"; \
+    cargo install --locked --root /opt/cargo-tools "${C2RUST_NAME}" --version "=${C2RUST_VERSION}"; \
+    cargo install --locked --root /opt/cargo-tools "${CARGO_MUTANTS_NAME}" --version "=${CARGO_MUTANTS_VERSION}"; \
+    grep -q "${TINYCBOR_COMMIT}" "${CARGO_HOME}"/registry/src/*/c2rust-ast-exporter-"${C2RUST_VERSION}"/src/CMakeLists.txt; \
+    mkdir -p /opt/cargo-tools/share/mt; \
+    "${llvm_bin}/llvm-config" --version > /opt/cargo-tools/share/mt/c2rust-llvm-config-version; \
+    chmod -R a+rX /opt/cargo-tools"##;
 
 /// A fixture Dockerfile holding one `RUN` of `run`.
 fn run_fixture(run: &str) -> String {
@@ -619,6 +667,88 @@ fn tool_03_dockerfile_installs_rust_toolchains_from_verified_manifests() {
         installing >= 1,
         "no RUN installs a Rust toolchain; the check would be vacuous"
     );
+}
+
+#[test]
+fn tool_03_dockerfile_installs_crates_from_verified_files() {
+    let fetch = "curl -fsSL -o /tmp/crates/x-1.0.0.crate https://static.crates.io/crates/x/x-1.0.0.crate \
+        && echo \"h  /tmp/crates/x-1.0.0.crate\" | sha256sum -c - \
+        && tar -xzf /tmp/crates/x-1.0.0.crate --no-same-owner -C /tmp/crates";
+
+    // What must be refused: the pre-fix RUN verbatim (a checked download that
+    // `cargo install` then ignores), an install from a path nothing in the RUN put
+    // there, a registry install, and a verified, unpacked install that drops
+    // `--locked` or the exact version.
+    let issues = dockerfile_issues(&run_fixture(CR01_CARGO_RUN));
+    assert!(
+        mentions(&issues, "installs from the registry"),
+        "the pre-fix cargo-tools RUN must be refused, got {issues:?}"
+    );
+
+    let unverified = dockerfile_issues(&run_fixture(
+        "cargo install --locked --root /r --path /src/x --version =1.0.0 x",
+    ));
+    assert!(
+        mentions(&unverified, "not unpacked from a verified .crate"),
+        "an install from an unchecked path must be refused, got {unverified:?}"
+    );
+    let no_check = dockerfile_issues(&run_fixture(
+        "tar -xzf /tmp/crates/x-1.0.0.crate -C /tmp/crates \
+         && cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
+    ));
+    assert!(
+        mentions(&no_check, "not unpacked from a verified .crate"),
+        "an unpacked but unchecked crate must be refused, got {no_check:?}"
+    );
+    let registry = dockerfile_issues(&run_fixture("cargo install --locked foo --version =1.0.0"));
+    assert!(
+        mentions(&registry, "installs from the registry"),
+        "a registry install must be refused, got {registry:?}"
+    );
+    let not_locked = dockerfile_issues(&run_fixture(&format!(
+        "{fetch} && cargo install --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x"
+    )));
+    assert!(
+        mentions(&not_locked, "lacks `--locked`"),
+        "an install without --locked must be refused, got {not_locked:?}"
+    );
+    let not_exact = dockerfile_issues(&run_fixture(&format!(
+        "{fetch} && cargo install --locked --root /r --path /tmp/crates/x-1.0.0 x"
+    )));
+    assert!(
+        mentions(&not_exact, "lacks an exact `--version =`"),
+        "an install without an exact version must be refused, got {not_exact:?}"
+    );
+
+    // What must be accepted: download, check, unpack and install that directory.
+    let accepted = dockerfile_issues(&run_fixture(&format!(
+        "{fetch} && cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x"
+    )));
+    assert_eq!(accepted, Vec::<String>::new());
+
+    // The real Dockerfile passes, and the check is not vacuous: some RUN installs
+    // crates, and every `cargo install` in it uses `--path`.
+    let dockerfile = read_repo_file("container/Dockerfile");
+    assert_eq!(dockerfile_issues(&dockerfile), Vec::<String>::new());
+    let installing: Vec<String> = dockerfile_instructions(&dockerfile)
+        .into_iter()
+        .filter(|(keyword, rest)| keyword == "RUN" && rest.contains("cargo install"))
+        .map(|(_, rest)| rest)
+        .collect();
+    assert!(
+        !installing.is_empty(),
+        "no RUN runs `cargo install`; the check would be vacuous"
+    );
+    for run in &installing {
+        for segment in run_segments(run) {
+            if segment.contains("cargo install") {
+                assert!(
+                    segment.contains("--path"),
+                    "a `cargo install` does not use --path: {segment}"
+                );
+            }
+        }
+    }
 }
 
 #[test]
@@ -1256,6 +1386,12 @@ fn tool_03_workflow_gates_on_pin_binding_evidence() {
     assert!(
         window.contains("exit 1"),
         "`exit 1` must follow the pin-binding error annotation within 300 characters"
+    );
+
+    // The record also holds the two crates, matched by the same whole-line rule.
+    assert!(
+        image_a.contains("/tmp/crates/"),
+        "image-a must match the /tmp/crates/ lines of the build record"
     );
 
     // The gate comes before the push, and the publish steps carry no status
