@@ -244,7 +244,14 @@ jobs:
           tool_pin=$(arg RUST_TOOL_CHANNEL_SHA256)
           bitcode_version=$(arg RUST_BITCODE_VERSION)
           bitcode_pin=$(arg RUST_BITCODE_CHANNEL_SHA256)
-          for value in "$rustup_home" "$host" "$tool_version" "$tool_pin" "$bitcode_version" "$bitcode_pin"; do
+          c2rust_name=$(arg C2RUST_NAME)
+          c2rust_version=$(arg C2RUST_VERSION)
+          c2rust_pin=$(arg C2RUST_SHA256)
+          mutants_name=$(arg CARGO_MUTANTS_NAME)
+          mutants_version=$(arg CARGO_MUTANTS_VERSION)
+          mutants_pin=$(arg CARGO_MUTANTS_SHA256)
+          for value in "$rustup_home" "$host" "$tool_version" "$tool_pin" "$bitcode_version" "$bitcode_pin" \
+            "$c2rust_name" "$c2rust_version" "$c2rust_pin" "$mutants_name" "$mutants_version" "$mutants_pin"; do
             [ -n "$value" ] || { echo "an image argument needed by the pin-binding gate is empty"; exit 1; }
           done
           cat > "$RUNNER_TEMP/binding.sh" <<'BIND'
@@ -292,8 +299,20 @@ jobs:
               ok=false
             fi
           }
+          check_crate() {
+            local name=$1 version=$2 pin=$3 want
+            want="${pin}  /tmp/crates/${name}-${version}.crate"
+            if grep -qxF -- "$want" "$out/binding-record.txt"; then
+              echo "OK record line for ${name}-${version}.crate equals its pin" >> "$out/pin-binding-notice.txt"
+            else
+              echo "MISMATCH no record line equals: $want" >> "$out/pin-binding-notice.txt"
+              ok=false
+            fi
+          }
           check_toolchain "$tool_version" "$tool_pin"
           check_toolchain "$bitcode_version" "$bitcode_pin"
+          check_crate "$c2rust_name" "$c2rust_version" "$c2rust_pin"
+          check_crate "$mutants_name" "$mutants_version" "$mutants_pin"
           {
             echo "--- rustup update-hashes (the first 20 hex characters of each manifest sha256; a witness, not the binding)"
             cat "$out/binding-update-hashes.txt"

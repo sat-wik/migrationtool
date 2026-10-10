@@ -245,12 +245,17 @@ RUN set -eux; \
     rm -f /tmp/arm-gnu-toolchain.tar.xz; \
     chmod -R a+rX /opt/arm-gnu-toolchain
 
-# Stage cargo-tools (CONTEXT D-09, D-11): c2rust and cargo-mutants, each crate
-# checked against its pinned sha256 before an exact-version locked install.
+# Stage cargo-tools (CONTEXT D-04, D-09, D-11): c2rust and cargo-mutants. Each
+# .crate is checked against its pinned sha256, and that same file is unpacked and
+# installed with `cargo install --locked --path`; it is never fetched a second
+# time. Its packaged Cargo.lock, under --locked, fixes every dependency, and
+# cargo checks each registry download against those checksums. The sha256 of
+# each .crate is appended to the build record that the rustup stage began.
 # RUSTUP_TOOLCHAIN keeps the nightly toolchain file shipped inside the c2rust
-# crate from taking over (RESEARCH Pitfall 2). This stage needs the network
-# because the c2rust exporter clones tinycbor at a commit pinned inside the
-# crate (RESEARCH Pitfall 3); the build asserts that commit is the pinned one.
+# crate from taking over (RESEARCH Pitfall 2), and the installs run from /, not
+# from inside an unpacked crate. This stage needs the network because the c2rust
+# exporter clones tinycbor at a commit pinned inside the crate (RESEARCH Pitfall
+# 3); the build asserts that commit is the pinned one.
 FROM rustup AS cargo-tools
 ARG C2RUST_NAME
 ARG C2RUST_SHA256
@@ -265,24 +270,33 @@ ARG TINYCBOR_COMMIT
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 RUN set -eux; \
     : "${LLVM_MAJOR:?}" "${RUST_TOOL_VERSION:?}" "${TINYCBOR_COMMIT:?}"; \
+    : "${C2RUST_NAME:?}" "${C2RUST_VERSION:?}" "${C2RUST_SHA256:?}"; \
+    : "${CARGO_MUTANTS_NAME:?}" "${CARGO_MUTANTS_VERSION:?}" "${CARGO_MUTANTS_SHA256:?}"; \
+    record=/opt/cargo-tools/share/mt/pin-binding.sha256; \
+    mkdir -p /tmp/crates /opt/cargo-tools/share/mt; \
     for spec in "${C2RUST_NAME}:${C2RUST_VERSION}:${C2RUST_SHA256}" "${CARGO_MUTANTS_NAME}:${CARGO_MUTANTS_VERSION}:${CARGO_MUTANTS_SHA256}"; do \
       name="${spec%%:*}"; \
       rest="${spec#*:}"; \
       version="${rest%%:*}"; \
       sha="${rest#*:}"; \
-      curl -fsSL --retry 5 --retry-delay 5 -o "/tmp/${name}-${version}.crate" "https://static.crates.io/crates/${name}/${name}-${version}.crate"; \
-      echo "${sha}  /tmp/${name}-${version}.crate" | sha256sum -c -; \
+      crate="/tmp/crates/${name}-${version}.crate"; \
+      curl -fsSL --retry 5 --retry-delay 5 -o "${crate}" "https://static.crates.io/crates/${name}/${name}-${version}.crate"; \
+      echo "${sha}  ${crate}" | sha256sum -c -; \
+      sha256sum "${crate}" >> "${record}"; \
+      tar -xzf "${crate}" --no-same-owner -C /tmp/crates; \
+      test -f "/tmp/crates/${name}-${version}/Cargo.toml"; \
+      test -f "/tmp/crates/${name}-${version}/Cargo.lock"; \
     done; \
     llvm_bin="/usr/lib/llvm-${LLVM_MAJOR}/bin"; \
     export RUSTUP_TOOLCHAIN="${RUST_TOOL_VERSION}" \
            LLVM_CONFIG_PATH="${llvm_bin}/llvm-config" \
            CLANG_PATH="${llvm_bin}/clang" \
            LIBCLANG_PATH="/usr/lib/llvm-${LLVM_MAJOR}/lib"; \
-    cargo install --locked --root /opt/cargo-tools "${C2RUST_NAME}" --version "=${C2RUST_VERSION}"; \
-    cargo install --locked --root /opt/cargo-tools "${CARGO_MUTANTS_NAME}" --version "=${CARGO_MUTANTS_VERSION}"; \
+    cargo install --locked --root /opt/cargo-tools --path "/tmp/crates/${C2RUST_NAME}-${C2RUST_VERSION}" --version "=${C2RUST_VERSION}" "${C2RUST_NAME}"; \
+    cargo install --locked --root /opt/cargo-tools --path "/tmp/crates/${CARGO_MUTANTS_NAME}-${CARGO_MUTANTS_VERSION}" --version "=${CARGO_MUTANTS_VERSION}" "${CARGO_MUTANTS_NAME}"; \
     grep -q "${TINYCBOR_COMMIT}" "${CARGO_HOME}"/registry/src/*/c2rust-ast-exporter-"${C2RUST_VERSION}"/src/CMakeLists.txt; \
-    mkdir -p /opt/cargo-tools/share/mt; \
     "${llvm_bin}/llvm-config" --version > /opt/cargo-tools/share/mt/c2rust-llvm-config-version; \
+    rm -rf /tmp/crates; \
     chmod -R a+rX /opt/cargo-tools
 
 # Stage klee-build (CONTEXT D-07): klee-uclibc and KLEE from their pinned
