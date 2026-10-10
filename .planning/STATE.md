@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 01
 current_phase_name: Pinned Toolchain Container
 status: executing
-stopped_at: Completed 01-08-PLAN.md
-last_updated: "2026-10-10T02:48:46.126Z"
+stopped_at: Completed 01-09-PLAN.md
+last_updated: "2026-10-10T03:27:06.251Z"
 last_activity: 2026-10-10
 last_activity_desc: Phase 01 execution started
-state_head: d738ef31dae61cfcecb7c1999fd423d2ebf62c7b
+state_head: ae9806593eebdd706ef51e3a25b47111096379d5
 progress:
   total_phases: 12
   completed_phases: 0
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-10-07)
 ## Current Position
 
 Phase: 01 (Pinned Toolchain Container) — EXECUTING
-Plan: 1 of 9
-Status: Executing Phase 01
-Last activity: 2026-10-10 — Phase 01 execution started
+Plan: 9 of 9 (01-09 gap closure complete)
+Status: Plan 01-09 complete; phase verification pending
+Last activity: 2026-10-10 — Plan 01-09 complete (CR-01 pin-binding gap closed)
 
 Progress: [██████████] 100%
 
@@ -60,6 +60,7 @@ Progress: [██████████] 100%
 | Phase 01 P06 | 12 min | 3 tasks | 7 files |
 | Phase 01 P07 | 130 min | 3 tasks | 9 files |
 | Phase 01 P08 | 13 min | 2 tasks | 3 files |
+| Phase 01 P09 | 35 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 01]: 01-07: c2rust LLVM probe retargeted to c2rust-transpile (the c2rust dispatcher links no LLVM); version format is 'C2Rust 0.22.1'
 - [Phase 01]: 01-07: QEMU pins use the Debian version in the banner parentheses incl. +b3; fixtures are real CI captures from container run 37969688167
 - [Phase 01]: Plan 01-08: the pushed GHCR image is the exact image that passed the check, off-pin, manifest and smoke steps; container reference ghcr.io/sat-wik/migrationtool-toolchain@sha256:b8032124716db8f2bfdfea5b693665bb57f37972895f038c2948affb5956e46a (container run 37983108094) — Only image-a holds write access to packages via GITHUB_TOKEN; verified-image is announced only after manifest-diff succeeds; consumers pin the digest, never a tag (T-01-26, T-01-27)
+- [Phase 01]: 01-09: channel-manifest pins bind installed bytes through a file:// RUSTUP_DIST_SERVER mirror with --no-self-update; rustup's stored multirust-channel-manifest.toml is a re-serialization and is never used as evidence
+- [Phase 01]: 01-09: c2rust and cargo-mutants install with cargo install --locked --path from the sha256-verified, unpacked .crate; image-a pin-binding gate matches whole build-record lines to the pins before the GHCR push; verified image ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f3b392427d2588e6ba0e3da2067bc503f40e6749b48bc6553832c27e96e518d (container run 38019633821)
 
 ### Pending Todos
 
@@ -107,6 +110,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-09T20:04:10.689Z
-Stopped at: Completed 01-08-PLAN.md
+Last session: 2026-10-10T03:27:06.154Z
+Stopped at: Completed 01-09-PLAN.md
 Resume file: None
