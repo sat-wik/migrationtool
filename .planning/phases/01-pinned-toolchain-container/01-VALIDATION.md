@@ -65,6 +65,10 @@ Requirement-level map; the planner binds task IDs (`1-PP-TT`) to these rows in e
 | TOOL-03 | Dockerfile ARGs match `mt toolchain build-args` keys | unit | `tool_03_dockerfile_args_match_pins` | Cargo | ✅ green |
 | TOOL-03 | Manifest byte-stable; diff detects change | unit | `tool_03_manifest_is_byte_stable_and_diff_detects_change` | Cargo | ✅ green |
 | TOOL-03 | Two builds give identical manifests | integration | CI build A + build B (`--no-cache`), `diff -u` manifests | CI/container | ✅ green (container run 37983108094) |
+| TOOL-03 | Rust toolchains install only from a file:// mirror of sha256-verified manifests, without self-update (CR-01) | static lint | `tool_03_dockerfile_installs_rust_toolchains_from_verified_manifests` | Cargo | ✅ green |
+| TOOL-03 | Crates install only from the sha256-verified, unpacked `.crate` with `--locked --path` (CR-01) | static lint | `tool_03_dockerfile_installs_crates_from_verified_files` | Cargo | ✅ green |
+| TOOL-03 | image-a gates on the pin-binding build record before the GHCR push (CR-01) | static lint | `tool_03_workflow_gates_on_pin_binding_evidence` | Cargo | ✅ green |
+| TOOL-03 | Pins bind the installed bytes: build record lines equal the pins for both channel manifests and both crates; rustup update-hashes are prefixes of the manifest pins | integration | image-a `pin-binding` notice (4 whole record lines, 4 OK checks) | CI/container | ✅ green (container run 38019633821 at 686b56b) |
 | TOOL-04 | Smoke crate shape (`no_std`, staticlib+rlib, `panic = "abort"`, no deps) | unit | `tool_04_smoke_crate_has_emitted_rust_shape` | Cargo | ✅ green |
 | TOOL-04 | Smoke crate excluded from root workspace | unit | `tool_04_smoke_crate_is_outside_the_workspace` | Cargo | ✅ green |
 | TOOL-04 | Smoke crate builds for `thumbv7em-none-eabihf`; arm-none-eabi-gcc present at pin | integration | CI `cargo build --release --target thumbv7em-none-eabihf --manifest-path container/smoke/Cargo.toml` | CI/container | ✅ green (container run 37983108094) |
@@ -111,3 +115,13 @@ Requirement-level map; the planner binds task IDs (`1-PP-TT`) to these rows in e
 | Gaps found | 0 |
 | Resolved | 0 |
 | Escalated | 0 |
+
+## Validation Audit 2026-10-10 (plan 01-09, gap closure)
+
+| Metric | Count |
+|---|---|
+| Gaps found | 1 (SC3 / TOOL-03, review finding CR-01: the pinned channel-manifest and crate checksums were checked on a throw-away download, not on the installed bytes) |
+| Resolved | 1 (plan 01-09: container run 38019633821 at 686b56b, jobs mt, image-a, image-b and compare success; image-a `pin-binding` notice holds the four whole record lines of the pins; manifests byte-identical, sha256 40e55cc6…7aed3, unchanged) |
+| Escalated | 0 |
+
+Cargo rows are now 23/23 green. The Apple Silicon pull of the new image digest stays a human item (see 01-09-SUMMARY.md).

@@ -136,6 +136,12 @@ D-20). There is no Renovate or Dependabot.
 1. Edit `container/pins.toml`. Recompute any download checksum with
    `mt toolchain hash <url>` (it prints the sha256 and the URL; `--expect`
    fails when the digest differs).
+   A `[rust.tool]` or `[rust.bitcode]` `channel_manifest_sha256` is the sha256 of
+   `https://static.rust-lang.org/dist/channel-rust-<version>.toml` (`mt toolchain hash`
+   of that URL), and the image installs that toolchain only from that verified
+   file and the archives it lists. A crate `sha256` is that of its `.crate` file on
+   `static.crates.io`, and that verified file is the one the image unpacks and
+   installs.
 2. For apt versions and the Arm checksum, run the `pin-discovery` workflow
    (it also runs when `pins.toml` or the Dockerfile change): it prints the apt
    candidate versions at the pinned snapshot timestamp and the official Arm
@@ -187,17 +193,21 @@ is legal advice.
 ## Current image
 
 The verified image, published by the `image-a` job and announced as verified by
-the `compare` job of `container` workflow run 37983108094 only after the two
-manifests were found manifest-identical:
+the `compare` job of `container` workflow run 38019633821 only after the two
+manifests were found manifest-identical. It was built after the pins were made
+to bind the installed bytes: both Rust toolchains are installed only from the
+sha256-checked channel manifests and the archives they list, and c2rust and
+cargo-mutants only from their sha256-checked `.crate` files (the `pin-binding`
+notice of `image-a` shows the build record matching the pins):
 
 ```
-ghcr.io/sat-wik/migrationtool-toolchain@sha256:b8032124716db8f2bfdfea5b693665bb57f37972895f038c2948affb5956e46a
+ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f3b392427d2588e6ba0e3da2067bc503f40e6749b48bc6553832c27e96e518d
 ```
 
-- Run id: 37983108094 (jobs `mt`, `image-a`, `image-b` and `compare` all
-  concluded `success`; the pushed image is the one that passed the check,
-  off-pin check, manifest and smoke steps in `image-a`)
-- Commit: 537ef911a8adffac79aa1faf4cec73f5794df829
+- Run id: 38019633821 (jobs `mt`, `image-a`, `image-b` and `compare` all
+  concluded `success`; the pushed image is the one that passed the pin-binding
+  gate, check, off-pin check, manifest and smoke steps in `image-a`)
+- Commit: 686b56b777bb03be1377ba8e8e575acc4124b8dd
 - Manifest sha256 (identical for both builds):
   40e55cc69fa93f238960bad268cfa4ec5775d51f98dd10efcf92741801d7aed3
 

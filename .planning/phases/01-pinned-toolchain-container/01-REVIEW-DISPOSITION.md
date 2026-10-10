@@ -5,7 +5,7 @@ titles: json
 findings:
   - id: CR-01
     severity: critical
-    disposition: open
+    disposition: fixed
     title: "Pinned checksums for the Rust channel manifests and crates are verified on a separate download that the installer never uses"
   - id: WR-01
     severity: warning
@@ -71,7 +71,7 @@ findings:
     severity: info
     disposition: open
     title: "The smoke step falls back to root on any unprivileged failure, and the manifest comparison proves little"
-open: 17
+open: 16
 total: 17
 recorded: 2026-10-09T20:15:03.832Z
 ---
@@ -80,7 +80,7 @@ recorded: 2026-10-09T20:15:03.832Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | open | - |
+| CR-01 | critical | fixed | 01-09: 686b56b, container run 38019633821 |
 | WR-01 | warning | open | - |
 | WR-02 | warning | open | - |
 | WR-03 | warning | open | - |
