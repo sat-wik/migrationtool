@@ -27,6 +27,14 @@ findings:
     severity: warning
     disposition: open
     title: "The \"process launching only in runner.rs\" guard misses the idiom `runner.rs` itself uses"
+  - id: WR-06
+    severity: warning
+    disposition: open
+    title: "The new static rules are whole-RUN and spelling-bound, so several ways back to an unbound install pass them (new, plan 01-09)"
+  - id: WR-07
+    severity: warning
+    disposition: open
+    title: "The `Pin binding evidence` gate checks the Dockerfile's own bookkeeping, and its update-hash witness is tautological (new, plan 01-09)"
   - id: IN-01
     severity: info
     disposition: open
@@ -71,9 +79,21 @@ findings:
     severity: info
     disposition: open
     title: "The smoke step falls back to root on any unprivileged failure, and the manifest comparison proves little"
-open: 16
-total: 17
-recorded: 2026-10-09T20:15:03.832Z
+  - id: IN-12
+    severity: info
+    disposition: open
+    title: "The gate test is a string-presence check, and the gate's comparison logic has no executable test (new, plan 01-09)"
+  - id: IN-13
+    severity: info
+    disposition: open
+    title: "Manifest URL hardening is partial and the mirror downloads lack the usual curl options (new, plan 01-09)"
+  - id: IN-14
+    severity: info
+    disposition: open
+    title: "\"Never fetched a second time\" is true of the top-level crate only; dependencies and tinycbor are bound indirectly (new, plan 01-09)"
+open: 21
+total: 22
+recorded: 2026-10-10T03:37:39.900Z
 ---
 
 # Phase 01: Code Review Disposition
@@ -86,6 +106,8 @@ recorded: 2026-10-09T20:15:03.832Z
 | WR-03 | warning | open | - |
 | WR-04 | warning | open | - |
 | WR-05 | warning | open | - |
+| WR-06 | warning | open | - |
+| WR-07 | warning | open | - |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
@@ -97,6 +119,9 @@ recorded: 2026-10-09T20:15:03.832Z
 | IN-09 | info | open | - |
 | IN-10 | info | open | - |
 | IN-11 | info | open | - |
+| IN-12 | info | open | - |
+| IN-13 | info | open | - |
+| IN-14 | info | open | - |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
