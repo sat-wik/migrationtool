@@ -125,3 +125,11 @@ Requirement-level map; the planner binds task IDs (`1-PP-TT`) to these rows in e
 | Escalated | 0 |
 
 Cargo rows are now 23/23 green. The Apple Silicon pull of the new image digest stays a human item (see 01-09-SUMMARY.md).
+
+## Validation Audit 2026-10-10
+
+| Metric | Count |
+|---|---|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
