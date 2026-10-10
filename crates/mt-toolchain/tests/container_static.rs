@@ -283,11 +283,23 @@ fn dockerfile_instructions(text: &str) -> Vec<(String, String)> {
         .collect()
 }
 
+/// The command segments of a `RUN`: the text split on `;` and `&&`, trimmed,
+/// with empty pieces dropped. A segment is the unit one `rustup` command lives in.
+fn run_segments(run: &str) -> Vec<&str> {
+    run.split("&&")
+        .flat_map(|part| part.split(';'))
+        .map(str::trim)
+        .filter(|segment| !segment.is_empty())
+        .collect()
+}
+
 /// The checks that apply to one `RUN` instruction.
 fn run_issues(run: &str, issues: &mut Vec<String>) {
     let curl = regex::Regex::new(r"(?:^|[\s;&|(])curl\s+-").unwrap();
     let pipe_to_shell = regex::Regex::new(r"\|\s*(?:sudo\s+)?(?:ba|da|z)?sh\b").unwrap();
     let pinned_version = regex::Regex::new(r#"--version\s+"?="#).unwrap();
+    let dist_server =
+        regex::Regex::new(r#"RUSTUP_DIST_SERVER=("[^"]*"|'[^']*'|[^\s;&|]*)"#).unwrap();
     if pipe_to_shell.is_match(run) {
         issues.push(format!("RUN pipes into a shell: {run}"));
     }
@@ -304,6 +316,36 @@ fn run_issues(run: &str, issues: &mut Vec<String>) {
         issues.push(format!(
             "RUN cargo install lacks `--locked` or an exact `--version =`: {run}"
         ));
+    }
+
+    // CR-01: a toolchain is installed only from a local mirror of files that were
+    // checked in this RUN, and never lets rustup replace the pinned rustup binary.
+    let servers: Vec<&str> = dist_server
+        .captures_iter(run)
+        .map(|captures| captures.get(1).map_or("", |m| m.as_str()))
+        .map(|value| value.trim_matches(['"', '\'']))
+        .collect();
+    for value in &servers {
+        if !value.starts_with("file://") {
+            issues.push(format!(
+                "RUN sets RUSTUP_DIST_SERVER to `{value}`, whose scheme is not file: {run}"
+            ));
+        }
+    }
+    if run.contains("rustup toolchain install") {
+        if !servers.iter().any(|value| value.starts_with("file://")) {
+            issues.push(format!(
+                "RUN installs a toolchain without RUSTUP_DIST_SERVER=file://..., so rustup fetches its own copy of what was checked: {run}"
+            ));
+        }
+        for segment in run_segments(run) {
+            if segment.contains("rustup toolchain install") && !segment.contains("--no-self-update")
+            {
+                issues.push(format!(
+                    "rustup toolchain install without `--no-self-update` may replace the pinned rustup: {segment}"
+                ));
+            }
+        }
     }
 }
 
@@ -362,6 +404,15 @@ fn dockerfile_issues(text: &str) -> Vec<String> {
                 }
             }
             "RUN" => run_issues(&rest, &mut issues),
+            "ENV" => {
+                for name in ["RUSTUP_DIST_SERVER", "RUSTUP_UPDATE_ROOT"] {
+                    if rest.contains(name) {
+                        issues.push(format!(
+                            "ENV sets {name}; the mirror must stay local to the RUN that installs from it: {rest}"
+                        ));
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -453,6 +504,121 @@ fn tool_03_dockerfile_has_no_floating_references() {
         RUN cargo install --locked foo --version =1.0.0\n\
         RUN echo \"deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/x/ s main\"\n";
     assert_eq!(dockerfile_issues(accepted), Vec::<String>::new());
+}
+
+/// The digest-pinned first line every fixture Dockerfile starts with.
+const FIXTURE_FROM: &str = "FROM --platform=${PLATFORM} ${BASE_REF}@${BASE_DIGEST} AS a\n";
+
+/// `RUN` arguments of the rustup stage as the Dockerfile had them before CR-01 was
+/// fixed, copied verbatim: the channel manifests are downloaded and checked, and
+/// then `rustup toolchain install` fetches its own copies.
+const CR01_RUSTUP_RUN: &str = r##"set -eux; \
+    : "${RUST_TOOL_VERSION:?}" "${RUST_TOOL_CHANNEL_SHA256:?}" "${RUST_BITCODE_VERSION:?}" "${RUST_BITCODE_CHANNEL_SHA256:?}"; \
+    : "${RUST_TOOL_COMPONENTS:?}" "${RUST_TOOL_TARGETS:?}"; \
+    for pair in "${RUST_TOOL_VERSION}:${RUST_TOOL_CHANNEL_SHA256}" "${RUST_BITCODE_VERSION}:${RUST_BITCODE_CHANNEL_SHA256}"; do \
+      version="${pair%%:*}"; \
+      sha="${pair#*:}"; \
+      curl -fsSL --retry 5 --retry-delay 5 -o "/tmp/channel-rust-${version}.toml" "https://static.rust-lang.org/dist/channel-rust-${version}.toml"; \
+      echo "${sha}  /tmp/channel-rust-${version}.toml" | sha256sum -c -; \
+    done; \
+    extra=""; \
+    for component in $(printf '%s' "${RUST_TOOL_COMPONENTS}" | tr ',' ' '); do extra="${extra} -c ${component}"; done; \
+    for target in $(printf '%s' "${RUST_TOOL_TARGETS}" | tr ',' ' '); do extra="${extra} -t ${target}"; done; \
+    rustup toolchain install "${RUST_TOOL_VERSION}" --profile minimal ${extra}; \
+    rustup toolchain install "${RUST_BITCODE_VERSION}" --profile minimal; \
+    rustup default "${RUST_TOOL_VERSION}"; \
+    rustup toolchain list; \
+    rm -f /tmp/channel-rust-*.toml; \
+    chmod -R a+rX "${RUSTUP_HOME}" "${CARGO_HOME}""##;
+
+/// A fixture Dockerfile holding one `RUN` of `run`.
+fn run_fixture(run: &str) -> String {
+    format!("{FIXTURE_FROM}RUN {run}\n")
+}
+
+/// True when some issue in `issues` mentions `needle`.
+fn mentions(issues: &[String], needle: &str) -> bool {
+    issues.iter().any(|issue| issue.contains(needle))
+}
+
+#[test]
+fn tool_03_dockerfile_installs_rust_toolchains_from_verified_manifests() {
+    // What must be refused: the pre-fix RUN verbatim (a checked download that
+    // rustup then ignores), an install without a local mirror, one without
+    // `--no-self-update` anywhere or in only one of two installs, and a dist server
+    // that is not a file:// mirror, as a command prefix or as ENV.
+    let issues = dockerfile_issues(&run_fixture(CR01_RUSTUP_RUN));
+    assert!(
+        mentions(&issues, "without RUSTUP_DIST_SERVER=file://"),
+        "the pre-fix rustup RUN must be refused, got {issues:?}"
+    );
+    assert!(
+        mentions(&issues, "--no-self-update"),
+        "the pre-fix rustup RUN installs without --no-self-update, got {issues:?}"
+    );
+
+    let check = "curl -fsSL -o /m/dist/channel-rust-1.0.0.toml https://static.rust-lang.org/dist/channel-rust-1.0.0.toml \
+        && echo \"h  /m/dist/channel-rust-1.0.0.toml\" | sha256sum -c -";
+    let no_self_update = dockerfile_issues(&run_fixture(&format!(
+        "{check} && RUSTUP_DIST_SERVER=\"file:///m\" rustup toolchain install 1.0.0 --profile minimal"
+    )));
+    assert!(
+        mentions(&no_self_update, "--no-self-update"),
+        "a mirror install without --no-self-update must be refused, got {no_self_update:?}"
+    );
+    let only_first = dockerfile_issues(&run_fixture(&format!(
+        "{check} && RUSTUP_DIST_SERVER=\"file:///m\" rustup toolchain install 1.0.0 --profile minimal --no-self-update; \
+         RUSTUP_DIST_SERVER=\"file:///m\" rustup toolchain install 2.0.0 --profile minimal"
+    )));
+    assert!(
+        mentions(&only_first, "rustup toolchain install 2.0.0"),
+        "the second install lacks --no-self-update and must be named, got {only_first:?}"
+    );
+    assert!(
+        !mentions(&only_first, "rustup toolchain install 1.0.0"),
+        "the first install has --no-self-update and must not be named, got {only_first:?}"
+    );
+    let https = dockerfile_issues(&run_fixture(&format!(
+        "{check} && RUSTUP_DIST_SERVER=https://static.rust-lang.org rustup toolchain install 1.0.0 --profile minimal --no-self-update"
+    )));
+    assert!(
+        mentions(&https, "scheme is not file"),
+        "an https dist server must be refused, got {https:?}"
+    );
+    assert!(
+        mentions(&https, "without RUSTUP_DIST_SERVER=file://"),
+        "an https dist server is not a mirror, got {https:?}"
+    );
+    let env = dockerfile_issues(&format!("{FIXTURE_FROM}ENV RUSTUP_DIST_SERVER=file:///m\n"));
+    assert!(
+        mentions(&env, "ENV sets RUSTUP_DIST_SERVER"),
+        "an ENV dist server must be refused, got {env:?}"
+    );
+    let update_root =
+        dockerfile_issues(&format!("{FIXTURE_FROM}ENV RUSTUP_UPDATE_ROOT=file:///m\n"));
+    assert!(
+        mentions(&update_root, "ENV sets RUSTUP_UPDATE_ROOT"),
+        "an ENV update root must be refused, got {update_root:?}"
+    );
+
+    // What must be accepted: a manifest downloaded into the mirror, checked, and
+    // installed from through a RUN-local file:// dist server without self-update.
+    let accepted = dockerfile_issues(&run_fixture(&format!(
+        "mkdir -p /m/dist && {check} && RUSTUP_DIST_SERVER=\"file:///m\" rustup toolchain install 1.0.0 --profile minimal --no-self-update"
+    )));
+    assert_eq!(accepted, Vec::<String>::new());
+
+    // The real Dockerfile passes, and the check is not vacuous.
+    let dockerfile = read_repo_file("container/Dockerfile");
+    assert_eq!(dockerfile_issues(&dockerfile), Vec::<String>::new());
+    let installing = dockerfile_instructions(&dockerfile)
+        .iter()
+        .filter(|(keyword, rest)| keyword == "RUN" && rest.contains("rustup toolchain install"))
+        .count();
+    assert!(
+        installing >= 1,
+        "no RUN installs a Rust toolchain; the check would be vacuous"
+    );
 }
 
 #[test]
@@ -1064,5 +1230,51 @@ fn tool_03_workflow_publishes_by_digest_with_least_privilege() {
     assert!(
         compare[diff..verified].contains("exit 1"),
         "a manifest difference must fail the job before verified-image is published"
+    );
+}
+
+#[test]
+fn tool_03_workflow_gates_on_pin_binding_evidence() {
+    let workflow = read_repo_file(".github/workflows/container.yml");
+    let image_a = workflow_job_text(&workflow, "image-a");
+
+    // The gate reads the build record out of the built image and reports through
+    // a notice on success and an error on mismatch.
+    assert!(
+        image_a.contains("pin-binding.sha256"),
+        "image-a must read the build record pin-binding.sha256"
+    );
+    assert!(
+        image_a.contains("annotate notice pin-binding"),
+        "image-a must publish a pin-binding notice"
+    );
+    let error = image_a
+        .find("annotate error pin-binding")
+        .expect("image-a must publish a pin-binding error on mismatch");
+    let after_error = &image_a[error..];
+    let window: String = after_error.chars().take(300).collect();
+    assert!(
+        window.contains("exit 1"),
+        "`exit 1` must follow the pin-binding error annotation within 300 characters"
+    );
+
+    // The gate comes before the push, and the publish steps carry no status
+    // function, so a failed gate keeps the image out of GHCR.
+    let first_gate = image_a
+        .find("pin-binding")
+        .expect("image-a mentions pin-binding");
+    let publish = image_a
+        .find("id: publish")
+        .expect("the push step must have the id `publish`");
+    assert!(
+        first_gate < publish,
+        "the pin-binding gate must come before the publish step"
+    );
+    let login = image_a
+        .find("docker/login-action@")
+        .expect("image-a logs in before it pushes");
+    assert!(
+        first_gate < login,
+        "the pin-binding gate must come before the GHCR login"
     );
 }

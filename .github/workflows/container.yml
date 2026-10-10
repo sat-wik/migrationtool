@@ -5,9 +5,10 @@
 #
 # Log and artifact hosts are not reachable from cloud sessions, so each job also
 # publishes its evidence as job annotations (titles check-a, negative-pin,
-# manifest-a, manifest-b, manifest-compare, smoke, tool-outputs, image-digest,
-# verified-image, and on failure "image-a build tail", "image-b build tail" and
-# manifest-diff). `verified-image` is the digest reference later phases use.
+# manifest-a, manifest-b, manifest-compare, smoke, tool-outputs, pin-binding,
+# image-digest, verified-image, and on failure "image-a build tail", "image-b
+# build tail" and manifest-diff). `verified-image` is the digest reference later
+# phases use.
 #
 # Action commit SHAs are pinned here because GitHub resolves `uses:` before any
 # step can read container/pins.toml; every other pin comes from that file.
@@ -216,6 +217,97 @@ jobs:
           { cat "$out/inventory.txt"; echo "exit code: $rc"; docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' mt-toolchain:ci; } > "$out/inventory-notice.txt"
           cat "$out/inventory-notice.txt"
           annotate notice image-inventory "$out/inventory-notice.txt"
+
+      # CR-01, TOOL-03: the pins govern the installed bytes. The image build wrote
+      # /opt/cargo-tools/share/mt/pin-binding.sha256, the sha256 of every file the
+      # installers consumed. Each channel-manifest pin must be the checksum of the
+      # manifest file in that record, and rustup's own update-hash (the first
+      # characters of the manifest sha256 it saw) must be a prefix of the same pin.
+      # A mismatch fails this job before the image is pushed. The manifest copy that
+      # rustup stores is its own re-serialisation: it is printed for the reader and
+      # is not the binding. Values are read from image-args.txt as data, never sourced.
+      - name: Pin binding evidence
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          args="$RUNNER_TEMP/bundle/image-args.txt"
+          arg() {
+            local line
+            line=$(grep -m 1 "^$1=" "$args") || { echo "image-args.txt has no $1" >&2; return 1; }
+            printf '%s' "${line#*=}"
+          }
+          rustup_home=$(arg RUSTUP_HOME)
+          host=$(arg RUST_HOST)
+          tool_version=$(arg RUST_TOOL_VERSION)
+          tool_pin=$(arg RUST_TOOL_CHANNEL_SHA256)
+          bitcode_version=$(arg RUST_BITCODE_VERSION)
+          bitcode_pin=$(arg RUST_BITCODE_CHANNEL_SHA256)
+          for value in "$rustup_home" "$host" "$tool_version" "$tool_pin" "$bitcode_version" "$bitcode_pin"; do
+            [ -n "$value" ] || { echo "an image argument needed by the pin-binding gate is empty"; exit 1; }
+          done
+          cat > "$RUNNER_TEMP/binding.sh" <<'BIND'
+          echo "--- record"
+          cat /opt/cargo-tools/share/mt/pin-binding.sha256
+          echo "--- update-hashes"
+          for f in "$RUSTUP_HOME"/update-hashes/*; do
+            echo "$(basename "$f") $(cat "$f")"
+          done
+          echo "--- stored"
+          sha256sum "$RUSTUP_HOME"/toolchains/*/lib/rustlib/multirust-channel-manifest.toml
+          BIND
+          set +e
+          docker run --rm --network none --user 65534:65534 --read-only --tmpfs /tmp:rw,nosuid,size=64m \
+            -e RUSTUP_HOME="$rustup_home" \
+            -v "$RUNNER_TEMP/binding.sh:/binding.sh:ro" mt-toolchain:ci bash /binding.sh > "$out/binding.txt" 2> "$out/binding.err"
+          rc=$?
+          set -e
+          section() { sed -n "/^--- $1\$/,/^--- /p" "$out/binding.txt" | sed '1d;/^--- /d'; }
+          section record > "$out/binding-record.txt"
+          section update-hashes > "$out/binding-update-hashes.txt"
+          section stored > "$out/binding-stored.txt"
+          ok=true
+          [ "$rc" -eq 0 ] || ok=false
+          {
+            echo "Each record line is the sha256 of a file an installer consumed, as written by the image build."
+            echo "--- build record /opt/cargo-tools/share/mt/pin-binding.sha256"
+            cat "$out/binding-record.txt"
+            echo "--- checks (container exit code $rc)"
+          } > "$out/pin-binding-notice.txt"
+          check_toolchain() {
+            local version=$1 pin=$2 want hash
+            want="${pin}  /tmp/rust-dist/dist/channel-rust-${version}.toml"
+            if grep -qxF -- "$want" "$out/binding-record.txt"; then
+              echo "OK record line for channel-rust-${version}.toml equals its pin" >> "$out/pin-binding-notice.txt"
+            else
+              echo "MISMATCH no record line equals: $want" >> "$out/pin-binding-notice.txt"
+              ok=false
+            fi
+            hash=$(grep -m 1 "^${version}-${host} " "$out/binding-update-hashes.txt" | cut -d' ' -f2) || hash=""
+            if printf '%s' "$hash" | grep -Eq '^[0-9a-f]{16,}$' && [ "${pin#"$hash"}" != "$pin" ]; then
+              echo "OK rustup update-hash ${hash} for ${version}-${host} is a prefix of the pin" >> "$out/pin-binding-notice.txt"
+            else
+              echo "MISMATCH rustup update-hash '${hash}' for ${version}-${host} is not a prefix (16 or more hex characters) of ${pin}" >> "$out/pin-binding-notice.txt"
+              ok=false
+            fi
+          }
+          check_toolchain "$tool_version" "$tool_pin"
+          check_toolchain "$bitcode_version" "$bitcode_pin"
+          {
+            echo "--- rustup update-hashes (the first 20 hex characters of each manifest sha256; a witness, not the binding)"
+            cat "$out/binding-update-hashes.txt"
+            echo "--- rustup's stored multirust-channel-manifest.toml (rustup's re-serialized copy, not the binding)"
+            cat "$out/binding-stored.txt"
+            if [ -s "$out/binding.err" ]; then echo "--- stderr"; cat "$out/binding.err"; fi
+          } >> "$out/pin-binding-notice.txt"
+          cat "$out/pin-binding-notice.txt"
+          if [ "$ok" = true ]; then
+            annotate notice pin-binding "$out/pin-binding-notice.txt"
+          else
+            annotate error pin-binding "$out/pin-binding-notice.txt"
+            exit 1
+          fi
 
       # TOOL-01, TOOL-02: every pinned tool's exact version from inside the image.
       # --network none only proves the image needs no downloads for this check;

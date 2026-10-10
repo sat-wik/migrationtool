@@ -132,10 +132,23 @@ RUN set -eux; \
       zlib1g-dev; \
     rm -rf /var/lib/apt/lists/*
 
-# Stage rustup (CONTEXT D-12, D-13): rustup-init, both channel manifests and
-# nothing else is trusted on the strength of a pinned sha256. The tool
-# toolchain carries the components and targets of pins.toml; the bitcode
-# toolchain is the host target only and is never the default.
+# Stage rustup (CONTEXT D-04, D-12, D-13): the installer is rustup-init, checked
+# against its pinned sha256. Both toolchains are installed from a local mirror
+# (RUSTUP_DIST_SERVER=file:///tmp/rust-dist) and from nothing else:
+#   1. each channel manifest is downloaded and checked with `sha256sum -c`
+#      against the pin of pins.toml, and that checked file is the one in the mirror;
+#   2. each component archive the manifest lists for the wanted packages is
+#      downloaded and checked against the hash that verified manifest gives it;
+#   3. rustup reads only the mirror (it has no network fallback), re-verifies every
+#      archive against the manifest, and runs with --no-self-update, so the pinned
+#      rustup-init binary stays in place.
+# The pin therefore governs the installed bytes (CR-01). The multirust-channel-
+# manifest.toml that rustup stores afterwards is rustup's own re-serialisation of
+# the manifest and is not evidence; the build record
+# /opt/cargo-tools/share/mt/pin-binding.sha256 lists the sha256 of every file the
+# installer consumed, and the image-a job of the container workflow gates on it.
+# The tool toolchain carries the components and targets of pins.toml; the bitcode
+# toolchain is the host target only and is never the default (D-13).
 FROM build-base AS rustup
 ARG CARGO_HOME
 ARG RUSTUP_HOME
@@ -160,23 +173,61 @@ RUN set -eux; \
     chmod +x /tmp/rustup-init; \
     /tmp/rustup-init -y --no-modify-path --profile minimal --default-toolchain none --default-host "${RUST_HOST}"; \
     rm -f /tmp/rustup-init
+# POSIX sh only (dash) and no awk extension (mawk). `sv MANIFEST SECTION KEY` prints
+# the value of KEY in the [SECTION] table of a manifest. `mirror VERSION SHA
+# COMPONENTS TARGETS` puts the checked manifest and the archives of the wanted
+# packages (rustc, cargo and rust-std for the host, the components for the host
+# under their [renames] names, rust-std for each target) into the mirror.
 RUN set -eux; \
     : "${RUST_TOOL_VERSION:?}" "${RUST_TOOL_CHANNEL_SHA256:?}" "${RUST_BITCODE_VERSION:?}" "${RUST_BITCODE_CHANNEL_SHA256:?}"; \
-    : "${RUST_TOOL_COMPONENTS:?}" "${RUST_TOOL_TARGETS:?}"; \
-    for pair in "${RUST_TOOL_VERSION}:${RUST_TOOL_CHANNEL_SHA256}" "${RUST_BITCODE_VERSION}:${RUST_BITCODE_CHANNEL_SHA256}"; do \
-      version="${pair%%:*}"; \
-      sha="${pair#*:}"; \
-      curl -fsSL --retry 5 --retry-delay 5 -o "/tmp/channel-rust-${version}.toml" "https://static.rust-lang.org/dist/channel-rust-${version}.toml"; \
-      echo "${sha}  /tmp/channel-rust-${version}.toml" | sha256sum -c -; \
-    done; \
+    : "${RUST_TOOL_COMPONENTS:?}" "${RUST_TOOL_TARGETS:?}" "${RUST_HOST:?}"; \
+    record=/opt/cargo-tools/share/mt/pin-binding.sha256; \
+    mkdir -p /opt/cargo-tools/share/mt /tmp/rust-dist/dist; \
+    : > "${record}"; \
+    sv() { awk -v sec="[$2]" -v key="$3" '$0 == sec { s = 1; next } /^\[/ { s = 0 } s && index($0, key " = ") == 1 { v = substr($0, length(key) + 4); gsub(/"/, "", v); print v; exit }' "$1"; }; \
+    mirror() { \
+      version="$1"; sha="$2"; \
+      manifest="/tmp/rust-dist/dist/channel-rust-${version}.toml"; \
+      curl -fsSL --retry 5 --retry-delay 5 -o "${manifest}" "https://static.rust-lang.org/dist/channel-rust-${version}.toml"; \
+      echo "${sha}  ${manifest}" | sha256sum -c -; \
+      echo "${sha}  channel-rust-${version}.toml" > "${manifest}.sha256"; \
+      sha256sum "${manifest}" >> "${record}"; \
+      wanted="rustc:${RUST_HOST} cargo:${RUST_HOST} rust-std:${RUST_HOST}"; \
+      for component in $(printf '%s' "$3" | tr ',' ' '); do \
+        renamed="$(sv "${manifest}" "renames.${component}" to)"; \
+        wanted="${wanted} ${renamed:-${component}}:${RUST_HOST}"; \
+      done; \
+      for target in $(printf '%s' "$4" | tr ',' ' '); do wanted="${wanted} rust-std:${target}"; done; \
+      seen=" "; \
+      for entry in ${wanted}; do \
+        case "${seen}" in *" ${entry} "*) continue ;; esac; \
+        seen="${seen}${entry} "; \
+        section="pkg.${entry%%:*}.target.${entry#*:}"; \
+        url="$(sv "${manifest}" "${section}" xz_url)"; hash="$(sv "${manifest}" "${section}" xz_hash)"; \
+        if [ -z "${url}" ]; then url="$(sv "${manifest}" "${section}" url)"; hash="$(sv "${manifest}" "${section}" hash)"; fi; \
+        if [ -z "${url}" ] || [ -z "${hash}" ]; then echo "channel-rust-${version}.toml has no archive for [${section}]" >&2; exit 1; fi; \
+        case "${url}" in \
+          *..*) echo "[${section}] names ${url}, which contains .." >&2; exit 1 ;; \
+          https://static.rust-lang.org/dist/*) ;; \
+          *) echo "[${section}] names ${url}, outside https://static.rust-lang.org/dist/" >&2; exit 1 ;; \
+        esac; \
+        archive="/tmp/rust-dist${url#https://static.rust-lang.org}"; \
+        mkdir -p "$(dirname "${archive}")"; \
+        curl -fsSL --retry 5 --retry-delay 5 -o "${archive}" "${url}"; \
+        echo "${hash}  ${archive}" | sha256sum -c -; \
+        sha256sum "${archive}" >> "${record}"; \
+      done; \
+    }; \
+    mirror "${RUST_TOOL_VERSION}" "${RUST_TOOL_CHANNEL_SHA256}" "${RUST_TOOL_COMPONENTS}" "${RUST_TOOL_TARGETS}"; \
+    mirror "${RUST_BITCODE_VERSION}" "${RUST_BITCODE_CHANNEL_SHA256}" "" ""; \
     extra=""; \
     for component in $(printf '%s' "${RUST_TOOL_COMPONENTS}" | tr ',' ' '); do extra="${extra} -c ${component}"; done; \
     for target in $(printf '%s' "${RUST_TOOL_TARGETS}" | tr ',' ' '); do extra="${extra} -t ${target}"; done; \
-    rustup toolchain install "${RUST_TOOL_VERSION}" --profile minimal ${extra}; \
-    rustup toolchain install "${RUST_BITCODE_VERSION}" --profile minimal; \
+    RUSTUP_DIST_SERVER="file:///tmp/rust-dist" rustup toolchain install "${RUST_TOOL_VERSION}" --profile minimal --no-self-update ${extra}; \
+    RUSTUP_DIST_SERVER="file:///tmp/rust-dist" rustup toolchain install "${RUST_BITCODE_VERSION}" --profile minimal --no-self-update; \
     rustup default "${RUST_TOOL_VERSION}"; \
     rustup toolchain list; \
-    rm -f /tmp/channel-rust-*.toml; \
+    rm -rf /tmp/rust-dist; \
     chmod -R a+rX "${RUSTUP_HOME}" "${CARGO_HOME}"
 
 # Stage arm (CONTEXT D-08): the official Arm GNU Toolchain release archive.
