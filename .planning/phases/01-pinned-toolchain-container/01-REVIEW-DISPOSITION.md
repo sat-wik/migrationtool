@@ -9,23 +9,23 @@ findings:
     title: "Pinned checksums for the Rust channel manifests and crates are verified on a separate download that the installer never uses"
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "A timeout kills only the direct child, and the timeout is then reported as a drain error"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`mt toolchain hash` lets curl read user config and expand URL globs"
   - id: WR-03
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The single-LLVM-major probe inspects only the first library in `ldd` output"
   - id: WR-04
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Any branch push (and the weekly schedule) publishes to GHCR; the cancel group covers the publish"
   - id: WR-05
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The \"process launching only in runner.rs\" guard misses the idiom `runner.rs` itself uses"
   - id: WR-06
     severity: warning
@@ -91,9 +91,9 @@ findings:
     severity: info
     disposition: open
     title: "\"Never fetched a second time\" is true of the top-level crate only; dependencies and tinycbor are bound indirectly (new, plan 01-09)"
-open: 21
+open: 16
 total: 22
-recorded: 2026-10-10T03:37:39.900Z
+recorded: 2026-10-11T16:34:43.719Z
 ---
 
 # Phase 01: Code Review Disposition
@@ -101,11 +101,11 @@ recorded: 2026-10-10T03:37:39.900Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | CR-01 | critical | fixed | 01-09: 686b56b, container run 38019633821 |
-| WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
-| WR-03 | warning | open | - |
-| WR-04 | warning | open | - |
-| WR-05 | warning | open | - |
+| WR-01 | warning | fixed | 01-REVIEW-FIX.md |
+| WR-02 | warning | fixed | 01-REVIEW-FIX.md |
+| WR-03 | warning | fixed | 01-REVIEW-FIX.md |
+| WR-04 | warning | fixed | 01-REVIEW-FIX.md |
+| WR-05 | warning | fixed | 01-REVIEW-FIX.md |
 | WR-06 | warning | open | - |
 | WR-07 | warning | open | - |
 | IN-01 | info | open | - |
