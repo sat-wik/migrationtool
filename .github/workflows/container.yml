@@ -225,8 +225,14 @@ jobs:
       # CR-01, TOOL-03: the pins govern the installed bytes. The image build wrote
       # /opt/cargo-tools/share/mt/pin-binding.sha256, the sha256 of every file the
       # installers consumed. Each channel-manifest pin must be the checksum of the
-      # manifest file in that record, and rustup's own update-hash (the first
-      # characters of the manifest sha256 it saw) must be a prefix of the same pin.
+      # manifest file in that record. The record is the build's own notes, so the
+      # gate also measures the installed result: cargo's install ledger
+      # /opt/cargo-tools/.crates2.json must name each pinned crate with the source
+      # path+file:///tmp/crates/<name>-<version>, the directory unpacked from the
+      # checked .crate (a registry source fails the gate). The rustup update-hash
+      # is reported against the pin as a witness only: the Dockerfile writes the
+      # sidecar rustup reads from that same pin and fails the build if the stored
+      # update-hash differs, so it is not evidence independent of the Dockerfile.
       # A mismatch fails this job before the image is pushed. The manifest copy that
       # rustup stores is its own re-serialisation: it is printed for the reader and
       # is not the binding. Values are read from image-args.txt as data, never sourced.
@@ -259,8 +265,12 @@ jobs:
             [ -n "$value" ] || { echo "an image argument needed by the pin-binding gate is empty"; exit 1; }
           done
           cat > "$RUNNER_TEMP/binding.sh" <<'BIND'
+          set -eu
           echo "--- record"
           cat /opt/cargo-tools/share/mt/pin-binding.sha256
+          echo "--- crates"
+          cat /opt/cargo-tools/.crates2.json
+          echo
           echo "--- update-hashes"
           for f in "$RUSTUP_HOME"/update-hashes/*; do
             echo "$(basename "$f") $(cat "$f")"
@@ -276,6 +286,7 @@ jobs:
           set -e
           section() { sed -n "/^--- $1\$/,/^--- /p" "$out/binding.txt" | sed '1d;/^--- /d'; }
           section record > "$out/binding-record.txt"
+          section crates > "$out/binding-crates.txt"
           section update-hashes > "$out/binding-update-hashes.txt"
           section stored > "$out/binding-stored.txt"
           ok=true
@@ -297,19 +308,28 @@ jobs:
             fi
             hash=$(grep -m 1 "^${version}-${host} " "$out/binding-update-hashes.txt" | cut -d' ' -f2) || hash=""
             if printf '%s' "$hash" | grep -Eq '^[0-9a-f]{16,}$' && [ "${pin#"$hash"}" != "$pin" ]; then
-              echo "OK rustup update-hash ${hash} for ${version}-${host} is a prefix of the pin" >> "$out/pin-binding-notice.txt"
+              echo "OK rustup update-hash ${hash} for ${version}-${host} equals the leading characters of the pin from pins.toml (witness: the Dockerfile wrote the sidecar from that pin)" >> "$out/pin-binding-notice.txt"
             else
-              echo "MISMATCH rustup update-hash '${hash}' for ${version}-${host} is not a prefix (16 or more hex characters) of ${pin}" >> "$out/pin-binding-notice.txt"
+              echo "MISMATCH rustup update-hash '${hash}' for ${version}-${host} is not the leading characters (16 or more hex characters) of the pin ${pin}" >> "$out/pin-binding-notice.txt"
               ok=false
             fi
           }
           check_crate() {
-            local name=$1 version=$2 pin=$3 want
+            local name=$1 version=$2 pin=$3 want source
             want="${pin}  /tmp/crates/${name}-${version}.crate"
             if grep -qxF -- "$want" "$out/binding-record.txt"; then
               echo "OK record line for ${name}-${version}.crate equals its pin" >> "$out/pin-binding-notice.txt"
             else
               echo "MISMATCH no record line equals: $want" >> "$out/pin-binding-notice.txt"
+              ok=false
+            fi
+            # The install ledger is written by cargo, not by the Dockerfile: the
+            # installed crate must come from the unpacked, checked .crate directory.
+            source="\"${name} ${version} (path+file:///tmp/crates/${name}-${version})\""
+            if grep -qF -- "$source" "$out/binding-crates.txt"; then
+              echo "OK cargo installed ${name} ${version} from path+file:///tmp/crates/${name}-${version}" >> "$out/pin-binding-notice.txt"
+            else
+              echo "MISMATCH .crates2.json has no install of ${name} ${version} from path+file:///tmp/crates/${name}-${version}" >> "$out/pin-binding-notice.txt"
               ok=false
             fi
           }
@@ -318,7 +338,9 @@ jobs:
           check_crate "$c2rust_name" "$c2rust_version" "$c2rust_pin"
           check_crate "$mutants_name" "$mutants_version" "$mutants_pin"
           {
-            echo "--- rustup update-hashes (the first 20 hex characters of each manifest sha256; a witness, not the binding)"
+            echo "--- cargo install ledger /opt/cargo-tools/.crates2.json"
+            cat "$out/binding-crates.txt"
+            echo "--- rustup update-hashes (the leading hex characters of each manifest sha256, from the sidecar the Dockerfile wrote; a witness, not the binding)"
             cat "$out/binding-update-hashes.txt"
             echo "--- rustup's stored multirust-channel-manifest.toml (rustup's re-serialized copy, not the binding)"
             cat "$out/binding-stored.txt"

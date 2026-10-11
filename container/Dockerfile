@@ -227,6 +227,13 @@ RUN set -eux; \
     RUSTUP_DIST_SERVER="file:///tmp/rust-dist" rustup toolchain install "${RUST_BITCODE_VERSION}" --profile minimal --no-self-update; \
     RUSTUP_DIST_SERVER="file:///tmp/rust-dist" rustup default "${RUST_TOOL_VERSION}"; \
     rustup toolchain list; \
+    for pair in "${RUST_TOOL_VERSION}:${RUST_TOOL_CHANNEL_SHA256}" "${RUST_BITCODE_VERSION}:${RUST_BITCODE_CHANNEL_SHA256}"; do \
+      version="${pair%%:*}"; \
+      sha="${pair#*:}"; \
+      stored="$(cat "${RUSTUP_HOME}/update-hashes/${version}-${RUST_HOST}")"; \
+      test "${#stored}" -ge 16; \
+      case "${sha}" in "${stored}"*) ;; *) echo "rustup update-hash ${stored} for ${version} is not the start of the pin ${sha}" >&2; exit 1 ;; esac; \
+    done; \
     rm -rf /tmp/rust-dist; \
     chmod -R a+rX "${RUSTUP_HOME}" "${CARGO_HOME}"
 

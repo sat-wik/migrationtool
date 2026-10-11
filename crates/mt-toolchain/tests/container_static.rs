@@ -1858,6 +1858,45 @@ fn tool_03_workflow_publishes_by_digest_with_least_privilege() {
 }
 
 #[test]
+fn tool_03_dockerfile_asserts_the_rustup_update_hash_comes_from_the_pins() {
+    // WR-07: the build fails when the update-hash rustup stored for a pinned
+    // toolchain is not the start of the pin it was given.
+    let dockerfile = read_repo_file("container/Dockerfile");
+    let rustup_run = dockerfile_instructions(&dockerfile)
+        .into_iter()
+        .find(|(keyword, rest)| keyword == "RUN" && rest.contains("rustup toolchain install"))
+        .map(|(_, rest)| rest)
+        .expect("a RUN installs the toolchains");
+    let install = rustup_run
+        .rfind("rustup toolchain install")
+        .expect("install present");
+    let after = &rustup_run[install..];
+    assert!(
+        after.contains("update-hashes/"),
+        "the install RUN must read ${{RUSTUP_HOME}}/update-hashes after installing"
+    );
+    for pin in ["RUST_TOOL_CHANNEL_SHA256", "RUST_BITCODE_CHANNEL_SHA256"] {
+        assert!(
+            after.contains(&format!("${{{pin}}}")),
+            "the update-hash check must compare against {pin}"
+        );
+    }
+    let case = after
+        .find("case \"${sha}\" in")
+        .expect("the update-hash is compared with the pin");
+    assert!(
+        after[case..].contains("exit 1"),
+        "a differing update-hash must fail the build"
+    );
+    assert!(
+        after
+            .find("rm -rf /tmp/rust-dist")
+            .is_some_and(|rm| rm > case),
+        "the check must run while the mirror still exists"
+    );
+}
+
+#[test]
 fn tool_03_workflow_gates_on_pin_binding_evidence() {
     let workflow = read_repo_file(".github/workflows/container.yml");
     let image_a = workflow_job_text(&workflow, "image-a");
@@ -1886,6 +1925,33 @@ fn tool_03_workflow_gates_on_pin_binding_evidence() {
     assert!(
         image_a.contains("/tmp/crates/"),
         "image-a must match the /tmp/crates/ lines of the build record"
+    );
+
+    // WR-07: the gate also measures the installed result. Cargo's own install
+    // ledger must name each pinned crate with the unpacked, checked directory as
+    // its source, and the container script must fail on any read error so that a
+    // missing file cannot pass as an empty section.
+    assert!(
+        image_a.contains("/opt/cargo-tools/.crates2.json"),
+        "image-a must read cargo's install ledger .crates2.json"
+    );
+    assert!(
+        image_a.contains("(path+file:///tmp/crates/${name}-${version})"),
+        "image-a must require the path+file:///tmp/crates/<name>-<version> source"
+    );
+    assert!(
+        image_a.contains("BIND'\n          set -eu\n"),
+        "the binding script must run with `set -eu`"
+    );
+    // The update-hash is a witness derived from the Dockerfile's own sidecar and
+    // the notice must not present it as independent corroboration.
+    assert!(
+        image_a.contains("a witness, not the binding"),
+        "the update-hash must be labelled a witness"
+    );
+    assert!(
+        !image_a.contains("is a prefix of the pin"),
+        "the tautological update-hash wording must be gone"
     );
 
     // The gate comes before the push, and the publish steps carry no status
