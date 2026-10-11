@@ -724,6 +724,29 @@ fn tool_03_hash_helper_matches_sha256_of_content() {
 }
 
 #[test]
+fn tool_03_hash_helper_curl_argv_disables_config_and_globbing() {
+    let argv = fetch::curl_argv("https://example.org/x");
+    assert_eq!(argv[0], "curl");
+    assert_eq!(argv[1], "-q", "-q must be the first curl option");
+    assert!(argv.contains(&"--globoff"));
+    let redirs = argv.iter().position(|a| *a == "--max-redirs").unwrap();
+    assert_eq!(argv[redirs + 1], "5");
+    assert_eq!(argv.last(), Some(&"https://example.org/x"));
+}
+
+#[test]
+fn tool_03_hash_helper_does_not_expand_url_globs() {
+    // A file literally named `a[1-2].txt`. With glob expansion curl would try
+    // to fetch a1.txt and a2.txt and fail; with --globoff it hashes this file.
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("a[1-2].txt");
+    std::fs::write(&path, b"literal").unwrap();
+    let digest = fetch::sha256_of_url(&file_url(&path), std::time::Duration::from_secs(30))
+        .unwrap_or_else(|e| panic!("glob characters were expanded: {e}"));
+    assert_eq!(digest, sha256_hex(b"literal"));
+}
+
+#[test]
 fn tool_03_hash_helper_rejects_non_https_urls() {
     let timeout = std::time::Duration::from_secs(5);
     for url in [

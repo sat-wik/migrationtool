@@ -33,6 +33,35 @@ pub enum FetchError {
 /// `PATH` for the curl child.
 const CURL_PATH: &str = "/usr/local/bin:/usr/bin:/bin";
 
+/// The curl command line used to fetch `url`.
+///
+/// - `-q` comes first so curl reads no `.curlrc`: it would otherwise find one
+///   through the passwd home directory even with an empty environment, and
+///   options such as `insecure` or `proxy` would weaken the TLS guarantee.
+/// - `--globoff` stops `[1-3]` and `{a,b}` in the URL from being expanded, so
+///   the digest is of the URL given and not of concatenated bodies.
+/// - `--max-redirs 5` bounds redirect chains; `--proto` and `--proto-redir`
+///   limit the protocols.
+#[must_use]
+pub fn curl_argv(url: &str) -> Vec<&str> {
+    vec![
+        "curl",
+        "-q",
+        "--globoff",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--location",
+        "--max-redirs",
+        "5",
+        "--proto",
+        "=https,file",
+        "--proto-redir",
+        "=https",
+        url,
+    ]
+}
+
 /// The lowercase hex sha256 of every byte a URL serves.
 ///
 /// Only `https://` and `file://` URLs are accepted, checked here before
@@ -60,21 +89,7 @@ pub fn sha256_of_url(url: &str, timeout: Duration) -> Result<String, FetchError>
     };
     let request = RunRequest {
         tool_name: "curl".to_owned(),
-        argv: [
-            "curl",
-            "--fail",
-            "--silent",
-            "--show-error",
-            "--location",
-            "--proto",
-            "=https,file",
-            "--proto-redir",
-            "=https",
-            url,
-        ]
-        .iter()
-        .map(OsString::from)
-        .collect(),
+        argv: curl_argv(url).iter().map(OsString::from).collect(),
         cwd: PathBuf::from("/"),
         extra_env: BTreeMap::new(),
         tool_version: None,
