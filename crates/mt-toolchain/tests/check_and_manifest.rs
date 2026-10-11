@@ -139,13 +139,51 @@ fn tool_02_check_fails_when_any_tool_llvm_major_differs() {
         .expect("c2rust has a probe");
     probe.stdout = probe
         .stdout
-        .replace("libclang-cpp.so.16", "libclang-cpp.so.17");
+        .replace("libclang-cpp.so.16", "libclang-cpp.so.17")
+        .replace("libLLVM-16.so.1", "libLLVM-17.so.1");
     let report = eval(&obs);
     let c2rust = row(&report, "c2rust");
     assert_eq!(c2rust.status, ToolStatus::Mismatch);
     assert_eq!(c2rust.llvm_major, Some(17));
     assert_eq!(c2rust.actual.as_deref(), Some("0.22.1"));
     assert!(!report.passed());
+}
+
+#[test]
+fn tool_02_check_fails_when_the_ldd_probe_lists_mixed_llvm_majors() {
+    // The first library is on pin (16) but a later one links another major.
+    for mixed in [
+        "\tlibclang-cpp.so.16 => /usr/lib/llvm-16/lib/libclang-cpp.so.16 (0x1)\n\
+         \tlibLLVM-17.so.1 => /usr/lib/llvm-17/lib/libLLVM-17.so.1 (0x2)\n",
+        "\tlibLLVM-16.so.1 => /usr/lib/llvm-16/lib/libLLVM-16.so.1 (0x1)\n\
+         \tlibclang-cpp.so.16 => /usr/lib/llvm-16/lib/libclang-cpp.so.16 (0x2)\n\
+         \tlibclang-cpp.so.18 => /usr/lib/llvm-18/lib/libclang-cpp.so.18 (0x3)\n",
+    ] {
+        let mut obs = good_observations();
+        obs.insert(
+            "c2rust".to_owned(),
+            observation("c2rust").with_probe(Observation::ran("c2rust_ldd", mixed, "")),
+        );
+        let report = eval(&obs);
+        let c2rust = row(&report, "c2rust");
+        assert_eq!(c2rust.status, ToolStatus::Mismatch, "{mixed}");
+        assert_eq!(c2rust.llvm_major, None, "{mixed}");
+        assert!(!report.passed(), "{mixed}");
+    }
+
+    // The same major listed twice is still fine.
+    let mut obs = good_observations();
+    obs.insert(
+        "c2rust".to_owned(),
+        observation("c2rust").with_probe(Observation::ran(
+            "c2rust_ldd",
+            "\tlibLLVM-16.so.1 => /a (0x1)\n\tlibclang-cpp.so.16 => /b (0x2)\n",
+            "",
+        )),
+    );
+    let report = eval(&obs);
+    assert_eq!(row(&report, "c2rust").llvm_major, Some(16));
+    assert!(report.passed(), "{}", report.render_table());
 }
 
 #[test]

@@ -736,12 +736,42 @@ fn regex_major(rule: &LlvmRule, observation: &Observation) -> Result<u32, (ToolS
     };
     let pattern = rule.regex.as_deref().ok_or_else(unusable)?;
     let re = version::compile_pattern(pattern, "major").map_err(|_| unusable())?;
-    extract_either(&re, "major", observation)
-        .and_then(|major| major.parse().ok())
-        .ok_or((
+    // Every match in both streams counts: a binary can link several LLVM or
+    // clang libraries, and a single stray one of another major breaks the
+    // single-major rule even when the first one listed is on pin.
+    let mut found: Vec<String> = version::extract_all(&re, "major", &observation.stdout);
+    found.extend(version::extract_all(&re, "major", &observation.stderr));
+    let mut majors: Vec<u32> = Vec::new();
+    for text in &found {
+        // A match that does not parse is not a major we can vouch for.
+        let major = text.parse::<u32>().map_err(|_| {
+            (
+                ToolStatus::Mismatch,
+                format!("LLVM major {} is not a number", clean(text)),
+            )
+        })?;
+        if !majors.contains(&major) {
+            majors.push(major);
+        }
+    }
+    majors.sort_unstable();
+    match majors.as_slice() {
+        [] => Err((
             ToolStatus::Mismatch,
             "no LLVM major found in the output".to_owned(),
-        ))
+        )),
+        [only] => Ok(*only),
+        several => {
+            let list: Vec<String> = several.iter().map(u32::to_string).collect();
+            Err((
+                ToolStatus::Mismatch,
+                format!(
+                    "more than one LLVM major in the output: {}",
+                    list.join(", ")
+                ),
+            ))
+        }
+    }
 }
 
 /// The two Rust toolchains.

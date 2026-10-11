@@ -110,6 +110,15 @@ pub fn extract(re: &Regex, group: &str, text: &str) -> Option<String> {
         .map(|m| m.as_str().to_owned())
 }
 
+/// The text of named group `group` in every match of `re` in `text`, in order.
+#[must_use]
+pub fn extract_all(re: &Regex, group: &str, text: &str) -> Vec<String> {
+    re.captures_iter(text)
+        .filter_map(|caps| caps.name(group))
+        .map(|m| m.as_str().to_owned())
+        .collect()
+}
+
 /// Parse an `X.Y.Z` triple such as `16.0.5`; anything else (a suffix, fewer or
 /// more components) is `None`.
 #[must_use]
