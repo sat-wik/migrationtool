@@ -29,11 +29,11 @@ findings:
     title: "The \"process launching only in runner.rs\" guard misses the idiom `runner.rs` itself uses"
   - id: WR-06
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The new static rules are whole-RUN and spelling-bound, so several ways back to an unbound install pass them (new, plan 01-09)"
   - id: WR-07
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The `Pin binding evidence` gate checks the Dockerfile's own bookkeeping, and its update-hash witness is tautological (new, plan 01-09)"
   - id: IN-01
     severity: info
@@ -91,9 +91,9 @@ findings:
     severity: info
     disposition: open
     title: "\"Never fetched a second time\" is true of the top-level crate only; dependencies and tinycbor are bound indirectly (new, plan 01-09)"
-open: 16
+open: 14
 total: 22
-recorded: 2026-10-11T16:34:43.719Z
+recorded: 2026-10-11T16:34:53.195Z
 ---
 
 # Phase 01: Code Review Disposition
@@ -106,8 +106,8 @@ recorded: 2026-10-11T16:34:43.719Z
 | WR-03 | warning | fixed | 01-REVIEW-FIX.md |
 | WR-04 | warning | fixed | 01-REVIEW-FIX.md |
 | WR-05 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-06 | warning | open | - |
-| WR-07 | warning | open | - |
+| WR-06 | warning | fixed | 01-REVIEW-FIX.md |
+| WR-07 | warning | fixed | 01-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
