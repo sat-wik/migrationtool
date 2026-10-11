@@ -406,8 +406,9 @@ RUN --network=none set -eux; \
 # commits against the image's LLVM packages, Z3 as the only solver. Only the
 # install tree is copied into the final image. The assertion build option is
 # off because the packaged LLVM is built without assertions (RESEARCH Pitfall 4).
-# WR-06: each clone is a networked RUN that checks the commit; configure and
-# build run in the RUN --network=none that follows it.
+# WR-06: each clone is a networked RUN that checks the commit; configure and the
+# KLEE build run in the RUN --network=none that follows it. Only the klee-uclibc
+# make remains networked, see the label above its RUN.
 FROM build-base AS klee-build
 ARG KLEE_COMMIT
 ARG KLEE_TAG
@@ -426,8 +427,16 @@ RUN --network=none set -eux; \
     : "${LLVM_MAJOR:?}"; \
     llvm_bin="/usr/lib/llvm-${LLVM_MAJOR}/bin"; \
     cd /src/klee-uclibc; \
-    ./configure --make-llvm-lib --with-cc "${llvm_bin}/clang" --with-llvm-config "${llvm_bin}/llvm-config"; \
-    make; \
+    ./configure --make-llvm-lib --with-cc "${llvm_bin}/clang" --with-llvm-config "${llvm_bin}/llvm-config"
+# Remains networked: make downloads uClibc-locale-030818.tgz from www.uclibc.org, which no pin covers
+# The CI error under RUN --network=none was `curl: (6) Could not resolve host:
+# www.uclibc.org` from `make -C extra/locale locale_headers` (the klee-uclibc
+# Makefile fetches that tarball with no checksum). The clone is checked against
+# its pinned commit and configure runs offline; the tarball cannot be bound to a
+# pin without a new entry in pins.toml, so only this make keeps its network and
+# it is listed in NETWORKED_STEPS.
+RUN set -eux; \
+    cd /src/klee-uclibc && make; \
     test -f /src/klee-uclibc/lib/libc.a
 RUN set -eux; \
     : "${KLEE_URL:?}" "${KLEE_TAG:?}" "${KLEE_COMMIT:?}"; \

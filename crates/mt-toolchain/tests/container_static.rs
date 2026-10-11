@@ -615,7 +615,10 @@ const NETWORKED_INSTALLS: &[(&str, &str)] = &[];
 
 /// `(name, reason)` of other build steps (not installs) that still run with
 /// network access, under the same rule as [`NETWORKED_INSTALLS`].
-const NETWORKED_STEPS: &[(&str, &str)] = &[];
+const NETWORKED_STEPS: &[(&str, &str)] = &[(
+    "cd /src/klee-uclibc && make",
+    "make downloads uClibc-locale-030818.tgz from www.uclibc.org, which no pin covers",
+)];
 
 /// Evidence earlier `RUN`s of one stage gathered, for a later offline install.
 #[derive(Default)]
@@ -1596,6 +1599,7 @@ fn tool_03_dockerfile_installs_only_in_network_none_runs() {
         "cargo install",
         "tar -xJf /tmp/arm-gnu-toolchain.tar.xz",
         "--make-llvm-lib",
+        "cd /src/klee-uclibc && make",
         "cmake --build /build/klee",
     ] {
         let mut seen = false;
