@@ -43,9 +43,13 @@ on:
 permissions:
   contents: read
 
+# Only pull_request runs may be cancelled by a newer one. A cancelled push run
+# could stop between `docker push` and the compare job and leave a pushed image
+# that is never announced as verified (WR-04), and the weekly schedule must not
+# cancel a push run either, so each event type has its own group.
 concurrency:
-  group: container-${{ github.ref }}
-  cancel-in-progress: true
+  group: container-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # A static musl `mt` runs on the image's older glibc (RESEARCH Pitfall 10); it
@@ -479,9 +483,12 @@ jobs:
       # CONTEXT D-24: the image that just passed the check, off-pin check, manifest
       # and smoke steps is pushed as it is (never rebuilt for publishing) and
       # referenced by digest. These two steps carry no status function, so they run
-      # only when every step above succeeded, and never for a pull_request.
+      # only when every step above succeeded. They also run only for a push to
+      # `main` or to the phase branch whose images are kept as evidence: never
+      # for a pull_request, the weekly schedule, a workflow_dispatch or any other
+      # branch (WR-04). Both steps repeat the same condition.
       - name: Log in to GHCR
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/gsd-discuss-phase-1-mzdw5v') }}
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
@@ -490,7 +497,7 @@ jobs:
 
       - name: Push the verified image and read its digest
         id: publish
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/gsd-discuss-phase-1-mzdw5v') }}
         shell: bash
         env:
           IMAGE: ghcr.io/sat-wik/migrationtool-toolchain
@@ -678,7 +685,7 @@ jobs:
       - name: Compare the manifests
         shell: bash
         env:
-          # Empty unless image-a pushed (never for a pull_request).
+          # Empty unless image-a pushed (only for a push to main or the phase branch).
           IMAGE_REF: ${{ needs.image-a.outputs.image_ref }}
         run: |
           annotate() {

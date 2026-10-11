@@ -1317,12 +1317,21 @@ fn tool_03_workflow_publishes_by_digest_with_least_privilege() {
         .find("docker/login-action@")
         .expect("image-a must log in with docker/login-action");
     assert_eq!(workflow.matches("docker/login-action@").count(), 1);
-    let guard = "if: ${{ github.event_name != 'pull_request' }}";
+    let guard = "if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/gsd-discuss-phase-1-mzdw5v') }}";
+    assert_eq!(
+        workflow.matches(guard).count(),
+        2,
+        "exactly the login and push steps carry the publish guard"
+    );
+    assert!(
+        !workflow.contains("github.event_name != 'pull_request'"),
+        "publishing must not be gated on `!= pull_request` (any branch, schedule, dispatch)"
+    );
     assert!(
         image_a[..login]
             .rfind(guard)
             .is_some_and(|at| login - at < 200),
-        "the login step must be skipped for pull_request events"
+        "the login step must run only for pushes to main or the phase branch"
     );
     let push = image_a
         .find("docker push")
@@ -1334,7 +1343,7 @@ fn tool_03_workflow_publishes_by_digest_with_least_privilege() {
     let publish_run = publish + image_a[publish..].find("run:").expect("publish has a run");
     assert!(
         image_a[publish..publish_run].contains(guard),
-        "the push step must itself be skipped for pull_request events"
+        "the push step must itself run only for pushes to main or the phase branch"
     );
     assert!(image_a.contains("ghcr.io/sat-wik/migrationtool-toolchain"));
     assert!(image_a.contains("{{index .RepoDigests 0}}"));
@@ -1342,6 +1351,14 @@ fn tool_03_workflow_publishes_by_digest_with_least_privilege() {
         !image_a[push..].contains("docker build") && !image_a[push..].contains("buildx build"),
         "the pushed image is never rebuilt for publishing"
     );
+
+    // A newer run may cancel only a pull_request run, never a push that is
+    // between `docker push` and the compare job (WR-04).
+    assert!(
+        workflow.contains("cancel-in-progress: ${{ github.event_name == 'pull_request' }}"),
+        "cancel-in-progress must be limited to pull_request runs"
+    );
+    assert!(!workflow.contains("cancel-in-progress: true"));
 
     // The digest is announced twice: when pushed, and as verified only in the
     // compare job, after manifest-diff succeeded.
