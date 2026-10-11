@@ -293,11 +293,284 @@ fn run_segments(run: &str) -> Vec<&str> {
         .collect()
 }
 
+/// Split a `RUN` into simple commands: on `&&`, `||`, `;`, `|`, `&`, `(`, `)`,
+/// backticks and newlines, trimmed, with empty pieces dropped. Quoting is not
+/// tracked, so a separator inside a quoted word only ever makes pieces smaller.
+fn run_commands(run: &str) -> Vec<String> {
+    run.split([';', '&', '|', '(', ')', '`', '\n'])
+        .map(str::trim)
+        .filter(|piece| !piece.is_empty())
+        .map(str::to_owned)
+        .collect()
+}
+
+/// One simple command: its leading `NAME=value` assignments and its words.
+struct ParsedCommand {
+    /// The command as written, for messages.
+    text: String,
+    /// Leading environment assignments, quotes removed.
+    env: Vec<(String, String)>,
+    /// `words[0]` is the program as written; quotes removed.
+    words: Vec<String>,
+}
+
+impl ParsedCommand {
+    /// The program's file name: `/usr/bin/rustup` and `rustup` both give `rustup`.
+    fn program(&self) -> &str {
+        self.words
+            .first()
+            .map_or("", |word| word.rsplit('/').next().unwrap_or(word))
+    }
+
+    /// The words after the program.
+    fn args(&self) -> &[String] {
+        self.words.get(1..).unwrap_or(&[])
+    }
+
+    /// The value of `name` in the command's own leading assignments (the last wins).
+    fn env_value(&self, name: &str) -> Option<&str> {
+        self.env
+            .iter()
+            .rev()
+            .find(|(key, _)| key == name)
+            .map(|(_, value)| value.as_str())
+    }
+}
+
+fn unquote(word: &str) -> &str {
+    word.trim_matches(['"', '\''])
+}
+
+/// Parse `text` as a simple command. Shell keywords, `sudo`/`env`/`command`
+/// style wrappers and `sh -c '...'` are looked through, so an install is judged
+/// by what it is, not by how it is spelled.
+fn parse_command(text: &str) -> Option<ParsedCommand> {
+    const SKIPPED: &[&str] = &[
+        "do", "then", "else", "elif", "if", "while", "until", "!", "{", "time", "exec", "command",
+        "sudo", "nohup", "nice",
+    ];
+    let assignment = regex::Regex::new(r"^[A-Za-z_][A-Za-z0-9_]*=").unwrap();
+    let mut env = Vec::new();
+    let mut words: Vec<String> = Vec::new();
+    let mut rest = text.split_whitespace().peekable();
+    while let Some(word) = rest.peek().copied() {
+        let bare = unquote(word);
+        if SKIPPED.contains(&bare) {
+            rest.next();
+        } else if bare == "env" {
+            rest.next();
+            while rest.peek().is_some_and(|next| next.starts_with('-')) {
+                rest.next();
+            }
+        } else if assignment.is_match(word) {
+            rest.next();
+            if let Some((name, value)) = word.split_once('=') {
+                env.push((name.to_owned(), unquote(value).to_owned()));
+            }
+        } else {
+            break;
+        }
+    }
+    words.extend(rest.map(|word| unquote(word).to_owned()));
+    let first = words.first()?;
+    let program = first.rsplit('/').next().unwrap_or(first);
+    if matches!(program, "sh" | "bash" | "dash" | "zsh") {
+        let position = words.iter().position(|word| {
+            word.starts_with('-') && !word.starts_with("--") && word.ends_with('c')
+        });
+        if let Some(position) = position {
+            // `sh -c "rustup ..."`: judge the inner command as written.
+            let inner = words[position + 1..].join(" ");
+            return parse_command(&inner).map(|mut inner| {
+                inner.text = text.to_owned();
+                inner
+            });
+        }
+    }
+    if matches!(program, "sh" | "bash" | "dash" | "zsh") {
+        // `sh script args`: the script is the program that runs.
+        if let Some(position) = words.iter().skip(1).position(|word| !word.starts_with('-')) {
+            words.drain(..=position);
+        }
+    }
+    Some(ParsedCommand {
+        text: text.to_owned(),
+        env,
+        words,
+    })
+}
+
+/// `tar` extraction arguments: the directory (`-C`) and the archive (`-f`).
+fn tar_extraction(command: &ParsedCommand) -> Option<(Option<String>, Option<String>)> {
+    if command.program() != "tar" {
+        return None;
+    }
+    let mut extract = false;
+    let mut directory = None;
+    let mut archive = None;
+    let mut pending: std::collections::VecDeque<char> = std::collections::VecDeque::new();
+    for (index, arg) in command.args().iter().enumerate() {
+        if arg == "--extract" || arg == "--get" {
+            extract = true;
+        } else if arg == "--directory" || arg == "--file" {
+            pending.push_back(if arg == "--directory" { 'C' } else { 'f' });
+        } else if let Some(value) = arg.strip_prefix("--directory=") {
+            directory = Some(value.to_owned());
+        } else if let Some(value) = arg.strip_prefix("--file=") {
+            archive = Some(value.to_owned());
+        } else if arg.starts_with("--") {
+            // Some other long option; it takes no value that matters here.
+        } else if arg.starts_with('-') || index == 0 {
+            // A cluster of short options such as `-xzf`; `C` and `f` each take
+            // the next free argument, in the order they appear.
+            for flag in arg.trim_start_matches('-').chars() {
+                match flag {
+                    'x' => extract = true,
+                    'C' | 'f' => pending.push_back(flag),
+                    _ => {}
+                }
+            }
+        } else if let Some(flag) = pending.pop_front() {
+            if flag == 'C' {
+                directory = Some(arg.clone());
+            } else {
+                archive = Some(arg.clone());
+            }
+        }
+    }
+    extract.then_some((directory, archive))
+}
+
+/// True when `text` is a `sha256sum -c` check, and the words it mentions.
+fn checked_words(run: &str) -> Vec<String> {
+    let check = regex::Regex::new(r"sha256sum\s+(?:-[A-Za-z]*c[A-Za-z]*|--check)\b").unwrap();
+    run_segments(run)
+        .into_iter()
+        .filter(|segment| check.is_match(segment))
+        .flat_map(|segment| {
+            segment
+                .split(|c: char| c.is_whitespace() || c == '"' || c == '\'')
+                .filter(|word| !word.is_empty())
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+/// The value after `--name` (`--name VALUE` or `--name=VALUE`) among `args`.
+fn option_value<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
+    let joined = format!("{name}=");
+    args.iter().enumerate().find_map(|(index, arg)| {
+        if arg == name {
+            args.get(index + 1).map(String::as_str)
+        } else {
+            arg.strip_prefix(joined.as_str())
+        }
+    })
+}
+
+/// The rules for one `rustup` command (CR-01, WR-06): everything that can
+/// download goes through a `file://` mirror named in that same command, an
+/// install never replaces the pinned rustup, and `rustup-init` never installs
+/// an unpinned default toolchain.
+fn rustup_issues(command: &ParsedCommand, issues: &mut Vec<String>) {
+    let args = command.args();
+    let positional: Vec<&str> = args
+        .iter()
+        .map(String::as_str)
+        .filter(|arg| !arg.starts_with('-') && !arg.starts_with('+'))
+        .collect();
+    let sub = positional.first().copied();
+    let second = positional.get(1).copied();
+    let read_only = matches!(
+        (sub, second),
+        (None | Some("help" | "which"), _)
+            | (Some("toolchain" | "target" | "component"), Some("list"))
+    );
+    let text = &command.text;
+    if !read_only
+        && !command
+            .env_value("RUSTUP_DIST_SERVER")
+            .is_some_and(|value| value.starts_with("file://"))
+    {
+        issues.push(format!(
+            "rustup {} without RUSTUP_DIST_SERVER=file://... in the same command, so rustup fetches its own copy of what was checked: {text}",
+            sub.unwrap_or("")
+        ));
+    }
+    let installs = matches!(sub, Some("install" | "update"))
+        || (sub == Some("toolchain") && matches!(second, Some("install" | "add" | "update")));
+    if installs && !args.iter().any(|arg| arg == "--no-self-update") {
+        issues.push(format!(
+            "rustup toolchain install without `--no-self-update` may replace the pinned rustup: {text}"
+        ));
+    }
+}
+
+/// `rustup-init` must not install a default toolchain: the pinned toolchains
+/// come from the checked mirror, and a default would be fetched with no checksum.
+fn rustup_init_issues(command: &ParsedCommand, issues: &mut Vec<String>) {
+    let none = option_value(command.args(), "--default-toolchain") == Some("none");
+    if !none {
+        issues.push(format!(
+            "rustup-init without `--default-toolchain none` installs an unpinned toolchain: {}",
+            command.text
+        ));
+    }
+}
+
+/// The rules for one `cargo install` (or `cargo binstall`) command (CR-01, WR-06).
+/// `tars` are the `(directory, archive)` pairs of every tar extraction in the
+/// RUN and `checked` the words of its `sha256sum -c` lines.
+fn cargo_install_issues(
+    command: &ParsedCommand,
+    tars: &[(Option<String>, Option<String>)],
+    checked: &[String],
+    issues: &mut Vec<String>,
+) {
+    let args = command.args();
+    let text = &command.text;
+    if !args.iter().any(|arg| arg == "--locked") {
+        issues.push(format!("RUN cargo install lacks `--locked`: {text}"));
+    }
+    let exact = option_value(args, "--version").is_some_and(|value| value.starts_with('='));
+    if !exact {
+        issues.push(format!(
+            "RUN cargo install lacks an exact `--version =`: {text}"
+        ));
+    }
+    // The crate is installed from the .crate file that was checked in this RUN,
+    // unpacked, and not fetched a second time from the registry. The directory
+    // must lie under the `-C` target of a tar extraction of a file that a
+    // `sha256sum -c` line in the RUN names.
+    let Some(path) = option_value(args, "--path") else {
+        issues.push(format!(
+            "RUN cargo install lacks `--path`, so it installs from the registry instead of the verified .crate: {text}"
+        ));
+        return;
+    };
+    let bound = !path.contains("..")
+        && tars.iter().any(|(directory, archive)| {
+            let under = directory.as_deref().is_some_and(|dir| {
+                let dir = dir.trim_end_matches('/');
+                !dir.is_empty() && path.starts_with(&format!("{dir}/"))
+            });
+            let verified = archive
+                .as_deref()
+                .is_some_and(|archive| checked.iter().any(|word| word == archive));
+            under && verified
+        });
+    if !bound {
+        issues.push(format!(
+            "RUN cargo install --path reads a directory that was not unpacked from a verified .crate in this RUN (needs a `sha256sum -c` of an archive, a tar extraction of that archive with `-C` above the path, and no `..`): {text}"
+        ));
+    }
+}
+
 /// The checks that apply to one `RUN` instruction.
 fn run_issues(run: &str, issues: &mut Vec<String>) {
     let curl = regex::Regex::new(r"(?:^|[\s;&|(])curl\s+-").unwrap();
     let pipe_to_shell = regex::Regex::new(r"\|\s*(?:sudo\s+)?(?:ba|da|z)?sh\b").unwrap();
-    let pinned_version = regex::Regex::new(r#"--version\s+"?="#).unwrap();
     let dist_server =
         regex::Regex::new(r#"RUSTUP_DIST_SERVER=("[^"]*"|'[^']*'|[^\s;&|]*)"#).unwrap();
     if pipe_to_shell.is_match(run) {
@@ -311,60 +584,44 @@ fn run_issues(run: &str, issues: &mut Vec<String>) {
             "RUN clones without checking `rev-parse HEAD`: {run}"
         ));
     }
-    if run.contains("cargo install") && !run.contains("--locked") {
-        issues.push(format!("RUN cargo install lacks `--locked`: {run}"));
-    }
-    if run.contains("cargo install") && !pinned_version.is_match(run) {
-        issues.push(format!(
-            "RUN cargo install lacks an exact `--version =`: {run}"
-        ));
-    }
-    // CR-01: a crate is installed from the .crate file that was checked in this
-    // RUN, unpacked, and not fetched a second time from the registry.
-    if run.contains("cargo install") {
-        let install_path = regex::Regex::new(r"--path[\s=]").unwrap();
-        let tar_extract = regex::Regex::new(
-            r"\btar\s+(?:--[a-z-]+\s+)*(?:-[A-Za-z]*x[A-Za-z]*|x[A-Za-z]*|--extract)(?:\s|$)",
-        )
-        .unwrap();
-        if !install_path.is_match(run) {
-            issues.push(format!(
-                "RUN cargo install lacks `--path`, so it installs from the registry instead of the verified .crate: {run}"
-            ));
-        } else if !(run.contains("sha256sum -c") && tar_extract.is_match(run)) {
-            issues.push(format!(
-                "RUN cargo install --path reads a directory that was not unpacked from a verified .crate in this RUN (needs `sha256sum -c` and a tar extraction): {run}"
-            ));
-        }
-    }
 
-    // CR-01: a toolchain is installed only from a local mirror of files that were
-    // checked in this RUN, and never lets rustup replace the pinned rustup binary.
-    let servers: Vec<&str> = dist_server
-        .captures_iter(run)
-        .map(|captures| captures.get(1).map_or("", |m| m.as_str()))
-        .map(|value| value.trim_matches(['"', '\'']))
-        .collect();
-    for value in &servers {
+    // A dist server in this RUN that is not a local mirror.
+    for captures in dist_server.captures_iter(run) {
+        let value = captures
+            .get(1)
+            .map_or("", |m| m.as_str())
+            .trim_matches(['"', '\'']);
         if !value.starts_with("file://") {
             issues.push(format!(
                 "RUN sets RUSTUP_DIST_SERVER to `{value}`, whose scheme is not file: {run}"
             ));
         }
     }
-    if run.contains("rustup toolchain install") {
-        if !servers.iter().any(|value| value.starts_with("file://")) {
-            issues.push(format!(
-                "RUN installs a toolchain without RUSTUP_DIST_SERVER=file://..., so rustup fetches its own copy of what was checked: {run}"
-            ));
-        }
-        for segment in run_segments(run) {
-            if segment.contains("rustup toolchain install") && !segment.contains("--no-self-update")
-            {
-                issues.push(format!(
-                    "rustup toolchain install without `--no-self-update` may replace the pinned rustup: {segment}"
-                ));
+
+    // WR-06: every rule below applies to each install command on its own, however
+    // it is spelled, not to the RUN as a whole.
+    let commands: Vec<ParsedCommand> = run_commands(run)
+        .iter()
+        .filter_map(|text| parse_command(text))
+        .collect();
+    let tars: Vec<(Option<String>, Option<String>)> =
+        commands.iter().filter_map(tar_extraction).collect();
+    let checked = checked_words(run);
+    for command in &commands {
+        match command.program() {
+            "rustup" => rustup_issues(command, issues),
+            "rustup-init" => rustup_init_issues(command, issues),
+            "cargo-binstall" => cargo_install_issues(command, &tars, &checked, issues),
+            "cargo" => {
+                let sub = command
+                    .args()
+                    .iter()
+                    .find(|arg| !arg.starts_with('-') && !arg.starts_with('+'));
+                if sub.is_some_and(|sub| sub == "install" || sub == "binstall") {
+                    cargo_install_issues(command, &tars, &checked, issues);
+                }
             }
+            _ => {}
         }
     }
 }
@@ -748,6 +1005,226 @@ fn tool_03_dockerfile_installs_crates_from_verified_files() {
                 );
             }
         }
+    }
+}
+
+/// The `RUN` fixture issues, for one command line.
+fn issues_of(run: &str) -> Vec<String> {
+    dockerfile_issues(&run_fixture(run))
+}
+
+#[test]
+fn tool_03_rustup_rules_apply_to_each_command_however_it_is_spelled() {
+    let mirror = "RUSTUP_DIST_SERVER=\"file:///m\"";
+    let good =
+        format!("{mirror} rustup toolchain install 1.0.0 --profile minimal --no-self-update");
+
+    // The second install is unprefixed: one prefixed install elsewhere in the RUN
+    // does not excuse it, and only the unprefixed one is named.
+    let second = issues_of(&format!(
+        "{good}; rustup toolchain install 2.0.0 --profile minimal --no-self-update"
+    ));
+    assert!(
+        second
+            .iter()
+            .any(|i| i.contains("without RUSTUP_DIST_SERVER=file://") && i.contains("2.0.0")),
+        "an unprefixed second install must be refused, got {second:?}"
+    );
+    assert!(
+        !second.iter().any(|i| i.contains("1.0.0")),
+        "the prefixed install must not be named, got {second:?}"
+    );
+
+    // Every rustup verb that can download is refused without a mirror, in any
+    // spelling: extra blanks, an absolute path, wrappers, a shell -c string.
+    let unmirrored = [
+        "rustup install 1.0.0 --no-self-update",
+        "rustup toolchain add 1.0.0 --no-self-update",
+        "rustup update 1.0.0 --no-self-update",
+        "rustup target add thumbv7em-none-eabihf",
+        "rustup component add clippy",
+        "rustup default 1.0.0",
+        "rustup show",
+        "rustup  toolchain   install  1.0.0 --no-self-update",
+        "/opt/cargo/bin/rustup toolchain install 1.0.0 --no-self-update",
+        "env FOO=1 rustup toolchain install 1.0.0 --no-self-update",
+        "sudo rustup toolchain install 1.0.0 --no-self-update",
+        "sh -c \"rustup toolchain install 1.0.0 --no-self-update\"",
+        "bash -ec 'rustup default 1.0.0'",
+        "FOO=1 rustup toolchain install 1.0.0 --no-self-update",
+        "RUSTUP_DIST_SERVER=https://static.rust-lang.org rustup default 1.0.0",
+    ];
+    for command in unmirrored {
+        let issues = issues_of(command);
+        assert!(
+            mentions(&issues, "without RUSTUP_DIST_SERVER=file://"),
+            "`{command}` must be refused, got {issues:?}"
+        );
+    }
+
+    // `install`, `update` and `toolchain add|update` also need --no-self-update.
+    for command in [
+        format!("{mirror} rustup install 1.0.0"),
+        format!("{mirror} rustup update 1.0.0"),
+        format!("{mirror} rustup toolchain add 1.0.0"),
+        format!("{mirror} rustup toolchain update 1.0.0"),
+    ] {
+        assert!(
+            mentions(&issues_of(&command), "--no-self-update"),
+            "`{command}` must be refused"
+        );
+    }
+
+    // Mirrored commands, and read-only ones, are accepted.
+    for command in [
+        good.clone(),
+        format!("{mirror} rustup default 1.0.0"),
+        format!("{mirror} rustup target add thumbv7em-none-eabihf"),
+        "rustup toolchain list".to_owned(),
+        "rustup --version".to_owned(),
+    ] {
+        assert_eq!(
+            issues_of(&command),
+            Vec::<String>::new(),
+            "`{command}` must be accepted"
+        );
+    }
+}
+
+#[test]
+fn tool_03_rustup_init_must_not_install_a_default_toolchain() {
+    let check = "curl -fsSL -o /tmp/rustup-init https://example.org/rustup-init \
+        && echo \"h  /tmp/rustup-init\" | sha256sum -c - && chmod +x /tmp/rustup-init";
+    for init in [
+        "/tmp/rustup-init -y --profile minimal",
+        "/tmp/rustup-init -y --default-toolchain stable",
+        "/tmp/rustup-init -y --default-toolchain",
+        "sh /tmp/rustup-init -y",
+        "rustup-init -y",
+    ] {
+        let issues = issues_of(&format!("{check} && {init}"));
+        assert!(
+            mentions(&issues, "--default-toolchain none"),
+            "`{init}` must be refused, got {issues:?}"
+        );
+    }
+    for init in [
+        "/tmp/rustup-init -y --default-toolchain none --profile minimal",
+        "/tmp/rustup-init -y --default-toolchain=none",
+    ] {
+        assert_eq!(
+            issues_of(&format!("{check} && {init}")),
+            Vec::<String>::new(),
+            "`{init}` must be accepted"
+        );
+    }
+    // Handling the file is not running it.
+    assert_eq!(
+        issues_of(&format!("{check} && rm -f /tmp/rustup-init")),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+fn tool_03_cargo_install_rules_apply_to_each_command_however_it_is_spelled() {
+    let fetch = "curl -fsSL -o /tmp/crates/x-1.0.0.crate https://static.crates.io/crates/x/x-1.0.0.crate \
+        && echo \"h  /tmp/crates/x-1.0.0.crate\" | sha256sum -c - \
+        && tar -xzf /tmp/crates/x-1.0.0.crate --no-same-owner -C /tmp/crates";
+    let good = "cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x";
+    assert_eq!(
+        issues_of(&format!("{fetch} && {good}")),
+        Vec::<String>::new()
+    );
+
+    // Spellings that used to slip past the literal `cargo install`.
+    for command in [
+        "cargo  install --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
+        "cargo +1.99.0 install --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
+        "/opt/cargo/bin/cargo install --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
+        "env CARGO_HOME=/c cargo install --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
+        "sh -c \"cargo install --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x\"",
+    ] {
+        let issues = issues_of(&format!("{fetch} && {command}"));
+        assert!(
+            mentions(&issues, "lacks `--locked`"),
+            "`{command}` must be refused, got {issues:?}"
+        );
+    }
+    for command in [
+        "cargo binstall --locked --version =1.0.0 x",
+        "cargo +1.99.0 install --locked --version =1.0.0 x",
+        "cargo-binstall --locked --version =1.0.0 x",
+        "cargo  install  --locked x --version =1.0.0",
+    ] {
+        let issues = issues_of(&format!("{fetch} && {command}"));
+        assert!(
+            mentions(&issues, "installs from the registry"),
+            "`{command}` must be refused, got {issues:?}"
+        );
+    }
+
+    // One of two installs lacks --locked: only that one is named.
+    let two = issues_of(&format!(
+        "{fetch} && {good}; cargo install --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 y"
+    ));
+    assert!(
+        two.iter()
+            .any(|i| i.contains("lacks `--locked`") && i.ends_with(" y")),
+        "the unlocked install must be named, got {two:?}"
+    );
+    assert!(
+        !two.iter()
+            .any(|i| i.contains("lacks `--locked`") && i.ends_with(" x")),
+        "the locked install must not be named, got {two:?}"
+    );
+
+    // --path must be tied to the checked archive, not to any directory.
+    let elsewhere = issues_of(&format!(
+        "{fetch} && cargo install --locked --root /r --path /elsewhere/x-1.0.0 --version =1.0.0 x"
+    ));
+    assert!(
+        mentions(&elsewhere, "not unpacked from a verified .crate"),
+        "a path outside the tar -C directory must be refused, got {elsewhere:?}"
+    );
+    let traversal = issues_of(&format!(
+        "{fetch} && cargo install --locked --root /r --path /tmp/crates/../elsewhere --version =1.0.0 x"
+    ));
+    assert!(
+        mentions(&traversal, "not unpacked from a verified .crate"),
+        "a path with .. must be refused, got {traversal:?}"
+    );
+    // An unrelated file is checked and an unrelated archive is unpacked.
+    let unrelated = issues_of(
+        "echo \"h  /tmp/a.crate\" | sha256sum -c - \
+         && tar -xzf /tmp/b.crate -C /tmp/crates \
+         && cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
+    );
+    assert!(
+        mentions(&unrelated, "not unpacked from a verified .crate"),
+        "an unpacked archive that was never checked must be refused, got {unrelated:?}"
+    );
+    // The checked archive is unpacked somewhere else than the install path.
+    let other_dir = issues_of(
+        "echo \"h  /tmp/b.crate\" | sha256sum -c - \
+         && tar -xzf /tmp/b.crate -C /tmp/other \
+         && cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
+    );
+    assert!(
+        mentions(&other_dir, "not unpacked from a verified .crate"),
+        "a different extraction directory must be refused, got {other_dir:?}"
+    );
+    // Long and clustered tar spellings are understood.
+    for tar in [
+        "tar --extract --file=/tmp/b.crate --directory=/tmp/crates",
+        "tar --extract --file /tmp/b.crate --directory /tmp/crates",
+        "tar -x -f /tmp/b.crate -C /tmp/crates",
+        "tar xzf /tmp/b.crate -C /tmp/crates",
+    ] {
+        let issues = issues_of(&format!(
+            "echo \"h  /tmp/b.crate\" | sha256sum -c - && {tar} \
+             && cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x"
+        ));
+        assert_eq!(issues, Vec::<String>::new(), "`{tar}` must be accepted");
     }
 }
 

@@ -225,7 +225,7 @@ RUN set -eux; \
     for target in $(printf '%s' "${RUST_TOOL_TARGETS}" | tr ',' ' '); do extra="${extra} -t ${target}"; done; \
     RUSTUP_DIST_SERVER="file:///tmp/rust-dist" rustup toolchain install "${RUST_TOOL_VERSION}" --profile minimal --no-self-update ${extra}; \
     RUSTUP_DIST_SERVER="file:///tmp/rust-dist" rustup toolchain install "${RUST_BITCODE_VERSION}" --profile minimal --no-self-update; \
-    rustup default "${RUST_TOOL_VERSION}"; \
+    RUSTUP_DIST_SERVER="file:///tmp/rust-dist" rustup default "${RUST_TOOL_VERSION}"; \
     rustup toolchain list; \
     rm -rf /tmp/rust-dist; \
     chmod -R a+rX "${RUSTUP_HOME}" "${CARGO_HOME}"
