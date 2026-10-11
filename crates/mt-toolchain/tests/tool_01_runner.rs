@@ -221,6 +221,116 @@ fn tool_01_runner_timeout_kills_descendants_and_reports_timed_out() {
     assert!(!output.record.stderr.truncated);
 }
 
+/// True when `/proc/<pid>` is gone or the process is a zombie (state `Z`).
+fn gone_or_zombie(pid: u32) -> bool {
+    match std::fs::read_to_string(format!("/proc/{pid}/stat")) {
+        Err(_) => true,
+        Ok(text) => text
+            .rsplit_once(')')
+            .and_then(|(_, rest)| rest.split_whitespace().next().map(|s| s == "Z"))
+            .unwrap_or(false),
+    }
+}
+
+#[test]
+fn tool_01_runner_timeout_kills_a_setsid_descendant() {
+    // The background sleep leaves the child's process group with setsid, so a
+    // group kill alone misses it and it keeps both output pipes open.
+    let mut cfg = config();
+    cfg.timeout = Duration::from_millis(300);
+    let started = Instant::now();
+    let output = run_ok(
+        &cfg,
+        &request(&["/bin/sh", "-c", "setsid sleep 30 & echo $!; sleep 30"]),
+    );
+
+    assert!(
+        started.elapsed() < Duration::from_secs(4),
+        "a setsid descendant outlived the timeout: {:?}",
+        started.elapsed()
+    );
+    assert!(output.record.exit.timed_out);
+    assert_eq!(output.record.exit.code, None);
+    assert!(!output.record.stdout.truncated);
+    assert!(!output.record.stderr.truncated);
+
+    let text = String::from_utf8(output.stdout.clone()).unwrap();
+    let pid: u32 = text.trim().parse().unwrap();
+    // Give the kernel a moment to finish tearing the killed process down.
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while !gone_or_zombie(pid) && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert!(gone_or_zombie(pid), "escaped pid {pid} is still running");
+}
+
+#[test]
+fn tool_01_runner_timeout_kills_a_forking_setsid_subtree() {
+    // The escaped shell has its own children, which stay in the escaped
+    // session and group. All of them hold the output pipes.
+    let mut cfg = config();
+    cfg.timeout = Duration::from_millis(300);
+    let started = Instant::now();
+    let output = run_ok(
+        &cfg,
+        &request(&[
+            "/bin/sh",
+            "-c",
+            "setsid /bin/sh -c \"sleep 30 & sleep 30\" & sleep 30",
+        ]),
+    );
+
+    assert!(
+        started.elapsed() < Duration::from_secs(4),
+        "an escaped subtree outlived the timeout: {:?}",
+        started.elapsed()
+    );
+    assert!(output.record.exit.timed_out);
+    assert!(!output.record.stdout.truncated);
+    assert!(!output.record.stderr.truncated);
+}
+
+#[test]
+fn tool_01_runner_reports_an_orphaned_escapee_as_unobserved() {
+    // Documented limit: the escapee is orphaned before the timeout, so no ppid
+    // chain leads to it. The run is still returned, timed_out, with the stream
+    // the escapee holds marked truncated (nothing observed).
+    let mut cfg = config();
+    cfg.timeout = Duration::from_millis(300);
+    let started = Instant::now();
+    let output = run_ok(
+        &cfg,
+        &request(&["/bin/sh", "-c", "(setsid sleep 12 2>/dev/null &); sleep 30"]),
+    );
+
+    assert!(
+        started.elapsed() < Duration::from_secs(9),
+        "the run waited for the orphaned escapee: {:?}",
+        started.elapsed()
+    );
+    assert!(output.record.exit.timed_out);
+    assert!(output.record.stdout.truncated);
+    assert_eq!(output.record.stdout.bytes_total, 0);
+    assert!(!output.record.stderr.truncated);
+}
+
+#[test]
+fn tool_01_runner_signals_without_spawning_a_kill_program() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/runner.rs");
+    let text = std::fs::read_to_string(path).unwrap();
+    let code: String = text
+        .lines()
+        .filter(|line| !line.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert_eq!(
+        code.matches("Command::new(").count(),
+        1,
+        "runner.rs may start only the requested tool"
+    );
+    assert!(!code.contains("/bin/kill"));
+}
+
 #[test]
 fn tool_01_runner_missing_program_is_typed_spawn_error() {
     let err = run(&config(), &request(&["/nonexistent/tool"])).unwrap_err();

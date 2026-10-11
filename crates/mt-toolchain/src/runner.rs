@@ -10,14 +10,18 @@
 //! `LANG=C.UTF-8`, `TZ=UTC`, `SOURCE_DATE_EPOCH`) and only the named extras the
 //! caller passes. Output is hashed in full but stored only up to a cap. A run
 //! that exceeds its timeout is killed and recorded as `timed_out`, never as a
-//! success. The child leads its own process group, and a timeout kills the whole
-//! group so descendants that hold the output pipes cannot outlive it. The returned [`RunRecord`] is versioned, uses sorted maps and holds
-//! no wall-clock data, so identical runs serialize to identical JSON.
+//! success. The child leads its own process group. A timeout stops that group,
+//! finds descendants that left it (for example through `setsid`) by walking
+//! `/proc` parent links, and kills the group and each of those descendants
+//! through `rustix` (group signals and pidfds), so none of them can keep the
+//! output pipes open. No process other than the requested tool is ever started.
+//! The returned [`RunRecord`] is versioned, uses sorted maps and holds no
+//! wall-clock data, so identical runs serialize to identical JSON.
 //!
 //! The runner adds no network isolation (CONTEXT D-19): it controls
 //! environment, capture and time only.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::io::{self, Read};
 use std::os::unix::process::{CommandExt, ExitStatusExt};
@@ -27,6 +31,8 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use rustix::fd::OwnedFd;
+use rustix::process::{Pid, PidfdFlags, Signal, kill_process_group, pidfd_open, pidfd_send_signal};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
@@ -47,6 +53,9 @@ const POLL_INTERVAL: Duration = Duration::from_millis(5);
 
 /// Size of the buffer used when draining a pipe.
 const READ_CHUNK: usize = 64 * 1024;
+
+/// Most `/proc` scans [`kill_tree`] makes while looking for escaped descendants.
+const ESCAPE_SCAN_ROUNDS: usize = 16;
 
 /// Run-wide settings that do not change per call.
 #[derive(Debug, Clone)]
@@ -285,7 +294,7 @@ fn collect(
 }
 
 /// Capture to report for a stream that never reached end-of-file because a
-/// descendant outside the child's process group still holds the pipe after a
+/// descendant that [`kill_tree`] could not find still holds the pipe after a
 /// timeout. Nothing was observed, so the digest is of the empty input and the
 /// stream is flagged `truncated`. The run is already `timed_out`, which every
 /// consumer reads as "not proven".
@@ -314,33 +323,152 @@ fn collect_after_run(
     }
 }
 
-/// Best-effort SIGKILL of the process group led by `child`.
-///
-/// `forbid(unsafe_code)` rules out `libc::kill`, so the group is signalled by
-/// running the system `kill` with a negative pid. It must be called while the
-/// child has not been reaped: an unreaped child keeps its pid, and so the
-/// group id, from being reused. Failure is ignored; callers also kill the
-/// direct child.
-fn kill_group(child: &Child) {
-    let _ = Command::new("/bin/kill")
-        .args(["-s", "KILL", "--"])
-        .arg(format!("-{}", child.id()))
-        .env_clear()
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
+/// The fields of `/proc/<pid>/stat` that [`kill_tree`] needs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ProcStat {
+    /// Parent process id (field 4).
+    ppid: i32,
+    /// Process group id (field 5).
+    pgrp: i32,
+    /// Session id (field 6).
+    session: i32,
+    /// Start time in clock ticks since boot (field 22). With the pid it names
+    /// one process for the life of the boot.
+    start_time: u64,
 }
 
-/// Kill the group and the direct child and reap the child. Used on every early
+/// Parse one `/proc/<pid>/stat` line. The command name (field 2) may contain
+/// spaces and parentheses, so the fields are read after the LAST `)`.
+fn parse_stat(line: &str) -> Option<ProcStat> {
+    let (_, rest) = line.rsplit_once(')')?;
+    // `rest` starts at field 3 (the state), so field N is index N - 3.
+    let fields: Vec<&str> = rest.split_whitespace().collect();
+    Some(ProcStat {
+        ppid: fields.get(1)?.parse().ok()?,
+        pgrp: fields.get(2)?.parse().ok()?,
+        session: fields.get(3)?.parse().ok()?,
+        start_time: fields.get(19)?.parse().ok()?,
+    })
+}
+
+/// Read and parse `/proc/<pid>/stat`; `None` when it is gone or unreadable.
+fn read_stat(pid: i32) -> Option<ProcStat> {
+    parse_stat(&std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?)
+}
+
+/// Every process visible in `/proc`, by pid. Unreadable entries are skipped.
+fn scan_proc() -> BTreeMap<i32, ProcStat> {
+    let mut table = BTreeMap::new();
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return table;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let Some(pid) = name.to_str().and_then(|n| n.parse::<i32>().ok()) else {
+            continue;
+        };
+        if let Some(stat) = read_stat(pid) {
+            table.insert(pid, stat);
+        }
+    }
+    table
+}
+
+/// Pids of every descendant of `root` reachable through parent links.
+fn descendants(table: &BTreeMap<i32, ProcStat>, root: i32) -> BTreeSet<i32> {
+    let mut children: BTreeMap<i32, Vec<i32>> = BTreeMap::new();
+    for (pid, stat) in table {
+        children.entry(stat.ppid).or_default().push(*pid);
+    }
+    let mut found = BTreeSet::new();
+    let mut queue = vec![root];
+    while let Some(parent) = queue.pop() {
+        for child in children.get(&parent).into_iter().flatten() {
+            if found.insert(*child) {
+                queue.push(*child);
+            }
+        }
+    }
+    found
+}
+
+/// Best-effort kill of the process group led by `child` and of every descendant
+/// that escaped the group (for example through `setsid`). Starts no process.
+///
+/// It must be called while the child has not been reaped: an unreaped child
+/// keeps its pid, and so the group id, from being reused. Order:
+/// 1. SIGSTOP the group, so its members stop forking.
+/// 2. Up to [`ESCAPE_SCAN_ROUNDS`] times, scan `/proc` for descendants of the
+///    child, open a pidfd for each new one, keep it only if the process start
+///    time still equals the scanned one (so the fd names the scanned process,
+///    not a reused pid), and SIGSTOP it through the pidfd. Stopped processes
+///    cannot fork, so the set converges.
+/// 3. SIGKILL every held pidfd, then the group.
+///
+/// A bare pid is never signalled. All errors are ignored; callers also kill the
+/// direct child.
+///
+/// Residual limits:
+/// - A descendant whose ancestry was cut before the timeout is not found, for
+///   example a double fork whose middle process already exited, so the
+///   descendant was reparented to init or a subreaper. If it holds a pipe, the
+///   run is still returned as `timed_out` with that stream marked truncated
+///   (see [`unobserved`]).
+/// - Without `/proc` or pidfd support (kernel below 5.3, or a seccomp filter),
+///   only the child's group is signalled.
+/// - `PR_SET_CHILD_SUBREAPER` was rejected: it is process-wide, and it would
+///   make this process reap arbitrary orphans, racing `Child::wait` in
+///   concurrent runs.
+/// - Processes of another uid cannot be signalled.
+fn kill_tree(child: &Child) {
+    let group = Pid::from_child(child);
+    let root = group.as_raw_pid();
+    // Freeze the group so its members stop forking while the tree is walked.
+    let _ = kill_process_group(group, Signal::STOP);
+
+    let mut held: BTreeMap<i32, OwnedFd> = BTreeMap::new();
+    for _ in 0..ESCAPE_SCAN_ROUNDS {
+        let table = scan_proc();
+        let mut added = false;
+        for pid in descendants(&table, root) {
+            if held.contains_key(&pid) {
+                continue;
+            }
+            let (Some(scanned), Some(target)) = (table.get(&pid), Pid::from_raw(pid)) else {
+                continue;
+            };
+            let Ok(fd) = pidfd_open(target, PidfdFlags::empty()) else {
+                continue;
+            };
+            // The fd names the scanned process only if the start time is
+            // unchanged now that the fd is held.
+            if read_stat(pid).map(|now| now.start_time) != Some(scanned.start_time) {
+                continue;
+            }
+            let _ = pidfd_send_signal(&fd, Signal::STOP);
+            held.insert(pid, fd);
+            added = true;
+        }
+        if !added {
+            break;
+        }
+    }
+
+    for fd in held.values() {
+        let _ = pidfd_send_signal(fd, Signal::KILL);
+    }
+    let _ = kill_process_group(group, Signal::KILL);
+}
+
+/// Kill the tree and the direct child and reap the child. Used on every early
 /// return so that no supervision failure leaves a running or zombie child.
 fn abort(child: &mut Child) {
-    kill_group(child);
+    kill_tree(child);
     let _ = child.kill();
     let _ = child.wait();
 }
 
-/// Wait for the child, killing its whole process group once `timeout` passes.
+/// Wait for the child, killing its process tree once `timeout` passes.
 /// Returns the exit status and whether the runner killed it.
 fn supervise(child: &mut Child, timeout: Duration) -> io::Result<(ExitStatus, bool)> {
     let started = Instant::now();
@@ -351,7 +479,7 @@ fn supervise(child: &mut Child, timeout: Duration) -> io::Result<(ExitStatus, bo
         }
         if !timed_out && started.elapsed() >= timeout {
             // The child is unreaped here (try_wait just returned None).
-            kill_group(child);
+            kill_tree(child);
             child.kill()?;
             timed_out = true;
         }
@@ -454,4 +582,36 @@ pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerErro
         stdout: stdout.stored,
         stderr: stderr.stored,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ProcStat, parse_stat};
+
+    #[test]
+    fn tool_01_proc_stat_parse_reads_fields_after_the_last_paren() {
+        // Field 22 is the 20th token after the closing parenthesis.
+        let line = "4242 ((a) b (c)) S 17 4242 4242 0 -1 4194304 100 0 0 0 1 2 0 0 20 0 1 0 9876543 \
+                    1000 100 18446744073709551615 0 0 0 0 0 0 0 0 0 0 0 0 17 0 0 0 0 0 0";
+        assert_eq!(
+            parse_stat(line),
+            Some(ProcStat {
+                ppid: 17,
+                pgrp: 4242,
+                session: 4242,
+                start_time: 9_876_543,
+            })
+        );
+    }
+
+    #[test]
+    fn tool_01_proc_stat_parse_rejects_malformed_lines() {
+        assert_eq!(parse_stat(""), None);
+        assert_eq!(parse_stat("no parenthesis here"), None);
+        assert_eq!(parse_stat("1 (sh) S 1 1"), None);
+        let non_numeric = "1 (sh) S x 1 1 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 5 0 0";
+        assert_eq!(parse_stat(non_numeric), None);
+        let bad_start = "1 (sh) S 1 1 1 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 zz 0 0";
+        assert_eq!(parse_stat(bad_start), None);
+    }
 }
