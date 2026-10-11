@@ -10,7 +10,8 @@
 //! `LANG=C.UTF-8`, `TZ=UTC`, `SOURCE_DATE_EPOCH`) and only the named extras the
 //! caller passes. Output is hashed in full but stored only up to a cap. A run
 //! that exceeds its timeout is killed and recorded as `timed_out`, never as a
-//! success. The returned [`RunRecord`] is versioned, uses sorted maps and holds
+//! success. The child leads its own process group, and a timeout kills the whole
+//! group so descendants that hold the output pipes cannot outlive it. The returned [`RunRecord`] is versioned, uses sorted maps and holds
 //! no wall-clock data, so identical runs serialize to identical JSON.
 //!
 //! The runner adds no network isolation (CONTEXT D-19): it controls
@@ -19,9 +20,9 @@
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::io::{self, Read};
-use std::os::unix::process::ExitStatusExt;
+use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -283,13 +284,90 @@ fn collect(
     }
 }
 
+/// Capture to report for a stream that never reached end-of-file because a
+/// descendant outside the child's process group still holds the pipe after a
+/// timeout. Nothing was observed, so the digest is of the empty input and the
+/// stream is flagged `truncated`. The run is already `timed_out`, which every
+/// consumer reads as "not proven".
+fn unobserved() -> Captured {
+    Captured {
+        record: StreamRecord {
+            sha256: hex(&Sha256::new().finalize()),
+            bytes_total: 0,
+            bytes_stored: 0,
+            truncated: true,
+        },
+        stored: Vec::new(),
+    }
+}
+
+/// [`collect`], except that after a timeout an undrained pipe is reported as
+/// unobserved instead of discarding the whole record.
+fn collect_after_run(
+    rx: &mpsc::Receiver<io::Result<Captured>>,
+    stream: &'static str,
+    timed_out: bool,
+) -> Result<Captured, RunnerError> {
+    match collect(rx, stream) {
+        Err(RunnerError::OutputNotDrained { .. }) if timed_out => Ok(unobserved()),
+        other => other,
+    }
+}
+
+/// Best-effort SIGKILL of the process group led by `child`.
+///
+/// `forbid(unsafe_code)` rules out `libc::kill`, so the group is signalled by
+/// running the system `kill` with a negative pid. It must be called while the
+/// child has not been reaped: an unreaped child keeps its pid, and so the
+/// group id, from being reused. Failure is ignored; callers also kill the
+/// direct child.
+fn kill_group(child: &Child) {
+    let _ = Command::new("/bin/kill")
+        .args(["-s", "KILL", "--"])
+        .arg(format!("-{}", child.id()))
+        .env_clear()
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+}
+
+/// Kill the group and the direct child and reap the child. Used on every early
+/// return so that no supervision failure leaves a running or zombie child.
+fn abort(child: &mut Child) {
+    kill_group(child);
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+/// Wait for the child, killing its whole process group once `timeout` passes.
+/// Returns the exit status and whether the runner killed it.
+fn supervise(child: &mut Child, timeout: Duration) -> io::Result<(ExitStatus, bool)> {
+    let started = Instant::now();
+    let mut timed_out = false;
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Ok((status, timed_out));
+        }
+        if !timed_out && started.elapsed() >= timeout {
+            // The child is unreaped here (try_wait just returned None).
+            kill_group(child);
+            child.kill()?;
+            timed_out = true;
+        }
+        thread::sleep(POLL_INTERVAL);
+    }
+}
+
 /// Run one subprocess under the runner's environment, capture and time policy.
 ///
 /// # Errors
 /// - [`RunnerError::EmptyArgv`] and [`RunnerError::EnvConflict`] before anything is spawned.
 /// - [`RunnerError::Spawn`] when the OS cannot start the program (see
 ///   [`RunnerError::is_not_found`]).
-/// - [`RunnerError::OutputNotDrained`] when a pipe stays open after the child ended.
+/// - [`RunnerError::OutputNotDrained`] when a pipe stays open after the child
+///   ended normally. After a timeout the record is returned instead, with
+///   `timed_out` set and the undrained stream marked `truncated`.
 /// - [`RunnerError::Io`] for any other supervision failure.
 pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerError> {
     let (program, args) = req.argv.split_first().ok_or(RunnerError::EmptyArgv)?;
@@ -319,6 +397,8 @@ pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerErro
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
+        // Own process group (pgid == pid) so a timeout can kill descendants.
+        .process_group(0)
         .spawn()
         .map_err(|source| RunnerError::Spawn {
             program: program.to_string_lossy().into_owned(),
@@ -328,8 +408,7 @@ pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerErro
     let (Some(stdout_pipe), Some(stderr_pipe)) = (child.stdout.take(), child.stderr.take()) else {
         // Both pipes were requested above, so this is unreachable in practice;
         // do not leave a child running if it ever happens.
-        let _ = child.kill();
-        let _ = child.wait();
+        abort(&mut child);
         return Err(RunnerError::Io(io::Error::other(
             "child pipes were not created",
         )));
@@ -337,21 +416,16 @@ pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerErro
     let stdout_rx = spawn_reader(stdout_pipe, cfg.output_cap);
     let stderr_rx = spawn_reader(stderr_pipe, cfg.output_cap);
 
-    let started = Instant::now();
-    let mut timed_out = false;
-    let status = loop {
-        if let Some(status) = child.try_wait()? {
-            break status;
+    let (status, timed_out) = match supervise(&mut child, cfg.timeout) {
+        Ok(result) => result,
+        Err(err) => {
+            abort(&mut child);
+            return Err(RunnerError::Io(err));
         }
-        if !timed_out && started.elapsed() >= cfg.timeout {
-            child.kill()?;
-            timed_out = true;
-        }
-        thread::sleep(POLL_INTERVAL);
     };
 
-    let stdout = collect(&stdout_rx, "stdout")?;
-    let stderr = collect(&stderr_rx, "stderr")?;
+    let stdout = collect_after_run(&stdout_rx, "stdout", timed_out)?;
+    let stderr = collect_after_run(&stderr_rx, "stderr", timed_out)?;
 
     let record = RunRecord {
         schema_version: RUN_RECORD_SCHEMA_VERSION,

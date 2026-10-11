@@ -197,6 +197,31 @@ fn tool_01_runner_timeout_is_reported_not_passed() {
 }
 
 #[test]
+fn tool_01_runner_timeout_kills_descendants_and_reports_timed_out() {
+    // The shell starts a background sleep that inherits the output pipes, then
+    // a foreground sleep. Killing only the shell would leave the background
+    // sleep holding the pipes and the run would fail with OutputNotDrained
+    // after the 5 s drain grace. Killing the process group ends both at once.
+    let mut cfg = config();
+    cfg.timeout = Duration::from_millis(300);
+    let started = Instant::now();
+    let output = run_ok(
+        &cfg,
+        &request(&["/bin/sh", "-c", "sleep 30 & sleep 30; wait"]),
+    );
+
+    assert!(
+        started.elapsed() < Duration::from_secs(4),
+        "descendants outlived the timeout: {:?}",
+        started.elapsed()
+    );
+    assert!(output.record.exit.timed_out);
+    assert_eq!(output.record.exit.code, None);
+    assert!(!output.record.stdout.truncated);
+    assert!(!output.record.stderr.truncated);
+}
+
+#[test]
 fn tool_01_runner_missing_program_is_typed_spawn_error() {
     let err = run(&config(), &request(&["/nonexistent/tool"])).unwrap_err();
     assert!(matches!(err, RunnerError::Spawn { .. }), "got {err:?}");
