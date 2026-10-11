@@ -192,26 +192,38 @@ is legal advice.
 
 ## Current image
 
-The verified image, published by the `image-a` job and announced as verified by
-the `compare` job of `container` workflow run 38019633821 only after the two
-manifests were found manifest-identical. It was built after the pins were made
-to bind the installed bytes: both Rust toolchains are installed only from the
-sha256-checked channel manifests and the archives they list, and c2rust and
-cargo-mutants only from their sha256-checked `.crate` files (the `pin-binding`
-notice of `image-a` shows the build record matching the pins):
+The verified image, published by the `publish` job of `container` workflow run
+38182234483 and announced as verified by that job. `publish` ran only after
+`image-a`, `image-b` and `compare` had all succeeded, so the two manifests had
+been found manifest-identical. It pushed the docker-save archive that `image-a`
+saved after its own gates (the pin-binding gate, check, off-pin check, manifest
+and smoke steps), not a rebuild: the archive sha256
+(`bd1f2bd0e993294e069dec3ebcbdbbfbf69c101008b53e1b1bfdb9c290c64c69`) was
+checked before `docker load`, and the loaded image id
+(`sha256:5f7373243d8f187f5b4bd6ccec84f6005a787b5002ab6260077564b8bf576a60`)
+equalled the id `image-a` recorded. Both Rust toolchains are installed only from
+the sha256-checked channel manifests and the archives they list, and c2rust and
+cargo-mutants only from their sha256-checked `.crate` files; those installs and
+the Arm toolchain unpacking run in `RUN --network=none` steps (the `pin-binding`
+notice of `image-a` shows the build record matching the pins, with each
+archive line matched to a pair of its pin-verified manifest):
 
 ```
-ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f3b392427d2588e6ba0e3da2067bc503f40e6749b48bc6553832c27e96e518d
+ghcr.io/sat-wik/migrationtool-toolchain@sha256:acdfe312b21c6af19bc61750cf454f3914f482b3bfb9a2ca42d3e6b5f7758b5c
 ```
 
-- Run id: 38019633821 (jobs `mt`, `image-a`, `image-b` and `compare` all
-  concluded `success`; the pushed image is the one that passed the pin-binding
-  gate, check, off-pin check, manifest and smoke steps in `image-a`)
-- Commit: 686b56b777bb03be1377ba8e8e575acc4124b8dd
+- Run id: 38182234483 (jobs `mt`, `image-a`, `image-b`, `compare` and `publish`
+  all concluded `success`)
+- Commit: 2f77537febe4e529eff05b9ba0beca6def02ecc8
 - Manifest sha256 (identical for both builds):
   40e55cc69fa93f238960bad268cfa4ec5775d51f98dd10efcf92741801d7aed3
+
+The `make` of klee-uclibc still downloads a locale tarball with no pinned
+checksum, so that one step keeps network access; the `Dockerfile` labels it
+`Remains networked:`.
 
 Later commits that do not touch the Dockerfile, `pins.toml`, the smoke crate,
 the Rust sources or the workflow do not rebuild the image, so this stays the
 current reference until one of those changes; a rebuild publishes a new digest
-and this section is updated with it.
+and this section is updated with it. A `sha-<commit>` tag that already exists is
+never overwritten: `publish` skips the push with a warning.
