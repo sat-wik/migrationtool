@@ -2322,22 +2322,45 @@ fn workflow_job_text<'a>(workflow: &'a str, job: &str) -> &'a str {
     &workflow[start..end]
 }
 
+/// Text positions of `needles` in `haystack`, in the order given; panics naming a
+/// missing needle. Used to assert the order of the steps of a job.
+fn positions(haystack: &str, what: &str, needles: &[&str]) -> Vec<usize> {
+    needles
+        .iter()
+        .map(|needle| {
+            haystack
+                .find(needle)
+                .unwrap_or_else(|| panic!("{what} lacks `{needle}`"))
+        })
+        .collect()
+}
+
+/// The publish guard every publishing step and job repeats: a push to `main` or to
+/// the phase branch, never a pull_request, schedule or dispatch (WR-04).
+const PUBLISH_GUARD: &str = "if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/gsd-discuss-phase-1-mzdw5v') }}";
+
 #[test]
 fn tool_03_workflow_publishes_by_digest_with_least_privilege() {
     let workflow = read_repo_file(".github/workflows/container.yml");
+    let image_a = workflow_job_text(&workflow, "image-a");
+    let publish = workflow_job_text(&workflow, "publish");
 
-    // Write access to packages exists once, in image-a, and nowhere else.
+    // Write access to packages exists once, in publish, and nowhere else; image-a
+    // builds and gates with read access only.
     assert_eq!(
         workflow.matches("packages: write").count(),
         1,
         "`packages: write` must appear exactly once"
     );
-    let image_a = workflow_job_text(&workflow, "image-a");
     assert!(
-        image_a.contains("packages: write"),
-        "`packages: write` must be in the image-a job"
+        publish.contains("packages: write"),
+        "`packages: write` must be in the publish job"
     );
-    for other in ["mt", "image-b", "compare"] {
+    assert!(
+        image_a.contains("permissions:\n      contents: read\n") && !image_a.contains("packages:"),
+        "image-a must hold only `contents: read`"
+    );
+    for other in ["mt", "image-a", "image-b", "compare"] {
         assert!(
             !workflow_job_text(&workflow, other).contains("packages:"),
             "job {other} must not grant any package permission"
@@ -2352,73 +2375,171 @@ fn tool_03_workflow_publishes_by_digest_with_least_privilege() {
         .collect();
     assert_eq!(used, BTreeSet::from(["GITHUB_TOKEN".to_owned()]));
 
-    // The login is SHA-pinned (checked for every `uses:` by the SHA test),
-    // happens in image-a only, never for a pull_request, and the push follows it.
-    let login = image_a
-        .find("docker/login-action@")
-        .expect("image-a must log in with docker/login-action");
+    // The login is SHA-pinned (checked for every `uses:` by the SHA test) and
+    // happens in publish only.
     assert_eq!(workflow.matches("docker/login-action@").count(), 1);
-    let guard = "if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/gsd-discuss-phase-1-mzdw5v') }}";
-    assert_eq!(
-        workflow.matches(guard).count(),
-        2,
-        "exactly the login and push steps carry the publish guard"
-    );
+    assert!(publish.contains("docker/login-action@"));
+    assert!(!image_a.contains("docker/login-action@") && !image_a.contains("docker push"));
     assert!(
         !workflow.contains("github.event_name != 'pull_request'"),
         "publishing must not be gated on `!= pull_request` (any branch, schedule, dispatch)"
     );
+
+    // publish runs after every gate, for pushes to main or the phase branch only,
+    // one at a time per commit, and neither builds nor checks out anything.
+    assert!(publish.contains("needs: [image-a, image-b, compare]"));
     assert!(
-        image_a[..login]
-            .rfind(guard)
-            .is_some_and(|at| login - at < 200),
-        "the login step must run only for pushes to main or the phase branch"
+        publish.contains(PUBLISH_GUARD),
+        "publish must carry the job-level publish guard"
     );
-    let push = image_a
-        .find("docker push")
-        .expect("image-a must push the image");
-    assert!(push > login, "the push must come after the login");
-    let publish = image_a
-        .find("id: publish")
-        .expect("the push step must have the id `publish`");
-    let publish_run = publish + image_a[publish..].find("run:").expect("publish has a run");
     assert!(
-        image_a[publish..publish_run].contains(guard),
-        "the push step must itself run only for pushes to main or the phase branch"
+        publish.contains("group: container-publish-${{ github.sha }}")
+            && publish.contains("cancel-in-progress: false"),
+        "publish must serialize per commit and never be cancelled"
     );
-    assert!(image_a.contains("ghcr.io/sat-wik/migrationtool-toolchain"));
-    assert!(image_a.contains("{{index .RepoDigests 0}}"));
-    assert!(
-        !image_a[push..].contains("docker build") && !image_a[push..].contains("buildx build"),
-        "the pushed image is never rebuilt for publishing"
+    for forbidden in ["buildx build", "docker build", "actions/checkout"] {
+        assert!(
+            !publish.contains(forbidden),
+            "publish must not contain `{forbidden}`: the gated image is never rebuilt"
+        );
+    }
+    // The guard: publish's job-level if, image-a's save step and its upload step.
+    assert_eq!(
+        workflow.matches(PUBLISH_GUARD).count(),
+        3,
+        "the guard must appear on publish, on image-a's save step and on its archive upload"
     );
 
     // A newer run may cancel only a pull_request run, never a push that is
-    // between `docker push` and the compare job (WR-04).
+    // between the gates and the publish job (WR-04).
     assert!(
         workflow.contains("cancel-in-progress: ${{ github.event_name == 'pull_request' }}"),
         "cancel-in-progress must be limited to pull_request runs"
     );
     assert!(!workflow.contains("cancel-in-progress: true"));
 
-    // The digest is announced twice: when pushed, and as verified only in the
-    // compare job, after manifest-diff succeeded.
-    assert!(image_a.contains("annotate notice image-digest"));
+    // image-a saves exactly the image its gates passed, after every gate, and the
+    // job outputs carry its id and archive hash to publish.
+    assert!(image_a.contains("docker save"));
+    let order = positions(
+        &image_a,
+        "image-a",
+        &[
+            "pin-binding",
+            "annotate notice check-a",
+            "annotate notice negative-pin",
+            "annotate notice manifest-a",
+            "annotate notice smoke",
+            "id: save",
+        ],
+    );
+    assert!(
+        order.windows(2).all(|pair| pair[0] < pair[1]),
+        "the save step must come after the pin-binding, check-a, negative-pin, manifest-a and smoke steps: {order:?}"
+    );
+    let save = image_a.find("id: save").unwrap();
+    let save_run = save + image_a[save..].find("run:").expect("save has a run");
+    assert!(
+        image_a[save..save_run].contains(PUBLISH_GUARD)
+            && !image_a[save..save_run].contains("always()")
+            && !image_a[save..save_run].contains("!cancelled()"),
+        "the save step must carry the guard and no status function"
+    );
+    assert!(image_a.contains("image_id: ${{ steps.save.outputs.image_id }}"));
+    assert!(image_a.contains("archive_sha256: ${{ steps.save.outputs.archive_sha256 }}"));
+    assert!(!image_a.contains("image_ref"));
+    assert!(image_a.contains("annotate notice image-archive"));
+    assert!(!image_a.contains("annotate notice image-digest"));
+    assert!(!image_a.contains("annotate notice verified-image"));
+    // The archive travels as an artifact with the same SHA-pinned actions.
+    let upload = "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9";
+    let download = "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333";
+    assert!(image_a.contains("name: image-a-image"));
+    assert!(image_a.contains(upload));
+    assert!(publish.contains("name: image-a-image"));
+    assert!(publish.contains(download));
+
+    // publish checks the archive hash before loading it, the image id after, and
+    // only then logs in; it looks the tag up before the push, pushes, and announces.
+    let order = positions(
+        &publish,
+        "publish",
+        &[
+            "sha256sum -c",
+            "docker load",
+            "{{.Id}}",
+            "docker/login-action@",
+            "docker manifest inspect",
+            "docker push",
+            "annotate notice verified-image",
+        ],
+    );
+    assert!(
+        order.windows(2).all(|pair| pair[0] < pair[1]),
+        "publish steps are out of order: {order:?}"
+    );
+    assert!(publish.contains("needs.image-a.outputs.archive_sha256"));
+    assert!(publish.contains("needs.image-a.outputs.image_id"));
+    assert!(
+        !publish[order[0]..order[1]].contains("docker/login-action@"),
+        "nothing may log in before the archive is checked"
+    );
+    // The existing-tag lookup fails closed, and the push and announcement follow it.
+    assert!(publish.contains("id: existing"));
+    let lookup = publish.find("docker manifest inspect").unwrap();
+    let lookup_end = publish[lookup..]
+        .find("- name:")
+        .map_or(publish.len(), |n| lookup + n);
+    let lookup_step = &publish[lookup..lookup_end];
+    for needle in [
+        "exists=true",
+        "exists=false",
+        "annotate warning publish-skipped",
+        "no such manifest|manifest unknown|not found",
+        "exit 1",
+    ] {
+        assert!(
+            lookup_step.contains(needle),
+            "the tag lookup lacks `{needle}`"
+        );
+    }
+    assert_eq!(
+        publish
+            .matches("if: ${{ steps.existing.outputs.exists == 'false' }}")
+            .count(),
+        2,
+        "the push and the announcement run only when the tag is absent"
+    );
+    assert!(publish.contains("ghcr.io/sat-wik/migrationtool-toolchain"));
+    assert!(publish.contains("{{index .RepoDigests 0}}"));
+    assert!(
+        publish.contains(r"^ghcr\.io/sat-wik/migrationtool-toolchain@sha256:[0-9a-f]{64}$"),
+        "publish must validate the digest reference it announces"
+    );
+    assert!(publish.contains("annotate notice image-digest"));
+    assert!(!publish[publish.find("docker push").unwrap()..].contains("docker build"));
+
+    // verified-image is announced once, in publish, with the compare job's manifest
+    // hash, after the push (WR-04, CONTEXT D-24).
+    assert_eq!(
+        workflow.matches("annotate notice verified-image").count(),
+        1
+    );
+    assert!(publish.contains("needs.compare.outputs.manifest_sha256"));
     let compare = workflow_job_text(&workflow, "compare");
+    assert!(!compare.contains("IMAGE_REF") && !compare.contains("verified-image"));
     let diff = compare
         .find("manifest-diff")
         .expect("compare runs manifest-diff");
-    let verified = compare
-        .find("annotate notice verified-image")
-        .expect("compare must publish the verified-image notice");
     assert!(
-        verified > diff,
-        "verified-image must follow the manifest diff"
+        compare[diff..].contains("exit 1"),
+        "a manifest difference must fail the job"
     );
     assert!(
-        compare[diff..verified].contains("exit 1"),
-        "a manifest difference must fail the job before verified-image is published"
+        compare.contains("manifest_sha256=") && compare.contains("id: diff"),
+        "compare must export the manifest hash"
     );
+    assert!(compare.contains("manifest_sha256: ${{ steps.diff.outputs.manifest_sha256 }}"));
 }
 
 #[test]
@@ -2518,24 +2639,23 @@ fn tool_03_workflow_gates_on_pin_binding_evidence() {
         "the tautological update-hash wording must be gone"
     );
 
-    // The gate comes before the push, and the publish steps carry no status
-    // function, so a failed gate keeps the image out of GHCR.
+    // The gate comes before the image is saved for publishing, and the save step
+    // carries no status function, so a failed gate keeps the image out of GHCR;
+    // publish needs image-a.
     let first_gate = image_a
         .find("pin-binding")
         .expect("image-a mentions pin-binding");
-    let publish = image_a
-        .find("id: publish")
-        .expect("the push step must have the id `publish`");
+    let save = image_a
+        .find("id: save")
+        .expect("the save step must have the id `save`");
     assert!(
-        first_gate < publish,
-        "the pin-binding gate must come before the publish step"
+        first_gate < save,
+        "the pin-binding gate must come before the save step"
     );
-    let login = image_a
-        .find("docker/login-action@")
-        .expect("image-a logs in before it pushes");
+    let publish = workflow_job_text(&workflow, "publish");
     assert!(
-        first_gate < login,
-        "the pin-binding gate must come before the GHCR login"
+        publish.contains("needs: [image-a, image-b, compare]"),
+        "publish must need image-a"
     );
 }
 

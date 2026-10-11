@@ -6,9 +6,11 @@
 # Log and artifact hosts are not reachable from cloud sessions, so each job also
 # publishes its evidence as job annotations (titles check-a, negative-pin,
 # manifest-a, manifest-b, manifest-compare, smoke, tool-outputs, pin-binding,
-# image-digest, verified-image, and on failure "image-a build tail", "image-b
-# build tail" and manifest-diff). `verified-image` is the digest reference later
-# phases use.
+# image-archive, image-digest, verified-image, publish-skipped, and on failure
+# "image-a build tail", "image-b build tail", manifest-diff and tag-lookup).
+# `verified-image` is the digest reference later phases use; it is announced by
+# the publish job, after the push, and only when image-a, image-b and compare all
+# succeeded (WR-04).
 #
 # Action commit SHAs are pinned here because GitHub resolves `uses:` before any
 # step can read container/pins.toml; every other pin comes from that file.
@@ -44,9 +46,9 @@ permissions:
   contents: read
 
 # Only pull_request runs may be cancelled by a newer one. A cancelled push run
-# could stop between `docker push` and the compare job and leave a pushed image
-# that is never announced as verified (WR-04), and the weekly schedule must not
-# cancel a push run either, so each event type has its own group.
+# could stop between the gates and the publish job and leave a gated image that
+# is never published (WR-04), and the weekly schedule must not cancel a push run
+# either, so each event type has its own group.
 concurrency:
   group: container-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -94,13 +96,14 @@ jobs:
     needs: mt
     runs-on: ubuntu-24.04
     timeout-minutes: 120
-    # The only job that can publish: it alone holds write access to packages,
-    # through the workflow's own GITHUB_TOKEN (CONTEXT D-24, threat T-01-26).
+    # Builds and gates the image with read access only. The publish job below is
+    # the only holder of write access to packages (CONTEXT D-24, threats T-01-26
+    # and T-01-42); this job hands it the gated image as a checked archive.
     permissions:
       contents: read
-      packages: write
     outputs:
-      image_ref: ${{ steps.publish.outputs.image_ref }}
+      image_id: ${{ steps.save.outputs.image_id }}
+      archive_sha256: ${{ steps.save.outputs.archive_sha256 }}
     steps:
       # A multi-gigabyte image plus its build cache does not fit the default
       # runner disk (RESEARCH Pitfall 13).
@@ -582,56 +585,53 @@ jobs:
           fi
           annotate notice smoke "$out/smoke-notice.txt"
 
-      # CONTEXT D-24: the image that just passed the check, off-pin check, manifest
-      # and smoke steps is pushed as it is (never rebuilt for publishing) and
-      # referenced by digest. These two steps carry no status function, so they run
-      # only when every step above succeeded. They also run only for a push to
-      # `main` or to the phase branch whose images are kept as evidence: never
-      # for a pull_request, the weekly schedule, a workflow_dispatch or any other
-      # branch (WR-04). Both steps repeat the same condition.
-      - name: Log in to GHCR
-        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/gsd-discuss-phase-1-mzdw5v') }}
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push the verified image and read its digest
-        id: publish
+      # CONTEXT D-24, WR-04: the image that just passed the pin-binding gate, the
+      # check, the off-pin check, the manifest and the smoke steps is saved as it
+      # is and carried to the publish job as a checked archive; it is never rebuilt.
+      # The step carries no status function, so it runs only when every step above
+      # succeeded, and only for a push to `main` or to the phase branch whose images
+      # are kept as evidence: never for a pull_request, the weekly schedule, a
+      # workflow_dispatch or any other branch. The archive's sha256 and the image id
+      # travel through the job outputs, not the artifact, so publish can check the
+      # download against values the gated job produced.
+      - name: Save the gated image
+        id: save
         if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/gsd-discuss-phase-1-mzdw5v') }}
         shell: bash
-        env:
-          IMAGE: ghcr.io/sat-wik/migrationtool-toolchain
-          COMMIT: ${{ github.sha }}
         run: |
           source "$RUNNER_TEMP/ci-lib.sh"
           out="$RUNNER_TEMP/out"
-          docker tag mt-toolchain:ci "${IMAGE}:sha-${COMMIT}"
-          set +e
-          docker push "${IMAGE}:sha-${COMMIT}" > "$out/push.txt" 2>&1
-          rc=$?
-          set -e
-          cat "$out/push.txt"
-          if [ "$rc" -ne 0 ]; then
-            { echo "docker push exit code: $rc"; tail -n 40 "$out/push.txt"; } > "$out/push-notice.txt"
-            annotate error image-digest "$out/push-notice.txt"
+          set -o pipefail
+          image_id=$(docker image inspect --format '{{.Id}}' mt-toolchain:ci)
+          if ! printf '%s' "$image_id" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+            { echo "the image id is not a sha256 id:"; echo "$image_id"; } > "$out/image-archive-error.txt"
+            annotate error image-archive "$out/image-archive-error.txt"
             exit 1
           fi
-          ref=$(docker inspect --format '{{index .RepoDigests 0}}' "${IMAGE}:sha-${COMMIT}")
-          digest=${ref#*@}
-          if [ "${ref%@*}" != "$IMAGE" ] || ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
-            { echo "RepoDigests entry is not a ${IMAGE} digest reference:"; echo "$ref"; } > "$out/digest-notice.txt"
-            annotate error image-digest "$out/digest-notice.txt"
-            exit 1
-          fi
+          mkdir -p "$RUNNER_TEMP/image"
+          docker save mt-toolchain:ci | gzip -1 > "$RUNNER_TEMP/image/mt-toolchain.tar.gz"
+          archive_sha256=$(sha256sum "$RUNNER_TEMP/image/mt-toolchain.tar.gz" | cut -d' ' -f1)
           {
-            echo "$ref"
-            echo "pushed as ${IMAGE}:sha-${COMMIT}; announced as verified only after the compare job"
-          } > "$out/digest-notice.txt"
-          cat "$out/digest-notice.txt"
-          annotate notice image-digest "$out/digest-notice.txt"
-          echo "image_ref=${ref}" >> "$GITHUB_OUTPUT"
+            echo "image_id=${image_id}"
+            echo "archive_sha256=${archive_sha256}"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "image id ${image_id}"
+            echo "archive sha256 ${archive_sha256}"
+            ls -l "$RUNNER_TEMP/image/mt-toolchain.tar.gz"
+            echo "saved after every gate of image-a; published only after compare, by the publish job"
+          } > "$out/image-archive-notice.txt"
+          cat "$out/image-archive-notice.txt"
+          annotate notice image-archive "$out/image-archive-notice.txt"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/gsd-discuss-phase-1-mzdw5v') }}
+        with:
+          name: image-a-image
+          path: ${{ runner.temp }}/image/mt-toolchain.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -768,6 +768,8 @@ jobs:
     needs: [image-a, image-b]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    outputs:
+      manifest_sha256: ${{ steps.diff.outputs.manifest_sha256 }}
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -785,10 +787,8 @@ jobs:
           path: ${{ runner.temp }}/b
 
       - name: Compare the manifests
+        id: diff
         shell: bash
-        env:
-          # Empty unless image-a pushed (only for a push to main or the phase branch).
-          IMAGE_REF: ${{ needs.image-a.outputs.image_ref }}
         run: |
           annotate() {
             local level=$1 title=$2 file=$3 dir n i label text
@@ -831,17 +831,189 @@ jobs:
           echo "manifest-a.json and manifest-b.json are byte-identical; sha256 $(sha256sum "$a" | cut -d' ' -f1)" > "$RUNNER_TEMP/compare-notice.txt"
           cat "$RUNNER_TEMP/compare-notice.txt"
           annotate notice manifest-compare "$RUNNER_TEMP/compare-notice.txt"
-          # The pushed image is announced as the verified one only here, after the
-          # manifest-diff above succeeded (CONTEXT D-24, threat T-01-27).
-          if [ -n "$IMAGE_REF" ]; then
-            if ! printf '%s' "$IMAGE_REF" | grep -Eq '^ghcr\.io/sat-wik/migrationtool-toolchain@sha256:[0-9a-f]{64}$'; then
-              echo "image-a published a malformed reference: $IMAGE_REF"
-              exit 1
+          # The hash goes to the publish job, which announces the pushed image as
+          # verified only after this comparison succeeded (CONTEXT D-24, T-01-27).
+          echo "manifest_sha256=$(sha256sum "$a" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+  # WR-04, CONTEXT D-24: the only job that can write to GHCR. It needs image-a,
+  # image-b and compare, so nothing is published unless both builds gated and their
+  # manifests were found identical. It runs no build and no checkout: it loads the
+  # archive image-a gated, checks it against the hash and image id that job
+  # produced, and pushes that image. Runs for one commit are serialized, and an
+  # existing commit tag is left alone.
+  publish:
+    needs: [image-a, image-b, compare]
+    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/gsd-discuss-phase-1-mzdw5v') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: container-publish-${{ github.sha }}
+      cancel-in-progress: false
+    steps:
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Write the annotation helper
+        run: |
+          cat > "$RUNNER_TEMP/ci-lib.sh" <<'LIB'
+          # annotate LEVEL TITLE FILE: FILE as annotations of at most 3800 bytes each (the
+          # API keeps 4096 characters of a message), titled "TITLE (i/n)" when split.
+          annotate() {
+            local level=$1 title=$2 file=$3 dir n i label text
+            if [ ! -s "$file" ]; then
+              printf '::%s title=%s::(empty)\n' "$level" "$title"
+              return 0
             fi
+            dir=$(mktemp -d)
+            split -C 3800 -d -a 3 "$file" "$dir/part."
+            local -a parts=("$dir"/part.*)
+            n=${#parts[@]}
+            for i in "${!parts[@]}"; do
+              label=$title
+              if [ "$n" -gt 1 ]; then label="$title ($((i + 1))/$n)"; fi
+              text=$(cat "${parts[$i]}")
+              text=${text//'%'/'%25'}
+              text=${text//$'\r'/'%0D'}
+              text=${text//$'\n'/'%0A'}
+              printf '::%s title=%s::%s\n' "$level" "$label" "$text"
+            done
+            rm -rf "$dir"
+          }
+          LIB
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: image-a-image
+          path: ${{ runner.temp }}/image
+
+      # The archive is the one image-a saved after its gates: its sha256 must equal
+      # the value image-a produced as a job output (checked before it is loaded),
+      # and the loaded image must have the id image-a recorded.
+      - name: Check and load the gated image
+        shell: bash
+        env:
+          ARCHIVE_SHA256: ${{ needs.image-a.outputs.archive_sha256 }}
+          IMAGE_ID: ${{ needs.image-a.outputs.image_id }}
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          fail() {
+            printf '%s\n' "$1" > "$RUNNER_TEMP/image-archive-error.txt"
+            annotate error image-archive "$RUNNER_TEMP/image-archive-error.txt"
+            exit 1
+          }
+          printf '%s' "$ARCHIVE_SHA256" | grep -Eq '^[0-9a-f]{64}$' || fail "image-a's archive_sha256 output is not a sha256: '${ARCHIVE_SHA256}'"
+          printf '%s' "$IMAGE_ID" | grep -Eq '^sha256:[0-9a-f]{64}$' || fail "image-a's image_id output is not a sha256 id: '${IMAGE_ID}'"
+          archive="$RUNNER_TEMP/image/mt-toolchain.tar.gz"
+          echo "${ARCHIVE_SHA256}  ${archive}" | sha256sum -c - || fail "the downloaded archive does not have the sha256 image-a recorded (${ARCHIVE_SHA256}); nothing was loaded"
+          docker load -i "$archive" || fail "docker load failed for the checked archive"
+          loaded=$(docker image inspect --format '{{.Id}}' mt-toolchain:ci) || fail "the loaded archive has no image mt-toolchain:ci"
+          [ "$loaded" = "$IMAGE_ID" ] || fail "the loaded image id ${loaded} is not the gated image id ${IMAGE_ID}"
+          {
+            echo "archive sha256 ${ARCHIVE_SHA256} checked before docker load"
+            echo "loaded image id ${loaded} equals the id image-a gated"
+          } > "$RUNNER_TEMP/image-archive-notice.txt"
+          cat "$RUNNER_TEMP/image-archive-notice.txt"
+          annotate notice image-archive "$RUNNER_TEMP/image-archive-notice.txt"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # A sha-<commit> tag is never moved: when it exists the push is skipped with a
+      # warning. Only a lookup that says the manifest is absent allows the push; any
+      # other failure leaves absence unproven, so nothing is pushed.
+      - name: Refuse to overwrite an existing commit tag
+        id: existing
+        shell: bash
+        env:
+          IMAGE: ghcr.io/sat-wik/migrationtool-toolchain
+          COMMIT: ${{ github.sha }}
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          set +e
+          docker manifest inspect "${IMAGE}:sha-${COMMIT}" > "$RUNNER_TEMP/inspect.out" 2> "$RUNNER_TEMP/inspect.err"
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "${IMAGE}:sha-${COMMIT} already exists in GHCR; this build was not pushed and the existing tag is left as it is" > "$RUNNER_TEMP/skip-notice.txt"
+            cat "$RUNNER_TEMP/skip-notice.txt"
+            annotate warning publish-skipped "$RUNNER_TEMP/skip-notice.txt"
+          elif grep -Eqi 'no such manifest|manifest unknown|not found' "$RUNNER_TEMP/inspect.err"; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
             {
-              echo "$IMAGE_REF"
-              echo "manifest sha256 $(sha256sum "$a" | cut -d' ' -f1)"
-            } > "$RUNNER_TEMP/verified-notice.txt"
-            cat "$RUNNER_TEMP/verified-notice.txt"
-            annotate notice verified-image "$RUNNER_TEMP/verified-notice.txt"
+              echo "docker manifest inspect exit code: $rc; the absence of ${IMAGE}:sha-${COMMIT} is not proven, so nothing is pushed"
+              cat "$RUNNER_TEMP/inspect.err"
+            } > "$RUNNER_TEMP/lookup-notice.txt"
+            cat "$RUNNER_TEMP/lookup-notice.txt"
+            annotate error tag-lookup "$RUNNER_TEMP/lookup-notice.txt"
+            exit 1
           fi
+
+      - name: Push the gated image and read its digest
+        id: publish
+        if: ${{ steps.existing.outputs.exists == 'false' }}
+        shell: bash
+        env:
+          IMAGE: ghcr.io/sat-wik/migrationtool-toolchain
+          COMMIT: ${{ github.sha }}
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP"
+          docker tag mt-toolchain:ci "${IMAGE}:sha-${COMMIT}"
+          set +e
+          docker push "${IMAGE}:sha-${COMMIT}" > "$out/push.txt" 2>&1
+          rc=$?
+          set -e
+          cat "$out/push.txt"
+          if [ "$rc" -ne 0 ]; then
+            { echo "docker push exit code: $rc"; tail -n 40 "$out/push.txt"; } > "$out/push-notice.txt"
+            annotate error image-digest "$out/push-notice.txt"
+            exit 1
+          fi
+          ref=$(docker inspect --format '{{index .RepoDigests 0}}' "${IMAGE}:sha-${COMMIT}")
+          digest=${ref#*@}
+          if [ "${ref%@*}" != "$IMAGE" ] || ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+            { echo "RepoDigests entry is not a ${IMAGE} digest reference:"; echo "$ref"; } > "$out/digest-notice.txt"
+            annotate error image-digest "$out/digest-notice.txt"
+            exit 1
+          fi
+          {
+            echo "$ref"
+            echo "pushed as ${IMAGE}:sha-${COMMIT} by the publish job, after image-a, image-b and compare succeeded"
+          } > "$out/digest-notice.txt"
+          cat "$out/digest-notice.txt"
+          annotate notice image-digest "$out/digest-notice.txt"
+          echo "image_ref=${ref}" >> "$GITHUB_OUTPUT"
+
+      - name: Announce the verified image
+        if: ${{ steps.existing.outputs.exists == 'false' }}
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.publish.outputs.image_ref }}
+          MANIFEST_SHA256: ${{ needs.compare.outputs.manifest_sha256 }}
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          if ! printf '%s' "$IMAGE_REF" | grep -Eq '^ghcr\.io/sat-wik/migrationtool-toolchain@sha256:[0-9a-f]{64}$'; then
+            echo "publish produced a malformed reference: $IMAGE_REF"
+            exit 1
+          fi
+          if ! printf '%s' "$MANIFEST_SHA256" | grep -Eq '^[0-9a-f]{64}$'; then
+            echo "compare produced a malformed manifest sha256: $MANIFEST_SHA256"
+            exit 1
+          fi
+          {
+            echo "$IMAGE_REF"
+            echo "manifest sha256 ${MANIFEST_SHA256}"
+          } > "$RUNNER_TEMP/verified-notice.txt"
+          cat "$RUNNER_TEMP/verified-notice.txt"
+          annotate notice verified-image "$RUNNER_TEMP/verified-notice.txt"
