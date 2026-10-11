@@ -2422,7 +2422,7 @@ fn tool_03_workflow_publishes_by_digest_with_least_privilege() {
     // job outputs carry its id and archive hash to publish.
     assert!(image_a.contains("docker save"));
     let order = positions(
-        &image_a,
+        image_a,
         "image-a",
         &[
             "pin-binding",
@@ -2462,7 +2462,7 @@ fn tool_03_workflow_publishes_by_digest_with_least_privilege() {
     // publish checks the archive hash before loading it, the image id after, and
     // only then logs in; it looks the tag up before the push, pushes, and announces.
     let order = positions(
-        &publish,
+        publish,
         "publish",
         &[
             "sha256sum -c",
