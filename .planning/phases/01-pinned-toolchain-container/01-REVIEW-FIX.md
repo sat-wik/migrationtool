@@ -115,3 +115,13 @@ Source-only fixes (WR-01, WR-02, WR-03, WR-05) are verified by the local test su
 _Fixed: 2026-10-11_
 _Fixer: Claude (gsd-code-fixer)_
 _Iteration: 1_
+
+## CI Validation (orchestrator, after push)
+
+Commit a2db70b, GitHub Actions on push to `claude/gsd-discuss-phase-1-mzdw5v`:
+- container run 38156036821: success. Jobs mt, image-a, image-b and compare all passed. The `Pin binding evidence` step passed with the new `.crates2.json` ledger check (it shows `c2rust 0.22.1 (path+file:///tmp/crates/c2rust-0.22.1)`). The in-build update-hash assertion passed, so the image built. GHCR login and push ran on a push to the phase branch (WR-04 condition). manifest-a and manifest-b are byte-identical, with sha256 40e55cc69fa93f238960bad268cfa4ec5775d51f98dd10efcf92741801d7aed3, unchanged from the previous verified image.
+- verified-image: ghcr.io/sat-wik/migrationtool-toolchain@sha256:291bc4375b1496eb10fe2e3590f934b01a6fcc8b505ca6e4461fed70a92c9f14
+- ci run 38156036810 and pin-discovery run 38156036773: success.
+- The pull_request-event container run 38156039782 was cancelled by a newer pull_request run, as WR-04's concurrency change intends. Push runs are no longer cancelled.
+
+WR-04, WR-06 and WR-07 no longer have pending CI validation.
