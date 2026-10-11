@@ -105,24 +105,148 @@ fn tool_01_python_walk_flags_a_planted_file() {
     assert_eq!(found, vec![PathBuf::from("a/b.py")]);
 }
 
+/// Why `source` launches or could launch a process outside the runner module.
+///
+/// Full-line `//` comments are ignored. The rules, applied to what is left:
+/// - a `use` statement that names `process` and also names `Command`, uses a
+///   glob, imports the module itself (`use std::process;`, `... as p`,
+///   `process::{self}`), so that `p::Command::new` would follow;
+/// - a qualified `process::Command` anywhere;
+/// - an `allow` of the `disallowed_types` lint, which is what `clippy.toml`
+///   relies on to ban `Command` and which only the runner may switch off.
+///
+/// `use std::process::ExitCode` is allowed, as is `CommandExt` from
+/// `std::os::unix::process`, which names no `Command`.
+fn process_launch_violations(source: &str) -> Vec<String> {
+    let code: String = source
+        .lines()
+        .filter(|line| !line.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let use_statement = regex::Regex::new(r"(?s)\buse\s+([^;]*);").unwrap();
+    let process_segment = regex::Regex::new(r"\bprocess\b").unwrap();
+    let command_ident = regex::Regex::new(r"\bCommand\b").unwrap();
+    let module_import =
+        regex::Regex::new(r"\bprocess(?:\s*(?:$|[,}])|\s+as\b|\s*::\s*\{[^}]*\bself\b)").unwrap();
+    let qualified = regex::Regex::new(r"\bprocess\s*::\s*Command\b").unwrap();
+    let lint = regex::Regex::new(&["\\bdisallowed", "_types\\b"].concat()).unwrap();
+
+    let mut found = Vec::new();
+    for statement in use_statement.captures_iter(&code) {
+        let body = &statement[1];
+        if !process_segment.is_match(body) {
+            continue;
+        }
+        let reason = if command_ident.is_match(body) {
+            Some("imports Command from the process module")
+        } else if body.contains('*') {
+            Some("glob-imports from the process module")
+        } else if module_import.is_match(body) {
+            Some("imports the process module itself")
+        } else {
+            None
+        };
+        if let Some(reason) = reason {
+            let flat = body.split_whitespace().collect::<Vec<_>>().join(" ");
+            found.push(format!("`use {flat};` {reason}"));
+        }
+    }
+    if qualified.is_match(&code) {
+        found.push("uses a qualified process Command path".to_owned());
+    }
+    if lint.is_match(&code) {
+        found.push("mentions the disallowed-types lint (only the runner may allow it)".to_owned());
+    }
+    found
+}
+
+/// Every `.rs` file under `crates` other than `runner` that breaks the rule.
+fn process_launch_offenders(crates: &Path, runner: &Path) -> Vec<(PathBuf, Vec<String>)> {
+    files_with_extension(crates, "rs")
+        .into_iter()
+        .filter(|path| path != runner)
+        .filter_map(|path| {
+            let violations = process_launch_violations(&fs::read_to_string(&path).unwrap());
+            (!violations.is_empty()).then_some((path, violations))
+        })
+        .collect()
+}
+
 #[test]
 fn tool_01_command_only_in_runner_module() {
     let root = repo_root();
     let crates = root.join("crates");
-    // The needle is assembled from two pieces so this file does not contain it.
-    let needle = ["process", "::Command"].concat();
     let runner = crates.join("mt-toolchain/src/runner.rs");
 
-    let offenders: Vec<PathBuf> = files_with_extension(&crates, "rs")
-        .into_iter()
-        .filter(|path| path != &runner)
-        .filter(|path| fs::read_to_string(path).unwrap().contains(&needle))
-        .collect();
+    let offenders = process_launch_offenders(&crates, &runner);
 
     assert!(
         offenders.is_empty(),
-        "{needle} used outside crates/mt-toolchain/src/runner.rs: {offenders:?}"
+        "process launching outside crates/mt-toolchain/src/runner.rs: {offenders:?}"
     );
+}
+
+#[test]
+fn tool_01_command_matcher_flags_grouped_imports_aliases_and_globs() {
+    // Fixtures are assembled from pieces so this file does not contain them.
+    let p = "process";
+    let flagged = [
+        format!("use std::{p}::{{Command, Stdio}};"),
+        format!("use std::{p}::{{ExitCode, Command}};"),
+        format!("use std::{{io, {p}::Command}};"),
+        format!("use std::{p}::Command as Cmd;"),
+        format!("use std::{p}::Command;"),
+        format!("use std::{p}::*;"),
+        format!("use std::{p};"),
+        format!("use std::{p} as sys;"),
+        format!("use std::{p}::{{self, ExitCode}};"),
+        format!("use std::{{io, {p}}};"),
+        format!("use std::{p}::{{\n    Stdio,\n    Command,\n}};"),
+        format!("fn f() {{ std::{p}::Command::new(\"x\"); }}"),
+        format!("#![allow(clippy::{})]", ["disallowed", "_types"].concat()),
+    ];
+    for source in &flagged {
+        assert!(
+            !process_launch_violations(source).is_empty(),
+            "not flagged: {source}"
+        );
+    }
+
+    let allowed = [
+        format!("use std::{p}::ExitCode;"),
+        format!("use std::{{io, {p}::ExitCode}};"),
+        format!("use std::{{{p}::ExitCode, io}};"),
+        format!("use std::os::unix::{p}::CommandExt;"),
+        format!("// use std::{p}::{{Command, Stdio}};"),
+        "use std::collections::BTreeMap;\nfn spawn_all() {}".to_owned(),
+    ];
+    for source in &allowed {
+        assert_eq!(
+            process_launch_violations(source),
+            Vec::<String>::new(),
+            "wrongly flagged: {source}"
+        );
+    }
+}
+
+#[test]
+fn tool_01_command_walk_flags_a_planted_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let src = dir.path().join("mt-x/src");
+    fs::create_dir_all(&src).unwrap();
+    let runner = src.join("runner.rs");
+    let planted = src.join("planted.rs");
+    let clean = src.join("clean.rs");
+    let line = format!("use std::{}::{{Command, Stdio}};\n", "process");
+    fs::write(&runner, &line).unwrap();
+    fs::write(&planted, &line).unwrap();
+    fs::write(&clean, "fn main() {}\n").unwrap();
+
+    let offenders = process_launch_offenders(dir.path(), &runner);
+
+    assert_eq!(offenders.len(), 1, "{offenders:?}");
+    assert_eq!(offenders[0].0, planted);
 }
 
 #[test]
