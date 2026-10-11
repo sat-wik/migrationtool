@@ -469,24 +469,34 @@ fn option_value<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
     })
 }
 
+/// The first two positional words after `rustup` (`toolchain install`, `default`).
+fn rustup_words(command: &ParsedCommand) -> (Option<&str>, Option<&str>) {
+    let mut positional = command
+        .args()
+        .iter()
+        .map(String::as_str)
+        .filter(|arg| !arg.starts_with('-') && !arg.starts_with('+'));
+    let sub = positional.next();
+    (sub, positional.next())
+}
+
+/// True for the `rustup` commands that only read local state.
+fn rustup_read_only(command: &ParsedCommand) -> bool {
+    matches!(
+        rustup_words(command),
+        (None | Some("help" | "which"), _)
+            | (Some("toolchain" | "target" | "component"), Some("list"))
+    )
+}
+
 /// The rules for one `rustup` command (CR-01, WR-06): everything that can
 /// download goes through a `file://` mirror named in that same command, an
 /// install never replaces the pinned rustup, and `rustup-init` never installs
 /// an unpinned default toolchain.
 fn rustup_issues(command: &ParsedCommand, issues: &mut Vec<String>) {
     let args = command.args();
-    let positional: Vec<&str> = args
-        .iter()
-        .map(String::as_str)
-        .filter(|arg| !arg.starts_with('-') && !arg.starts_with('+'))
-        .collect();
-    let sub = positional.first().copied();
-    let second = positional.get(1).copied();
-    let read_only = matches!(
-        (sub, second),
-        (None | Some("help" | "which"), _)
-            | (Some("toolchain" | "target" | "component"), Some("list"))
-    );
+    let (sub, second) = rustup_words(command);
+    let read_only = rustup_read_only(command);
     let text = &command.text;
     if !read_only
         && !command
@@ -539,17 +549,28 @@ fn cargo_install_issues(
             "RUN cargo install lacks an exact `--version =`: {text}"
         ));
     }
-    // The crate is installed from the .crate file that was checked in this RUN,
-    // unpacked, and not fetched a second time from the registry. The directory
-    // must lie under the `-C` target of a tar extraction of a file that a
-    // `sha256sum -c` line in the RUN names.
+    // The crate is installed from the .crate file that was checked, unpacked, and
+    // not fetched a second time from the registry. The directory must lie under
+    // the `-C` target of a tar extraction of a file that a `sha256sum -c` line
+    // names. For an install in a `RUN --network=none` the checked download may sit
+    // in an earlier RUN of the same stage.
     let Some(path) = option_value(args, "--path") else {
         issues.push(format!(
             "RUN cargo install lacks `--path`, so it installs from the registry instead of the verified .crate: {text}"
         ));
         return;
     };
-    let bound = !path.contains("..")
+    if !path_bound(path, tars, checked) {
+        issues.push(format!(
+            "RUN cargo install --path reads a directory that was not unpacked from a verified .crate (needs a `sha256sum -c` of an archive, a tar extraction of that archive with `-C` above the path, and no `..`): {text}"
+        ));
+    }
+}
+
+/// True when `path` lies under the `-C` directory of a tar extraction of an
+/// archive that a `sha256sum -c` line names, and contains no `..`.
+fn path_bound(path: &str, tars: &[(Option<String>, Option<String>)], checked: &[String]) -> bool {
+    !path.contains("..")
         && tars.iter().any(|(directory, archive)| {
             let under = directory.as_deref().is_some_and(|dir| {
                 let dir = dir.trim_end_matches('/');
@@ -559,16 +580,124 @@ fn cargo_install_issues(
                 .as_deref()
                 .is_some_and(|archive| checked.iter().any(|word| word == archive));
             under && verified
-        });
-    if !bound {
-        issues.push(format!(
-            "RUN cargo install --path reads a directory that was not unpacked from a verified .crate in this RUN (needs a `sha256sum -c` of an archive, a tar extraction of that archive with `-C` above the path, and no `..`): {text}"
-        ));
+        })
+}
+
+/// The rules for one `cargo fetch` (WR-06): it reads the dependency lock of a
+/// verified, unpacked `.crate` and nothing else, so that the offline install
+/// that follows has exactly the registry files that lock names.
+fn cargo_fetch_issues(
+    command: &ParsedCommand,
+    tars: &[(Option<String>, Option<String>)],
+    checked: &[String],
+    issues: &mut Vec<String>,
+) {
+    let args = command.args();
+    let text = &command.text;
+    if !args.iter().any(|arg| arg == "--locked") {
+        issues.push(format!("RUN cargo fetch lacks `--locked`: {text}"));
+    }
+    match option_value(args, "--manifest-path") {
+        None => issues.push(format!(
+            "RUN cargo fetch lacks `--manifest-path`, so it resolves an unverified manifest: {text}"
+        )),
+        Some(path) if !path_bound(path, tars, checked) => issues.push(format!(
+            "RUN cargo fetch --manifest-path reads a manifest that was not unpacked from a verified .crate: {text}"
+        )),
+        Some(_) => {}
     }
 }
 
-/// The checks that apply to one `RUN` instruction.
-fn run_issues(run: &str, issues: &mut Vec<String>) {
+/// `(name, reason)` of install commands that still run with network access.
+/// Empty unless a step proved unable to run offline; each entry needs a
+/// `# Remains networked:` comment in the Dockerfile that carries its reason.
+const NETWORKED_INSTALLS: &[(&str, &str)] = &[];
+
+/// `(name, reason)` of other build steps (not installs) that still run with
+/// network access, under the same rule as [`NETWORKED_INSTALLS`].
+const NETWORKED_STEPS: &[(&str, &str)] = &[];
+
+/// Evidence earlier `RUN`s of one stage gathered, for a later offline install.
+#[derive(Default)]
+struct StageEvidence {
+    /// `(directory, archive)` of every tar extraction.
+    tars: Vec<(Option<String>, Option<String>)>,
+    /// Words of every `sha256sum -c` line.
+    checked: Vec<String>,
+}
+
+/// Leading `--flag` tokens of a `RUN` instruction, and the command text after them.
+fn run_flags(rest: &str) -> (Vec<&str>, &str) {
+    let mut flags = Vec::new();
+    let mut body = rest.trim_start();
+    while body.starts_with("--") {
+        let end = body.find(char::is_whitespace).unwrap_or(body.len());
+        flags.push(&body[..end]);
+        body = body[end..].trim_start();
+    }
+    (flags, body)
+}
+
+/// True for a command that installs a toolchain, target, component or crate.
+fn is_install(command: &ParsedCommand) -> bool {
+    match command.program() {
+        "rustup-init" | "cargo-binstall" => true,
+        "rustup" => !rustup_read_only(command),
+        "cargo" => command
+            .args()
+            .iter()
+            .find(|arg| !arg.starts_with('-') && !arg.starts_with('+'))
+            .is_some_and(|sub| sub == "install" || sub == "binstall"),
+        _ => false,
+    }
+}
+
+/// The first positional word after `git`'s own options (`clone`, `fetch`, ...).
+fn git_subcommand(command: &ParsedCommand) -> Option<&str> {
+    let mut args = command.args().iter();
+    while let Some(arg) = args.next() {
+        if arg == "-C" || arg == "-c" {
+            args.next();
+        } else if !arg.starts_with('-') {
+            return Some(arg.as_str());
+        }
+    }
+    None
+}
+
+/// True for a command that reaches the network to download something.
+fn is_download(command: &ParsedCommand) -> bool {
+    match command.program() {
+        "curl" | "wget" | "apt-get" | "apt" | "aptitude" => true,
+        "git" => matches!(
+            git_subcommand(command),
+            Some("clone" | "fetch" | "pull" | "ls-remote" | "submodule")
+        ),
+        "cargo" => command
+            .args()
+            .iter()
+            .find(|arg| !arg.starts_with('-') && !arg.starts_with('+'))
+            .is_some_and(|sub| sub == "fetch" || sub == "update"),
+        _ => false,
+    }
+}
+
+/// The checks that apply to one `RUN` instruction (`rest` is everything after
+/// the keyword, flags included). `evidence` is what earlier RUNs of the same
+/// stage checked and unpacked; it counts only for an install in a
+/// `RUN --network=none`, and this RUN's own evidence is added to it afterwards.
+fn run_issues(rest: &str, evidence: &mut StageEvidence, issues: &mut Vec<String>) {
+    let (flags, run) = run_flags(rest);
+    let mut offline = false;
+    for flag in flags {
+        match flag.strip_prefix("--network=") {
+            Some("none") => offline = true,
+            Some(other) => issues.push(format!(
+                "RUN --network={other} keeps network access: only --network=none is accepted: {run}"
+            )),
+            None => {}
+        }
+    }
     let curl = regex::Regex::new(r"(?:^|[\s;&|(])curl\s+-").unwrap();
     let pipe_to_shell = regex::Regex::new(r"\|\s*(?:sudo\s+)?(?:ba|da|z)?sh\b").unwrap();
     let dist_server =
@@ -604,10 +733,35 @@ fn run_issues(run: &str, issues: &mut Vec<String>) {
         .iter()
         .filter_map(|text| parse_command(text))
         .collect();
-    let tars: Vec<(Option<String>, Option<String>)> =
+    let own_tars: Vec<(Option<String>, Option<String>)> =
         commands.iter().filter_map(tar_extraction).collect();
-    let checked = checked_words(run);
+    let own_checked = checked_words(run);
+    let (tars, checked) = if offline {
+        (
+            [evidence.tars.as_slice(), own_tars.as_slice()].concat(),
+            [evidence.checked.as_slice(), own_checked.as_slice()].concat(),
+        )
+    } else {
+        (own_tars.clone(), own_checked.clone())
+    };
     for command in &commands {
+        if is_install(command) {
+            let excused = NETWORKED_INSTALLS
+                .iter()
+                .any(|(marker, reason)| run.contains(marker) && !reason.is_empty());
+            if !offline && !excused {
+                issues.push(format!(
+                    "RUN installs in a networked RUN; the install must run in a RUN --network=none after a networked RUN that downloads and checks its inputs: {}",
+                    command.text
+                ));
+            }
+        }
+        if offline && is_download(command) {
+            issues.push(format!(
+                "RUN --network=none runs a download command, which can only fail or hide a fetch: {}",
+                command.text
+            ));
+        }
         match command.program() {
             "rustup" => rustup_issues(command, issues),
             "rustup-init" => rustup_init_issues(command, issues),
@@ -619,11 +773,15 @@ fn run_issues(run: &str, issues: &mut Vec<String>) {
                     .find(|arg| !arg.starts_with('-') && !arg.starts_with('+'));
                 if sub.is_some_and(|sub| sub == "install" || sub == "binstall") {
                     cargo_install_issues(command, &tars, &checked, issues);
+                } else if sub.is_some_and(|sub| sub == "fetch") {
+                    cargo_fetch_issues(command, &tars, &checked, issues);
                 }
             }
             _ => {}
         }
     }
+    evidence.tars.extend(own_tars);
+    evidence.checked.extend(own_checked);
 }
 
 /// Every way `text` lets something float: tags, frontends, unchecked downloads
@@ -636,6 +794,7 @@ fn dockerfile_issues(text: &str) -> Vec<String> {
     }
     let apt_source = regex::Regex::new(r"\bdeb\s+(?:\[[^\]]*\]\s+)?https?://\S+").unwrap();
     let mut stages: Vec<String> = Vec::new();
+    let mut evidence = StageEvidence::default();
     for (keyword, rest) in dockerfile_instructions(text) {
         if rest.contains(":latest") {
             issues.push(format!("{keyword} uses :latest: {rest}"));
@@ -655,6 +814,7 @@ fn dockerfile_issues(text: &str) -> Vec<String> {
         }
         match keyword.as_str() {
             "FROM" => {
+                evidence = StageEvidence::default();
                 let tokens: Vec<&str> = rest.split_whitespace().collect();
                 let flags = tokens.iter().take_while(|t| t.starts_with("--")).count();
                 let image = tokens.get(flags).copied();
@@ -680,7 +840,7 @@ fn dockerfile_issues(text: &str) -> Vec<String> {
                     stages.push((*alias).to_owned());
                 }
             }
-            "RUN" => run_issues(&rest, &mut issues),
+            "RUN" => run_issues(&rest, &mut evidence, &mut issues),
             "ENV" => {
                 for name in ["RUSTUP_DIST_SERVER", "RUSTUP_UPDATE_ROOT"] {
                     if rest.contains(name) {
@@ -780,8 +940,8 @@ fn tool_03_dockerfile_has_no_floating_references() {
         RUN git clone --branch t https://example.org/r /r \\\n && test \"$(git -C /r rev-parse HEAD)\" = c\n\
         RUN curl -fsSL -o /tmp/crates/x-1.0.0.crate https://static.crates.io/crates/x/x-1.0.0.crate \\\n \
             && echo \"h  /tmp/crates/x-1.0.0.crate\" | sha256sum -c - \\\n \
-            && tar -xzf /tmp/crates/x-1.0.0.crate --no-same-owner -C /tmp/crates \\\n \
-            && cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x\n\
+            && tar -xzf /tmp/crates/x-1.0.0.crate --no-same-owner -C /tmp/crates\n\
+        RUN --network=none cargo install --locked --offline --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x\n\
         RUN echo \"deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/x/ s main\"\n";
     assert_eq!(dockerfile_issues(accepted), Vec::<String>::new());
 }
@@ -841,6 +1001,27 @@ fn run_fixture(run: &str) -> String {
     format!("{FIXTURE_FROM}RUN {run}\n")
 }
 
+/// A fixture Dockerfile holding one `RUN --network=none` of `run`.
+fn offline_fixture(run: &str) -> String {
+    format!("{FIXTURE_FROM}RUN --network=none {run}\n")
+}
+
+/// A fixture stage with a networked `RUN` (the download) and then a
+/// `RUN --network=none` (the install) of the same stage, the shape WR-06 asks for.
+fn split_fixture(download: &str, offline: &str) -> String {
+    format!("{FIXTURE_FROM}RUN {download}\nRUN --network=none {offline}\n")
+}
+
+/// Issues of the split fixture.
+fn split_issues(download: &str, offline: &str) -> Vec<String> {
+    dockerfile_issues(&split_fixture(download, offline))
+}
+
+/// Issues of a fixture whose only RUN is a `RUN --network=none` of `run`.
+fn offline_issues_of(run: &str) -> Vec<String> {
+    dockerfile_issues(&offline_fixture(run))
+}
+
 /// True when some issue in `issues` mentions `needle`.
 fn mentions(issues: &[String], needle: &str) -> bool {
     issues.iter().any(|issue| issue.contains(needle))
@@ -871,10 +1052,11 @@ fn tool_03_dockerfile_installs_rust_toolchains_from_verified_manifests() {
         mentions(&no_self_update, "--no-self-update"),
         "a mirror install without --no-self-update must be refused, got {no_self_update:?}"
     );
-    let only_first = dockerfile_issues(&run_fixture(&format!(
-        "{check} && RUSTUP_DIST_SERVER=\"file:///m\" rustup toolchain install 1.0.0 --profile minimal --no-self-update; \
-         RUSTUP_DIST_SERVER=\"file:///m\" rustup toolchain install 2.0.0 --profile minimal"
-    )));
+    let only_first = split_issues(
+        check,
+        "RUSTUP_DIST_SERVER=\"file:///m\" rustup toolchain install 1.0.0 --profile minimal --no-self-update; \
+         RUSTUP_DIST_SERVER=\"file:///m\" rustup toolchain install 2.0.0 --profile minimal",
+    );
     assert!(
         mentions(&only_first, "rustup toolchain install 2.0.0"),
         "the second install lacks --no-self-update and must be named, got {only_first:?}"
@@ -908,9 +1090,10 @@ fn tool_03_dockerfile_installs_rust_toolchains_from_verified_manifests() {
 
     // What must be accepted: a manifest downloaded into the mirror, checked, and
     // installed from through a RUN-local file:// dist server without self-update.
-    let accepted = dockerfile_issues(&run_fixture(&format!(
-        "mkdir -p /m/dist && {check} && RUSTUP_DIST_SERVER=\"file:///m\" rustup toolchain install 1.0.0 --profile minimal --no-self-update"
-    )));
+    let accepted = split_issues(
+        &format!("mkdir -p /m/dist && {check}"),
+        "RUSTUP_DIST_SERVER=\"file:///m\" rustup toolchain install 1.0.0 --profile minimal --no-self-update",
+    );
     assert_eq!(accepted, Vec::<String>::new());
 
     // The real Dockerfile passes, and the check is not vacuous.
@@ -978,9 +1161,10 @@ fn tool_03_dockerfile_installs_crates_from_verified_files() {
     );
 
     // What must be accepted: download, check, unpack and install that directory.
-    let accepted = dockerfile_issues(&run_fixture(&format!(
-        "{fetch} && cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x"
-    )));
+    let accepted = split_issues(
+        fetch,
+        "cargo install --locked --offline --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
+    );
     assert_eq!(accepted, Vec::<String>::new());
 
     // The real Dockerfile passes, and the check is not vacuous: some RUN installs
@@ -1021,7 +1205,7 @@ fn tool_03_rustup_rules_apply_to_each_command_however_it_is_spelled() {
 
     // The second install is unprefixed: one prefixed install elsewhere in the RUN
     // does not excuse it, and only the unprefixed one is named.
-    let second = issues_of(&format!(
+    let second = offline_issues_of(&format!(
         "{good}; rustup toolchain install 2.0.0 --profile minimal --no-self-update"
     ));
     assert!(
@@ -1055,7 +1239,7 @@ fn tool_03_rustup_rules_apply_to_each_command_however_it_is_spelled() {
         "RUSTUP_DIST_SERVER=https://static.rust-lang.org rustup default 1.0.0",
     ];
     for command in unmirrored {
-        let issues = issues_of(command);
+        let issues = offline_issues_of(command);
         assert!(
             mentions(&issues, "without RUSTUP_DIST_SERVER=file://"),
             "`{command}` must be refused, got {issues:?}"
@@ -1070,7 +1254,7 @@ fn tool_03_rustup_rules_apply_to_each_command_however_it_is_spelled() {
         format!("{mirror} rustup toolchain update 1.0.0"),
     ] {
         assert!(
-            mentions(&issues_of(&command), "--no-self-update"),
+            mentions(&offline_issues_of(&command), "--no-self-update"),
             "`{command}` must be refused"
         );
     }
@@ -1084,7 +1268,7 @@ fn tool_03_rustup_rules_apply_to_each_command_however_it_is_spelled() {
         "rustup --version".to_owned(),
     ] {
         assert_eq!(
-            issues_of(&command),
+            offline_issues_of(&command),
             Vec::<String>::new(),
             "`{command}` must be accepted"
         );
@@ -1102,7 +1286,7 @@ fn tool_03_rustup_init_must_not_install_a_default_toolchain() {
         "sh /tmp/rustup-init -y",
         "rustup-init -y",
     ] {
-        let issues = issues_of(&format!("{check} && {init}"));
+        let issues = split_issues(check, init);
         assert!(
             mentions(&issues, "--default-toolchain none"),
             "`{init}` must be refused, got {issues:?}"
@@ -1113,7 +1297,7 @@ fn tool_03_rustup_init_must_not_install_a_default_toolchain() {
         "/tmp/rustup-init -y --default-toolchain=none",
     ] {
         assert_eq!(
-            issues_of(&format!("{check} && {init}")),
+            split_issues(check, init),
             Vec::<String>::new(),
             "`{init}` must be accepted"
         );
@@ -1131,10 +1315,7 @@ fn tool_03_cargo_install_rules_apply_to_each_command_however_it_is_spelled() {
         && echo \"h  /tmp/crates/x-1.0.0.crate\" | sha256sum -c - \
         && tar -xzf /tmp/crates/x-1.0.0.crate --no-same-owner -C /tmp/crates";
     let good = "cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x";
-    assert_eq!(
-        issues_of(&format!("{fetch} && {good}")),
-        Vec::<String>::new()
-    );
+    assert_eq!(split_issues(fetch, good), Vec::<String>::new());
 
     // Spellings that used to slip past the literal `cargo install`.
     for command in [
@@ -1144,7 +1325,7 @@ fn tool_03_cargo_install_rules_apply_to_each_command_however_it_is_spelled() {
         "env CARGO_HOME=/c cargo install --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
         "sh -c \"cargo install --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x\"",
     ] {
-        let issues = issues_of(&format!("{fetch} && {command}"));
+        let issues = split_issues(fetch, command);
         assert!(
             mentions(&issues, "lacks `--locked`"),
             "`{command}` must be refused, got {issues:?}"
@@ -1156,7 +1337,7 @@ fn tool_03_cargo_install_rules_apply_to_each_command_however_it_is_spelled() {
         "cargo-binstall --locked --version =1.0.0 x",
         "cargo  install  --locked x --version =1.0.0",
     ] {
-        let issues = issues_of(&format!("{fetch} && {command}"));
+        let issues = split_issues(fetch, command);
         assert!(
             mentions(&issues, "installs from the registry"),
             "`{command}` must be refused, got {issues:?}"
@@ -1164,9 +1345,10 @@ fn tool_03_cargo_install_rules_apply_to_each_command_however_it_is_spelled() {
     }
 
     // One of two installs lacks --locked: only that one is named.
-    let two = issues_of(&format!(
-        "{fetch} && {good}; cargo install --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 y"
-    ));
+    let two = split_issues(
+        fetch,
+        &format!("{good}; cargo install --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 y"),
+    );
     assert!(
         two.iter()
             .any(|i| i.contains("lacks `--locked`") && i.ends_with(" y")),
@@ -1179,35 +1361,37 @@ fn tool_03_cargo_install_rules_apply_to_each_command_however_it_is_spelled() {
     );
 
     // --path must be tied to the checked archive, not to any directory.
-    let elsewhere = issues_of(&format!(
-        "{fetch} && cargo install --locked --root /r --path /elsewhere/x-1.0.0 --version =1.0.0 x"
-    ));
+    let elsewhere = split_issues(
+        fetch,
+        "cargo install --locked --root /r --path /elsewhere/x-1.0.0 --version =1.0.0 x",
+    );
     assert!(
         mentions(&elsewhere, "not unpacked from a verified .crate"),
         "a path outside the tar -C directory must be refused, got {elsewhere:?}"
     );
-    let traversal = issues_of(&format!(
-        "{fetch} && cargo install --locked --root /r --path /tmp/crates/../elsewhere --version =1.0.0 x"
-    ));
+    let traversal = split_issues(
+        fetch,
+        "cargo install --locked --root /r --path /tmp/crates/../elsewhere --version =1.0.0 x",
+    );
     assert!(
         mentions(&traversal, "not unpacked from a verified .crate"),
         "a path with .. must be refused, got {traversal:?}"
     );
     // An unrelated file is checked and an unrelated archive is unpacked.
-    let unrelated = issues_of(
+    let unrelated = split_issues(
         "echo \"h  /tmp/a.crate\" | sha256sum -c - \
-         && tar -xzf /tmp/b.crate -C /tmp/crates \
-         && cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
+         && tar -xzf /tmp/b.crate -C /tmp/crates",
+        "cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
     );
     assert!(
         mentions(&unrelated, "not unpacked from a verified .crate"),
         "an unpacked archive that was never checked must be refused, got {unrelated:?}"
     );
     // The checked archive is unpacked somewhere else than the install path.
-    let other_dir = issues_of(
+    let other_dir = split_issues(
         "echo \"h  /tmp/b.crate\" | sha256sum -c - \
-         && tar -xzf /tmp/b.crate -C /tmp/other \
-         && cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
+         && tar -xzf /tmp/b.crate -C /tmp/other",
+        "cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
     );
     assert!(
         mentions(&other_dir, "not unpacked from a verified .crate"),
@@ -1220,12 +1404,388 @@ fn tool_03_cargo_install_rules_apply_to_each_command_however_it_is_spelled() {
         "tar -x -f /tmp/b.crate -C /tmp/crates",
         "tar xzf /tmp/b.crate -C /tmp/crates",
     ] {
-        let issues = issues_of(&format!(
-            "echo \"h  /tmp/b.crate\" | sha256sum -c - && {tar} \
-             && cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x"
-        ));
+        let issues = split_issues(
+            &format!("echo \"h  /tmp/b.crate\" | sha256sum -c - && {tar}"),
+            "cargo install --locked --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x",
+        );
         assert_eq!(issues, Vec::<String>::new(), "`{tar}` must be accepted");
     }
+}
+
+/// The `RUN` instructions of stage `stage` as `(flags, body)`, in order.
+fn stage_runs(text: &str, stage: &str) -> Vec<(Vec<String>, String)> {
+    let mut current = String::new();
+    let mut found = Vec::new();
+    for (keyword, rest) in dockerfile_instructions(text) {
+        match keyword.as_str() {
+            "FROM" => {
+                let tokens: Vec<&str> = rest.split_whitespace().collect();
+                current = tokens
+                    .iter()
+                    .position(|t| t.eq_ignore_ascii_case("as"))
+                    .and_then(|at| tokens.get(at + 1))
+                    .map(|name| (*name).to_owned())
+                    .unwrap_or_default();
+            }
+            "RUN" if current == stage => {
+                let (flags, body) = run_flags(&rest);
+                found.push((
+                    flags.iter().map(|flag| (*flag).to_owned()).collect(),
+                    body.to_owned(),
+                ));
+            }
+            _ => {}
+        }
+    }
+    found
+}
+
+/// True when the flags of a `RUN` include `--network=none`.
+fn is_offline(flags: &[String]) -> bool {
+    flags.iter().any(|flag| flag == "--network=none")
+}
+
+#[test]
+fn tool_03_dockerfile_installs_only_in_network_none_runs() {
+    let fetch = "curl -fsSL -o /tmp/crates/x-1.0.0.crate https://static.crates.io/crates/x/x-1.0.0.crate \
+        && echo \"h  /tmp/crates/x-1.0.0.crate\" | sha256sum -c - \
+        && tar -xzf /tmp/crates/x-1.0.0.crate --no-same-owner -C /tmp/crates";
+    let mirror = "RUSTUP_DIST_SERVER=\"file:///m\"";
+    let install =
+        "cargo install --locked --offline --root /r --path /tmp/crates/x-1.0.0 --version =1.0.0 x";
+
+    // An install in a plain RUN is refused, whatever else the RUN checked, and the
+    // message names the command, not the whole RUN.
+    let networked = [
+        format!("{mirror} rustup toolchain install 1.0.0 --profile minimal --no-self-update"),
+        format!("{mirror} rustup default 1.0.0"),
+        format!("{mirror} rustup target add thumbv7em-none-eabihf"),
+        format!("{mirror} rustup component add clippy"),
+        "/tmp/rustup-init -y --default-toolchain none".to_owned(),
+        "rustup-init -y --default-toolchain none".to_owned(),
+        install.to_owned(),
+        "cargo binstall --locked --version =1.0.0 x".to_owned(),
+    ];
+    for command in &networked {
+        let issues = issues_of(&format!("echo prelude-marker; {fetch}; {command}"));
+        assert!(
+            issues
+                .iter()
+                .any(|i| i.contains("networked RUN") && i.contains(command.as_str())),
+            "`{command}` in a networked RUN must be refused by name, got {issues:?}"
+        );
+        assert!(
+            !issues.iter().any(|i| i.contains("prelude-marker")),
+            "the message must name the command, not the RUN: {issues:?}"
+        );
+    }
+
+    // Other network modes keep the network.
+    for mode in ["host", "default"] {
+        let issues = dockerfile_issues(&format!(
+            "{FIXTURE_FROM}RUN --network={mode} echo harmless\n"
+        ));
+        assert!(
+            mentions(&issues, &format!("--network={mode}")),
+            "RUN --network={mode} must be refused, got {issues:?}"
+        );
+    }
+
+    // A download inside RUN --network=none can only fail or hide a fetch.
+    for download in [
+        "curl -fsSL -o /x https://example.org/x",
+        "git clone https://example.org/r /r",
+        "git -C /r fetch origin",
+        "apt-get install --yes make",
+    ] {
+        let issues = offline_issues_of(download);
+        assert!(
+            issues
+                .iter()
+                .any(|i| i.contains("RUN --network=none") && i.contains(download)),
+            "`{download}` in an offline RUN must be refused, got {issues:?}"
+        );
+    }
+
+    // The verified tar evidence has to be in the same stage as the offline install.
+    let other_stage =
+        format!("{FIXTURE_FROM}RUN {fetch}\nFROM a AS two\nRUN --network=none {install}\n");
+    assert!(
+        mentions(
+            &dockerfile_issues(&other_stage),
+            "not unpacked from a verified .crate"
+        ),
+        "evidence from an earlier stage must not bind an install"
+    );
+    // A networked install does not borrow evidence from an earlier RUN either.
+    let split_but_networked = format!("{FIXTURE_FROM}RUN {fetch}\nRUN {install}\n");
+    let issues = dockerfile_issues(&split_but_networked);
+    assert!(
+        mentions(&issues, "networked RUN") && mentions(&issues, "not unpacked from a verified"),
+        "a networked install with evidence in an earlier RUN must be refused, got {issues:?}"
+    );
+
+    // What must be accepted.
+    let accepted: [(&str, String, String); 3] = [
+        ("cargo", fetch.to_owned(), install.to_owned()),
+        (
+            "rustup mirror",
+            "mkdir -p /m/dist && curl -fsSL -o /m/dist/c.toml https://static.rust-lang.org/dist/c.toml \
+             && echo \"h  /m/dist/c.toml\" | sha256sum -c -"
+                .to_owned(),
+            format!("{mirror} rustup toolchain install 1.0.0 --profile minimal --no-self-update"),
+        ),
+        (
+            "rustup-init",
+            "curl -fsSL -o /tmp/rustup-init https://example.org/rustup-init \
+             && echo \"h  /tmp/rustup-init\" | sha256sum -c -"
+                .to_owned(),
+            "/tmp/rustup-init -y --default-toolchain none".to_owned(),
+        ),
+    ];
+    for (name, download, offline) in &accepted {
+        assert_eq!(
+            split_issues(download, offline),
+            Vec::<String>::new(),
+            "the split {name} shape must be accepted"
+        );
+    }
+    for readonly in [
+        "rustup toolchain list",
+        "rustup --version",
+        "rustup which rustc",
+    ] {
+        assert_eq!(issues_of(readonly), Vec::<String>::new(), "{readonly}");
+        assert_eq!(
+            offline_issues_of(readonly),
+            Vec::<String>::new(),
+            "{readonly}"
+        );
+    }
+
+    // The real Dockerfile.
+    let dockerfile = read_repo_file("container/Dockerfile");
+    assert_eq!(dockerfile_issues(&dockerfile), Vec::<String>::new());
+    let all_runs: Vec<(Vec<String>, String)> = dockerfile_instructions(&dockerfile)
+        .into_iter()
+        .filter(|(keyword, _)| keyword == "RUN")
+        .map(|(_, rest)| {
+            let (flags, body) = run_flags(&rest);
+            (
+                flags.iter().map(|flag| (*flag).to_owned()).collect(),
+                body.to_owned(),
+            )
+        })
+        .collect();
+    let offline_runs = all_runs
+        .iter()
+        .filter(|(flags, _)| is_offline(flags))
+        .count();
+    assert!(
+        offline_runs >= 6,
+        "expected at least 6 RUN --network=none instructions, found {offline_runs}"
+    );
+    let comments: Vec<&str> = dockerfile
+        .lines()
+        .map(str::trim)
+        .filter(|line| line.starts_with("# Remains networked:"))
+        .collect();
+    for marker in [
+        "rustup-init -y",
+        "rustup toolchain install",
+        "cargo install",
+        "tar -xJf /tmp/arm-gnu-toolchain.tar.xz",
+        "--make-llvm-lib",
+        "cmake --build /build/klee",
+    ] {
+        let mut seen = false;
+        for (flags, body) in &all_runs {
+            if !body.contains(marker) {
+                continue;
+            }
+            seen = true;
+            let excused = NETWORKED_INSTALLS
+                .iter()
+                .chain(NETWORKED_STEPS)
+                .any(|(name, reason)| {
+                    marker.contains(name)
+                        && !reason.is_empty()
+                        && comments.iter().any(|comment| comment.contains(reason))
+                });
+            assert!(
+                is_offline(flags) || excused,
+                "the RUN with `{marker}` must be RUN --network=none, or be listed with a reason that a `# Remains networked:` comment repeats"
+            );
+        }
+        assert!(
+            seen,
+            "no RUN contains `{marker}`; the check would be vacuous"
+        );
+    }
+    // Every listed exception carries a non-empty reason and a comment.
+    for (name, reason) in NETWORKED_INSTALLS.iter().chain(NETWORKED_STEPS) {
+        assert!(!reason.is_empty(), "{name} is excused without a reason");
+        assert!(
+            comments.iter().any(|comment| comment.contains(reason)),
+            "{name}: no `# Remains networked:` comment repeats the reason"
+        );
+    }
+}
+
+#[test]
+fn tool_03_dockerfile_fetches_crate_dependencies_before_the_offline_install() {
+    let fetch = "curl -fsSL -o /tmp/crates/x-1.0.0.crate https://static.crates.io/crates/x/x-1.0.0.crate \
+        && echo \"h  /tmp/crates/x-1.0.0.crate\" | sha256sum -c - \
+        && tar -xzf /tmp/crates/x-1.0.0.crate --no-same-owner -C /tmp/crates";
+
+    // cargo fetch must be locked and must read a verified, unpacked manifest.
+    let unlocked = issues_of(&format!(
+        "{fetch} && cargo fetch --manifest-path /tmp/crates/x-1.0.0/Cargo.toml"
+    ));
+    assert!(
+        mentions(&unlocked, "cargo fetch lacks `--locked`"),
+        "{unlocked:?}"
+    );
+    let elsewhere = issues_of(&format!(
+        "{fetch} && cargo fetch --locked --manifest-path /src/x/Cargo.toml"
+    ));
+    assert!(
+        mentions(&elsewhere, "not unpacked from a verified .crate"),
+        "{elsewhere:?}"
+    );
+    let traversal = issues_of(&format!(
+        "{fetch} && cargo fetch --locked --manifest-path /tmp/crates/../x/Cargo.toml"
+    ));
+    assert!(
+        mentions(&traversal, "not unpacked from a verified .crate"),
+        "{traversal:?}"
+    );
+    let no_path = issues_of(&format!("{fetch} && cargo fetch --locked"));
+    assert!(mentions(&no_path, "lacks `--manifest-path`"), "{no_path:?}");
+    let good = issues_of(&format!(
+        "{fetch} && cargo fetch --locked --manifest-path /tmp/crates/x-1.0.0/Cargo.toml"
+    ));
+    assert_eq!(good, Vec::<String>::new());
+    // A fetch is a download: it cannot sit in a RUN --network=none.
+    let offline_fetch =
+        offline_issues_of("cargo fetch --locked --manifest-path /tmp/crates/x/Cargo.toml");
+    assert!(mentions(
+        &offline_fetch,
+        "RUN --network=none runs a download"
+    ));
+
+    // The real cargo-tools stage: the networked RUN fetches the dependencies of
+    // each verified crate and pre-clones tinycbor at the pin; the offline RUN
+    // installs with --offline and redirects the tinycbor clone to the local copy.
+    let dockerfile = read_repo_file("container/Dockerfile");
+    let runs = stage_runs(&dockerfile, "cargo-tools");
+    let networked: Vec<&String> = runs
+        .iter()
+        .filter(|(flags, _)| !is_offline(flags))
+        .map(|(_, body)| body)
+        .collect();
+    let offline: Vec<&String> = runs
+        .iter()
+        .filter(|(flags, _)| is_offline(flags))
+        .map(|(_, body)| body)
+        .collect();
+    assert_eq!(networked.len(), 1, "one networked RUN downloads the inputs");
+    assert_eq!(offline.len(), 1, "one RUN --network=none builds them");
+    for (name, version) in [
+        ("C2RUST_NAME", "C2RUST_VERSION"),
+        ("CARGO_MUTANTS_NAME", "CARGO_MUTANTS_VERSION"),
+    ] {
+        let fetch = format!(
+            "cargo fetch --locked --manifest-path \"/tmp/crates/${{{name}}}-${{{version}}}/Cargo.toml\""
+        );
+        assert!(
+            networked[0].contains(&fetch),
+            "the networked RUN lacks `{fetch}`"
+        );
+        let install = format!(
+            "cargo install --locked --offline --root /opt/cargo-tools --path \"/tmp/crates/${{{name}}}-${{{version}}}\""
+        );
+        assert!(
+            offline[0].contains(&install),
+            "the offline RUN lacks `{install}`"
+        );
+    }
+    assert!(
+        !offline[0].contains("curl") && !networked[0].contains("cargo install"),
+        "downloads stay in the networked RUN and installs in the offline one"
+    );
+    // tinycbor: cloned and checked in the networked RUN, redirected offline.
+    for needle in [
+        "git clone --no-checkout https://github.com/intel/tinycbor.git /tmp/tinycbor",
+        "git -C /tmp/tinycbor checkout --detach \"${TINYCBOR_COMMIT}\"",
+        "git -C /tmp/tinycbor rev-parse HEAD",
+        "git -C /tmp/tinycbor branch mt-pinned \"${TINYCBOR_COMMIT}\"",
+    ] {
+        assert!(
+            networked[0].contains(needle),
+            "networked RUN lacks `{needle}`"
+        );
+    }
+    for needle in [
+        "GIT_CONFIG_COUNT=1",
+        "GIT_CONFIG_KEY_0=\"url.file:///tmp/tinycbor.insteadOf\"",
+        "GIT_CONFIG_VALUE_0=\"https://github.com/intel/tinycbor.git\"",
+        "grep -qF \"https://github.com/intel/tinycbor.git\"",
+        "grep -q \"${TINYCBOR_COMMIT}\"",
+    ] {
+        assert!(offline[0].contains(needle), "offline RUN lacks `{needle}`");
+    }
+}
+
+#[test]
+fn tool_03_dockerfile_checks_each_recorded_archive_against_its_manifest() {
+    // WR-07: before the first install, the build proves that the mirror holds
+    // exactly the archives recorded, each one a pair its pin-verified manifest names.
+    let dockerfile = read_repo_file("container/Dockerfile");
+    let runs = stage_runs(&dockerfile, "rustup");
+    let (flags, install) = runs
+        .iter()
+        .find(|(_, body)| body.contains("rustup toolchain install"))
+        .expect("a RUN installs the toolchains");
+    assert!(
+        is_offline(flags),
+        "the RUN with `rustup toolchain install` must be RUN --network=none"
+    );
+    let first = install.find("rustup toolchain install").unwrap();
+    let before = &install[..first];
+    for needle in [
+        "sha256sum -c",
+        "${RUST_TOOL_CHANNEL_SHA256}",
+        "${RUST_BITCODE_CHANNEL_SHA256}",
+        "pin-binding.sha256",
+        "xz_hash",
+        "xz_url",
+        "exit 1",
+    ] {
+        assert!(
+            before.contains(needle),
+            "the install RUN must contain `{needle}` before its first install"
+        );
+    }
+    // The pin-verified manifests are the ones kept in the image for the CI gate.
+    let (_, mirror) = runs
+        .iter()
+        .find(|(_, body)| body.contains("mirror() {"))
+        .expect("a RUN builds the mirror");
+    assert!(
+        !mirror.contains("rustup toolchain install") && !mirror.contains("rustup default"),
+        "the mirror RUN only downloads"
+    );
+    let kept = mirror
+        .find("/opt/cargo-tools/share/mt/channel-rust-")
+        .expect("the mirror RUN keeps a copy of each verified manifest");
+    let checked = mirror
+        .find("sha256sum -c -")
+        .expect("the mirror RUN checks the manifest");
+    assert!(
+        checked < kept,
+        "the manifest copy must be taken after its sha256sum -c"
+    );
 }
 
 #[test]
@@ -1973,4 +2533,46 @@ fn tool_03_workflow_gates_on_pin_binding_evidence() {
         first_gate < login,
         "the pin-binding gate must come before the GHCR login"
     );
+}
+
+#[test]
+fn tool_03_workflow_gates_each_recorded_archive_on_the_pinned_manifest() {
+    // WR-07: the gate also binds every archive line of the record to a pair of the
+    // pin-verified manifest, using in-image copies whose sha256 it compares with
+    // the pins itself, and fails on any record line it cannot classify.
+    let workflow = read_repo_file(".github/workflows/container.yml");
+    let image_a = workflow_job_text(&workflow, "image-a");
+    for needle in [
+        "/opt/cargo-tools/share/mt/channel-rust-",
+        "sha256sum \"$copy\"",
+        "xz_hash",
+        "xz_url",
+        "OK archive",
+        "MISMATCH archive",
+        "unclassified record line",
+        "--network none --user 65534:65534 --read-only mt-toolchain:ci",
+    ] {
+        assert!(
+            image_a.contains(needle),
+            "the pin-binding gate lacks `{needle}`"
+        );
+    }
+    // The copies are compared with the pins read from image-args.txt.
+    let check = image_a
+        .find("check_archives()")
+        .expect("the gate defines check_archives");
+    let body = &image_a[check..];
+    assert!(
+        body.find("!= \"$pin\"").is_some() && body.contains("MISMATCH"),
+        "check_archives must compare the copy's sha256 with the pin"
+    );
+    for call in [
+        "check_archives \"$tool_version\" \"$tool_pin\"",
+        "check_archives \"$bitcode_version\" \"$bitcode_pin\"",
+        "classify_record",
+    ] {
+        assert!(image_a.contains(call), "the gate never runs `{call}`");
+    }
+    // The assertions of the existing pin-binding test still hold.
+    assert!(image_a.contains("annotate error pin-binding"));
 }

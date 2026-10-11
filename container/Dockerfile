@@ -9,8 +9,15 @@
 # This file must stay free of version literals: no default on any ARG, no
 # floating tag, no unpinned download. There is deliberately no syntax directive
 # (it would pull a floating frontend); BuildKit's built-in frontend is used and
-# BuildKit itself is pinned through the ci table of pins.toml. The mt binary is
-# mounted at run time and never baked into the image.
+# BuildKit itself is pinned through the ci table of pins.toml. The built-in
+# frontend of that pinned BuildKit supports `RUN --network=none` and rejects
+# RUN flags it does not know, so a green build shows the flag was accepted. The
+# mt binary is mounted at run time and never baked into the image.
+#
+# WR-06: every step that consumes only files already downloaded and checked runs
+# in `RUN --network=none`, after a separate networked RUN that downloads and
+# checks its inputs. A step that cannot run offline is labelled `Remains
+# networked:` with its reason, and tests/container_static.rs lists it.
 
 # Global build arguments: exactly the image-scope keys of `mt toolchain build-args`.
 ARG ARM_GNU_SHA256
@@ -149,6 +156,13 @@ RUN set -eux; \
 # installer consumed, and the image-a job of the container workflow gates on it.
 # The tool toolchain carries the components and targets of pins.toml; the bitcode
 # toolchain is the host target only and is never the default (D-13).
+# WR-06: only the downloads (rustup-init, the manifests and archives) are networked.
+# rustup-init and both toolchain installs run in RUN --network=none and read the
+# files the networked RUNs checked.
+# WR-07: the verified manifests are kept under /opt/cargo-tools/share/mt, and the
+# offline install RUN refuses to start installing unless every file of the mirror
+# has exactly one record line and every record line is an archive pair
+# (xz_hash with xz_url, or hash with url) of the pin-verified manifest before it.
 FROM build-base AS rustup
 ARG CARGO_HOME
 ARG RUSTUP_HOME
@@ -167,8 +181,11 @@ ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
     CARGO_HOME=${CARGO_HOME}
 ENV PATH="${CARGO_HOME}/bin:${PATH}"
 RUN set -eux; \
-    : "${RUSTUP_URL:?}" "${RUSTUP_SHA256:?}" "${RUST_HOST:?}"; \
+    : "${RUSTUP_URL:?}" "${RUSTUP_SHA256:?}"; \
     curl -fsSL --retry 5 --retry-delay 5 -o /tmp/rustup-init "${RUSTUP_URL}"; \
+    echo "${RUSTUP_SHA256}  /tmp/rustup-init" | sha256sum -c -
+RUN --network=none set -eux; \
+    : "${RUSTUP_SHA256:?}" "${RUST_HOST:?}"; \
     echo "${RUSTUP_SHA256}  /tmp/rustup-init" | sha256sum -c -; \
     chmod +x /tmp/rustup-init; \
     /tmp/rustup-init -y --no-modify-path --profile minimal --default-toolchain none --default-host "${RUST_HOST}"; \
@@ -177,7 +194,9 @@ RUN set -eux; \
 # the value of KEY in the [SECTION] table of a manifest. `mirror VERSION SHA
 # COMPONENTS TARGETS` puts the checked manifest and the archives of the wanted
 # packages (rustc, cargo and rust-std for the host, the components for the host
-# under their [renames] names, rust-std for each target) into the mirror.
+# under their [renames] names, rust-std for each target) into the mirror, and
+# keeps a copy of each checked manifest for the CI gate (WR-07). Networked: it
+# downloads, and it installs nothing.
 RUN set -eux; \
     : "${RUST_TOOL_VERSION:?}" "${RUST_TOOL_CHANNEL_SHA256:?}" "${RUST_BITCODE_VERSION:?}" "${RUST_BITCODE_CHANNEL_SHA256:?}"; \
     : "${RUST_TOOL_COMPONENTS:?}" "${RUST_TOOL_TARGETS:?}" "${RUST_HOST:?}"; \
@@ -190,6 +209,7 @@ RUN set -eux; \
       manifest="/tmp/rust-dist/dist/channel-rust-${version}.toml"; \
       curl -fsSL --retry 5 --retry-delay 5 -o "${manifest}" "https://static.rust-lang.org/dist/channel-rust-${version}.toml"; \
       echo "${sha}  ${manifest}" | sha256sum -c -; \
+      cp "${manifest}" "/opt/cargo-tools/share/mt/channel-rust-${version}.toml"; \
       echo "${sha}  channel-rust-${version}.toml" > "${manifest}.sha256"; \
       sha256sum "${manifest}" >> "${record}"; \
       wanted="rustc:${RUST_HOST} cargo:${RUST_HOST} rust-std:${RUST_HOST}"; \
@@ -219,7 +239,57 @@ RUN set -eux; \
       done; \
     }; \
     mirror "${RUST_TOOL_VERSION}" "${RUST_TOOL_CHANNEL_SHA256}" "${RUST_TOOL_COMPONENTS}" "${RUST_TOOL_TARGETS}"; \
-    mirror "${RUST_BITCODE_VERSION}" "${RUST_BITCODE_CHANNEL_SHA256}" "" ""; \
+    mirror "${RUST_BITCODE_VERSION}" "${RUST_BITCODE_CHANNEL_SHA256}" "" ""
+# The offline install. Before any install it proves, from files only, that (i) both
+# mirror manifests are the pin-verified ones kept in the image, (ii) every mirror
+# file other than a *.sha256 sidecar has exactly one record line, equal to its
+# current sha256sum line, and every record line names an existing file with that
+# hash, and (iii) walking the record in order, every line is one of the two
+# manifests or an archive whose `<sha256> <url>` is an xz_hash/xz_url (or
+# hash/url) pair of the manifest that precedes it, with at least one archive per
+# manifest. `pairs MANIFEST` prints those pairs; POSIX sh and mawk only. The
+# record is read by redirection, not through a pipe, so `exit 1` ends the RUN.
+RUN --network=none set -eux; \
+    : "${RUST_TOOL_VERSION:?}" "${RUST_TOOL_CHANNEL_SHA256:?}" "${RUST_BITCODE_VERSION:?}" "${RUST_BITCODE_CHANNEL_SHA256:?}"; \
+    : "${RUST_TOOL_COMPONENTS:?}" "${RUST_TOOL_TARGETS:?}" "${RUST_HOST:?}"; \
+    record=/opt/cargo-tools/share/mt/pin-binding.sha256; \
+    fail() { echo "pin-binding record: $1" >&2; exit 1; }; \
+    pairs() { awk 'function flush() { if (xh != "" && xu != "") print xh, xu; if (h != "" && u != "") print h, u } /^\[/ { flush(); xh = ""; xu = ""; h = ""; u = ""; next } $2 == "=" { v = $3; gsub(/"/, "", v) } $1 == "xz_hash" && $2 == "=" { xh = v } $1 == "xz_url" && $2 == "=" { xu = v } $1 == "hash" && $2 == "=" { h = v } $1 == "url" && $2 == "=" { u = v } END { flush() }' "$1"; }; \
+    for pair in "${RUST_TOOL_VERSION}:${RUST_TOOL_CHANNEL_SHA256}" "${RUST_BITCODE_VERSION}:${RUST_BITCODE_CHANNEL_SHA256}"; do \
+      version="${pair%%:*}"; \
+      sha="${pair#*:}"; \
+      manifest="/tmp/rust-dist/dist/channel-rust-${version}.toml"; \
+      echo "${sha}  ${manifest}" | sha256sum -c -; \
+      cmp "${manifest}" "/opt/cargo-tools/share/mt/channel-rust-${version}.toml" || fail "the mirror manifest for ${version} differs from the kept copy"; \
+      grep -qxF -- "${sha}  ${manifest}" "${record}" || fail "no record line equals ${sha}  ${manifest}"; \
+    done; \
+    find /tmp/rust-dist -type f ! -name '*.sha256' | sort > /tmp/mt-mirror-files; \
+    test -s /tmp/mt-mirror-files; \
+    while IFS= read -r file; do \
+      line="$(sha256sum "${file}")"; \
+      named="$(awk -v f="${file}" 'substr($0, 67) == f { n++ } END { print n + 0 }' "${record}")"; \
+      equal="$(awk -v l="${line}" '$0 == l { n++ } END { print n + 0 }' "${record}")"; \
+      if [ "${named}" != 1 ] || [ "${equal}" != 1 ]; then fail "${file} needs exactly one record line equal to '${line}', found ${named} naming it and ${equal} equal"; fi; \
+    done < /tmp/mt-mirror-files; \
+    manifest=""; archives=0; \
+    : > /tmp/mt-pairs; \
+    while IFS= read -r line; do \
+      hash="${line%% *}"; \
+      path="${line#*  }"; \
+      case "${path}" in \
+        "/tmp/rust-dist/dist/channel-rust-${RUST_TOOL_VERSION}.toml" | "/tmp/rust-dist/dist/channel-rust-${RUST_BITCODE_VERSION}.toml") \
+          if [ -n "${manifest}" ] && [ "${archives}" -eq 0 ]; then fail "${manifest} has no archive line"; fi; \
+          manifest="${path}"; archives=0; \
+          pairs "${manifest}" > /tmp/mt-pairs ;; \
+        /tmp/rust-dist/*) \
+          if [ -z "${manifest}" ]; then fail "archive line before any manifest line: ${line}"; fi; \
+          if [ ! -f "${path}" ] || [ "$(sha256sum "${path}")" != "${line}" ]; then fail "record line '${line}' does not match the file in the mirror"; fi; \
+          grep -qxF -- "${hash} https://static.rust-lang.org${path#/tmp/rust-dist}" /tmp/mt-pairs || fail "record line '${line}' is not an xz_hash/xz_url or hash/url pair of ${manifest}"; \
+          archives=$((archives + 1)) ;; \
+        *) fail "unclassified record line: ${line}" ;; \
+      esac; \
+    done < "${record}"; \
+    if [ "${archives}" -eq 0 ]; then fail "${manifest} has no archive line"; fi; \
     extra=""; \
     for component in $(printf '%s' "${RUST_TOOL_COMPONENTS}" | tr ',' ' '); do extra="${extra} -c ${component}"; done; \
     for target in $(printf '%s' "${RUST_TOOL_TARGETS}" | tr ',' ' '); do extra="${extra} -t ${target}"; done; \
@@ -234,10 +304,12 @@ RUN set -eux; \
       test "${#stored}" -ge 16; \
       case "${sha}" in "${stored}"*) ;; *) echo "rustup update-hash ${stored} for ${version} is not the start of the pin ${sha}" >&2; exit 1 ;; esac; \
     done; \
-    rm -rf /tmp/rust-dist; \
+    rm -rf /tmp/rust-dist /tmp/mt-mirror-files /tmp/mt-pairs; \
     chmod -R a+rX "${RUSTUP_HOME}" "${CARGO_HOME}"
 
-# Stage arm (CONTEXT D-08): the official Arm GNU Toolchain release archive.
+# Stage arm (CONTEXT D-08): the official Arm GNU Toolchain release archive. It is
+# downloaded and checked in a networked RUN, then checked again and unpacked in a
+# RUN --network=none (WR-06).
 FROM build-base AS arm
 ARG ARM_GNU_SHA256
 ARG ARM_GNU_URL
@@ -246,6 +318,9 @@ ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 RUN set -eux; \
     : "${ARM_GNU_URL:?}" "${ARM_GNU_SHA256:?}"; \
     curl -fsSL --retry 5 --retry-delay 5 -o /tmp/arm-gnu-toolchain.tar.xz "${ARM_GNU_URL}"; \
+    echo "${ARM_GNU_SHA256}  /tmp/arm-gnu-toolchain.tar.xz" | sha256sum -c -
+RUN --network=none set -eux; \
+    : "${ARM_GNU_SHA256:?}"; \
     echo "${ARM_GNU_SHA256}  /tmp/arm-gnu-toolchain.tar.xz" | sha256sum -c -; \
     mkdir -p /opt/arm-gnu-toolchain; \
     tar -xJf /tmp/arm-gnu-toolchain.tar.xz --strip-components=1 --no-same-owner -C /opt/arm-gnu-toolchain; \
@@ -254,15 +329,22 @@ RUN set -eux; \
 
 # Stage cargo-tools (CONTEXT D-04, D-09, D-11): c2rust and cargo-mutants. Each
 # .crate is checked against its pinned sha256, and that same file is unpacked and
-# installed with `cargo install --locked --path`; it is never fetched a second
-# time. Its packaged Cargo.lock, under --locked, fixes every dependency, and
+# installed with `cargo install --locked --offline --path`; it is never fetched a
+# second time. Its packaged Cargo.lock, under --locked, fixes every dependency, and
 # cargo checks each registry download against those checksums. The sha256 of
 # each .crate is appended to the build record that the rustup stage began.
 # RUSTUP_TOOLCHAIN keeps the nightly toolchain file shipped inside the c2rust
 # crate from taking over (RESEARCH Pitfall 2), and the installs run from /, not
-# from inside an unpacked crate. This stage needs the network because the c2rust
-# exporter clones tinycbor at a commit pinned inside the crate (RESEARCH Pitfall
-# 3); the build asserts that commit is the pinned one.
+# from inside an unpacked crate.
+# WR-06: downloads happen only in the first RUN: the .crate files, the registry
+# files their locks name (`cargo fetch --locked`), and the tinycbor repository,
+# which the c2rust exporter clones at a commit pinned inside the crate (RESEARCH
+# Pitfall 3). That RUN checks the clone against the pinned commit and adds a
+# branch at it, so the local copy serves a clone of that commit. The second RUN has
+# no network: cargo installs with --offline, and a RUN-scoped git insteadOf
+# (like the rustup mirror, never ENV) points the exporter's clone of the
+# upstream URL at the local copy. The build asserts that the exporter names the
+# pinned commit and that URL.
 FROM rustup AS cargo-tools
 ARG C2RUST_NAME
 ARG C2RUST_SHA256
@@ -294,22 +376,38 @@ RUN set -eux; \
       test -f "/tmp/crates/${name}-${version}/Cargo.toml"; \
       test -f "/tmp/crates/${name}-${version}/Cargo.lock"; \
     done; \
+    export RUSTUP_TOOLCHAIN="${RUST_TOOL_VERSION}"; \
+    cargo fetch --locked --manifest-path "/tmp/crates/${C2RUST_NAME}-${C2RUST_VERSION}/Cargo.toml"; \
+    cargo fetch --locked --manifest-path "/tmp/crates/${CARGO_MUTANTS_NAME}-${CARGO_MUTANTS_VERSION}/Cargo.toml"; \
+    git clone --no-checkout https://github.com/intel/tinycbor.git /tmp/tinycbor; \
+    git -C /tmp/tinycbor checkout --detach "${TINYCBOR_COMMIT}"; \
+    test "$(git -C /tmp/tinycbor rev-parse HEAD)" = "${TINYCBOR_COMMIT}"; \
+    git -C /tmp/tinycbor branch mt-pinned "${TINYCBOR_COMMIT}"
+RUN --network=none set -eux; \
+    : "${LLVM_MAJOR:?}" "${RUST_TOOL_VERSION:?}" "${TINYCBOR_COMMIT:?}"; \
+    : "${C2RUST_NAME:?}" "${C2RUST_VERSION:?}" "${CARGO_MUTANTS_NAME:?}" "${CARGO_MUTANTS_VERSION:?}"; \
     llvm_bin="/usr/lib/llvm-${LLVM_MAJOR}/bin"; \
     export RUSTUP_TOOLCHAIN="${RUST_TOOL_VERSION}" \
            LLVM_CONFIG_PATH="${llvm_bin}/llvm-config" \
            CLANG_PATH="${llvm_bin}/clang" \
-           LIBCLANG_PATH="/usr/lib/llvm-${LLVM_MAJOR}/lib"; \
-    cargo install --locked --root /opt/cargo-tools --path "/tmp/crates/${C2RUST_NAME}-${C2RUST_VERSION}" --version "=${C2RUST_VERSION}" "${C2RUST_NAME}"; \
-    cargo install --locked --root /opt/cargo-tools --path "/tmp/crates/${CARGO_MUTANTS_NAME}-${CARGO_MUTANTS_VERSION}" --version "=${CARGO_MUTANTS_VERSION}" "${CARGO_MUTANTS_NAME}"; \
+           LIBCLANG_PATH="/usr/lib/llvm-${LLVM_MAJOR}/lib" \
+           GIT_CONFIG_COUNT=1 \
+           GIT_CONFIG_KEY_0="url.file:///tmp/tinycbor.insteadOf" \
+           GIT_CONFIG_VALUE_0="https://github.com/intel/tinycbor.git"; \
+    cargo install --locked --offline --root /opt/cargo-tools --path "/tmp/crates/${C2RUST_NAME}-${C2RUST_VERSION}" --version "=${C2RUST_VERSION}" "${C2RUST_NAME}"; \
+    cargo install --locked --offline --root /opt/cargo-tools --path "/tmp/crates/${CARGO_MUTANTS_NAME}-${CARGO_MUTANTS_VERSION}" --version "=${CARGO_MUTANTS_VERSION}" "${CARGO_MUTANTS_NAME}"; \
     grep -q "${TINYCBOR_COMMIT}" "${CARGO_HOME}"/registry/src/*/c2rust-ast-exporter-"${C2RUST_VERSION}"/src/CMakeLists.txt; \
+    grep -qF "https://github.com/intel/tinycbor.git" "${CARGO_HOME}"/registry/src/*/c2rust-ast-exporter-"${C2RUST_VERSION}"/src/CMakeLists.txt; \
     "${llvm_bin}/llvm-config" --version > /opt/cargo-tools/share/mt/c2rust-llvm-config-version; \
-    rm -rf /tmp/crates; \
+    rm -rf /tmp/crates /tmp/tinycbor; \
     chmod -R a+rX /opt/cargo-tools
 
 # Stage klee-build (CONTEXT D-07): klee-uclibc and KLEE from their pinned
 # commits against the image's LLVM packages, Z3 as the only solver. Only the
 # install tree is copied into the final image. The assertion build option is
 # off because the packaged LLVM is built without assertions (RESEARCH Pitfall 4).
+# WR-06: each clone is a networked RUN that checks the commit; configure and
+# build run in the RUN --network=none that follows it.
 FROM build-base AS klee-build
 ARG KLEE_COMMIT
 ARG KLEE_TAG
@@ -321,19 +419,23 @@ ARG LLVM_MAJOR
 ARG SOURCE_DATE_EPOCH
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 RUN set -eux; \
-    : "${LLVM_MAJOR:?}" "${KLEE_UCLIBC_URL:?}" "${KLEE_UCLIBC_TAG:?}" "${KLEE_UCLIBC_COMMIT:?}"; \
-    llvm_bin="/usr/lib/llvm-${LLVM_MAJOR}/bin"; \
+    : "${KLEE_UCLIBC_URL:?}" "${KLEE_UCLIBC_TAG:?}" "${KLEE_UCLIBC_COMMIT:?}"; \
     git clone --depth 1 --branch "${KLEE_UCLIBC_TAG}" "${KLEE_UCLIBC_URL}" /src/klee-uclibc; \
-    test "$(git -C /src/klee-uclibc rev-parse HEAD)" = "${KLEE_UCLIBC_COMMIT}"; \
+    test "$(git -C /src/klee-uclibc rev-parse HEAD)" = "${KLEE_UCLIBC_COMMIT}"
+RUN --network=none set -eux; \
+    : "${LLVM_MAJOR:?}"; \
+    llvm_bin="/usr/lib/llvm-${LLVM_MAJOR}/bin"; \
     cd /src/klee-uclibc; \
     ./configure --make-llvm-lib --with-cc "${llvm_bin}/clang" --with-llvm-config "${llvm_bin}/llvm-config"; \
     make; \
     test -f /src/klee-uclibc/lib/libc.a
 RUN set -eux; \
-    : "${LLVM_MAJOR:?}" "${KLEE_URL:?}" "${KLEE_TAG:?}" "${KLEE_COMMIT:?}"; \
-    llvm_dir="/usr/lib/llvm-${LLVM_MAJOR}"; \
+    : "${KLEE_URL:?}" "${KLEE_TAG:?}" "${KLEE_COMMIT:?}"; \
     git clone --depth 1 --branch "${KLEE_TAG}" "${KLEE_URL}" /src/klee; \
-    test "$(git -C /src/klee rev-parse HEAD)" = "${KLEE_COMMIT}"; \
+    test "$(git -C /src/klee rev-parse HEAD)" = "${KLEE_COMMIT}"
+RUN --network=none set -eux; \
+    : "${LLVM_MAJOR:?}"; \
+    llvm_dir="/usr/lib/llvm-${LLVM_MAJOR}"; \
     cmake -S /src/klee -B /build/klee -G Ninja \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=/opt/klee \

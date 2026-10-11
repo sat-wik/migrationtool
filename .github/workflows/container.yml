@@ -233,9 +233,19 @@ jobs:
       # is reported against the pin as a witness only: the Dockerfile writes the
       # sidecar rustup reads from that same pin and fails the build if the stored
       # update-hash differs, so it is not evidence independent of the Dockerfile.
-      # A mismatch fails this job before the image is pushed. The manifest copy that
-      # rustup stores is its own re-serialisation: it is printed for the reader and
-      # is not the binding. Values are read from image-args.txt as data, never sourced.
+      # WR-07: archive lines are gated too. The image keeps the two pin-verified
+      # channel manifests under /opt/cargo-tools/share/mt; this step reads them out
+      # of the image, requires their sha256 to equal the pins from image-args.txt,
+      # and requires every archive line of the record to be an `<xz_hash> <xz_url>`
+      # (or `<hash> <url>`) pair of the manifest whose line precedes it in the
+      # record. Any record line that is not a pinned manifest, an accepted archive
+      # or a pinned crate fails the gate. The archives themselves are deleted from
+      # the image: their bytes were checked at build time and by rustup's own
+      # verification, and this gate checks the record's lines against the manifests.
+      # A mismatch fails this job before the image is saved for publishing. The
+      # manifest copy that rustup stores is its own re-serialisation: it is printed
+      # for the reader and is not the binding. Values are read from image-args.txt
+      # as data, never sourced.
       - name: Pin binding evidence
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
@@ -333,10 +343,80 @@ jobs:
               ok=false
             fi
           }
+          # check_archives VERSION PIN: the in-image copy of channel-rust-VERSION.toml
+          # must hash to PIN, and every archive line that follows that manifest's
+          # line in the record, up to the next manifest line, must be one of its
+          # `<hash> <url>` pairs (xz_hash with xz_url, or hash with url).
+          check_archives() {
+            local version=$1 pin=$2 copy pairs manifest_path inside=0 count=0 line hash path url
+            copy="$out/channel-rust-${version}.toml"
+            pairs="$out/archive-pairs-${version}.txt"
+            manifest_path="/tmp/rust-dist/dist/channel-rust-${version}.toml"
+            if ! docker run --rm --network none --user 65534:65534 --read-only mt-toolchain:ci \
+                cat "/opt/cargo-tools/share/mt/channel-rust-${version}.toml" > "$copy" 2> "$out/channel-rust-${version}.err"; then
+              echo "MISMATCH cannot read /opt/cargo-tools/share/mt/channel-rust-${version}.toml from the image" >> "$out/pin-binding-notice.txt"
+              ok=false
+              return 0
+            fi
+            if [ "$(sha256sum "$copy" | cut -d' ' -f1)" != "$pin" ]; then
+              echo "MISMATCH the in-image copy channel-rust-${version}.toml has sha256 $(sha256sum "$copy" | cut -d' ' -f1), not its pin ${pin}" >> "$out/pin-binding-notice.txt"
+              ok=false
+              return 0
+            fi
+            echo "OK in-image copy channel-rust-${version}.toml has sha256 ${pin}, equal to its pin" >> "$out/pin-binding-notice.txt"
+            awk 'function flush() { if (xh != "" && xu != "") print xh, xu; if (h != "" && u != "") print h, u } /^\[/ { flush(); xh = ""; xu = ""; h = ""; u = ""; next } $2 == "=" { v = $3; gsub(/"/, "", v) } $1 == "xz_hash" && $2 == "=" { xh = v } $1 == "xz_url" && $2 == "=" { xu = v } $1 == "hash" && $2 == "=" { h = v } $1 == "url" && $2 == "=" { u = v } END { flush() }' "$copy" > "$pairs"
+            while IFS= read -r line; do
+              hash=${line%% *}
+              path=${line#*  }
+              case "$path" in
+                "$manifest_path") inside=1; continue ;;
+                /tmp/rust-dist/dist/channel-rust-*.toml) inside=0; continue ;;
+                /tmp/rust-dist/*) ;;
+                *) continue ;;
+              esac
+              [ "$inside" -eq 1 ] || continue
+              url="https://static.rust-lang.org${path#/tmp/rust-dist}"
+              if grep -qxF -- "$hash $url" "$pairs"; then
+                echo "OK archive $path sha256 equals the xz_hash channel-rust-${version}.toml (sha256 equals its pin) gives for $url" >> "$out/pin-binding-notice.txt"
+                printf '%s\n' "$line" >> "$out/accepted-archive-lines.txt"
+                count=$((count + 1))
+              else
+                echo "MISMATCH archive line '$line' is not an xz_hash/xz_url (or hash/url) pair of channel-rust-${version}.toml" >> "$out/pin-binding-notice.txt"
+                ok=false
+              fi
+            done < "$out/binding-record.txt"
+            if [ "$count" -eq 0 ]; then
+              echo "MISMATCH the record has no archive line for channel-rust-${version}.toml" >> "$out/pin-binding-notice.txt"
+              ok=false
+            fi
+          }
+          # classify_record: every record line is a pinned manifest line, an accepted
+          # archive line or a pinned crate line; nothing else may be in the record.
+          classify_record() {
+            local line
+            while IFS= read -r line; do
+              case "$line" in
+                "${tool_pin}  /tmp/rust-dist/dist/channel-rust-${tool_version}.toml" \
+                  | "${bitcode_pin}  /tmp/rust-dist/dist/channel-rust-${bitcode_version}.toml" \
+                  | "${c2rust_pin}  /tmp/crates/${c2rust_name}-${c2rust_version}.crate" \
+                  | "${mutants_pin}  /tmp/crates/${mutants_name}-${mutants_version}.crate")
+                  continue ;;
+              esac
+              if grep -qxF -- "$line" "$out/accepted-archive-lines.txt"; then
+                continue
+              fi
+              echo "MISMATCH unclassified record line: $line" >> "$out/pin-binding-notice.txt"
+              ok=false
+            done < "$out/binding-record.txt"
+          }
+          : > "$out/accepted-archive-lines.txt"
           check_toolchain "$tool_version" "$tool_pin"
           check_toolchain "$bitcode_version" "$bitcode_pin"
           check_crate "$c2rust_name" "$c2rust_version" "$c2rust_pin"
           check_crate "$mutants_name" "$mutants_version" "$mutants_pin"
+          check_archives "$tool_version" "$tool_pin"
+          check_archives "$bitcode_version" "$bitcode_pin"
+          classify_record
           {
             echo "--- cargo install ledger /opt/cargo-tools/.crates2.json"
             cat "$out/binding-crates.txt"
