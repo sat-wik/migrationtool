@@ -35,6 +35,18 @@ jobs:
       - name: Build mt
         run: cargo build --locked -p mt-cli
 
+      # WR-08: www.uclibc.org is reachable from GitHub runners but not from cloud
+      # sessions. This is the URL the klee-uclibc Makefile (extra/locale/Makefile.in
+      # at the pinned commit) fetches, hashed with the repo's own helper so the
+      # checksum can be pinned in container/pins.toml.
+      - name: Hash the klee-uclibc locale tarball
+        run: |
+          set -euo pipefail
+          url="https://www.uclibc.org/downloads/uClibc-locale-030818.tgz"
+          line=$(target/debug/mt toolchain hash "$url")
+          echo "::notice title=locale-tarball-sha256::${line}"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
+
       # Values are only ever read as data: never evaluated by the shell.
       - name: Render the pins
         id: ci-pins
