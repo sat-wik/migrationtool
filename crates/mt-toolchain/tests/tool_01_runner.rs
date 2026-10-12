@@ -49,7 +49,7 @@ fn tool_01_runner_records_argv_env_exit_and_output_hashes() {
     let record = &output.record;
 
     assert_eq!(record.schema_version, RUN_RECORD_SCHEMA_VERSION);
-    assert_eq!(record.schema_version, 1);
+    assert_eq!(record.schema_version, 2);
     assert_eq!(
         record.argv,
         vec!["/bin/sh", "-c", "printf out; printf err 1>&2; exit 3"]
@@ -65,6 +65,7 @@ fn tool_01_runner_records_argv_env_exit_and_output_hashes() {
     assert_eq!(record.stderr.sha256, sha256_hex(b"err"));
     assert_eq!(record.stdout.bytes_total, 3);
     assert_eq!(record.stderr.bytes_total, 3);
+    assert!(record.stdout.complete && record.stderr.complete);
     assert_eq!(output.stdout, b"out");
     assert_eq!(output.stderr, b"err");
 }
@@ -135,6 +136,7 @@ fn tool_01_runner_caps_output_without_deadlock() {
         assert_eq!(stream.bytes_total, 5_000_000, "{name}");
         assert_eq!(stream.bytes_stored, 1024, "{name}");
         assert!(stream.truncated, "{name}");
+        assert!(stream.complete, "{name}");
         assert_eq!(stream.sha256, expected, "{name}");
         assert_eq!(stored.len(), 1024, "{name}");
     }
@@ -169,6 +171,8 @@ fn tool_01_runner_empty_output_and_empty_argv() {
         assert_eq!(stream.bytes_total, 0);
         assert_eq!(stream.bytes_stored, 0);
         assert!(!stream.truncated);
+        // An empty stream that reached EOF is complete, unlike one never read.
+        assert!(stream.complete);
     }
     assert_eq!(output.record.exit.code, Some(0));
 
@@ -219,6 +223,8 @@ fn tool_01_runner_timeout_kills_descendants_and_reports_timed_out() {
     assert_eq!(output.record.exit.code, None);
     assert!(!output.record.stdout.truncated);
     assert!(!output.record.stderr.truncated);
+    assert!(output.record.stdout.complete);
+    assert!(output.record.stderr.complete);
 }
 
 #[cfg(target_os = "linux")]
@@ -255,6 +261,8 @@ fn tool_01_runner_timeout_kills_a_setsid_descendant() {
     assert_eq!(output.record.exit.code, None);
     assert!(!output.record.stdout.truncated);
     assert!(!output.record.stderr.truncated);
+    assert!(output.record.stdout.complete);
+    assert!(output.record.stderr.complete);
 
     let text = String::from_utf8(output.stdout.clone()).unwrap();
     let pid: u32 = text.trim().parse().unwrap();
@@ -291,14 +299,19 @@ fn tool_01_runner_timeout_kills_a_forking_setsid_subtree() {
     assert!(output.record.exit.timed_out);
     assert!(!output.record.stdout.truncated);
     assert!(!output.record.stderr.truncated);
+    assert!(output.record.stdout.complete);
+    assert!(output.record.stderr.complete);
 }
 
 #[cfg(target_os = "linux")]
 #[test]
-fn tool_01_runner_reports_an_orphaned_escapee_as_unobserved() {
+fn tool_01_runner_marks_a_stream_held_by_an_orphaned_escapee_incomplete() {
     // Documented limit: the escapee is orphaned before the timeout, so no ppid
     // chain leads to it. The run is still returned, timed_out, with the stream
-    // the escapee holds marked truncated (nothing observed).
+    // the escapee holds marked incomplete. Nothing was read from it, so the
+    // counts are zero and the digest is the empty-input digest, but `complete`
+    // says that this is "never reached EOF", not "the tool wrote nothing", and
+    // `truncated` stays false because no cap was exceeded.
     let mut cfg = config();
     cfg.timeout = Duration::from_millis(300);
     let started = Instant::now();
@@ -313,9 +326,39 @@ fn tool_01_runner_reports_an_orphaned_escapee_as_unobserved() {
         started.elapsed()
     );
     assert!(output.record.exit.timed_out);
-    assert!(output.record.stdout.truncated);
+    assert!(!output.record.stdout.complete);
+    assert!(!output.record.stdout.truncated);
     assert_eq!(output.record.stdout.bytes_total, 0);
-    assert!(!output.record.stderr.truncated);
+    assert_eq!(output.record.stdout.sha256, EMPTY_SHA256);
+    assert!(output.record.stderr.complete);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn tool_01_runner_keeps_partial_output_of_an_incomplete_stream() {
+    // An orphaned escapee writes a line and then keeps stdout open. The bytes
+    // read before the runner gave up, and the digest of exactly those bytes,
+    // are kept and the stream is marked incomplete.
+    let mut cfg = config();
+    cfg.timeout = Duration::from_millis(500);
+    let output = run_ok(
+        &cfg,
+        &request(&[
+            "/bin/sh",
+            "-c",
+            "(setsid sh -c 'echo partial; sleep 7' 2>/dev/null &); sleep 30",
+        ]),
+    );
+
+    assert!(output.record.exit.timed_out);
+    let stdout = &output.record.stdout;
+    assert!(!stdout.complete);
+    assert!(!stdout.truncated);
+    assert_eq!(output.stdout, b"partial\n");
+    assert_eq!(stdout.bytes_total, 8);
+    assert_eq!(stdout.bytes_stored, 8);
+    assert_eq!(stdout.sha256, sha256_hex(b"partial\n"));
+    assert!(output.record.stderr.complete);
 }
 
 #[test]
@@ -386,6 +429,26 @@ fn tool_01_run_record_json_is_deterministic() {
         .collect();
     let expected_exit: BTreeSet<&str> = ["code", "signal", "timed_out"].into_iter().collect();
     assert_eq!(exit_keys, expected_exit);
+    for stream in ["stdout", "stderr"] {
+        let keys: BTreeSet<&str> = value[stream]
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        let expected: BTreeSet<&str> = [
+            "bytes_stored",
+            "bytes_total",
+            "complete",
+            "sha256",
+            "truncated",
+        ]
+        .into_iter()
+        .collect();
+        assert_eq!(keys, expected, "{stream}");
+        assert_eq!(value[stream]["complete"], true, "{stream}");
+    }
+    assert_eq!(value["schema_version"], 2);
     for banned in ["duration", "elapsed", "timestamp", "started", "finished"] {
         assert!(!first.contains(banned), "record mentions {banned}");
     }

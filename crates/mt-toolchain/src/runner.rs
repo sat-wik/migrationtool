@@ -43,7 +43,7 @@ use std::io::{self, Read};
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -56,7 +56,7 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 
 /// Version of the serialized [`RunRecord`] schema.
-pub const RUN_RECORD_SCHEMA_VERSION: u32 = 1;
+pub const RUN_RECORD_SCHEMA_VERSION: u32 = 2;
 
 /// Default per-stream storage cap (CONTEXT D-18): 16 MiB.
 pub const DEFAULT_OUTPUT_CAP: usize = 16 * 1024 * 1024;
@@ -143,14 +143,23 @@ pub struct ExitRecord {
 /// What was captured from one output stream.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct StreamRecord {
-    /// Lowercase hex sha256 of every byte the child wrote.
+    /// Lowercase hex sha256 of every byte read from the pipe. It covers every
+    /// byte the child wrote only when `complete` is true.
     pub sha256: String,
-    /// Total bytes the child wrote.
+    /// Total bytes read from the pipe.
     pub bytes_total: u64,
     /// Bytes kept in memory (at most the cap).
     pub bytes_stored: u64,
-    /// True when `bytes_total` exceeded the cap.
+    /// True when `bytes_total` exceeded the cap: bytes were read and hashed but
+    /// not stored. It says nothing about `complete`.
     pub truncated: bool,
+    /// True when the pipe reached end-of-file, so the record covers the whole
+    /// stream. False means a process the runner could not find still held the
+    /// pipe open when the runner stopped waiting: `sha256` and the byte counts
+    /// then describe only the partial output read up to that point (an empty
+    /// stream is a different thing: `complete` true with zero bytes), and the
+    /// stream must not be read as the tool's whole output.
+    pub complete: bool,
 }
 
 /// The versioned record of one run (becomes evidence in Phase 11).
@@ -256,91 +265,134 @@ fn hex(bytes: &[u8]) -> String {
     text
 }
 
+/// What a reader thread has read from one pipe so far. The thread updates it
+/// per chunk, so the supervisor can take a snapshot (the bytes, the byte count
+/// and the running digest) even when the pipe never reaches end-of-file.
+struct Partial {
+    hasher: Sha256,
+    stored: Vec<u8>,
+    total: u64,
+}
+
+/// Lock the shared state. A poisoned lock only means a reader thread panicked
+/// after a complete update, so the data is still consistent.
+fn lock(shared: &Mutex<Partial>) -> MutexGuard<'_, Partial> {
+    shared.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
 /// Drain a pipe to EOF: hash every byte, store only the first `cap` bytes.
-fn drain<R: Read>(mut reader: R, cap: usize) -> io::Result<Captured> {
-    let mut hasher = Sha256::new();
-    let mut stored: Vec<u8> = Vec::new();
-    let mut total: u64 = 0;
+fn drain<R: Read>(mut reader: R, cap: usize, shared: &Mutex<Partial>) -> io::Result<()> {
     let mut buf = vec![0u8; READ_CHUNK];
     loop {
         let n = match reader.read(&mut buf) {
-            Ok(0) => break,
+            Ok(0) => return Ok(()),
             Ok(n) => n,
             Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
         };
         let chunk = &buf[..n];
-        hasher.update(chunk);
-        total += n as u64;
-        let room = cap.saturating_sub(stored.len());
-        stored.extend_from_slice(&chunk[..n.min(room)]);
-    }
-    let bytes_stored = stored.len() as u64;
-    Ok(Captured {
-        record: StreamRecord {
-            sha256: hex(&hasher.finalize()),
-            bytes_total: total,
-            bytes_stored,
-            truncated: total > bytes_stored,
-        },
-        stored,
-    })
-}
-
-/// Start a reader thread for one pipe and return the channel its result arrives on.
-fn spawn_reader<R: Read + Send + 'static>(
-    reader: R,
-    cap: usize,
-) -> mpsc::Receiver<io::Result<Captured>> {
-    let (tx, rx) = mpsc::channel();
-    thread::spawn(move || {
-        // The receiver may already be gone after a timeout; nothing to do then.
-        let _ = tx.send(drain(reader, cap));
-    });
-    rx
-}
-
-fn collect(
-    rx: &mpsc::Receiver<io::Result<Captured>>,
-    stream: &'static str,
-) -> Result<Captured, RunnerError> {
-    match rx.recv_timeout(DRAIN_GRACE) {
-        Ok(result) => Ok(result?),
-        Err(mpsc::RecvTimeoutError::Timeout) => Err(RunnerError::OutputNotDrained { stream }),
-        Err(mpsc::RecvTimeoutError::Disconnected) => Err(RunnerError::Io(io::Error::other(
-            format!("{stream} reader thread ended without a result"),
-        ))),
+        let mut state = lock(shared);
+        state.hasher.update(chunk);
+        state.total += n as u64;
+        let room = cap.saturating_sub(state.stored.len());
+        state.stored.extend_from_slice(&chunk[..n.min(room)]);
     }
 }
 
-/// Capture to report for a stream that never reached end-of-file because a
-/// descendant that [`kill_tree`] could not find still holds the pipe after a
-/// timeout. Nothing was observed, so the digest is of the empty input and the
-/// stream is flagged `truncated`. The run is already `timed_out`, which every
-/// consumer reads as "not proven".
-fn unobserved() -> Captured {
-    Captured {
-        record: StreamRecord {
-            sha256: hex(&Sha256::new().finalize()),
-            bytes_total: 0,
-            bytes_stored: 0,
-            truncated: true,
-        },
+/// The reader thread of one pipe: its shared state and a channel that signals
+/// end-of-file (or a read error).
+struct StreamReader {
+    shared: Arc<Mutex<Partial>>,
+    done: mpsc::Receiver<io::Result<()>>,
+    finished: Option<io::Result<()>>,
+}
+
+/// Start a reader thread for one pipe.
+fn spawn_reader<R: Read + Send + 'static>(reader: R, cap: usize) -> StreamReader {
+    let shared = Arc::new(Mutex::new(Partial {
+        hasher: Sha256::new(),
         stored: Vec::new(),
+        total: 0,
+    }));
+    let (tx, done) = mpsc::channel();
+    let thread_shared = Arc::clone(&shared);
+    thread::spawn(move || {
+        // The receiver may already be gone after an abandoned run; nothing to do then.
+        let _ = tx.send(drain(reader, cap, &thread_shared));
+    });
+    StreamReader {
+        shared,
+        done,
+        finished: None,
     }
 }
 
-/// [`collect`], except that after a timeout an undrained pipe is reported as
-/// unobserved instead of discarding the whole record.
-fn collect_after_run(
-    rx: &mpsc::Receiver<io::Result<Captured>>,
-    stream: &'static str,
-    timed_out: bool,
-) -> Result<Captured, RunnerError> {
-    match collect(rx, stream) {
-        Err(RunnerError::OutputNotDrained { .. }) if timed_out => Ok(unobserved()),
-        other => other,
+impl StreamReader {
+    /// Wait until the pipe reaches end-of-file or `until` passes. True when the
+    /// reader has finished (successfully or with a read error).
+    fn wait(&mut self, until: Instant) -> bool {
+        if self.finished.is_some() {
+            return true;
+        }
+        let left = until.saturating_duration_since(Instant::now());
+        match self.done.recv_timeout(left) {
+            Ok(result) => self.finished = Some(result),
+            Err(mpsc::RecvTimeoutError::Timeout) => return false,
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                self.finished = Some(Err(io::Error::other(
+                    "reader thread ended without a result",
+                )));
+            }
+        }
+        true
     }
+
+    /// Everything read so far. `complete` is true only when the pipe reached
+    /// end-of-file; otherwise the digest and counts describe the bytes read up
+    /// to now (partial), and the reader thread is left to finish on its own.
+    ///
+    /// # Errors
+    /// [`RunnerError::Io`] when the reader hit a read error.
+    fn into_captured(self, stream: &'static str) -> Result<Captured, RunnerError> {
+        let complete = match self.finished {
+            Some(Ok(())) => true,
+            Some(Err(source)) => {
+                return Err(RunnerError::Io(io::Error::new(
+                    source.kind(),
+                    format!("reading {stream}: {source}"),
+                )));
+            }
+            None => false,
+        };
+        let mut state = lock(&self.shared);
+        let bytes_stored = state.stored.len() as u64;
+        let record = StreamRecord {
+            sha256: hex(&state.hasher.clone().finalize()),
+            bytes_total: state.total,
+            bytes_stored,
+            truncated: state.total > bytes_stored,
+            complete,
+        };
+        let stored = std::mem::take(&mut state.stored);
+        Ok(Captured { record, stored })
+    }
+}
+
+/// Wait for both readers until `until`, then take what each has read. A pipe
+/// that is still open (a process the runner could not find holds it) is
+/// reported as incomplete, with the partial bytes, never discarded.
+fn collect_streams(
+    stdout: StreamReader,
+    stderr: StreamReader,
+    until: Instant,
+) -> Result<(Captured, Captured), RunnerError> {
+    let (mut stdout, mut stderr) = (stdout, stderr);
+    stdout.wait(until);
+    stderr.wait(until);
+    Ok((
+        stdout.into_captured("stdout")?,
+        stderr.into_captured("stderr")?,
+    ))
 }
 
 /// The fields of `/proc/<pid>/stat` that [`kill_tree`] needs.
@@ -437,8 +489,8 @@ fn descendants(table: &BTreeMap<i32, ProcStat>, root: i32) -> BTreeSet<i32> {
 /// - A descendant whose ancestry was cut before the timeout is not found, for
 ///   example a double fork whose middle process already exited, so the
 ///   descendant was reparented to init or a subreaper. If it holds a pipe, the
-///   run is still returned as `timed_out` with that stream marked truncated
-///   (see [`unobserved`]).
+///   run is still returned as `timed_out`, with that stream marked
+///   `complete: false` and holding the partial output read so far.
 /// - Without `/proc` or pidfd support (kernel below 5.3, or a seccomp filter),
 ///   only the child's group is signalled.
 /// - `PR_SET_CHILD_SUBREAPER` was rejected: it is process-wide, and it would
@@ -532,7 +584,8 @@ fn supervise(child: &mut Child, timeout: Duration) -> io::Result<(ExitStatus, bo
 ///   [`RunnerError::is_not_found`]).
 /// - [`RunnerError::OutputNotDrained`] when a pipe stays open after the child
 ///   ended normally. After a timeout the record is returned instead, with
-///   `timed_out` set and the undrained stream marked `truncated`.
+///   `timed_out` set and the undrained stream marked `complete: false` (its
+///   partial bytes and running digest are kept).
 /// - [`RunnerError::Io`] for any other supervision failure.
 pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerError> {
     let (program, args) = req.argv.split_first().ok_or(RunnerError::EmptyArgv)?;
@@ -578,8 +631,8 @@ pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerErro
             "child pipes were not created",
         )));
     };
-    let stdout_rx = spawn_reader(stdout_pipe, cfg.output_cap);
-    let stderr_rx = spawn_reader(stderr_pipe, cfg.output_cap);
+    let stdout_reader = spawn_reader(stdout_pipe, cfg.output_cap);
+    let stderr_reader = spawn_reader(stderr_pipe, cfg.output_cap);
 
     let (status, timed_out) = match supervise(&mut child, cfg.timeout) {
         Ok(result) => result,
@@ -589,8 +642,15 @@ pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerErro
         }
     };
 
-    let stdout = collect_after_run(&stdout_rx, "stdout", timed_out)?;
-    let stderr = collect_after_run(&stderr_rx, "stderr", timed_out)?;
+    let (stdout, stderr) =
+        collect_streams(stdout_reader, stderr_reader, Instant::now() + DRAIN_GRACE)?;
+    if !timed_out {
+        for (name, captured) in [("stdout", &stdout), ("stderr", &stderr)] {
+            if !captured.record.complete {
+                return Err(RunnerError::OutputNotDrained { stream: name });
+            }
+        }
+    }
 
     let record = RunRecord {
         schema_version: RUN_RECORD_SCHEMA_VERSION,
