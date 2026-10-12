@@ -6,7 +6,7 @@
     {
       "number": "1",
       "name": "Pinned Toolchain Container",
-      "status": "in_progress"
+      "status": "complete"
     },
     {
       "number": "2",
@@ -66,8 +66,8 @@
   ],
   "next": {
     "command": "/gsd:progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 01 of 12 · executing"
+    "label": "Advance to the next step (plan phase 2)",
+    "reason": "Phase 2 of 12 — needs a plan"
   },
-  "updated_at": "2026-10-10T03:26:55.052Z"
+  "updated_at": "2026-10-12T03:52:08.021Z"
 }

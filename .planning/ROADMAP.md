@@ -26,7 +26,7 @@ Phase sizing: each phase is meant to be finishable in 1-2 weeks of part-time wor
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Pinned Toolchain Container** - Reproducible container, one LLVM pin in 16-19, subprocess runner, Rust workspace skeleton
+- [x] **Phase 1: Pinned Toolchain Container** - Reproducible container, one LLVM pin in 16-19, subprocess runner, Rust workspace skeleton (completed 2026-10-12)
 - [ ] **Phase 2: Test Bed and Build Capture** - 10-20 pinned C parsers whose real builds are captured and replayed exactly per configuration
 - [ ] **Phase 3: Equivalence Contract and Test-Vector Schema** - Refinement contract, TRACTOR-compatible vectors, deterministic C reference executor
 - [ ] **Phase 4: UB Detection and Decision Log** - Separate sanitizer builds, -O0 vs real-flags differential, symbolic C scan, UB decisions log
@@ -52,7 +52,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Building the container image twice from the same inputs produces identical tool-version manifests, and every base image and tool source is pinned by digest, commit or checksum with no floating tags.
   4. Inside the container a trivial `no_std` crate builds for `thumbv7em-none-eabihf`, the workspace launches an analyser through the subprocess runner with stdout, stderr, exit status and version stamp captured, and a repository check fails on any Python source outside `research/`.
 
-**Plans:** 9/9 plans executed (01-09 is gap closure)
+**Plans:** 9/9 plans complete (01-09 is gap closure)
 
 Plans:
 **Wave 1**
@@ -234,7 +234,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Pinned Toolchain Container | 9/9 | In Progress | - |
+| 1. Pinned Toolchain Container | 9/9 | Complete    | 2026-10-12 |
 | 2. Test Bed and Build Capture | 0/0 | Not started | - |
 | 3. Equivalence Contract and Test-Vector Schema | 0/0 | Not started | - |
 | 4. UB Detection and Decision Log | 0/0 | Not started | - |

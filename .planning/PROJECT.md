@@ -23,13 +23,12 @@ Full list, IDs and traceability: `.planning/REQUIREMENTS.md`. Roadmap: `.plannin
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Pinned, reproducible container with one LLVM (16) for all C-side analysis; analysers run as subprocesses (TOOL-01..04) — Phase 1 (verified 2026-10-12; image ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee, manifest-identical builds; LLVM pin provisional until Phase 6 R1)
 
 ### Active
 
 Milestone v1.0 MVP (spec months 0-3), 63 requirements across 12 phases:
 
-- [ ] Pinned, reproducible container with one LLVM (16-19) for all C-side analysis; analysers run as subprocesses (TOOL)
 - [ ] Test bed of 10-20 open-source C parsers whose real builds are captured and replayed exactly, per shipped configuration (BED, BUILD)
 - [ ] Equivalence contract v0 (refinement) and a TRACTOR-compatible test-vector schema, with a C reference executor (EQV)
 - [ ] UB detection: separate ASan+UBSan and MSan builds, -O0 vs real-flags differential, C-side symbolic scan, UB decisions log with error default (UB)
@@ -163,6 +162,8 @@ For the open-source test bed the UB-decision approver is recorded as the founder
 | Separate ASan+UBSan and MSan builds (D-07) | MSan cannot share a build with ASan | Pending — Phase 4 |
 | Single LLVM pin in 16-19 (D-08) | KLEE, Hayroll and c2rust version limits | Pending — provisional in Phase 1, final after R1 in Phase 6 |
 | Provisional pin llvm=16, bitcode rustc 1.72.1 (D-15) | LLVM 16 is the major KLEE 3.2 recommends, and rustc 1.72.1 reports LLVM 16.0.5, within the bitcode bound of at most 19 | Provisional — final after the Phase 6 R1 verdict |
+| GHCR publishes from `main` only; every pin-bound install runs in `RUN --network=none` (Phase 1 review WR-04/06/08/09) | An image is published only after both builds match and only from the reviewed branch; offline installs prove nothing outside the pins reaches the image | Done — Phase 1 |
+| Runner kills the whole process tree on timeout (pidfd on Linux, process group elsewhere) (Phase 1 review WR-01/10/11/13) | Analysers fork; a surviving descendant could hold pipes or keep running | Partial — a `setsid` escapee after a normal exit can survive (WR-13 residual); close before KLEE runs through the runner |
 | Hayroll behind an adapter, licence-gated (D-09) | Licence unconfirmed; keep it swappable | Pending — Phase 8 |
 | R1 required spike, R2 time-boxed (D-10) | Both are unproven; each decides how the evidence layer is built | Pending — Phase 6 |
 | MVP "full evidence" excludes Kani (D-14) | Kani is spec-v1 and R2 is unproven | Assumed — confirm (A-01) |
@@ -202,4 +203,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-07 after initialization (ingest of ADR-0001, product spec, VERIFICATION, literature map)*
+*Last updated: 2026-10-12 after Phase 1*
