@@ -1,28 +1,27 @@
 ---
 phase: 01-pinned-toolchain-container
-reviewed: 2026-10-12T00:00:00Z
-update_diff_base: 214730673de4ccc65252bdde9f24b7c280dd19aa
+reviewed: 2026-10-12T05:00:00Z
+update_diff_base: 53faae5d5d4deb0e0f2fd3cf76f22a1f59ea4092
 depth: standard
-files_reviewed: 13
+files_reviewed: 12
 files_reviewed_list:
+  - .github/workflows/ci.yml
   - .github/workflows/container.yml
+  - .github/workflows/pin-discovery.yml
   - Cargo.toml
   - container/Dockerfile
   - container/README.md
-  - crates/mt-toolchain/Cargo.toml
+  - container/pins.toml
   - crates/mt-toolchain/src/check.rs
   - crates/mt-toolchain/src/fetch.rs
   - crates/mt-toolchain/src/runner.rs
-  - crates/mt-toolchain/src/version.rs
-  - crates/mt-toolchain/tests/check_and_manifest.rs
   - crates/mt-toolchain/tests/container_static.rs
-  - crates/mt-toolchain/tests/repo_checks.rs
   - crates/mt-toolchain/tests/tool_01_runner.rs
 findings:
   critical: 0
-  warning: 5
-  info: 18
-  total: 23
+  warning: 1
+  info: 21
+  total: 22
 status: issues_found
 ---
 
@@ -30,21 +29,21 @@ status: issues_found
 
 **Reviewed:** 2026-10-12
 **Depth:** standard
-**Files Reviewed:** 13 (the files changed since `214730673de4ccc65252bdde9f24b7c280dd19aa` that are source, workflow, Dockerfile, README or tests)
+**Files Reviewed:** 12 (the files changed since `53faae5d5d4deb0e0f2fd3cf76f22a1f59ea4092`: workflows, Cargo.toml, Dockerfile, README, pins, runner, check, fetch and two test files)
 **Status:** issues_found
 
 ## Summary
 
-This pass re-reviews the fixes for CR-01 and WR-01..WR-07 and the residual hardening (pidfd and process-group kill in `runner.rs`, `RUN --network=none` in the Dockerfile, per-archive manifest binding, and the separate `publish` job). I traced the runner, the Dockerfile RUNs and the workflow gate by hand against the source. I also checked the vendored rustix 1.1.5 source for the API gating. I did not rebuild the image or run CI.
+This pass re-reviews the fixes for WR-08..WR-12: the pinned klee-uclibc locale tarball with an offline `make`, publishing from `main` only, the cfg-gated runner for macOS, the `complete` flag with partial output (schema version 2), the `waitid(WNOWAIT)` descendant kill after a normal exit, and `FetchError::Incomplete`.
 
-All eight prior blocking and warning findings are resolved or substantively resolved, and I found no new critical issue. The runner's escape handling is sound: the group is stopped first, descendants are walked by ppid, each is pinned with a pidfd plus a start-time check, and nothing signals a bare pid. The Dockerfile now installs only from files whose hashes were checked in a previous networked RUN, and the offline RUN re-proves record, mirror and manifests before the first install. The tests use no network. The publish job holds the only `packages: write`, loads an archive whose hash and image id it checks against the producing job, and refuses to move an existing tag.
+I traced the runner's supervise, kill and collect paths by hand. I ran `cargo test -p mt-toolchain --test tool_01_runner` (17 passed). I installed `aarch64-apple-darwin` temporarily and ran `cargo check` and `cargo clippy -D warnings` for it on the whole workspace (both clean), then removed the target. I did not rebuild the image or run CI.
 
-What remains is narrower:
+All five fixes work as described, and I found no critical issue. The runner's timeout path is sound:
+- The child leads its own group and is never reaped before the kill.
+- `waitid(NOHANG | NOWAIT)` keeps an exited child as a zombie, so its pid and group id cannot be reused before the group kill.
+- Escaped descendants are pinned by pidfd plus a start-time check, so pid reuse cannot redirect a signal.
 
-1. One build step still downloads an unchecksummed tarball, and the Dockerfile's own header says that never happens (WR-08).
-2. Publishing is open to a hard-coded feature branch with `packages: write` (WR-09).
-3. The runner now compiles only on Linux, while the README tells the founder to run `mt` natively on a Mac (WR-10).
-4. Two runner edge cases still lose or leak (WR-11, WR-12).
+The one defect worth fixing is in the new post-exit path (WR-13). After a normal exit the `/proc` parent walk cannot find any escaped descendant, because the kernel has already reparented them. The record still says `descendants_killed: true`. `check.rs` and `fetch.rs` treat incomplete streams correctly: neither parses nor hashes a partial stream.
 
 No structural (fallow) findings were supplied for this review.
 
@@ -52,120 +51,80 @@ No structural (fallow) findings were supplied for this review.
 
 | ID | Verdict | Evidence |
 |----|---------|----------|
-| CR-01 | resolved | Mirror built from hash-checked manifests and archives: `container/Dockerfile:200-242`. Offline install proves record, mirror and manifest equality before the first install and checks the stored update-hash against the pins: `:252-308`. Crates are installed with `--offline --path` from the checked, unpacked `.crate`: `:360-403`. Gate: `.github/workflows/container.yml:252-438`. |
-| WR-01 | resolved | `process_group(0)` at `runner.rs:529`. `kill_tree` (STOP group, pidfd walk with start-time check, KILL held pidfds, KILL group) at `:423-461`. `abort` on every early return at `:465-469`, `:539`, `:550`. A timeout with an undrained pipe now returns the record with the stream marked unobserved: `:315-324`. No external `kill` program (single `Command::new` at `:520`). Residuals are WR-11, WR-12 and IN-18. |
-| WR-02 | resolved | `curl_argv` has `-q` first, `--globoff`, `--max-redirs 5`: `fetch.rs:46-63`, used at `:92`. Glob and argv tests at `check_and_manifest.rs:764-785`. Residual is IN-15 (curl's message is still discarded). |
-| WR-03 | resolved | `regex_major` collects every match in both streams and fails on more than one distinct major: `check.rs:730-775`, `version.rs:113-120`. Mixed-major and repeated-major tests at `check_and_manifest.rs:152-187`. |
-| WR-04 | partially | Publishing moved to a separate `publish` job that needs `image-a`, `image-b` and `compare` and holds the only `packages: write`: `container.yml:844-1019`. Archive hash and image id are checked before login: `:897-921`. An existing `sha-<commit>` tag is never moved: `:933-960`. Cancel group is per event type and only cancels pull_request runs: `:52-54`. Not fully resolved: the guard still admits a hard-coded feature branch (WR-09). |
-| WR-05 | resolved | `process_launch_violations` handles grouped, aliased, glob and module imports and the lint mention: `repo_checks.rs:120-162`. Positive, negative and planted-file tests at `:190-250`. |
-| WR-06 | resolved | Installs run in `RUN --network=none` (`Dockerfile:187`, `:252`, `:322`, `:386`, `:426`, `:445`). Per-command lint with parsed wrappers, tar `-C` binding and a stage-scoped evidence reset: `container_static.rs:296-788`. Residual: one build step stays networked (WR-08), and the lint is explicitly not a sandbox. |
-| WR-07 | resolved | Offline RUN checks each archive line against its manifest's `xz_hash`/`xz_url` pair: `Dockerfile:252-292`. The gate reads the kept manifests from the image and checks the archive lines, the cargo ledger source and the update-hash: `container.yml:313-438`. Witness wording fixed at `:324` and `:426`. Residual is IN-12 (the gate logic has no executable test). |
+| CR-01 | resolved | Unchanged by this diff. The Dockerfile change touches only the `klee-build` stage; the mirror, the offline install and the gate are as before (`container/Dockerfile:200-403`, `.github/workflows/container.yml:252-438`). |
+| WR-01 | resolved | Timeout path intact: `process_group(0)` at `runner.rs:667`; `kill_tree` (STOP group, pidfd walk with start-time check, KILL held pidfds, KILL group) at `:511-550`; `abort` on early returns at `:565-569`, `:677`, `:688`, `:709`. The child is unreaped when `kill_tree` runs on every path (`:605-620`, `:697-705`), so the group id cannot be reused. One race I traced: the child exits between the `waitid` poll and the STOP, its children are reparented, and an escapee is missed on a timeout. The group kill still works, and WR-13 covers the same limit. |
+| WR-02 | resolved | Unchanged: `curl_argv` at `fetch.rs:50-67`. |
+| WR-03 | resolved | Unchanged. |
+| WR-04 | resolved | Previously partial because of the hard-coded branch. The guard is now `github.event_name == 'push' && github.ref == 'refs/heads/main'` at `container.yml:598`, `:627` and `:845`, and `publish` holds the only `packages: write` (`:850`). `container_static.rs:2407-2411` and the new assertions at `:2477-2492` fix the guard and the three-occurrence count. |
+| WR-05 | resolved | Unchanged. |
+| WR-06 | resolved | Every install and build step is `RUN --network=none`; the only networked RUNs download or clone and check against a pin in the same RUN. The klee-uclibc `make` moved offline (`Dockerfile:449-451`), `NETWORKED_STEPS` is empty (`container_static.rs:620`), and the new test forbids a `# Remains networked:` label. |
+| WR-07 | resolved | Unchanged. |
+| WR-08 | resolved | `[source.klee_uclibc_locale]` at `container/pins.toml:84-94`. The clone RUN downloads the tarball into `extra/locale/`, asserts the Makefile names that file, and runs `sha256sum -c` against the pin (`Dockerfile:436-445`). `make` is `RUN --network=none` (`:449-451`). `pin-discovery.yml:115-123` recomputes the checksum. The header comment is updated (`Dockerfile:17-22`). Residuals are in IN-09 and IN-11. |
+| WR-09 | resolved | `container.yml:598`, `:627` and `:845` name only `refs/heads/main`. The test requires exactly three `refs/heads/` occurrences and no `claude/` ref (`container_static.rs:2477-2492`). |
+| WR-10 | resolved | The pidfd and `/proc` code is `#[cfg(target_os = "linux")]` (`runner.rs:46-61`, `:409-550`). A portable `kill_process_group` fallback is at `:558-561`, and a non-unix host hits `compile_error!` (`:39-43`). The README states the macOS limits (`README.md:110-116`). `ci.yml:35-40` type-checks `aarch64-apple-darwin`. I reproduced a clean `cargo check` and `cargo clippy -D warnings` for that target. |
+| WR-11 | partially | The mechanism is sound. `waitid(EXITED \| NOHANG \| NOWAIT)` leaves the zombie, which holds the pid (`runner.rs:575-587`). After `drain_grace` the group is killed and the record is returned with the real exit code (`:693-712`). A group member holding a pipe is killed, as the new test shows (`tool_01_runner.rs`). A descendant that left the group through `setsid` is never found after a normal exit, so the process is left running and the old failure persists for it. See WR-13. |
+| WR-12 | resolved | `StreamRecord::complete` with partial bytes and the digest of exactly those bytes: `runner.rs:279-292`, `:361-389`. `truncated` again means only "cap exceeded" (`:170-172`). `RUN_RECORD_SCHEMA_VERSION` is 2 (`:66`). The tests assert the key set and the partial digest. |
 
 ## Warnings
 
-### WR-08: One build step still downloads an unchecksummed tarball, contradicting the Dockerfile's own header, and nothing in the manifest or gate would notice a change
+### WR-13: After a normal exit the descendant sweep cannot find escaped processes, yet the record says `descendants_killed: true`
 
-**File:** `container/Dockerfile:9-10`, `:431-440`; `crates/mt-toolchain/tests/container_static.rs:618-621`, `:1596-1636`
-**Issue:**
-- `cd /src/klee-uclibc && make` runs in a networked RUN. Its Makefile fetches `uClibc-locale-030818.tgz` from `www.uclibc.org` with no checksum, and the result is compiled into `libc.a` and then into `klee-uclibc.bca`, which KLEE ships in the image.
-- The file's header (lines 9-10) says the Dockerfile has "no unpinned download". The README discloses the exception (`README.md:221-223`) but the Dockerfile header and the `verified-image` announcement do not.
-- The manifest holds only pins and row status words (see IN-11). `image-a` and `image-b` could therefore differ in this input and still compare equal, and the "manifest-identical" claim does not cover it.
-- The whole `make` runs with network access, so it can fetch anything else the klee-uclibc Makefile decides to. `NETWORKED_STEPS` is a one-entry allowlist that makes the static test pass as long as a comment repeats the reason string. It does not require a plan to remove the exception.
+**File:** `crates/mt-toolchain/src/runner.rs:464-481`, `:511-550`, `:693-705`, `:149-157`; `crates/mt-toolchain/tests/tool_01_runner.rs` (`..._normal_exit_with_an_orphaned_escapee_is_incomplete_not_an_error`)
+**Issue:** `kill_tree` finds escapees by walking `ppid` links down from the child (`descendants(&table, root)`). That works on the timeout path because the child is still alive. On the new post-exit path the child is a zombie, and the kernel reparented its living children to init (or a subreaper) at the moment it exited. So `descendants(.., root)` returns the empty set for every escapee, not only for the double-fork case the fix report lists. The scan makes one `/proc` pass and stops.
+- Only processes still in the child's own group are killed, by the group `SIGKILL`.
+- Failure path: a tool runs `setsid daemon &` (or a tool that daemonizes) and exits 0. The daemon keeps stdout open. After `drain_grace` the runner calls `kill_tree`, kills nothing, and sets `descendants_killed = true`. It then waits `drain_grace` again, returns `stdout.complete: false`, and the daemon keeps running. WR-11 asked for exactly this case to be cleaned up.
+- The test above passes only because it asserts the opposite of the success path: it checks `descendants_killed == true` and `!stdout.complete` together, so it records that the flag is true while the escapee is alive.
+- `descendants_killed` is documented as "the runner killed the child's process tree" (`:154-156`) and the module header says escapees are found by the `/proc` walk (`:13-24`). Phase 11 will read this flag as evidence that no tool process was left behind. It records only that the kill was attempted.
+- `REVIEW-FIX.md` lists the residual as a "double fork whose middle process already exited". That understates it: a direct `setsid` child of the tool is also missed after a normal exit.
 
-**Fix:**
-- Add a `[source.klee_uclibc_locale]` archive pin (URL and sha256) to `pins.toml`. Download and check it in the networked RUN that clones klee-uclibc, and place it where the Makefile looks for it. Verify the Makefile skips the download when the file is already present.
-- Then run `make` in `RUN --network=none` and empty `NETWORKED_STEPS`.
-- Until then, amend the header comment at lines 9-10 to name the exception.
-- Include `sha256sum` of `klee-uclibc.bca` in the manifest so a divergence in this input shows up in `manifest-diff`.
+**Fix:** Pick one or both of these:
+- Find the holders of the pipe instead of walking ancestry. Before the readers are spawned, take the inode of each pipe end (`fstat` on the `ChildStdout`/`ChildStderr` fd, or `readlink /proc/self/fd/N`). After the grace period, scan `/proc/*/fd/*` for links equal to `pipe:[inode]`. Pin each holder with `pidfd_open` plus the same start-time check and `SIGKILL` it. This works whatever the ancestry.
+- Or set `descendants_killed` only when `kill_tree` signalled at least one process other than the group leader. Change the doc text to "a kill was attempted", and rename the field (`tree_kill_attempted`) so a record cannot be read as "nothing was left running".
 
-### WR-09: Publishing with `packages: write` is open to a hard-coded feature branch
-
-**File:** `.github/workflows/container.yml:599`, `:628`, `:846`; `crates/mt-toolchain/tests/container_static.rs:2340`
-**Issue:** The publish guard is `push` to `refs/heads/main` or to `refs/heads/claude/gsd-discuss-phase-1-mzdw5v`.
-- Anyone with write access can push to that branch name (or delete and recreate it) and get an image published into the package that the README calls "the verified image". Branch protection on `main` does not cover it.
-- The name stays valid after the phase is merged, so a retired working branch keeps publish rights.
-- The branch name is repeated in three workflow places and in the `PUBLISH_GUARD` constant, which the test compares by exact string. Removing the branch means editing four places in lockstep.
-- WR-04's fix said to gate on `main`. The branch exception was added to keep evidence images from the phase branch.
-
-**Fix:** Gate on `refs/heads/main` only. If phase-branch images are still wanted, give `publish` a GitHub `environment:` with required reviewers or a deployment-branch rule, and keep the branch list in one repository variable. Update `PUBLISH_GUARD` and its count assertion (`container_static.rs:2407-2411`) together.
-
-### WR-10: The runner now compiles only on Linux, but the README tells the founder to run `mt` natively on a Mac
-
-**File:** `crates/mt-toolchain/src/runner.rs:34-35`, `:423-461`; `container/README.md:108-122`; `Cargo.toml:19-21`
-**Issue:** `runner.rs` imports `rustix::process::{pidfd_open, pidfd_send_signal, ...}` unconditionally and scans `/proc`. In rustix 1.1.5 `pidfd` is declared `#[cfg(target_os = "linux")]` (`src/process/mod.rs:29-30`), so these items do not exist on macOS and `mt-toolchain` fails to compile there.
-- The README's "Local build fallback" tells the reader to run `cargo run -q -p mt-cli -- toolchain build-args` and says this "runs natively on the Mac".
-- CLAUDE.md says the tool runs on Linux x86-64 hosts, so a Linux-only runner can be the intended design. The README was not updated to match, and the fallback is the documented path when the registry image is unavailable.
-- `mt toolchain hash` also depends on the runner.
-
-**Fix:** Pick one of two options:
-- Make the README match the constraint: render build args inside the pinned container or on a Linux host, and say `mt` is Linux-only.
-- Or gate the pidfd and `/proc` code with `#[cfg(target_os = "linux")]` and provide a fallback `kill_tree` that signals the group only.
-
-Either way, add a `compile_error!` or a clear note so the failure is intentional and not an unresolved-import error.
-
-### WR-11: A normal exit with a lingering descendant discards the result, leaves the process running and leaks a reader thread
-
-**File:** `crates/mt-toolchain/src/runner.rs:283-294`, `:547-556`
-**Issue:** WR-01 fixed the timeout path. When the child exits on its own but a descendant keeps stdout or stderr open (for example `sh -c 'sleep 30 & exit 0'`, or a tool that daemonizes), `collect` waits 5 s per stream and `run` returns `Err(OutputNotDrained)`.
-- The record, exit status and everything already captured are dropped.
-- Nothing kills the descendant, so it keeps running for as long as it likes.
-- The detached reader thread stays blocked on the pipe until that process exits.
-- `kill_tree` is deliberately not called here, since the child was already reaped by `try_wait` and its pid could be reused.
-
-**Fix:** Detect child exit without reaping (`rustix::process::waitid` with `WNOWAIT`, or poll `/proc/<pid>/stat` for `Z`), run `kill_tree` while the pid is still held, and then reap. If a stream still does not drain after that, return the record with the stream marked unobserved, as on the timeout path. Add a test with `sh -c 'sleep 30 & exit 0'` that checks the sleeper is gone.
-
-### WR-12: The "unobserved" stream record states false facts about what was captured and drops partial output
-
-**File:** `crates/mt-toolchain/src/runner.rs:132-133`, `:296-311`
-**Issue:** `unobserved()` returns `sha256` of the empty input, `bytes_total: 0`, `bytes_stored: 0` and `truncated: true`. The record is meant to become Phase 11 evidence.
-- A reader of the JSON sees an empty stream whose digest equals the empty-input digest, flagged `truncated`. `StreamRecord::truncated` is documented as "`bytes_total` exceeded the cap", which is false here.
-- Output the reader thread had already read is discarded with the thread. A timed-out tool's partial output is exactly what a diagnosis needs.
-- Consumers rely on `exit.timed_out` to read this as "not proven". The stream record itself carries no way to tell "empty" from "never observed".
-
-**Fix:** Add an explicit `observed: bool` (or make `sha256` `null`) and bump `RUN_RECORD_SCHEMA_VERSION`. Have the reader thread accumulate into shared state (`Arc<Mutex<..>>`) so a timeout can snapshot the bytes and the running digest. Report those bytes as partial, and update the `truncated` doc.
+Then correct the module header and the residual list, and add a test that an orphaned `setsid` holder is either killed or leaves `descendants_killed == false`.
 
 ## Info
 
 ### IN-01: Truncated captures are treated as complete observations
 
-**File:** `crates/mt-toolchain/src/check.rs:466-489`
-**Issue:** Still applies. `run_one` ignores `StreamRecord::truncated`, so output past the 16 MiB cap is dropped before the version regex or `dpkg` parsing sees it. A timeout is now also reported through `truncated`, but those runs are caught by `timed_out`.
+**File:** `crates/mt-toolchain/src/check.rs:466-499`
+**Issue:** Still applies. `run_one` now checks `complete` but ignores `StreamRecord::truncated`, so output past the 16 MiB cap is dropped before the version regex or `dpkg` parsing sees it.
 **Fix:** If either stream is `truncated`, return an `Observation` with `error: Some("output truncated")` so the row reads `not proven`.
 
 ### IN-02: `not_installed` tools are never verified absent
 
-**File:** `crates/mt-toolchain/src/check.rs:361-364`, `:657-667`
+**File:** `crates/mt-toolchain/src/check.rs:361-364`
 **Issue:** Still applies. Hayroll and Kani pass without a measurement, so installing either would keep the check green.
 **Fix:** Optionally probe the pinned install paths and report `MISMATCH` if they exist.
 
 ### IN-03: LLVM-family package detection gaps and a misleading comment
 
-**File:** `crates/mt-toolchain/src/version.rs:193-221`
-**Issue:** Still applies. `libllvm16t64` is recognised with the wrong major (64), not "not recognised" as the doc says. `lld`, `lldb`, `libc++`, `libomp` and `libpolly` packages are never inspected. Unversioned family packages are skipped.
+**File:** `crates/mt-toolchain/src/version.rs:193-221` (unchanged since the diff base; outside this review's file list)
+**Issue:** Still applies. `libllvm16t64` is recognised with the wrong major (64). `lld`, `lldb`, `libc++`, `libomp` and `libpolly` packages are never inspected.
 **Fix:** Correct the doc and extend `FAMILY_PREFIXES`. Consider flagging installed unversioned family packages.
 
 ### IN-04: A missing `cwd` or interpreter is reported as "program not found"
 
-**File:** `crates/mt-toolchain/src/runner.rs:520-534`, `crates/mt-toolchain/src/check.rs:477`
+**File:** `crates/mt-toolchain/src/runner.rs:658-672`, `crates/mt-toolchain/src/check.rs:491`
 **Issue:** Still applies. A nonexistent working directory and a missing shebang interpreter both surface as `ErrorKind::NotFound`, so `check` prints `MISSING` for every tool when the real fault is the cwd.
 **Fix:** Check `cwd.is_dir()` before spawning and return a distinct `RunnerError`.
 
 ### IN-05: Run record is lossy and does not identify the executable that ran
 
-**File:** `crates/mt-toolchain/src/runner.rs:558-579`
+**File:** `crates/mt-toolchain/src/runner.rs:720-733`
 **Issue:** Still applies. argv and cwd go through `to_string_lossy`, `tool.path` is `argv[0]` as given, and the version is whatever the caller supplied.
 **Fix:** Record non-UTF-8 arguments explicitly and record the resolved executable path or its sha256.
 
 ### IN-06: Pins validation does not cover every value the Dockerfile interpolates
 
-**File:** `crates/mt-toolchain/src/pins.rs:342-547` (unchanged since the diff base; outside this review's file list and not re-read)
-**Issue:** Still applies. Crate names and versions, archive versions, git tags, `image.base` and `rust.host` get no format check. The Dockerfile joins several with `:` and uses them as path components (`/tmp/crates/${name}-${version}`, `/tmp/rust-dist/dist/channel-rust-${version}.toml`).
+**File:** `crates/mt-toolchain/src/pins.rs:342-547` (unchanged; outside this review's file list and not re-read)
+**Issue:** Still applies. Crate names and versions, archive versions, git tags, `image.base` and `rust.host` get no format check. The new `klee_uclibc_locale.version` is one more value interpolated into a file name; the Dockerfile asserts the URL tail equals it (`Dockerfile:440`), which bounds the risk but is not a pins check.
 **Fix:** Validate names (`[a-z0-9_-]+`), versions, tags and host against strict patterns, and add the static bitcode-LLVM cross-check to `llvm_issues`.
 
 ### IN-07: Dead build arguments and no in-build assertion of the pinned rustc commit
 
 **File:** `container/Dockerfile:25`, `:46`, `:48`, `:52`, `:59`
-**Issue:** Still applies. `ARM_GNU_VERSION`, `RUSTUP_VERSION`, `RUST_BITCODE_COMMIT`, `RUST_TOOL_COMMIT` and `TINYCBOR_PARENT` are global ARGs used in no stage. The `rustc` commit is verified only after the build by `mt toolchain check`.
+**Issue:** Still applies. `ARM_GNU_VERSION`, `RUSTUP_VERSION`, `RUST_BITCODE_COMMIT`, `RUST_TOOL_COMMIT` and `TINYCBOR_PARENT` are global ARGs used in no stage.
 **Fix:** Add `rustc -vV | grep -q "commit-hash: ${RUST_TOOL_COMMIT}"` (and the bitcode equivalent) in the offline install RUN, or stop rendering the unused keys.
 
 ### IN-08: Final image runs as root and ships unpinned runtime packages
@@ -174,65 +133,83 @@ Either way, add a `compile_error!` or a clear note so the failure is intentional
 **Issue:** Still applies. The final stage has no `USER`. `ca-certificates`, `libsqlite3-0`, `zlib1g`, `libc6-dev`, `make` and `xz-utils` have no `[apt]` pin and no check row.
 **Fix:** Add `USER 65534:65534` or document root as intentional. Add the remaining packages to `[apt]` and the `pin-discovery` list.
 
-### IN-09: `pin-discovery` never compares the pinned Arm checksum
+### IN-09: `pin-discovery` never compares the pinned Arm checksum, and the README says it does
 
-**File:** `.github/workflows/pin-discovery.yml:110-112` (unchanged since the diff base; outside this review's file list)
-**Issue:** Still applies. The workflow fails only when the official `.sha256asc` differs from the computed digest. `ARM_GNU_SHA256` is printed (`:123`) but not compared.
+**File:** `.github/workflows/pin-discovery.yml:108-113`; `container/README.md:149-155`
+**Issue:** Still applies, and the new locale check makes it visible. The locale block fails when the pinned value differs from the computed one (`:121`). The Arm block fails only when the official `.sha256asc` differs from the computed digest; `ARM_GNU_SHA256` is printed but never compared. The README now says the workflow "fails when a pinned checksum differs from the computed one", which is false for Arm.
 **Fix:** Also fail when `$ARM_GNU_SHA256 != $computed`.
 
 ### IN-10: GHCR owner is hard-coded and the annotation helper is copied four times
 
-**File:** `.github/workflows/container.yml:937`, `:967`, `:1006`; helper copies at `:134-156`, `:676-698`, `:793-813`, `:864-886`
-**Issue:** Still applies and is worse. `annotate()` was pasted into `image-a`, `image-b` and `compare`, and the new `publish` job added a fourth copy. `ghcr.io/sat-wik/...` is a literal in three more places (and in the README and the test at `container_static.rs:2513-2516`).
-**Fix:** Keep one helper under `.github/scripts/` and `source` it after checkout, or upload it once in the `mt` job's bundle. Derive the image name from `github.repository_owner`, lower-cased in a step.
+**File:** `.github/workflows/container.yml:134-156`, `:676-698`, `:793-813`, `:864-886`; owner literal at `:937`, `:967`, `:1006`
+**Issue:** Still applies. `annotate()` is pasted into four jobs and `ghcr.io/sat-wik/...` is a literal in three places (and in the README and `container_static.rs`).
+**Fix:** Keep one helper under `.github/scripts/` and `source` it after checkout. Derive the image name from `github.repository_owner`, lower-cased in a step.
 
-### IN-11: The smoke step falls back to root on any unprivileged failure, and the manifest comparison proves little
+### IN-11: The smoke step falls back to root, and the manifest comparison proves little about installed content
 
-**File:** `.github/workflows/container.yml:566-578`; `crates/mt-toolchain/src/manifest.rs:121-172`
-**Issue:** Still applies. A build failure that only happens unprivileged is retried as root and passes with a warning. The manifest holds pins verbatim plus row status words, so it does not cover installed content (WR-08 is one example).
+**File:** `.github/workflows/container.yml:566-578`; `crates/mt-toolchain/src/manifest.rs:121-172`; `container/README.md:225-233`
+**Issue:** Still applies. A build failure that only happens unprivileged is retried as root and passes with a warning. The manifest holds pins verbatim plus row status words, so two builds could differ in installed content and compare equal. The locale tarball is a trust-on-first-use checksum from one host, it is not a line of the `pin-binding` record, and `klee-uclibc.bca` is not hashed into the manifest.
 **Fix:** Restrict the root fallback to a recognised permission-denied message. Add content digests (sorted `dpkg-query` hash, sha256 of each installed tool binary, `klee-uclibc.bca`) to the manifest.
 
 ### IN-12: The workflow tests are string-presence checks, and the gate's comparison logic has no executable test
 
-**File:** `crates/mt-toolchain/tests/container_static.rs:2343-2543`, `:2585-2660`, `:2663-2702`; `.github/workflows/container.yml:313-438`
-**Issue:** Still applies and grew with the new tests. They assert that substrings occur in the job text, so a commented-out step, `continue-on-error: true` or `if: false` still passes. The first-occurrence order checks are satisfied by comments. Nothing runs the gate's `grep -qxF` / prefix / `check_archives` logic. The archive-pair `awk` is duplicated byte for byte in `Dockerfile:257` and `container.yml:370`, with no test that they agree.
-**Fix:** Parse the YAML and assert on step structure (name, `if`, index, no `continue-on-error`). Move the gate logic to a script under `.github/scripts/` that takes the record, the pins and the manifests as files, and test it with a matching record, a changed line and a removed line. Source the same `pairs` awk from both places.
+**File:** `crates/mt-toolchain/tests/container_static.rs:2343-2543`, `:2585-2702`; `.github/workflows/container.yml:313-438`
+**Issue:** Still applies, and the new tests follow the same pattern. The new publish-guard assertions (`:2477-2492`) count substrings, so a commented-out guard line or `continue-on-error: true` still passes. Nothing runs the gate's `grep -qxF` / prefix / `check_archives` logic. The archive-pair `awk` is duplicated in `Dockerfile:257` and `container.yml:370` with no test that they agree.
+**Fix:** Parse the YAML and assert on step structure (name, `if`, no `continue-on-error`). Move the gate logic to a script under `.github/scripts/` and test it with a matching record, a changed line and a removed line.
 
-### IN-13: Manifest URL hardening is partial and the mirror downloads lack the usual curl options
+### IN-13: Manifest URL hardening is partial and the Dockerfile curl calls lack the usual options
 
-**File:** `container/Dockerfile:185`, `:210`, `:229-236`, `:372`
-**Issue:** Still applies. The URL filter is a prefix match plus a `..` ban. It accepts spaces, `?`, `#`, `%`, `[`, `{`, and a target path that equals the manifest or its sidecar. The `curl -fsSL` calls have no `--globoff`, `--proto =https` or `--proto-redir =https`. Every download is still hash-checked and the manifests are pinned, so this is hardening only.
-**Fix:** Add `--globoff --proto '=https' --proto-redir '=https'` to the Dockerfile curl calls. Accept only `[A-Za-z0-9._/-]` after the prefix and refuse a target that already exists.
+**File:** `container/Dockerfile:185`, `:210`, `:229-236`, `:372`, `:443`
+**Issue:** Still applies. The new locale download at `:443` is also `curl -fsSL` with no `--globoff`, `--proto '=https'` or `--proto-redir '=https'`. It is hash-checked in the same RUN, so this is hardening only.
+**Fix:** Add `--globoff --proto '=https' --proto-redir '=https'` to the Dockerfile curl calls. Accept only `[A-Za-z0-9._/-]` after a manifest URL prefix.
 
 ### IN-14: Dependency crates and tinycbor are bound indirectly
 
 **File:** `container/Dockerfile:330-347`, `:399-400`; `container/README.md:139-144`
-**Issue:** Partly improved. The Dockerfile comment now says the packaged `Cargo.lock` fixes every dependency under `--locked`, and tinycbor is cloned and checked with `rev-parse HEAD` in the networked RUN and redirected by `insteadOf` in the offline one. The README still does not mention dependency crates. The post-install `grep -q "${TINYCBOR_COMMIT}"` on `CMakeLists.txt` proves only that the string appears in the file, and the local clone holds the full history, so a different commit named in that file would still check out.
-**Fix:** Say in the README that dependency crates are bound through the packaged `Cargo.lock`. Tighten the check to `grep -Eq "GIT_TAG[[:space:]]+${TINYCBOR_COMMIT}"`, or clone with `--depth 1` at the pin so no other commit exists locally.
+**Issue:** Still applies. The README does not mention dependency crates. The post-install `grep -q "${TINYCBOR_COMMIT}"` on `CMakeLists.txt` proves only that the string appears.
+**Fix:** Say in the README that dependency crates are bound through the packaged `Cargo.lock`. Tighten the check to `grep -Eq "GIT_TAG[[:space:]]+${TINYCBOR_COMMIT}"`.
 
 ### IN-15: `mt toolchain hash` discards curl's error message
 
-**File:** `crates/mt-toolchain/src/fetch.rs:85-89`, `:102-106`
-**Issue:** `output_cap` is 0, so stderr is neither stored nor returned. `--show-error` has no visible effect and `FetchError::Failed` carries only the exit code. WR-02 listed a small stderr cap as optional and it was not added.
-**Fix:** Use a 4 KiB cap and include the (cleaned) stderr text in `FetchError::Failed`. The stdout digest still covers every byte.
+**File:** `crates/mt-toolchain/src/fetch.rs:89-93`, `:101-110`
+**Issue:** Still applies. `output_cap` is 0, so stderr is neither stored nor returned, and `FetchError::Failed` carries only the exit code. For the locale pin this matters: the host is unreachable from cloud sessions, and a failure prints only `exit code Some(6)`.
+**Fix:** Use a 4 KiB cap and include the cleaned stderr text in `FetchError::Failed`.
 
 ### IN-16: Dead `ProcStat` fields, and a source-grep test stands in for a behavioural one
 
-**File:** `crates/mt-toolchain/src/runner.rs:328-338`; `crates/mt-toolchain/tests/tool_01_runner.rs:318-332`
-**Issue:** `pgrp` and `session` are parsed and compared in the unit test but never used by `kill_tree`. `tool_01_runner_signals_without_spawning_a_kill_program` greps `runner.rs` for one `Command::new(` and no `/bin/kill`, so it breaks on a rename and does not prove no extra process is started.
-**Fix:** Drop the two fields, or use them (for example to skip processes already in the child's group). Replace the grep with a behavioural check, such as counting children created during a timeout run.
+**File:** `crates/mt-toolchain/src/runner.rs:409-422`; `crates/mt-toolchain/tests/tool_01_runner.rs` (`tool_01_runner_signals_without_spawning_a_kill_program`)
+**Issue:** Still applies. `pgrp` and `session` are parsed and compared in the unit test but never used by `kill_tree`. The test greps `runner.rs` for one `Command::new(` and no `/bin/kill`, which breaks on a rename and proves nothing about processes started.
+**Fix:** Drop the two fields, or use them. Replace the grep with a behavioural check.
 
 ### IN-17: The tag lookup regex is broad, and a push that fails after succeeding can never be announced or repaired
 
 **File:** `.github/workflows/container.yml:933-960`, `:962-996`
-**Issue:** `not found` in the lookup's stderr is treated as "absent", which also matches unrelated messages. If `docker push` succeeds but the later `docker inspect` or digest validation fails, the tag exists, so every rerun hits `exists=true`, skips the push and never announces `verified-image` for that commit.
-**Fix:** Match `MANIFEST_UNKNOWN` and `no such manifest` only. On the skip path, read the existing digest and compare it with the loaded image id, so a rerun can still announce a tag this workflow pushed.
+**Issue:** Still applies. `not found` in the lookup's stderr is treated as "absent". If `docker push` succeeds but the later `docker inspect` or digest validation fails, every rerun hits `exists=true`, skips the push and never announces `verified-image`. The `main` publish path has also not run since the guard changed (`REVIEW-FIX.md`, residual limits), so this path is unproven.
+**Fix:** Match `MANIFEST_UNKNOWN` and `no such manifest` only. On the skip path, compare the existing digest with the loaded image id so a rerun can still announce a tag this workflow pushed.
 
 ### IN-18: After a timeout the wait loop has no upper bound
 
-**File:** `crates/mt-toolchain/src/runner.rs:473-488`
-**Issue:** After `kill_tree`, `supervise` keeps polling `try_wait` until the child is reaped. A process stuck in uninterruptible sleep (a hung network or FUSE filesystem) ignores SIGKILL, so `run` never returns and the timeout guarantee ends there.
-**Fix:** Bound the post-kill wait (for example by `DRAIN_GRACE`) and return `Io` or an explicit "child did not die" error after logging the pid.
+**File:** `crates/mt-toolchain/src/runner.rs:605-620`
+**Issue:** Still applies. After `kill_tree`, `supervise` polls `child_exited` until the child is gone. A process in uninterruptible sleep ignores SIGKILL, so `run` never returns.
+**Fix:** Bound the post-kill wait (for example by `drain_grace`) and return `Io` or an explicit "child did not die" error.
+
+### IN-19: `NETWORKED_INSTALLS` and `NETWORKED_STEPS` are permanently empty allowlists
+
+**File:** `crates/mt-toolchain/tests/container_static.rs:614-620`
+**Issue:** After WR-08 both constants are `&[]` and a test asserts they stay empty. The lint code that reads them is dead scaffolding, and anyone who needs an exception must edit the constant and the assertion in two places.
+**Fix:** Either remove the constants and the exception path from the lint, or keep them and drop the "must stay empty" assertion in favour of a review note.
+
+### IN-20: A reader thread of an incomplete stream keeps hashing and storing after the snapshot
+
+**File:** `crates/mt-toolchain/src/runner.rs:322-333`, `:378-388`
+**Issue:** `into_captured` empties `stored` with `mem::take` and returns. The detached reader thread keeps reading, hashing and (because `stored.len()` is now 0) storing up to another `output_cap` bytes in memory, for as long as the escapee holds the pipe. An escapee that logs to an inherited stdout makes this a long-lived thread and a buffer of up to 16 MiB per stream in a process that outlives the run.
+**Fix:** Add a `closed: AtomicBool` (or a flag inside `Partial`) set by `into_captured` and checked by `drain` after each read, so the thread drops the pipe and returns when the supervisor has stopped waiting.
+
+### IN-21: `abort` can signal a reaped child's group if the OS reaps behind the runner
+
+**File:** `crates/mt-toolchain/src/runner.rs:565-569`, `:575-587`
+**Issue:** If the host runs `mt` with `SIGCHLD` set to `SIG_IGN` (the disposition is inherited across `exec`), the kernel reaps the child itself. `waitid` then fails with `ECHILD`, `supervise` returns `Err`, and `abort` calls `kill_tree` on a pid that is already gone and may be reused. This is not new (the earlier `try_wait` failed the same way) and needs an unusual parent, but the new code relies on "unreaped" without checking it.
+**Fix:** On `ECHILD` from `child_exited`, return the error without calling `kill_tree`, or reset `SIGCHLD` to the default in the runner before the first spawn.
 
 ---
 
