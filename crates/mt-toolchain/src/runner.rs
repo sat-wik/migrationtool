@@ -19,9 +19,12 @@
 //! A child that exits on its own while a descendant still holds an output pipe
 //! is handled the same way: on Linux the exited child is kept unreaped (so its
 //! pid and group id cannot be reused) while the pipes get `drain_grace` to
-//! close; if they do not, the tree is killed, the child is reaped and the record
-//! is returned with `exit.descendants_killed`. A stream that still does not
-//! reach end-of-file is returned with `complete: false` and its partial bytes.
+//! close; if they do not, a kill is sent to the child's group and to every
+//! descendant still found under it, the child is reaped and the record is
+//! returned with `exit.tree_kill_sent`. Once the child has exited, a descendant
+//! that left the group has been reparented away and is not found, so it may
+//! survive. A stream that still does not reach end-of-file is returned with
+//! `complete: false` and its partial bytes.
 //!
 //! The `/proc` walk and the pidfds exist only on Linux. On other unix systems
 //! (for example macOS, where the founder may build and run `mt` locally) the
@@ -152,9 +155,14 @@ pub struct ExitRecord {
     /// True when the runner killed the child for exceeding the timeout.
     pub timed_out: bool,
     /// True when the child exited on its own but a descendant kept an output
-    /// pipe open past the drain grace, so the runner killed the child's process
-    /// tree. `code` and `signal` are the child's own exit.
-    pub descendants_killed: bool,
+    /// pipe open past the drain grace, so the runner sent SIGKILL to the
+    /// child's process group and to every descendant the `/proc` walk could
+    /// still find. It records that the kill was sent, not that every holder
+    /// died: after the child exits, a descendant that left the group (for
+    /// example through `setsid`) has already been reparented away from it and
+    /// is not found. Such a survivor shows as `complete: false` on the stream
+    /// it holds. `code` and `signal` are the child's own exit.
+    pub tree_kill_sent: bool,
 }
 
 /// What was captured from one output stream.
@@ -629,9 +637,11 @@ fn supervise(child: &mut Child, timeout: Duration) -> io::Result<bool> {
 ///
 /// A pipe that is still open after the child ended is not an error. If the
 /// child exited on its own and a descendant keeps a pipe open for
-/// [`RunnerConfig::drain_grace`], the runner kills the child's process tree
-/// while the child's pid is still held (Linux only), reaps the child, and
-/// returns the record with `exit.descendants_killed` set. A stream that still
+/// [`RunnerConfig::drain_grace`], the runner sends a kill to the child's
+/// process group and to every descendant it can still find, while the child's
+/// pid is still held (Linux only), reaps the child, and returns the record
+/// with `exit.tree_kill_sent` set. A descendant that left the group before
+/// the child exited is not found and may survive. A stream that still
 /// has not reached end-of-file (a process the runner could not find holds it)
 /// is returned with `complete: false` and its partial bytes. Callers that need
 /// the whole output must check `complete`.
@@ -693,14 +703,14 @@ pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerErro
     // The child has exited but (on Linux) is not reaped yet. Give the pipes a
     // chance to reach end-of-file; if a descendant still holds one, kill the
     // tree now, while the pid and so the group id are held, then reap.
-    let mut descendants_killed = false;
+    let mut tree_kill_sent = false;
     if !timed_out && HOLDS_EXITED_CHILD {
         let until = Instant::now() + cfg.drain_grace;
         let stdout_done = stdout_reader.wait(until);
         let stderr_done = stderr_reader.wait(until);
         if !(stdout_done && stderr_done) {
             kill_tree(&child);
-            descendants_killed = true;
+            tree_kill_sent = true;
         }
     }
     let status = match child.wait() {
@@ -735,7 +745,7 @@ pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerErro
             code: status.code(),
             signal: status.signal(),
             timed_out,
-            descendants_killed,
+            tree_kill_sent,
         },
         stdout: stdout.record,
         stderr: stderr.record,

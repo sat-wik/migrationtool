@@ -61,7 +61,7 @@ fn tool_01_runner_records_argv_env_exit_and_output_hashes() {
     assert_eq!(record.exit.code, Some(3));
     assert_eq!(record.exit.signal, None);
     assert!(!record.exit.timed_out);
-    assert!(!record.exit.descendants_killed);
+    assert!(!record.exit.tree_kill_sent);
     assert_eq!(record.stdout.sha256, sha256_hex(b"out"));
     assert_eq!(record.stderr.sha256, sha256_hex(b"err"));
     assert_eq!(record.stdout.bytes_total, 3);
@@ -357,7 +357,7 @@ fn tool_01_runner_normal_exit_with_a_lingering_descendant_returns_the_record() {
     // The shell's own exit is kept.
     assert_eq!(output.record.exit.code, Some(0));
     assert!(!output.record.exit.timed_out);
-    assert!(output.record.exit.descendants_killed);
+    assert!(output.record.exit.tree_kill_sent);
     // Killing the sleeper closed the pipes, so both streams are whole.
     assert!(output.record.stdout.complete);
     assert!(output.record.stderr.complete);
@@ -394,7 +394,7 @@ fn tool_01_runner_normal_exit_with_an_orphaned_escapee_is_incomplete_not_an_erro
     );
     assert_eq!(output.record.exit.code, Some(0));
     assert!(!output.record.exit.timed_out);
-    assert!(output.record.exit.descendants_killed);
+    assert!(output.record.exit.tree_kill_sent);
     assert!(!output.record.stdout.complete);
     // The escapee's stderr goes to /dev/null, so only stdout stays open.
     assert!(output.record.stderr.complete);
@@ -494,7 +494,7 @@ fn tool_01_run_record_json_is_deterministic() {
         .keys()
         .map(String::as_str)
         .collect();
-    let expected_exit: BTreeSet<&str> = ["code", "descendants_killed", "signal", "timed_out"]
+    let expected_exit: BTreeSet<&str> = ["code", "tree_kill_sent", "signal", "timed_out"]
         .into_iter()
         .collect();
     assert_eq!(exit_keys, expected_exit);
