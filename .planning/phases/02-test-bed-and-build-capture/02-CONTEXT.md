@@ -91,6 +91,13 @@ Decision IDs are phase-local (D-01..). Phase 1 decisions are cited as "P1 D-xx" 
   - a 2-file C project the host's own `cc` builds, so replay and comparison logic is tested anywhere, with no Docker or network.
   This follows the Phase 1 version-fixture pattern. Requirement-ID test names apply, for example `build_02_replay_matches_original_objects`.
 
+### Decisions after research (founder, 2026-10-12)
+These answer the research's open questions 1, 2, 3 and 6 (`02-RESEARCH.md` § Open Questions). They refine D-02, D-04, D-24 and the sequencing of D-10/D-25. The D-03 approval checkpoint over the concrete target list still applies.
+- **D-27:** **Dual-licensed targets are accepted when a permissive option is elected.** The manifest records the full SPDX expression (`spdx`) and an `elected` identifier. The validator accepts an `OR` expression only when `elected` is one of its operands and is on the permissive allow-list (D-02); a single copyleft licence is still rejected. This keeps Mbed TLS (elected Apache-2.0), Paho Embedded (elected BSD-3-Clause / EDL-1.0) and libfdt (elected BSD-2-Clause). Record the reading as a PROJECT.md decision. — **Reversibility:** costly — reversing it later drops three targets and their ASN.1/X.509 and OTA coverage, and every published artifact derived from them would need review.
+- **D-28:** **Struct-wrapped buffer entries are accepted, flagged explicitly** (refines D-24). An entry whose buffer and length arrive inside a struct argument (QCBOR `UsefulBufC`, coreMQTT `MQTTPacketInfo_t`, nanopb `pb_istream_t` plus descriptor, zlib `z_stream`) is allowed only with `accepted_wrapped = true` on that entry; the validator rejects a wrapped form without the flag. Later harnesses construct the struct from the input buffer.
+- **D-29:** **TLV and OTA image header are covered by the research's stand-ins** (refines D-04). libfdt stands in for the OTA image header category (a FIT image is a devicetree blob; `fdt_check_full` validates header and structure). TLV is covered structurally by Mbed TLS DER, NimBLE advertising data and microcoap options, tagged `tlv` in the manifest's categories. MCUboot is not added in this phase (it would need a testbed-authored port, departing from D-07); it is a deferred idea.
+- **D-30:** **The image extension ships first, as its own PR to `main`** (sequencing for D-10/D-19/D-25). The pinned image gains `git`, `cmake`, `curl` and `bzip2`, pinned the Phase 1 way (snapshot apt, `[apt]`/`[tool.*]` pins, `REQUIRED_TOOLS`, `mt toolchain check` rows, static tests, README `## Current image`). Because only pushes to `main` publish (WR-09, which stays in force), that change is merged to `main` as a separate PR before any plan that needs the new digest runs in CI. Offline work (manifest, tree hash, capture/replay core, fixture tests) proceeds in parallel; the CI tracer and the full-bed run wait for the new main-published digest.
+
 ### Claude's Discretion
 - The exact target list, commits, entry functions and the one variant per target. The researcher proposes them and the founder approves (D-03).
 - Seed caps (D-16), the index format (TOML or JSON), and the drop-log layout (D-11).
@@ -165,6 +172,7 @@ Decision IDs are phase-local (D-01..). Phase 1 decisions are cited as "P1 D-xx" 
 - **Additional Cortex-M profiles (M0+/thumbv6m, M33):** a later phase or a customer need.
 - **Heuristic entry-function discovery** for customer code, which has no hand-named entries.
 - **IAR and Keil project parsing, and Zephyr `west` builds:** spec v1 / milestone v2.0.
+- **MCUboot as a literal OTA/TLV target** (D-29): needs a testbed-authored port layer, a departure from D-07; revisit if a design partner needs it.
 - **A backup-target swap-in pool** that keeps the bed near 16 after drops. Not chosen; drops simply reduce the count, down to a floor of 10.
 
 </deferred>
