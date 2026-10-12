@@ -1,0 +1,50 @@
+[package]
+name = "mt-smoke"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "Trivial no_std crate proving the thumbv7em-none-eabihf toolchain works (TOOL-04)"
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[features]
+default = ["panic-handler"]
+panic-handler = []
+
+[dependencies]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+opt-level = "s"
+lto = true
+codegen-units = 1
+
+# This crate is its own workspace root so `cargo build --workspace` at the
+# repository root never builds it (the root Cargo.toml excludes it).
+[workspace]
+
+[lints.rust]
+unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+undocumented_unsafe_blocks = "deny"
+arithmetic_side_effects = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+std_instead_of_core = "deny"
+alloc_instead_of_core = "deny"
+indexing_slicing = "warn"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+cast_possible_wrap = "warn"

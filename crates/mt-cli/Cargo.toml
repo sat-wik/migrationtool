@@ -1,0 +1,22 @@
+[package]
+name = "mt-cli"
+description = "The `mt` command line: argument parsing only, logic lives in the library crates"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "mt"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+mt-toolchain = { path = "../mt-toolchain" }
+
+[dev-dependencies]
+mt-toolchain = { path = "../mt-toolchain" }
+tempfile.workspace = true

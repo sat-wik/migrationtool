@@ -1,0 +1,5 @@
+disallowed-types = [
+    { path = "std::process::Command", reason = "run external tools only through mt-toolchain's runner" },
+]
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true

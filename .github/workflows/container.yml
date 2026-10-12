@@ -1,0 +1,1018 @@
+# The toolchain image: built twice on separate runners, checked live, checked
+# against an off-pin copy, and used to build the no_std smoke crate (TOOL-01 to
+# TOOL-04, CONTEXT D-06, D-22, D-23). Docker exists only here (CONTEXT
+# specifics), so this workflow is where every container-level claim is proven.
+#
+# Log and artifact hosts are not reachable from cloud sessions, so each job also
+# publishes its evidence as job annotations (titles check-a, negative-pin,
+# manifest-a, manifest-b, manifest-compare, smoke, tool-outputs, pin-binding,
+# image-archive, image-digest, verified-image, publish-skipped, and on failure
+# "image-a build tail", "image-b build tail", manifest-diff and tag-lookup).
+# `verified-image` is the digest reference later phases use; it is announced by
+# the publish job, after the push, and only when image-a, image-b and compare all
+# succeeded (WR-04).
+#
+# Action commit SHAs are pinned here because GitHub resolves `uses:` before any
+# step can read container/pins.toml; every other pin comes from that file.
+name: container
+
+on:
+  push:
+    paths:
+      - container/Dockerfile
+      - container/pins.toml
+      - container/smoke/**
+      - crates/**
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - .github/workflows/container.yml
+  pull_request:
+    paths:
+      - container/Dockerfile
+      - container/pins.toml
+      - container/smoke/**
+      - crates/**
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - .github/workflows/container.yml
+  workflow_dispatch:
+  # Weekly, to catch snapshot, download and registry rot between pin bumps.
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+# Only pull_request runs may be cancelled by a newer one. A cancelled push run
+# could stop between the gates and the publish job and leave a gated image that
+# is never published (WR-04), and the weekly schedule must not cancel a push run
+# either, so each event type has its own group.
+concurrency:
+  group: container-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # A static musl `mt` runs on the image's older glibc (RESEARCH Pitfall 10); it
+  # is mounted into the image at run time and never baked into it.
+  mt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      buildkit_image: ${{ steps.ci-pins.outputs.BUILDKIT_IMAGE }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # With no arguments rustup installs the toolchain named by rust-toolchain.toml.
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Build mt as a static binary
+        run: cargo build --release --locked -p mt-cli --target x86_64-unknown-linux-musl
+
+      # Values are only ever read as data: never evaluated by the shell.
+      - name: Render the pins and assemble the bundle
+        id: ci-pins
+        run: |
+          set -euo pipefail
+          mt=target/x86_64-unknown-linux-musl/release/mt
+          "$mt" toolchain build-args --pins container/pins.toml --scope ci >> "$GITHUB_OUTPUT"
+          mkdir -p "$RUNNER_TEMP/bundle"
+          cp "$mt" "$RUNNER_TEMP/bundle/mt"
+          "$mt" toolchain build-args --pins container/pins.toml > "$RUNNER_TEMP/bundle/image-args.txt"
+          ls -l "$RUNNER_TEMP/bundle"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mt-bundle
+          path: ${{ runner.temp }}/bundle
+          if-no-files-found: error
+          retention-days: 7
+
+  image-a:
+    needs: mt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    # Builds and gates the image with read access only. The publish job below is
+    # the only holder of write access to packages (CONTEXT D-24, threats T-01-26
+    # and T-01-42); this job hands it the gated image as a checked archive.
+    permissions:
+      contents: read
+    outputs:
+      image_id: ${{ steps.save.outputs.image_id }}
+      archive_sha256: ${{ steps.save.outputs.archive_sha256 }}
+    steps:
+      # A multi-gigabyte image plus its build cache does not fit the default
+      # runner disk (RESEARCH Pitfall 13).
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mt-bundle
+          path: ${{ runner.temp }}/bundle
+
+      - name: Make mt executable (artifacts do not keep the mode)
+        run: chmod +x "$RUNNER_TEMP/bundle/mt"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=${{ needs.mt.outputs.buildkit_image }}
+
+      - name: Write the annotation and docker helpers
+        run: |
+          cat > "$RUNNER_TEMP/ci-lib.sh" <<'LIB'
+          # annotate LEVEL TITLE FILE: FILE as annotations of at most 3800 bytes each (the
+          # API keeps 4096 characters of a message), titled "TITLE (i/n)" when split.
+          annotate() {
+            local level=$1 title=$2 file=$3 dir n i label text
+            if [ ! -s "$file" ]; then
+              printf '::%s title=%s::(empty)\n' "$level" "$title"
+              return 0
+            fi
+            dir=$(mktemp -d)
+            split -C 3800 -d -a 3 "$file" "$dir/part."
+            local -a parts=("$dir"/part.*)
+            n=${#parts[@]}
+            for i in "${!parts[@]}"; do
+              label=$title
+              if [ "$n" -gt 1 ]; then label="$title ($((i + 1))/$n)"; fi
+              text=$(cat "${parts[$i]}")
+              text=${text//'%'/'%25'}
+              text=${text//$'\r'/'%0D'}
+              text=${text//$'\n'/'%0A'}
+              printf '::%s title=%s::%s\n' "$level" "$label" "$text"
+            done
+            rm -rf "$dir"
+          }
+          # run_mt PINS_FILE MT_ARGS...: run the mounted mt in the image with no
+          # network, as an unprivileged user, with only /out and /tmp writable.
+          run_mt() {
+            local pins=$1
+            shift
+            docker run --rm --network none --user 65534:65534 --read-only \
+              --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
+              -v "$pins:/opt/mt/pins.toml:ro" \
+              -v "$RUNNER_TEMP/out:/out" \
+              mt-toolchain:ci mt "$@"
+          }
+          LIB
+          mkdir -p "$RUNNER_TEMP/out"
+          chmod 0777 "$RUNNER_TEMP/out"
+
+      - name: Build the image (target final)
+        id: build
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          args=()
+          while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            args+=(--build-arg "${line%%=*}=${line#*=}")
+          done < "$RUNNER_TEMP/bundle/image-args.txt"
+          LOG="$RUNNER_TEMP/build-a.log"
+          set +e
+          docker buildx build --platform linux/amd64 --target final --load --progress=plain \
+            --tag mt-toolchain:ci "${args[@]}" container 2>&1 | tee "$LOG"
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            tail -n 150 "$LOG" | tail -c 11000 > "$RUNNER_TEMP/build-tail.txt"
+            annotate error "image-a build tail" "$RUNNER_TEMP/build-tail.txt"
+            exit "$rc"
+          fi
+          docker image ls mt-toolchain:ci
+
+      # What is inside the install trees, so a failing row can be diagnosed from
+      # one run: the c2rust binaries and what they link, the KLEE runtime archives,
+      # every LLVM-family package, and the size of each tree.
+      - name: Inventory of the install trees
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          cat > "$RUNNER_TEMP/inventory.sh" <<'INV'
+          echo "--- /opt/cargo-tools/bin"
+          ls -l /opt/cargo-tools/bin
+          for f in /opt/cargo-tools/bin/*; do
+            echo "--- ldd $f"
+            ldd "$f" 2>&1 | head -n 14
+          done
+          echo "--- KLEE runtime archives"
+          find /opt/klee -name '*.bca' | sort
+          echo "--- LLVM-family packages"
+          dpkg-query -W -f='${Package} ${Version} ${db:Status-Status}\n' 'llvm*' 'clang*' 'libllvm*' 'libclang*' 2>/dev/null | sort
+          echo "--- install tree sizes"
+          du -sh /opt/rustup /opt/cargo /opt/cargo-tools /opt/klee /opt/arm-gnu-toolchain 2>&1
+          INV
+          set +e
+          docker run --rm --network none --user 65534:65534 --read-only --tmpfs /tmp:rw,nosuid,size=64m \
+            -v "$RUNNER_TEMP/inventory.sh:/inventory.sh:ro" mt-toolchain:ci bash /inventory.sh > "$out/inventory.txt" 2>&1
+          rc=$?
+          set -e
+          { cat "$out/inventory.txt"; echo "exit code: $rc"; docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' mt-toolchain:ci; } > "$out/inventory-notice.txt"
+          cat "$out/inventory-notice.txt"
+          annotate notice image-inventory "$out/inventory-notice.txt"
+
+      # CR-01, TOOL-03: the pins govern the installed bytes. The image build wrote
+      # /opt/cargo-tools/share/mt/pin-binding.sha256, the sha256 of every file the
+      # installers consumed. Each channel-manifest pin must be the checksum of the
+      # manifest file in that record. The record is the build's own notes, so the
+      # gate also measures the installed result: cargo's install ledger
+      # /opt/cargo-tools/.crates2.json must name each pinned crate with the source
+      # path+file:///tmp/crates/<name>-<version>, the directory unpacked from the
+      # checked .crate (a registry source fails the gate). The rustup update-hash
+      # is reported against the pin as a witness only: the Dockerfile writes the
+      # sidecar rustup reads from that same pin and fails the build if the stored
+      # update-hash differs, so it is not evidence independent of the Dockerfile.
+      # WR-07: archive lines are gated too. The image keeps the two pin-verified
+      # channel manifests under /opt/cargo-tools/share/mt; this step reads them out
+      # of the image, requires their sha256 to equal the pins from image-args.txt,
+      # and requires every archive line of the record to be an `<xz_hash> <xz_url>`
+      # (or `<hash> <url>`) pair of the manifest whose line precedes it in the
+      # record. Any record line that is not a pinned manifest, an accepted archive
+      # or a pinned crate fails the gate. The archives themselves are deleted from
+      # the image: their bytes were checked at build time and by rustup's own
+      # verification, and this gate checks the record's lines against the manifests.
+      # A mismatch fails this job before the image is saved for publishing. The
+      # manifest copy that rustup stores is its own re-serialisation: it is printed
+      # for the reader and is not the binding. Values are read from image-args.txt
+      # as data, never sourced.
+      - name: Pin binding evidence
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          args="$RUNNER_TEMP/bundle/image-args.txt"
+          arg() {
+            local line
+            line=$(grep -m 1 "^$1=" "$args") || { echo "image-args.txt has no $1" >&2; return 1; }
+            printf '%s' "${line#*=}"
+          }
+          rustup_home=$(arg RUSTUP_HOME)
+          host=$(arg RUST_HOST)
+          tool_version=$(arg RUST_TOOL_VERSION)
+          tool_pin=$(arg RUST_TOOL_CHANNEL_SHA256)
+          bitcode_version=$(arg RUST_BITCODE_VERSION)
+          bitcode_pin=$(arg RUST_BITCODE_CHANNEL_SHA256)
+          c2rust_name=$(arg C2RUST_NAME)
+          c2rust_version=$(arg C2RUST_VERSION)
+          c2rust_pin=$(arg C2RUST_SHA256)
+          mutants_name=$(arg CARGO_MUTANTS_NAME)
+          mutants_version=$(arg CARGO_MUTANTS_VERSION)
+          mutants_pin=$(arg CARGO_MUTANTS_SHA256)
+          for value in "$rustup_home" "$host" "$tool_version" "$tool_pin" "$bitcode_version" "$bitcode_pin" \
+            "$c2rust_name" "$c2rust_version" "$c2rust_pin" "$mutants_name" "$mutants_version" "$mutants_pin"; do
+            [ -n "$value" ] || { echo "an image argument needed by the pin-binding gate is empty"; exit 1; }
+          done
+          cat > "$RUNNER_TEMP/binding.sh" <<'BIND'
+          set -eu
+          echo "--- record"
+          cat /opt/cargo-tools/share/mt/pin-binding.sha256
+          echo "--- crates"
+          cat /opt/cargo-tools/.crates2.json
+          echo
+          echo "--- update-hashes"
+          for f in "$RUSTUP_HOME"/update-hashes/*; do
+            echo "$(basename "$f") $(cat "$f")"
+          done
+          echo "--- stored"
+          sha256sum "$RUSTUP_HOME"/toolchains/*/lib/rustlib/multirust-channel-manifest.toml
+          BIND
+          set +e
+          docker run --rm --network none --user 65534:65534 --read-only --tmpfs /tmp:rw,nosuid,size=64m \
+            -e RUSTUP_HOME="$rustup_home" \
+            -v "$RUNNER_TEMP/binding.sh:/binding.sh:ro" mt-toolchain:ci bash /binding.sh > "$out/binding.txt" 2> "$out/binding.err"
+          rc=$?
+          set -e
+          section() { sed -n "/^--- $1\$/,/^--- /p" "$out/binding.txt" | sed '1d;/^--- /d'; }
+          section record > "$out/binding-record.txt"
+          section crates > "$out/binding-crates.txt"
+          section update-hashes > "$out/binding-update-hashes.txt"
+          section stored > "$out/binding-stored.txt"
+          ok=true
+          [ "$rc" -eq 0 ] || ok=false
+          {
+            echo "Each record line is the sha256 of a file an installer consumed, as written by the image build."
+            echo "--- build record /opt/cargo-tools/share/mt/pin-binding.sha256"
+            cat "$out/binding-record.txt"
+            echo "--- checks (container exit code $rc)"
+          } > "$out/pin-binding-notice.txt"
+          check_toolchain() {
+            local version=$1 pin=$2 want hash
+            want="${pin}  /tmp/rust-dist/dist/channel-rust-${version}.toml"
+            if grep -qxF -- "$want" "$out/binding-record.txt"; then
+              echo "OK record line for channel-rust-${version}.toml equals its pin" >> "$out/pin-binding-notice.txt"
+            else
+              echo "MISMATCH no record line equals: $want" >> "$out/pin-binding-notice.txt"
+              ok=false
+            fi
+            hash=$(grep -m 1 "^${version}-${host} " "$out/binding-update-hashes.txt" | cut -d' ' -f2) || hash=""
+            if printf '%s' "$hash" | grep -Eq '^[0-9a-f]{16,}$' && [ "${pin#"$hash"}" != "$pin" ]; then
+              echo "OK rustup update-hash ${hash} for ${version}-${host} equals the leading characters of the pin from pins.toml (witness: the Dockerfile wrote the sidecar from that pin)" >> "$out/pin-binding-notice.txt"
+            else
+              echo "MISMATCH rustup update-hash '${hash}' for ${version}-${host} is not the leading characters (16 or more hex characters) of the pin ${pin}" >> "$out/pin-binding-notice.txt"
+              ok=false
+            fi
+          }
+          check_crate() {
+            local name=$1 version=$2 pin=$3 want source
+            want="${pin}  /tmp/crates/${name}-${version}.crate"
+            if grep -qxF -- "$want" "$out/binding-record.txt"; then
+              echo "OK record line for ${name}-${version}.crate equals its pin" >> "$out/pin-binding-notice.txt"
+            else
+              echo "MISMATCH no record line equals: $want" >> "$out/pin-binding-notice.txt"
+              ok=false
+            fi
+            # The install ledger is written by cargo, not by the Dockerfile: the
+            # installed crate must come from the unpacked, checked .crate directory.
+            source="\"${name} ${version} (path+file:///tmp/crates/${name}-${version})\""
+            if grep -qF -- "$source" "$out/binding-crates.txt"; then
+              echo "OK cargo installed ${name} ${version} from path+file:///tmp/crates/${name}-${version}" >> "$out/pin-binding-notice.txt"
+            else
+              echo "MISMATCH .crates2.json has no install of ${name} ${version} from path+file:///tmp/crates/${name}-${version}" >> "$out/pin-binding-notice.txt"
+              ok=false
+            fi
+          }
+          # check_archives VERSION PIN: the in-image copy of channel-rust-VERSION.toml
+          # must hash to PIN, and every archive line that follows that manifest's
+          # line in the record, up to the next manifest line, must be one of its
+          # `<hash> <url>` pairs (xz_hash with xz_url, or hash with url).
+          check_archives() {
+            local version=$1 pin=$2 copy pairs manifest_path inside=0 count=0 line hash path url
+            copy="$out/channel-rust-${version}.toml"
+            pairs="$out/archive-pairs-${version}.txt"
+            manifest_path="/tmp/rust-dist/dist/channel-rust-${version}.toml"
+            if ! docker run --rm --network none --user 65534:65534 --read-only mt-toolchain:ci \
+                cat "/opt/cargo-tools/share/mt/channel-rust-${version}.toml" > "$copy" 2> "$out/channel-rust-${version}.err"; then
+              echo "MISMATCH cannot read /opt/cargo-tools/share/mt/channel-rust-${version}.toml from the image" >> "$out/pin-binding-notice.txt"
+              ok=false
+              return 0
+            fi
+            if [ "$(sha256sum "$copy" | cut -d' ' -f1)" != "$pin" ]; then
+              echo "MISMATCH the in-image copy channel-rust-${version}.toml has sha256 $(sha256sum "$copy" | cut -d' ' -f1), not its pin ${pin}" >> "$out/pin-binding-notice.txt"
+              ok=false
+              return 0
+            fi
+            echo "OK in-image copy channel-rust-${version}.toml has sha256 ${pin}, equal to its pin" >> "$out/pin-binding-notice.txt"
+            awk 'function flush() { if (xh != "" && xu != "") print xh, xu; if (h != "" && u != "") print h, u } /^\[/ { flush(); xh = ""; xu = ""; h = ""; u = ""; next } $2 == "=" { v = $3; gsub(/"/, "", v) } $1 == "xz_hash" && $2 == "=" { xh = v } $1 == "xz_url" && $2 == "=" { xu = v } $1 == "hash" && $2 == "=" { h = v } $1 == "url" && $2 == "=" { u = v } END { flush() }' "$copy" > "$pairs"
+            while IFS= read -r line; do
+              hash=${line%% *}
+              path=${line#*  }
+              case "$path" in
+                "$manifest_path") inside=1; continue ;;
+                /tmp/rust-dist/dist/channel-rust-*.toml) inside=0; continue ;;
+                /tmp/rust-dist/*) ;;
+                *) continue ;;
+              esac
+              [ "$inside" -eq 1 ] || continue
+              url="https://static.rust-lang.org${path#/tmp/rust-dist}"
+              if grep -qxF -- "$hash $url" "$pairs"; then
+                echo "OK archive $path sha256 equals the xz_hash channel-rust-${version}.toml (sha256 equals its pin) gives for $url" >> "$out/pin-binding-notice.txt"
+                printf '%s\n' "$line" >> "$out/accepted-archive-lines.txt"
+                count=$((count + 1))
+              else
+                echo "MISMATCH archive line '$line' is not an xz_hash/xz_url (or hash/url) pair of channel-rust-${version}.toml" >> "$out/pin-binding-notice.txt"
+                ok=false
+              fi
+            done < "$out/binding-record.txt"
+            if [ "$count" -eq 0 ]; then
+              echo "MISMATCH the record has no archive line for channel-rust-${version}.toml" >> "$out/pin-binding-notice.txt"
+              ok=false
+            fi
+          }
+          # classify_record: every record line is a pinned manifest line, an accepted
+          # archive line or a pinned crate line; nothing else may be in the record.
+          classify_record() {
+            local line
+            while IFS= read -r line; do
+              case "$line" in
+                "${tool_pin}  /tmp/rust-dist/dist/channel-rust-${tool_version}.toml" \
+                  | "${bitcode_pin}  /tmp/rust-dist/dist/channel-rust-${bitcode_version}.toml" \
+                  | "${c2rust_pin}  /tmp/crates/${c2rust_name}-${c2rust_version}.crate" \
+                  | "${mutants_pin}  /tmp/crates/${mutants_name}-${mutants_version}.crate")
+                  continue ;;
+              esac
+              if grep -qxF -- "$line" "$out/accepted-archive-lines.txt"; then
+                continue
+              fi
+              echo "MISMATCH unclassified record line: $line" >> "$out/pin-binding-notice.txt"
+              ok=false
+            done < "$out/binding-record.txt"
+          }
+          : > "$out/accepted-archive-lines.txt"
+          check_toolchain "$tool_version" "$tool_pin"
+          check_toolchain "$bitcode_version" "$bitcode_pin"
+          check_crate "$c2rust_name" "$c2rust_version" "$c2rust_pin"
+          check_crate "$mutants_name" "$mutants_version" "$mutants_pin"
+          check_archives "$tool_version" "$tool_pin"
+          check_archives "$bitcode_version" "$bitcode_pin"
+          classify_record
+          {
+            echo "--- cargo install ledger /opt/cargo-tools/.crates2.json"
+            cat "$out/binding-crates.txt"
+            echo "--- rustup update-hashes (the leading hex characters of each manifest sha256, from the sidecar the Dockerfile wrote; a witness, not the binding)"
+            cat "$out/binding-update-hashes.txt"
+            echo "--- rustup's stored multirust-channel-manifest.toml (rustup's re-serialized copy, not the binding)"
+            cat "$out/binding-stored.txt"
+            if [ -s "$out/binding.err" ]; then echo "--- stderr"; cat "$out/binding.err"; fi
+          } >> "$out/pin-binding-notice.txt"
+          cat "$out/pin-binding-notice.txt"
+          if [ "$ok" = true ]; then
+            annotate notice pin-binding "$out/pin-binding-notice.txt"
+          else
+            annotate error pin-binding "$out/pin-binding-notice.txt"
+            exit 1
+          fi
+
+      # TOOL-01, TOOL-02: every pinned tool's exact version from inside the image.
+      # --network none only proves the image needs no downloads for this check;
+      # it is not the D-19 network-isolation feature, which stays out of Phase 1.
+      - name: Live check inside the image
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          run_mt "$GITHUB_WORKSPACE/container/pins.toml" toolchain check --pins /opt/mt/pins.toml \
+            --capture-outputs /out/tool-outputs.toml \
+            --capture-label "captured in CI image-a, run ${GITHUB_RUN_ID}" \
+            > "$out/check-a.txt" 2> "$out/check-a.err"
+          rc=$?
+          set -e
+          cat "$out/check-a.txt"
+          # Runs of spaces are squeezed in the published copy (a message keeps 4096 characters).
+          {
+            sed -E 's/ {2,}/  /g' "$out/check-a.txt"
+            echo "exit code: $rc"
+            if [ -s "$out/check-a.err" ]; then echo "--- stderr"; cat "$out/check-a.err"; fi
+          } > "$out/check-a-notice.txt"
+          if [ "$rc" -ne 0 ]; then
+            annotate error check-a "$out/check-a-notice.txt"
+            exit 1
+          fi
+          annotate notice check-a "$out/check-a-notice.txt"
+
+      - name: Publish the captured tool outputs
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          test -s "$RUNNER_TEMP/out/tool-outputs.toml"
+          annotate notice tool-outputs "$RUNNER_TEMP/out/tool-outputs.toml"
+
+      # TOOL-02: the same check against a pins copy whose LLVM major is moved
+      # consistently to another major in 16..=19 must fail with exit 1.
+      - name: Off-pin check (negative-pin)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          major=$(sed -n 's/^major = \([0-9][0-9]*\)$/\1/p' container/pins.toml | head -n 1)
+          [ -n "$major" ] || { echo "cannot read [llvm] major from container/pins.toml"; exit 1; }
+          if [ "$major" -eq 19 ]; then other=18; else other=$((major + 1)); fi
+          mkdir -p "$RUNNER_TEMP/offpin"
+          sed -E -e "s/^major = ${major}\$/major = ${other}/" \
+                 -e "s/(llvm-|clang-cpp|clang-)${major}([^0-9]|\$)/\1${other}\2/g" \
+                 container/pins.toml > "$RUNNER_TEMP/offpin/pins.toml"
+          if cmp -s container/pins.toml "$RUNNER_TEMP/offpin/pins.toml"; then
+            echo "the off-pin copy is identical to the pins; the check would prove nothing"
+            exit 1
+          fi
+          set +e
+          run_mt "$RUNNER_TEMP/offpin/pins.toml" toolchain check --pins /opt/mt/pins.toml \
+            > "$out/negative-pin.txt" 2> "$out/negative-pin.err"
+          rc=$?
+          set -e
+          ok=true
+          [ "$rc" -eq 1 ] || ok=false
+          grep -E '^klee +.*MISMATCH' "$out/negative-pin.txt" > /dev/null || ok=false
+          grep -E '^rustc_bitcode +.*MISMATCH' "$out/negative-pin.txt" > /dev/null || ok=false
+          {
+            echo "pins copy: LLVM major ${major} -> ${other}"
+            sed -E 's/ {2,}/  /g' "$out/negative-pin.txt"
+            echo "exit code: $rc (required: exactly 1, with MISMATCH on klee and rustc_bitcode)"
+            if [ -s "$out/negative-pin.err" ]; then echo "--- stderr"; cat "$out/negative-pin.err"; fi
+          } > "$out/negative-pin-notice.txt"
+          cat "$out/negative-pin-notice.txt"
+          if [ "$ok" = true ]; then
+            annotate notice negative-pin "$out/negative-pin-notice.txt"
+          else
+            annotate error negative-pin "$out/negative-pin-notice.txt"
+            exit 1
+          fi
+
+      # TOOL-03: the manifest of build A.
+      - name: Manifest of build A
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          run_mt "$GITHUB_WORKSPACE/container/pins.toml" toolchain manifest --pins /opt/mt/pins.toml \
+            --out /out/manifest-a.json > /dev/null 2> "$out/manifest-a.err"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            { echo "mt toolchain manifest exit code: $rc"; cat "$out/manifest-a.err"; } > "$out/manifest-a-notice.txt"
+            annotate error manifest-a "$out/manifest-a-notice.txt"
+            exit 1
+          fi
+          {
+            echo "sha256 $(sha256sum "$out/manifest-a.json" | cut -d' ' -f1)"
+            cat "$out/manifest-a.json"
+          } > "$out/manifest-a-notice.txt"
+          cat "$out/manifest-a-notice.txt"
+          annotate notice manifest-a "$out/manifest-a-notice.txt"
+
+      # TOOL-04: the no_std crate for thumbv7em-none-eabihf and the C side with
+      # arm-none-eabi-gcc, inside the image, with the repository mounted read-only.
+      - name: Smoke build for thumbv7em-none-eabihf
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          script='set -euo pipefail
+          cargo build --locked --release --target thumbv7em-none-eabihf --manifest-path container/smoke/Cargo.toml
+          arm-none-eabi-gcc --version | head -n 1
+          arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Os -c container/smoke/smoke.c -o /tmp/smoke.o
+          echo "--- arm-none-eabi-nm libmt_smoke.a"
+          arm-none-eabi-nm "$CARGO_TARGET_DIR/thumbv7em-none-eabihf/release/libmt_smoke.a" | grep -E " T mt_smoke_add\$"
+          echo "--- arm-none-eabi-nm smoke.o"
+          arm-none-eabi-nm /tmp/smoke.o | grep -E " U mt_smoke_add\$"'
+          smoke() {
+            docker run --rm --network none --user "$1" --read-only \
+              --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$GITHUB_WORKSPACE:/work:ro" -w /work \
+              -e CARGO_HOME=/tmp/cargo -e CARGO_TARGET_DIR=/tmp/target \
+              mt-toolchain:ci bash -c "$script"
+          }
+          who="unprivileged user 65534"
+          set +e
+          smoke 65534:65534 > "$out/smoke.txt" 2>&1
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            # The documented fallback: the read-only rustup home may not be usable
+            # by an unprivileged user. The reason is published, never hidden.
+            { echo "unprivileged run failed with exit code $rc:"; tail -n 40 "$out/smoke.txt"; } > "$out/smoke-unprivileged.txt"
+            annotate warning "smoke unprivileged failure" "$out/smoke-unprivileged.txt"
+            who="root (the unprivileged run failed, see the warning)"
+            smoke 0:0 > "$out/smoke.txt" 2>&1
+            rc=$?
+          fi
+          set -e
+          { echo "ran as: $who"; cat "$out/smoke.txt"; echo "exit code: $rc"; } > "$out/smoke-notice.txt"
+          cat "$out/smoke-notice.txt"
+          if [ "$rc" -ne 0 ]; then
+            annotate error smoke "$out/smoke-notice.txt"
+            exit 1
+          fi
+          annotate notice smoke "$out/smoke-notice.txt"
+
+      # CONTEXT D-24, WR-04: the image that just passed the pin-binding gate, the
+      # check, the off-pin check, the manifest and the smoke steps is saved as it
+      # is and carried to the publish job as a checked archive; it is never rebuilt.
+      # The step carries no status function, so it runs only when every step above
+      # succeeded, and only for a push to `main`: never for a pull_request, the
+      # weekly schedule, a workflow_dispatch or any other branch (WR-09). The archive's sha256 and the image id
+      # travel through the job outputs, not the artifact, so publish can check the
+      # download against values the gated job produced.
+      - name: Save the gated image
+        id: save
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set -o pipefail
+          image_id=$(docker image inspect --format '{{.Id}}' mt-toolchain:ci)
+          if ! printf '%s' "$image_id" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+            { echo "the image id is not a sha256 id:"; echo "$image_id"; } > "$out/image-archive-error.txt"
+            annotate error image-archive "$out/image-archive-error.txt"
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/image"
+          docker save mt-toolchain:ci | gzip -1 > "$RUNNER_TEMP/image/mt-toolchain.tar.gz"
+          archive_sha256=$(sha256sum "$RUNNER_TEMP/image/mt-toolchain.tar.gz" | cut -d' ' -f1)
+          {
+            echo "image_id=${image_id}"
+            echo "archive_sha256=${archive_sha256}"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "image id ${image_id}"
+            echo "archive sha256 ${archive_sha256}"
+            ls -l "$RUNNER_TEMP/image/mt-toolchain.tar.gz"
+            echo "saved after every gate of image-a; published only after compare, by the publish job"
+          } > "$out/image-archive-notice.txt"
+          cat "$out/image-archive-notice.txt"
+          annotate notice image-archive "$out/image-archive-notice.txt"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        with:
+          name: image-a-image
+          path: ${{ runner.temp }}/image/mt-toolchain.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: image-a-evidence
+          path: |
+            ${{ runner.temp }}/out/manifest-a.json
+            ${{ runner.temp }}/out/tool-outputs.toml
+          if-no-files-found: warn
+          retention-days: 7
+
+  # A second, independent build: separate runner, no shared cache (D-06).
+  image-b:
+    needs: mt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mt-bundle
+          path: ${{ runner.temp }}/bundle
+
+      - name: Make mt executable (artifacts do not keep the mode)
+        run: chmod +x "$RUNNER_TEMP/bundle/mt"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=${{ needs.mt.outputs.buildkit_image }}
+
+      - name: Write the annotation and docker helpers
+        run: |
+          cat > "$RUNNER_TEMP/ci-lib.sh" <<'LIB'
+          # annotate LEVEL TITLE FILE: FILE as annotations of at most 3800 bytes each (the
+          # API keeps 4096 characters of a message), titled "TITLE (i/n)" when split.
+          annotate() {
+            local level=$1 title=$2 file=$3 dir n i label text
+            if [ ! -s "$file" ]; then
+              printf '::%s title=%s::(empty)\n' "$level" "$title"
+              return 0
+            fi
+            dir=$(mktemp -d)
+            split -C 3800 -d -a 3 "$file" "$dir/part."
+            local -a parts=("$dir"/part.*)
+            n=${#parts[@]}
+            for i in "${!parts[@]}"; do
+              label=$title
+              if [ "$n" -gt 1 ]; then label="$title ($((i + 1))/$n)"; fi
+              text=$(cat "${parts[$i]}")
+              text=${text//'%'/'%25'}
+              text=${text//$'\r'/'%0D'}
+              text=${text//$'\n'/'%0A'}
+              printf '::%s title=%s::%s\n' "$level" "$label" "$text"
+            done
+            rm -rf "$dir"
+          }
+          # run_mt PINS_FILE MT_ARGS...: run the mounted mt in the image with no
+          # network, as an unprivileged user, with only /out and /tmp writable.
+          run_mt() {
+            local pins=$1
+            shift
+            docker run --rm --network none --user 65534:65534 --read-only \
+              --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
+              -v "$pins:/opt/mt/pins.toml:ro" \
+              -v "$RUNNER_TEMP/out:/out" \
+              mt-toolchain:ci mt "$@"
+          }
+          LIB
+          mkdir -p "$RUNNER_TEMP/out"
+          chmod 0777 "$RUNNER_TEMP/out"
+
+      - name: Build the image from scratch (no cache, fresh pulls)
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          args=()
+          while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            args+=(--build-arg "${line%%=*}=${line#*=}")
+          done < "$RUNNER_TEMP/bundle/image-args.txt"
+          LOG="$RUNNER_TEMP/build-b.log"
+          set +e
+          docker buildx build --platform linux/amd64 --target final --load --progress=plain \
+            --no-cache --pull --tag mt-toolchain:ci "${args[@]}" container 2>&1 | tee "$LOG"
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            tail -n 150 "$LOG" | tail -c 11000 > "$RUNNER_TEMP/build-tail.txt"
+            annotate error "image-b build tail" "$RUNNER_TEMP/build-tail.txt"
+            exit "$rc"
+          fi
+
+      - name: Manifest of build B
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          run_mt "$GITHUB_WORKSPACE/container/pins.toml" toolchain manifest --pins /opt/mt/pins.toml \
+            --out /out/manifest-b.json > /dev/null 2> "$out/manifest-b.err"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            { echo "mt toolchain manifest exit code: $rc"; cat "$out/manifest-b.err"; } > "$out/manifest-b-notice.txt"
+            annotate error manifest-b "$out/manifest-b-notice.txt"
+            exit 1
+          fi
+          {
+            echo "sha256 $(sha256sum "$out/manifest-b.json" | cut -d' ' -f1)"
+            cat "$out/manifest-b.json"
+          } > "$out/manifest-b-notice.txt"
+          cat "$out/manifest-b-notice.txt"
+          annotate notice manifest-b "$out/manifest-b-notice.txt"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: image-b-evidence
+          path: ${{ runner.temp }}/out/manifest-b.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  # TOOL-03: two independent builds from the same inputs, identical manifests.
+  compare:
+    needs: [image-a, image-b]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      manifest_sha256: ${{ steps.diff.outputs.manifest_sha256 }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mt-bundle
+          path: ${{ runner.temp }}/bundle
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: image-a-evidence
+          path: ${{ runner.temp }}/a
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: image-b-evidence
+          path: ${{ runner.temp }}/b
+
+      - name: Compare the manifests
+        id: diff
+        shell: bash
+        run: |
+          annotate() {
+            local level=$1 title=$2 file=$3 dir n i label text
+            if [ ! -s "$file" ]; then
+              printf '::%s title=%s::(empty)\n' "$level" "$title"
+              return 0
+            fi
+            dir=$(mktemp -d)
+            split -C 3800 -d -a 3 "$file" "$dir/part."
+            local -a parts=("$dir"/part.*)
+            n=${#parts[@]}
+            for i in "${!parts[@]}"; do
+              label=$title
+              if [ "$n" -gt 1 ]; then label="$title ($((i + 1))/$n)"; fi
+              text=$(cat "${parts[$i]}")
+              text=${text//'%'/'%25'}
+              text=${text//$'\r'/'%0D'}
+              text=${text//$'\n'/'%0A'}
+              printf '::%s title=%s::%s\n' "$level" "$label" "$text"
+            done
+            rm -rf "$dir"
+          }
+          chmod +x "$RUNNER_TEMP/bundle/mt"
+          a="$RUNNER_TEMP/a/manifest-a.json"
+          b="$RUNNER_TEMP/b/manifest-b.json"
+          set +e
+          "$RUNNER_TEMP/bundle/mt" toolchain manifest-diff "$a" "$b" > "$RUNNER_TEMP/diff-summary.txt" 2>&1
+          rc=$?
+          set -e
+          cat "$RUNNER_TEMP/diff-summary.txt"
+          if [ "$rc" -ne 0 ]; then
+            {
+              echo "mt toolchain manifest-diff exit code: $rc"
+              cat "$RUNNER_TEMP/diff-summary.txt"
+              diff -u "$a" "$b" || true
+            } > "$RUNNER_TEMP/diff-notice.txt"
+            annotate error manifest-diff "$RUNNER_TEMP/diff-notice.txt"
+            exit 1
+          fi
+          echo "manifest-a.json and manifest-b.json are byte-identical; sha256 $(sha256sum "$a" | cut -d' ' -f1)" > "$RUNNER_TEMP/compare-notice.txt"
+          cat "$RUNNER_TEMP/compare-notice.txt"
+          annotate notice manifest-compare "$RUNNER_TEMP/compare-notice.txt"
+          # The hash goes to the publish job, which announces the pushed image as
+          # verified only after this comparison succeeded (CONTEXT D-24, T-01-27).
+          echo "manifest_sha256=$(sha256sum "$a" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+  # WR-04, CONTEXT D-24: the only job that can write to GHCR. It needs image-a,
+  # image-b and compare, so nothing is published unless both builds gated and their
+  # manifests were found identical. It runs no build and no checkout: it loads the
+  # archive image-a gated, checks it against the hash and image id that job
+  # produced, and pushes that image. Runs for one commit are serialized, and an
+  # existing commit tag is left alone.
+  publish:
+    needs: [image-a, image-b, compare]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: container-publish-${{ github.sha }}
+      cancel-in-progress: false
+    steps:
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Write the annotation helper
+        run: |
+          cat > "$RUNNER_TEMP/ci-lib.sh" <<'LIB'
+          # annotate LEVEL TITLE FILE: FILE as annotations of at most 3800 bytes each (the
+          # API keeps 4096 characters of a message), titled "TITLE (i/n)" when split.
+          annotate() {
+            local level=$1 title=$2 file=$3 dir n i label text
+            if [ ! -s "$file" ]; then
+              printf '::%s title=%s::(empty)\n' "$level" "$title"
+              return 0
+            fi
+            dir=$(mktemp -d)
+            split -C 3800 -d -a 3 "$file" "$dir/part."
+            local -a parts=("$dir"/part.*)
+            n=${#parts[@]}
+            for i in "${!parts[@]}"; do
+              label=$title
+              if [ "$n" -gt 1 ]; then label="$title ($((i + 1))/$n)"; fi
+              text=$(cat "${parts[$i]}")
+              text=${text//'%'/'%25'}
+              text=${text//$'\r'/'%0D'}
+              text=${text//$'\n'/'%0A'}
+              printf '::%s title=%s::%s\n' "$level" "$label" "$text"
+            done
+            rm -rf "$dir"
+          }
+          LIB
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: image-a-image
+          path: ${{ runner.temp }}/image
+
+      # The archive is the one image-a saved after its gates: its sha256 must equal
+      # the value image-a produced as a job output (checked before it is loaded),
+      # and the loaded image must have the id image-a recorded.
+      - name: Check and load the gated image
+        shell: bash
+        env:
+          ARCHIVE_SHA256: ${{ needs.image-a.outputs.archive_sha256 }}
+          IMAGE_ID: ${{ needs.image-a.outputs.image_id }}
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          fail() {
+            printf '%s\n' "$1" > "$RUNNER_TEMP/image-archive-error.txt"
+            annotate error image-archive "$RUNNER_TEMP/image-archive-error.txt"
+            exit 1
+          }
+          printf '%s' "$ARCHIVE_SHA256" | grep -Eq '^[0-9a-f]{64}$' || fail "image-a's archive_sha256 output is not a sha256: '${ARCHIVE_SHA256}'"
+          printf '%s' "$IMAGE_ID" | grep -Eq '^sha256:[0-9a-f]{64}$' || fail "image-a's image_id output is not a sha256 id: '${IMAGE_ID}'"
+          archive="$RUNNER_TEMP/image/mt-toolchain.tar.gz"
+          echo "${ARCHIVE_SHA256}  ${archive}" | sha256sum -c - || fail "the downloaded archive does not have the sha256 image-a recorded (${ARCHIVE_SHA256}); nothing was loaded"
+          docker load -i "$archive" || fail "docker load failed for the checked archive"
+          loaded=$(docker image inspect --format '{{.Id}}' mt-toolchain:ci) || fail "the loaded archive has no image mt-toolchain:ci"
+          [ "$loaded" = "$IMAGE_ID" ] || fail "the loaded image id ${loaded} is not the gated image id ${IMAGE_ID}"
+          {
+            echo "archive sha256 ${ARCHIVE_SHA256} checked before docker load"
+            echo "loaded image id ${loaded} equals the id image-a gated"
+          } > "$RUNNER_TEMP/image-archive-notice.txt"
+          cat "$RUNNER_TEMP/image-archive-notice.txt"
+          annotate notice image-archive "$RUNNER_TEMP/image-archive-notice.txt"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # A sha-<commit> tag is never moved: when it exists the push is skipped with a
+      # warning. Only a lookup that says the manifest is absent allows the push; any
+      # other failure leaves absence unproven, so nothing is pushed.
+      - name: Refuse to overwrite an existing commit tag
+        id: existing
+        shell: bash
+        env:
+          IMAGE: ghcr.io/sat-wik/migrationtool-toolchain
+          COMMIT: ${{ github.sha }}
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          set +e
+          docker manifest inspect "${IMAGE}:sha-${COMMIT}" > "$RUNNER_TEMP/inspect.out" 2> "$RUNNER_TEMP/inspect.err"
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "${IMAGE}:sha-${COMMIT} already exists in GHCR; this build was not pushed and the existing tag is left as it is" > "$RUNNER_TEMP/skip-notice.txt"
+            cat "$RUNNER_TEMP/skip-notice.txt"
+            annotate warning publish-skipped "$RUNNER_TEMP/skip-notice.txt"
+          elif grep -Eqi 'no such manifest|manifest unknown|not found' "$RUNNER_TEMP/inspect.err"; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "docker manifest inspect exit code: $rc; the absence of ${IMAGE}:sha-${COMMIT} is not proven, so nothing is pushed"
+              cat "$RUNNER_TEMP/inspect.err"
+            } > "$RUNNER_TEMP/lookup-notice.txt"
+            cat "$RUNNER_TEMP/lookup-notice.txt"
+            annotate error tag-lookup "$RUNNER_TEMP/lookup-notice.txt"
+            exit 1
+          fi
+
+      - name: Push the gated image and read its digest
+        id: publish
+        if: ${{ steps.existing.outputs.exists == 'false' }}
+        shell: bash
+        env:
+          IMAGE: ghcr.io/sat-wik/migrationtool-toolchain
+          COMMIT: ${{ github.sha }}
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP"
+          docker tag mt-toolchain:ci "${IMAGE}:sha-${COMMIT}"
+          set +e
+          docker push "${IMAGE}:sha-${COMMIT}" > "$out/push.txt" 2>&1
+          rc=$?
+          set -e
+          cat "$out/push.txt"
+          if [ "$rc" -ne 0 ]; then
+            { echo "docker push exit code: $rc"; tail -n 40 "$out/push.txt"; } > "$out/push-notice.txt"
+            annotate error image-digest "$out/push-notice.txt"
+            exit 1
+          fi
+          ref=$(docker inspect --format '{{index .RepoDigests 0}}' "${IMAGE}:sha-${COMMIT}")
+          digest=${ref#*@}
+          if [ "${ref%@*}" != "$IMAGE" ] || ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+            { echo "RepoDigests entry is not a ${IMAGE} digest reference:"; echo "$ref"; } > "$out/digest-notice.txt"
+            annotate error image-digest "$out/digest-notice.txt"
+            exit 1
+          fi
+          {
+            echo "$ref"
+            echo "pushed as ${IMAGE}:sha-${COMMIT} by the publish job, after image-a, image-b and compare succeeded"
+          } > "$out/digest-notice.txt"
+          cat "$out/digest-notice.txt"
+          annotate notice image-digest "$out/digest-notice.txt"
+          echo "image_ref=${ref}" >> "$GITHUB_OUTPUT"
+
+      - name: Announce the verified image
+        if: ${{ steps.existing.outputs.exists == 'false' }}
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.publish.outputs.image_ref }}
+          MANIFEST_SHA256: ${{ needs.compare.outputs.manifest_sha256 }}
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          if ! printf '%s' "$IMAGE_REF" | grep -Eq '^ghcr\.io/sat-wik/migrationtool-toolchain@sha256:[0-9a-f]{64}$'; then
+            echo "publish produced a malformed reference: $IMAGE_REF"
+            exit 1
+          fi
+          if ! printf '%s' "$MANIFEST_SHA256" | grep -Eq '^[0-9a-f]{64}$'; then
+            echo "compare produced a malformed manifest sha256: $MANIFEST_SHA256"
+            exit 1
+          fi
+          {
+            echo "$IMAGE_REF"
+            echo "manifest sha256 ${MANIFEST_SHA256}"
+          } > "$RUNNER_TEMP/verified-notice.txt"
+          cat "$RUNNER_TEMP/verified-notice.txt"
+          annotate notice verified-image "$RUNNER_TEMP/verified-notice.txt"
