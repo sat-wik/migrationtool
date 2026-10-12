@@ -5,7 +5,7 @@ titles: json
 findings:
   - id: WR-13
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "After a normal exit the descendant sweep cannot find escaped processes, yet the record says `descendants_killed: true`"
   - id: IN-01
     severity: info
@@ -143,16 +143,16 @@ findings:
     severity: warning
     disposition: fixed
     title: "The `Pin binding evidence` gate checks the Dockerfile's own bookkeeping, and its update-hash witness is tautological (new, plan 01-09)"
-open: 22
+open: 21
 total: 35
-recorded: 2026-10-12T03:47:15.841Z
+recorded: 2026-10-12T03:48:11.187Z
 ---
 
 # Phase 01: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-13 | warning | open | - |
+| WR-13 | warning | fixed | 01-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
