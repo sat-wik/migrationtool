@@ -61,6 +61,7 @@ fn tool_01_runner_records_argv_env_exit_and_output_hashes() {
     assert_eq!(record.exit.code, Some(3));
     assert_eq!(record.exit.signal, None);
     assert!(!record.exit.timed_out);
+    assert!(!record.exit.descendants_killed);
     assert_eq!(record.stdout.sha256, sha256_hex(b"out"));
     assert_eq!(record.stderr.sha256, sha256_hex(b"err"));
     assert_eq!(record.stdout.bytes_total, 3);
@@ -204,8 +205,8 @@ fn tool_01_runner_timeout_is_reported_not_passed() {
 fn tool_01_runner_timeout_kills_descendants_and_reports_timed_out() {
     // The shell starts a background sleep that inherits the output pipes, then
     // a foreground sleep. Killing only the shell would leave the background
-    // sleep holding the pipes and the run would fail with OutputNotDrained
-    // after the 5 s drain grace. Killing the process group ends both at once.
+    // sleep holding the pipes, and the run would wait out the drain grace.
+    // Killing the process group ends both at once.
     let mut cfg = config();
     cfg.timeout = Duration::from_millis(300);
     let started = Instant::now();
@@ -335,6 +336,72 @@ fn tool_01_runner_marks_a_stream_held_by_an_orphaned_escapee_incomplete() {
 
 #[cfg(target_os = "linux")]
 #[test]
+fn tool_01_runner_normal_exit_with_a_lingering_descendant_returns_the_record() {
+    // The shell prints the pid of a background sleep that inherits both output
+    // pipes and exits 0 at once. The runner must not drop the result with an
+    // error or leave the sleeper running: it kills the tree while the shell's
+    // pid is still held, reaps the shell, and returns the record.
+    let mut cfg = config();
+    cfg.drain_grace = Duration::from_millis(300);
+    let started = Instant::now();
+    let output = run_ok(
+        &cfg,
+        &request(&["/bin/sh", "-c", "sleep 30 & echo $!; exit 0"]),
+    );
+
+    assert!(
+        started.elapsed() < Duration::from_secs(4),
+        "the run waited for the lingering descendant: {:?}",
+        started.elapsed()
+    );
+    // The shell's own exit is kept.
+    assert_eq!(output.record.exit.code, Some(0));
+    assert!(!output.record.exit.timed_out);
+    assert!(output.record.exit.descendants_killed);
+    // Killing the sleeper closed the pipes, so both streams are whole.
+    assert!(output.record.stdout.complete);
+    assert!(output.record.stderr.complete);
+
+    let text = String::from_utf8(output.stdout.clone()).unwrap();
+    let pid: u32 = text.trim().parse().unwrap();
+    assert_eq!(output.record.stdout.sha256, sha256_hex(text.as_bytes()));
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while !gone_or_zombie(pid) && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert!(gone_or_zombie(pid), "lingering pid {pid} is still running");
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn tool_01_runner_normal_exit_with_an_orphaned_escapee_is_incomplete_not_an_error() {
+    // Documented limit: the escapee left the group with setsid and is orphaned
+    // when the shell exits, so neither the group kill nor the ppid walk finds
+    // it. The record of the finished shell is still returned, stdout marked
+    // incomplete.
+    let mut cfg = config();
+    cfg.drain_grace = Duration::from_millis(300);
+    let started = Instant::now();
+    let output = run_ok(
+        &cfg,
+        &request(&["/bin/sh", "-c", "setsid sleep 6 2>/dev/null & exit 0"]),
+    );
+
+    assert!(
+        started.elapsed() < Duration::from_secs(4),
+        "the run waited for the escapee: {:?}",
+        started.elapsed()
+    );
+    assert_eq!(output.record.exit.code, Some(0));
+    assert!(!output.record.exit.timed_out);
+    assert!(output.record.exit.descendants_killed);
+    assert!(!output.record.stdout.complete);
+    // The escapee's stderr goes to /dev/null, so only stdout stays open.
+    assert!(output.record.stderr.complete);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
 fn tool_01_runner_keeps_partial_output_of_an_incomplete_stream() {
     // An orphaned escapee writes a line and then keeps stdout open. The bytes
     // read before the runner gave up, and the digest of exactly those bytes,
@@ -427,7 +494,9 @@ fn tool_01_run_record_json_is_deterministic() {
         .keys()
         .map(String::as_str)
         .collect();
-    let expected_exit: BTreeSet<&str> = ["code", "signal", "timed_out"].into_iter().collect();
+    let expected_exit: BTreeSet<&str> = ["code", "descendants_killed", "signal", "timed_out"]
+        .into_iter()
+        .collect();
     assert_eq!(exit_keys, expected_exit);
     for stream in ["stdout", "stderr"] {
         let keys: BTreeSet<&str> = value[stream]

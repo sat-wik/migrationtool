@@ -22,6 +22,10 @@ pub enum FetchError {
     /// curl exceeded the timeout; no digest is reported.
     #[error("curl timed out after {} s; no digest is reported", .0.as_secs())]
     TimedOut(Duration),
+    /// curl's output did not reach end-of-file (a process held the pipe open),
+    /// so the digest would cover only part of the body.
+    #[error("curl's output did not reach end-of-file; no digest is reported")]
+    Incomplete,
     /// curl exited non-zero; no digest is reported.
     #[error("curl failed (exit code {exit_code:?}); no digest is reported")]
     Failed {
@@ -103,6 +107,9 @@ pub fn sha256_of_url(url: &str, timeout: Duration) -> Result<String, FetchError>
         return Err(FetchError::Failed {
             exit_code: exit.code,
         });
+    }
+    if !output.record.stdout.complete {
+        return Err(FetchError::Incomplete);
     }
     Ok(output.record.stdout.sha256)
 }

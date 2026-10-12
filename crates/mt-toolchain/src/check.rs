@@ -218,7 +218,7 @@ pub struct Observation {
     pub timed_out: bool,
     /// True when the program does not exist.
     pub missing: bool,
-    /// A supervision failure (spawn refused, output not drained, i/o error).
+    /// A supervision failure (spawn refused, output stream never closed, i/o error).
     pub error: Option<String>,
     /// A second command observed for this one (the LLVM probe).
     pub probe: Option<Box<Observation>>,
@@ -466,6 +466,20 @@ fn probe_key(tool_key: &str, rule: &LlvmRule) -> String {
 fn run_one(cfg: &RunnerConfig, request: RunRequest) -> Result<Observation, CheckError> {
     let key = request.tool_name.clone();
     match runner::run(cfg, &request) {
+        // A stream that never reached end-of-file holds only part of the
+        // tool's output, so nothing may be parsed from it: not proven.
+        Ok(output) if !(output.record.stdout.complete && output.record.stderr.complete) => {
+            Ok(Observation {
+                key,
+                exit_code: output.record.exit.code,
+                timed_out: output.record.exit.timed_out,
+                error: Some(
+                    "output stream did not reach end-of-file (a process held the pipe open)"
+                        .to_owned(),
+                ),
+                ..Observation::default()
+            })
+        }
         Ok(output) => Ok(Observation {
             key,
             stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
@@ -475,11 +489,7 @@ fn run_one(cfg: &RunnerConfig, request: RunRequest) -> Result<Observation, Check
             ..Observation::default()
         }),
         Err(err) if err.is_not_found() => Ok(Observation::missing(&key)),
-        Err(
-            err @ (RunnerError::Spawn { .. }
-            | RunnerError::OutputNotDrained { .. }
-            | RunnerError::Io(_)),
-        ) => Ok(Observation {
+        Err(err @ (RunnerError::Spawn { .. } | RunnerError::Io(_))) => Ok(Observation {
             key,
             error: Some(err.to_string()),
             ..Observation::default()

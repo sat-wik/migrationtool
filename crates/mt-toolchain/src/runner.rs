@@ -16,6 +16,13 @@
 //! through `rustix` (group signals and pidfds), so none of them can keep the
 //! output pipes open. No process other than the requested tool is ever started.
 //!
+//! A child that exits on its own while a descendant still holds an output pipe
+//! is handled the same way: on Linux the exited child is kept unreaped (so its
+//! pid and group id cannot be reused) while the pipes get `drain_grace` to
+//! close; if they do not, the tree is killed, the child is reaped and the record
+//! is returned with `exit.descendants_killed`. A stream that still does not
+//! reach end-of-file is returned with `complete: false` and its partial bytes.
+//!
 //! The `/proc` walk and the pidfds exist only on Linux. On other unix systems
 //! (for example macOS, where the founder may build and run `mt` locally) the
 //! runner compiles and a timeout kills the child's process group through
@@ -42,7 +49,7 @@ use std::ffi::OsString;
 use std::io::{self, Read};
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::PathBuf;
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -64,7 +71,8 @@ pub const DEFAULT_OUTPUT_CAP: usize = 16 * 1024 * 1024;
 /// Environment keys the runner always sets itself; callers may not override them.
 pub const BASE_ENV_KEYS: [&str; 4] = ["LANG", "PATH", "SOURCE_DATE_EPOCH", "TZ"];
 
-/// How long to wait for a pipe reader after the child has exited (Pitfall 15).
+/// Default for [`RunnerConfig::drain_grace`]: how long to wait for a pipe reader
+/// after the child has exited (Pitfall 15).
 const DRAIN_GRACE: Duration = Duration::from_secs(5);
 
 /// How often the wait loop polls the child.
@@ -88,6 +96,10 @@ pub struct RunnerConfig {
     pub output_cap: usize,
     /// Wall-clock limit after which the child is killed.
     pub timeout: Duration,
+    /// How long the output pipes may stay open after the child has exited
+    /// before the runner kills what still holds them (Pitfall 15), and then how
+    /// long it waits for them to close before it returns a partial capture.
+    pub drain_grace: Duration,
 }
 
 impl RunnerConfig {
@@ -99,6 +111,7 @@ impl RunnerConfig {
             source_date_epoch: source_date_epoch.into(),
             output_cap: DEFAULT_OUTPUT_CAP,
             timeout: Duration::from_secs(120),
+            drain_grace: DRAIN_GRACE,
         }
     }
 }
@@ -138,6 +151,10 @@ pub struct ExitRecord {
     pub signal: Option<i32>,
     /// True when the runner killed the child for exceeding the timeout.
     pub timed_out: bool,
+    /// True when the child exited on its own but a descendant kept an output
+    /// pipe open past the drain grace, so the runner killed the child's process
+    /// tree. `code` and `signal` are the child's own exit.
+    pub descendants_killed: bool,
 }
 
 /// What was captured from one output stream.
@@ -226,12 +243,6 @@ pub enum RunnerError {
         /// The underlying OS error.
         #[source]
         source: io::Error,
-    },
-    /// A pipe did not reach end-of-file after the child ended.
-    #[error("{stream} was not drained within the grace period")]
-    OutputNotDrained {
-        /// `stdout` or `stderr`.
-        stream: &'static str,
     },
     /// Any other I/O failure while supervising the child.
     #[error("i/o error while running a tool: {0}")]
@@ -557,17 +568,49 @@ fn abort(child: &mut Child) {
     let _ = child.wait();
 }
 
-/// Wait for the child, killing its process tree once `timeout` passes.
-/// Returns the exit status and whether the runner killed it.
-fn supervise(child: &mut Child, timeout: Duration) -> io::Result<(ExitStatus, bool)> {
+/// True when the child has exited. On Linux the child is NOT reaped: it stays a
+/// zombie, so its pid, and with it the process group it leads, cannot be reused
+/// until the caller reaps it with `Child::wait`. That is what lets the runner
+/// kill the group of a child that exited while a descendant is still running.
+#[cfg(target_os = "linux")]
+fn child_exited(child: &mut Child) -> io::Result<bool> {
+    use rustix::io::Errno;
+    use rustix::process::{WaitId, WaitIdOptions, waitid};
+
+    let options = WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT;
+    match waitid(WaitId::Pid(Pid::from_child(child)), options) {
+        Ok(status) => Ok(status.is_some()),
+        // Interrupted by a signal: ask again on the next poll.
+        Err(Errno::INTR) => Ok(false),
+        Err(errno) => Err(io::Error::from(errno)),
+    }
+}
+
+/// Other unix: `try_wait` reaps the child as soon as it has exited, so a
+/// descendant that outlives it cannot be killed safely afterwards (the group id
+/// may be reused). See [`HOLDS_EXITED_CHILD`].
+#[cfg(not(target_os = "linux"))]
+fn child_exited(child: &mut Child) -> io::Result<bool> {
+    Ok(child.try_wait()?.is_some())
+}
+
+/// Whether [`child_exited`] leaves an exited child unreaped, so that the tree
+/// can still be killed after a normal exit.
+const HOLDS_EXITED_CHILD: bool = cfg!(target_os = "linux");
+
+/// Wait until the child has exited, killing its process tree once `timeout`
+/// passes. Returns whether the runner killed it for exceeding the timeout. On
+/// Linux the exited child is still unreaped when this returns (see
+/// [`child_exited`]); the caller reaps it.
+fn supervise(child: &mut Child, timeout: Duration) -> io::Result<bool> {
     let started = Instant::now();
     let mut timed_out = false;
     loop {
-        if let Some(status) = child.try_wait()? {
-            return Ok((status, timed_out));
+        if child_exited(child)? {
+            return Ok(timed_out);
         }
         if !timed_out && started.elapsed() >= timeout {
-            // The child is unreaped here (try_wait just returned None).
+            // The child has not exited, so it is unreaped and holds its pid.
             kill_tree(child);
             child.kill()?;
             timed_out = true;
@@ -582,11 +625,16 @@ fn supervise(child: &mut Child, timeout: Duration) -> io::Result<(ExitStatus, bo
 /// - [`RunnerError::EmptyArgv`] and [`RunnerError::EnvConflict`] before anything is spawned.
 /// - [`RunnerError::Spawn`] when the OS cannot start the program (see
 ///   [`RunnerError::is_not_found`]).
-/// - [`RunnerError::OutputNotDrained`] when a pipe stays open after the child
-///   ended normally. After a timeout the record is returned instead, with
-///   `timed_out` set and the undrained stream marked `complete: false` (its
-///   partial bytes and running digest are kept).
 /// - [`RunnerError::Io`] for any other supervision failure.
+///
+/// A pipe that is still open after the child ended is not an error. If the
+/// child exited on its own and a descendant keeps a pipe open for
+/// [`RunnerConfig::drain_grace`], the runner kills the child's process tree
+/// while the child's pid is still held (Linux only), reaps the child, and
+/// returns the record with `exit.descendants_killed` set. A stream that still
+/// has not reached end-of-file (a process the runner could not find holds it)
+/// is returned with `complete: false` and its partial bytes. Callers that need
+/// the whole output must check `complete`.
 pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerError> {
     let (program, args) = req.argv.split_first().ok_or(RunnerError::EmptyArgv)?;
     if let Some(key) = req
@@ -631,26 +679,43 @@ pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerErro
             "child pipes were not created",
         )));
     };
-    let stdout_reader = spawn_reader(stdout_pipe, cfg.output_cap);
-    let stderr_reader = spawn_reader(stderr_pipe, cfg.output_cap);
+    let mut stdout_reader = spawn_reader(stdout_pipe, cfg.output_cap);
+    let mut stderr_reader = spawn_reader(stderr_pipe, cfg.output_cap);
 
-    let (status, timed_out) = match supervise(&mut child, cfg.timeout) {
-        Ok(result) => result,
+    let timed_out = match supervise(&mut child, cfg.timeout) {
+        Ok(timed_out) => timed_out,
         Err(err) => {
             abort(&mut child);
             return Err(RunnerError::Io(err));
         }
     };
 
-    let (stdout, stderr) =
-        collect_streams(stdout_reader, stderr_reader, Instant::now() + DRAIN_GRACE)?;
-    if !timed_out {
-        for (name, captured) in [("stdout", &stdout), ("stderr", &stderr)] {
-            if !captured.record.complete {
-                return Err(RunnerError::OutputNotDrained { stream: name });
-            }
+    // The child has exited but (on Linux) is not reaped yet. Give the pipes a
+    // chance to reach end-of-file; if a descendant still holds one, kill the
+    // tree now, while the pid and so the group id are held, then reap.
+    let mut descendants_killed = false;
+    if !timed_out && HOLDS_EXITED_CHILD {
+        let until = Instant::now() + cfg.drain_grace;
+        let stdout_done = stdout_reader.wait(until);
+        let stderr_done = stderr_reader.wait(until);
+        if !(stdout_done && stderr_done) {
+            kill_tree(&child);
+            descendants_killed = true;
         }
     }
+    let status = match child.wait() {
+        Ok(status) => status,
+        Err(err) => {
+            abort(&mut child);
+            return Err(RunnerError::Io(err));
+        }
+    };
+
+    let (stdout, stderr) = collect_streams(
+        stdout_reader,
+        stderr_reader,
+        Instant::now() + cfg.drain_grace,
+    )?;
 
     let record = RunRecord {
         schema_version: RUN_RECORD_SCHEMA_VERSION,
@@ -670,6 +735,7 @@ pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerErro
             code: status.code(),
             signal: status.signal(),
             timed_out,
+            descendants_killed,
         },
         stdout: stdout.record,
         stderr: stderr.record,
