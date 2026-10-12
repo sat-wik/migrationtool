@@ -200,30 +200,36 @@ is legal advice.
 ## Current image
 
 The verified image, published by the `publish` job of `container` workflow run
-38182234483 and announced as verified by that job. `publish` ran only after
+38198934488 and announced as verified by that job. `publish` ran only after
 `image-a`, `image-b` and `compare` had all succeeded, so the two manifests had
 been found manifest-identical. It pushed the docker-save archive that `image-a`
 saved after its own gates (the pin-binding gate, check, off-pin check, manifest
 and smoke steps), not a rebuild: the archive sha256
-(`bd1f2bd0e993294e069dec3ebcbdbbfbf69c101008b53e1b1bfdb9c290c64c69`) was
+(`c5ce0042f017664ba95a752177916fecfee513b8be091eb3dc80a8a13dfd5b93`) was
 checked before `docker load`, and the loaded image id
-(`sha256:5f7373243d8f187f5b4bd6ccec84f6005a787b5002ab6260077564b8bf576a60`)
+(`sha256:5f1a410fa23e7874901c6f5ea70cd6fe609a46c0085b474e446bba23ac025e27`)
 equalled the id `image-a` recorded. Both Rust toolchains are installed only from
 the sha256-checked channel manifests and the archives they list, and c2rust and
-cargo-mutants only from their sha256-checked `.crate` files; those installs and
-the Arm toolchain unpacking run in `RUN --network=none` steps (the `pin-binding`
-notice of `image-a` shows the build record matching the pins, with each
-archive line matched to a pair of its pin-verified manifest):
+cargo-mutants only from their sha256-checked `.crate` files; those installs, the
+Arm toolchain unpacking and the klee-uclibc `make` run in `RUN --network=none`
+steps (the `pin-binding` notice of `image-a` shows the build record matching the
+pins, with each archive line matched to a pair of its pin-verified manifest). The
+locale tarball the klee-uclibc `make` needs is pinned as
+`[source.klee_uclibc_locale]` and checked with `sha256sum -c` in the networked
+RUN that clones klee-uclibc, so a different tarball fails the build; it is not
+a line of the `pin-binding` record, which covers the Rust toolchains and crates:
 
 ```
-ghcr.io/sat-wik/migrationtool-toolchain@sha256:acdfe312b21c6af19bc61750cf454f3914f482b3bfb9a2ca42d3e6b5f7758b5c
+ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee
 ```
 
-- Run id: 38182234483 (jobs `mt`, `image-a`, `image-b`, `compare` and `publish`
+- Run id: 38198934488 (jobs `mt`, `image-a`, `image-b`, `compare` and `publish`
   all concluded `success`)
-- Commit: 2f77537febe4e529eff05b9ba0beca6def02ecc8
+- Commit: defbe68309b4e1fc3a517ca49a11fed0087a2fd8
 - Manifest sha256 (identical for both builds):
-  40e55cc69fa93f238960bad268cfa4ec5775d51f98dd10efcf92741801d7aed3
+  d70029186639d0030fc6cf22b284b3b849ce0680656fecfe06623f6ffdc44142. The manifest
+  records pin sources, and the one pin change since the previous image
+  (manifest `40e55cc6...`) is the new `klee_uclibc_locale` source.
 
 Later commits that do not touch the Dockerfile, `pins.toml`, the smoke crate,
 the Rust sources or the workflow do not rebuild the image, so this stays the
