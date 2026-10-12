@@ -3,26 +3,10 @@ phase: 01
 review: 01-REVIEW.md
 titles: json
 findings:
-  - id: WR-08
+  - id: WR-13
     severity: warning
-    disposition: fixed
-    title: "One build step still downloads an unchecksummed tarball, contradicting the Dockerfile's own header, and nothing in the manifest or gate would notice a change"
-  - id: WR-09
-    severity: warning
-    disposition: fixed
-    title: "Publishing with `packages: write` is open to a hard-coded feature branch"
-  - id: WR-10
-    severity: warning
-    disposition: fixed
-    title: "The runner now compiles only on Linux, but the README tells the founder to run `mt` natively on a Mac"
-  - id: WR-11
-    severity: warning
-    disposition: fixed
-    title: "A normal exit with a lingering descendant discards the result, leaves the process running and leaks a reader thread"
-  - id: WR-12
-    severity: warning
-    disposition: fixed
-    title: "The \"unobserved\" stream record states false facts about what was captured and drops partial output"
+    disposition: open
+    title: "After a normal exit the descendant sweep cannot find escaped processes, yet the record says `descendants_killed: true`"
   - id: IN-01
     severity: info
     disposition: open
@@ -58,7 +42,7 @@ findings:
   - id: IN-09
     severity: info
     disposition: open
-    title: "`pin-discovery` never compares the pinned Arm checksum"
+    title: "`pin-discovery` never compares the pinned Arm checksum, and the README says it does"
   - id: IN-10
     severity: info
     disposition: open
@@ -66,7 +50,7 @@ findings:
   - id: IN-11
     severity: info
     disposition: open
-    title: "The smoke step falls back to root on any unprivileged failure, and the manifest comparison proves little"
+    title: "The smoke step falls back to root, and the manifest comparison proves little about installed content"
   - id: IN-12
     severity: info
     disposition: open
@@ -74,7 +58,7 @@ findings:
   - id: IN-13
     severity: info
     disposition: open
-    title: "Manifest URL hardening is partial and the mirror downloads lack the usual curl options"
+    title: "Manifest URL hardening is partial and the Dockerfile curl calls lack the usual options"
   - id: IN-14
     severity: info
     disposition: open
@@ -95,6 +79,38 @@ findings:
     severity: info
     disposition: open
     title: "After a timeout the wait loop has no upper bound"
+  - id: IN-19
+    severity: info
+    disposition: open
+    title: "`NETWORKED_INSTALLS` and `NETWORKED_STEPS` are permanently empty allowlists"
+  - id: IN-20
+    severity: info
+    disposition: open
+    title: "A reader thread of an incomplete stream keeps hashing and storing after the snapshot"
+  - id: IN-21
+    severity: info
+    disposition: open
+    title: "`abort` can signal a reaped child's group if the OS reaps behind the runner"
+  - id: WR-08
+    severity: warning
+    disposition: fixed
+    title: "One build step still downloads an unchecksummed tarball, contradicting the Dockerfile's own header, and nothing in the manifest or gate would notice a change"
+  - id: WR-09
+    severity: warning
+    disposition: fixed
+    title: "Publishing with `packages: write` is open to a hard-coded feature branch"
+  - id: WR-10
+    severity: warning
+    disposition: fixed
+    title: "The runner now compiles only on Linux, but the README tells the founder to run `mt` natively on a Mac"
+  - id: WR-11
+    severity: warning
+    disposition: fixed
+    title: "A normal exit with a lingering descendant discards the result, leaves the process running and leaks a reader thread"
+  - id: WR-12
+    severity: warning
+    disposition: fixed
+    title: "The \"unobserved\" stream record states false facts about what was captured and drops partial output"
   - id: CR-01
     severity: critical
     disposition: fixed
@@ -127,20 +143,16 @@ findings:
     severity: warning
     disposition: fixed
     title: "The `Pin binding evidence` gate checks the Dockerfile's own bookkeeping, and its update-hash witness is tautological (new, plan 01-09)"
-open: 18
-total: 31
-recorded: 2026-10-12T03:41:16.648Z
+open: 22
+total: 35
+recorded: 2026-10-12T03:47:15.841Z
 ---
 
 # Phase 01: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-08 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-09 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-10 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-11 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-12 | warning | fixed | 01-REVIEW-FIX.md |
+| WR-13 | warning | open | - |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
@@ -159,6 +171,14 @@ recorded: 2026-10-12T03:41:16.648Z
 | IN-16 | info | open | - |
 | IN-17 | info | open | - |
 | IN-18 | info | open | - |
+| IN-19 | info | open | - |
+| IN-20 | info | open | - |
+| IN-21 | info | open | - |
+| WR-08 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-09 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-10 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-11 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-12 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
 | CR-01 | critical | fixed | 01-09: 686b56b, container run 38019633821 (not in the current review) |
 | WR-01 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
 | WR-02 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
