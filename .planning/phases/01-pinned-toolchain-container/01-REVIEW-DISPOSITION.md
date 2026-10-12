@@ -5,7 +5,7 @@ titles: json
 findings:
   - id: WR-08
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "One build step still downloads an unchecksummed tarball, contradicting the Dockerfile's own header, and nothing in the manifest or gate would notice a change"
   - id: WR-09
     severity: warning
@@ -13,7 +13,7 @@ findings:
     title: "Publishing with `packages: write` is open to a hard-coded feature branch"
   - id: WR-10
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The runner now compiles only on Linux, but the README tells the founder to run `mt` natively on a Mac"
   - id: WR-11
     severity: warning
@@ -21,7 +21,7 @@ findings:
     title: "A normal exit with a lingering descendant discards the result, leaves the process running and leaks a reader thread"
   - id: WR-12
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The \"unobserved\" stream record states false facts about what was captured and drops partial output"
   - id: IN-01
     severity: info
@@ -127,20 +127,20 @@ findings:
     severity: warning
     disposition: fixed
     title: "The `Pin binding evidence` gate checks the Dockerfile's own bookkeeping, and its update-hash witness is tautological (new, plan 01-09)"
-open: 21
+open: 18
 total: 31
-recorded: 2026-10-12T03:41:08.790Z
+recorded: 2026-10-12T03:41:16.648Z
 ---
 
 # Phase 01: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-08 | warning | open | - |
+| WR-08 | warning | fixed | 01-REVIEW-FIX.md |
 | WR-09 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-10 | warning | open | - |
+| WR-10 | warning | fixed | 01-REVIEW-FIX.md |
 | WR-11 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-12 | warning | open | - |
+| WR-12 | warning | fixed | 01-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
