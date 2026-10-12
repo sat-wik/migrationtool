@@ -3,6 +3,98 @@ phase: 01
 review: 01-REVIEW.md
 titles: json
 findings:
+  - id: WR-08
+    severity: warning
+    disposition: open
+    title: "One build step still downloads an unchecksummed tarball, contradicting the Dockerfile's own header, and nothing in the manifest or gate would notice a change"
+  - id: WR-09
+    severity: warning
+    disposition: open
+    title: "Publishing with `packages: write` is open to a hard-coded feature branch"
+  - id: WR-10
+    severity: warning
+    disposition: open
+    title: "The runner now compiles only on Linux, but the README tells the founder to run `mt` natively on a Mac"
+  - id: WR-11
+    severity: warning
+    disposition: open
+    title: "A normal exit with a lingering descendant discards the result, leaves the process running and leaks a reader thread"
+  - id: WR-12
+    severity: warning
+    disposition: open
+    title: "The \"unobserved\" stream record states false facts about what was captured and drops partial output"
+  - id: IN-01
+    severity: info
+    disposition: open
+    title: "Truncated captures are treated as complete observations"
+  - id: IN-02
+    severity: info
+    disposition: open
+    title: "`not_installed` tools are never verified absent"
+  - id: IN-03
+    severity: info
+    disposition: open
+    title: "LLVM-family package detection gaps and a misleading comment"
+  - id: IN-04
+    severity: info
+    disposition: open
+    title: "A missing `cwd` or interpreter is reported as \"program not found\""
+  - id: IN-05
+    severity: info
+    disposition: open
+    title: "Run record is lossy and does not identify the executable that ran"
+  - id: IN-06
+    severity: info
+    disposition: open
+    title: "Pins validation does not cover every value the Dockerfile interpolates"
+  - id: IN-07
+    severity: info
+    disposition: open
+    title: "Dead build arguments and no in-build assertion of the pinned rustc commit"
+  - id: IN-08
+    severity: info
+    disposition: open
+    title: "Final image runs as root and ships unpinned runtime packages"
+  - id: IN-09
+    severity: info
+    disposition: open
+    title: "`pin-discovery` never compares the pinned Arm checksum"
+  - id: IN-10
+    severity: info
+    disposition: open
+    title: "GHCR owner is hard-coded and the annotation helper is copied four times"
+  - id: IN-11
+    severity: info
+    disposition: open
+    title: "The smoke step falls back to root on any unprivileged failure, and the manifest comparison proves little"
+  - id: IN-12
+    severity: info
+    disposition: open
+    title: "The workflow tests are string-presence checks, and the gate's comparison logic has no executable test"
+  - id: IN-13
+    severity: info
+    disposition: open
+    title: "Manifest URL hardening is partial and the mirror downloads lack the usual curl options"
+  - id: IN-14
+    severity: info
+    disposition: open
+    title: "Dependency crates and tinycbor are bound indirectly"
+  - id: IN-15
+    severity: info
+    disposition: open
+    title: "`mt toolchain hash` discards curl's error message"
+  - id: IN-16
+    severity: info
+    disposition: open
+    title: "Dead `ProcStat` fields, and a source-grep test stands in for a behavioural one"
+  - id: IN-17
+    severity: info
+    disposition: open
+    title: "The tag lookup regex is broad, and a push that fails after succeeding can never be announced or repaired"
+  - id: IN-18
+    severity: info
+    disposition: open
+    title: "After a timeout the wait loop has no upper bound"
   - id: CR-01
     severity: critical
     disposition: fixed
@@ -35,79 +127,20 @@ findings:
     severity: warning
     disposition: fixed
     title: "The `Pin binding evidence` gate checks the Dockerfile's own bookkeeping, and its update-hash witness is tautological (new, plan 01-09)"
-  - id: IN-01
-    severity: info
-    disposition: open
-    title: "Truncated captures are treated as complete observations"
-  - id: IN-02
-    severity: info
-    disposition: open
-    title: "`not_installed` tools are never verified absent"
-  - id: IN-03
-    severity: info
-    disposition: open
-    title: "LLVM-family package detection gaps and a misleading comment"
-  - id: IN-04
-    severity: info
-    disposition: open
-    title: "A missing `cwd` or missing interpreter is reported as \"program not found\""
-  - id: IN-05
-    severity: info
-    disposition: open
-    title: "Run record is lossy and does not identify the executable that ran"
-  - id: IN-06
-    severity: info
-    disposition: open
-    title: "Pins validation does not cover every value the Dockerfile interpolates"
-  - id: IN-07
-    severity: info
-    disposition: open
-    title: "Dead build arguments and no in-build assertion of the pinned rustc commit"
-  - id: IN-08
-    severity: info
-    disposition: open
-    title: "Final image runs as root and ships unpinned runtime packages"
-  - id: IN-09
-    severity: info
-    disposition: open
-    title: "`pin-discovery` never compares the pinned Arm checksum"
-  - id: IN-10
-    severity: info
-    disposition: open
-    title: "GHCR owner is hard-coded and the annotation helper is copied three times"
-  - id: IN-11
-    severity: info
-    disposition: open
-    title: "The smoke step falls back to root on any unprivileged failure, and the manifest comparison proves little"
-  - id: IN-12
-    severity: info
-    disposition: open
-    title: "The gate test is a string-presence check, and the gate's comparison logic has no executable test (new, plan 01-09)"
-  - id: IN-13
-    severity: info
-    disposition: open
-    title: "Manifest URL hardening is partial and the mirror downloads lack the usual curl options (new, plan 01-09)"
-  - id: IN-14
-    severity: info
-    disposition: open
-    title: "\"Never fetched a second time\" is true of the top-level crate only; dependencies and tinycbor are bound indirectly (new, plan 01-09)"
-open: 14
-total: 22
-recorded: 2026-10-11T16:34:53.195Z
+open: 23
+total: 31
+recorded: 2026-10-12T02:57:36.614Z
 ---
 
 # Phase 01: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | fixed | 01-09: 686b56b, container run 38019633821 |
-| WR-01 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-02 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-03 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-04 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-05 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-06 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-07 | warning | fixed | 01-REVIEW-FIX.md |
+| WR-08 | warning | open | - |
+| WR-09 | warning | open | - |
+| WR-10 | warning | open | - |
+| WR-11 | warning | open | - |
+| WR-12 | warning | open | - |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
@@ -122,6 +155,18 @@ recorded: 2026-10-11T16:34:53.195Z
 | IN-12 | info | open | - |
 | IN-13 | info | open | - |
 | IN-14 | info | open | - |
+| IN-15 | info | open | - |
+| IN-16 | info | open | - |
+| IN-17 | info | open | - |
+| IN-18 | info | open | - |
+| CR-01 | critical | fixed | 01-09: 686b56b, container run 38019633821 (not in the current review) |
+| WR-01 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-02 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-03 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-04 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-05 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-06 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-07 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
