@@ -221,6 +221,7 @@ fn tool_01_runner_timeout_kills_descendants_and_reports_timed_out() {
     assert!(!output.record.stderr.truncated);
 }
 
+#[cfg(target_os = "linux")]
 /// True when `/proc/<pid>` is gone or the process is a zombie (state `Z`).
 fn gone_or_zombie(pid: u32) -> bool {
     match std::fs::read_to_string(format!("/proc/{pid}/stat")) {
@@ -232,6 +233,7 @@ fn gone_or_zombie(pid: u32) -> bool {
     }
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn tool_01_runner_timeout_kills_a_setsid_descendant() {
     // The background sleep leaves the child's process group with setsid, so a
@@ -264,6 +266,7 @@ fn tool_01_runner_timeout_kills_a_setsid_descendant() {
     assert!(gone_or_zombie(pid), "escaped pid {pid} is still running");
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn tool_01_runner_timeout_kills_a_forking_setsid_subtree() {
     // The escaped shell has its own children, which stay in the escaped
@@ -290,6 +293,7 @@ fn tool_01_runner_timeout_kills_a_forking_setsid_subtree() {
     assert!(!output.record.stderr.truncated);
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn tool_01_runner_reports_an_orphaned_escapee_as_unobserved() {
     // Documented limit: the escapee is orphaned before the timeout, so no ppid

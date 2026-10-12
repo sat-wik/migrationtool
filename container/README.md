@@ -109,7 +109,11 @@ means the image differs from its pins, or the pins file could not be read.
 
 A local build is the slow fallback when the registry image is not available.
 Render the build arguments with `mt` (this needs no Docker, so it runs natively
-on the Mac) and pass each line as a `--build-arg`:
+on the Mac) and pass each line as a `--build-arg`. `mt` builds on macOS (CI
+type-checks it for `aarch64-apple-darwin`) but is only run and tested on Linux:
+on a Mac its timeout kills the child's process group and cannot find a
+descendant that left the group, and a Windows host does not compile. Anything
+that produces evidence runs in the pinned container.
 
 ```sh
 args=()

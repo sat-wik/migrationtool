@@ -16,8 +16,9 @@ publish = false
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
 regex = "1.13.1"
-# Already locked through tempfile; linux_raw backend (no libc). Used only by
-# runner.rs to signal the child's group and escaped descendants.
+# Already locked through tempfile; linux_raw backend on Linux (no libc), the
+# libc backend on other unix. Used only by runner.rs to signal the child's group
+# and, on Linux, escaped descendants.
 rustix = { version = "1.1.5", default-features = false, features = ["std", "process"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"

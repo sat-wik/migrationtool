@@ -32,6 +32,13 @@ jobs:
       - name: Test
         run: cargo test --workspace --locked
 
+      # The runner is gated by target_os, so a macOS build (the founder's Mac)
+      # must keep compiling. Only a type-check: nothing is linked or run.
+      - name: Type-check the tool for macOS (aarch64-apple-darwin)
+        run: |
+          rustup target add aarch64-apple-darwin
+          cargo check --workspace --all-targets --locked --target aarch64-apple-darwin
+
       # The no_std smoke crate is its own workspace root (TOOL-04), so it is built
       # and linted explicitly on the host; the arm-none-eabi-gcc half runs in the
       # container.

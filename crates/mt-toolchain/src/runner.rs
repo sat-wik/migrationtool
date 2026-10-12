@@ -15,13 +15,29 @@
 //! `/proc` parent links, and kills the group and each of those descendants
 //! through `rustix` (group signals and pidfds), so none of them can keep the
 //! output pipes open. No process other than the requested tool is ever started.
+//!
+//! The `/proc` walk and the pidfds exist only on Linux. On other unix systems
+//! (for example macOS, where the founder may build and run `mt` locally) the
+//! runner compiles and a timeout kills the child's process group through
+//! `rustix`'s portable `kill_process_group`; a descendant that left the group
+//! is not found there. The pinned container, and so every evidence run, is
+//! Linux.
+//!
 //! The returned [`RunRecord`] is versioned, uses sorted maps and holds no
 //! wall-clock data, so identical runs serialize to identical JSON.
 //!
 //! The runner adds no network isolation (CONTEXT D-19): it controls
 //! environment, capture and time only.
 
-use std::collections::{BTreeMap, BTreeSet};
+#[cfg(not(unix))]
+compile_error!(
+    "mt-toolchain's runner needs a unix host (process groups and signals); \
+     build and run mt on Linux or macOS, or inside the pinned container"
+);
+
+use std::collections::BTreeMap;
+#[cfg(target_os = "linux")]
+use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::io::{self, Read};
 use std::os::unix::process::{CommandExt, ExitStatusExt};
@@ -31,8 +47,11 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
+#[cfg(target_os = "linux")]
 use rustix::fd::OwnedFd;
-use rustix::process::{Pid, PidfdFlags, Signal, kill_process_group, pidfd_open, pidfd_send_signal};
+use rustix::process::{Pid, Signal, kill_process_group};
+#[cfg(target_os = "linux")]
+use rustix::process::{PidfdFlags, pidfd_open, pidfd_send_signal};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
@@ -55,6 +74,7 @@ const POLL_INTERVAL: Duration = Duration::from_millis(5);
 const READ_CHUNK: usize = 64 * 1024;
 
 /// Most `/proc` scans [`kill_tree`] makes while looking for escaped descendants.
+#[cfg(target_os = "linux")]
 const ESCAPE_SCAN_ROUNDS: usize = 16;
 
 /// Run-wide settings that do not change per call.
@@ -324,6 +344,7 @@ fn collect_after_run(
 }
 
 /// The fields of `/proc/<pid>/stat` that [`kill_tree`] needs.
+#[cfg(target_os = "linux")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ProcStat {
     /// Parent process id (field 4).
@@ -339,6 +360,7 @@ struct ProcStat {
 
 /// Parse one `/proc/<pid>/stat` line. The command name (field 2) may contain
 /// spaces and parentheses, so the fields are read after the LAST `)`.
+#[cfg(target_os = "linux")]
 fn parse_stat(line: &str) -> Option<ProcStat> {
     let (_, rest) = line.rsplit_once(')')?;
     // `rest` starts at field 3 (the state), so field N is index N - 3.
@@ -352,11 +374,13 @@ fn parse_stat(line: &str) -> Option<ProcStat> {
 }
 
 /// Read and parse `/proc/<pid>/stat`; `None` when it is gone or unreadable.
+#[cfg(target_os = "linux")]
 fn read_stat(pid: i32) -> Option<ProcStat> {
     parse_stat(&std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?)
 }
 
 /// Every process visible in `/proc`, by pid. Unreadable entries are skipped.
+#[cfg(target_os = "linux")]
 fn scan_proc() -> BTreeMap<i32, ProcStat> {
     let mut table = BTreeMap::new();
     let Ok(entries) = std::fs::read_dir("/proc") else {
@@ -375,6 +399,7 @@ fn scan_proc() -> BTreeMap<i32, ProcStat> {
 }
 
 /// Pids of every descendant of `root` reachable through parent links.
+#[cfg(target_os = "linux")]
 fn descendants(table: &BTreeMap<i32, ProcStat>, root: i32) -> BTreeSet<i32> {
     let mut children: BTreeMap<i32, Vec<i32>> = BTreeMap::new();
     for (pid, stat) in table {
@@ -420,6 +445,7 @@ fn descendants(table: &BTreeMap<i32, ProcStat>, root: i32) -> BTreeSet<i32> {
 ///   make this process reap arbitrary orphans, racing `Child::wait` in
 ///   concurrent runs.
 /// - Processes of another uid cannot be signalled.
+#[cfg(target_os = "linux")]
 fn kill_tree(child: &Child) {
     let group = Pid::from_child(child);
     let root = group.as_raw_pid();
@@ -458,6 +484,17 @@ fn kill_tree(child: &Child) {
         let _ = pidfd_send_signal(fd, Signal::KILL);
     }
     let _ = kill_process_group(group, Signal::KILL);
+}
+
+/// Non-Linux unix: there is no `/proc` or pidfd, so only the process group the
+/// child leads is killed, through `rustix`'s portable API. A descendant that
+/// left the group (for example through `setsid`) is not found.
+///
+/// It must be called while the child has not been reaped, so the pid, and with
+/// it the group id, cannot be reused.
+#[cfg(not(target_os = "linux"))]
+fn kill_tree(child: &Child) {
+    let _ = kill_process_group(Pid::from_child(child), Signal::KILL);
 }
 
 /// Kill the tree and the direct child and reap the child. Used on every early
@@ -584,7 +621,7 @@ pub fn run(cfg: &RunnerConfig, req: &RunRequest) -> Result<RunOutput, RunnerErro
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::{ProcStat, parse_stat};
 
