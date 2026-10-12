@@ -1,127 +1,97 @@
 ---
 phase: 01-pinned-toolchain-container
-fixed_at: 2026-10-11T00:00:00Z
+fixed_at: 2026-10-12T03:40:00Z
 review_path: .planning/phases/01-pinned-toolchain-container/01-REVIEW.md
 iteration: 1
-findings_in_scope: 7
-fixed: 7
+findings_in_scope: 5
+fixed: 5
 skipped: 0
 status: all_fixed
 ---
 
 # Phase 1: Code Review Fix Report
 
-**Fixed at:** 2026-10-11
+**Fixed at:** 2026-10-12T03:40:00Z
 **Source review:** .planning/phases/01-pinned-toolchain-container/01-REVIEW.md
 **Iteration:** 1
 
 **Summary:**
-- Findings in scope: 7 (WR-01 to WR-07; CR-01 was already resolved, Info findings are out of scope)
-- Fixed: 7
+- Findings in scope: 5 (WR-08 to WR-12; CR-01 and WR-01 to WR-07 were already resolved)
+- Fixed: 5
 - Skipped: 0
 
-Before each commit, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` were run in the main checkout (no worktree, as instructed). `cargo deny check` was run at the end: advisories, bans, licenses and sources are all ok. Local verification ran on the cloud session, not in the container. Items marked "CI validation pending" below have not run in the container build.
-
-One process slip, corrected: the WR-06 commit was first made with two clippy errors in the new test code. They were fixed and folded into the same commit (amend, unpushed), and clippy was re-run at the WR-04 and WR-05 commits to confirm they were clean. Every commit now passes all three gates.
+Branch `claude/gsd-discuss-phase-1-mzdw5v`, no worktree, no new branch. Before
+every commit `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+`cargo test` and `cargo deny check` each exited 0 (run in the main checkout,
+exit status checked per command). Container evidence comes from GitHub Actions,
+not from the local checkout.
 
 ## Fixed Issues
 
-### WR-01: A timeout kills only the direct child, and the timeout is then reported as a drain error
+### WR-10: The runner now compiles only on Linux
+
+**Files modified:** `crates/mt-toolchain/src/runner.rs`, `crates/mt-toolchain/tests/tool_01_runner.rs`, `Cargo.toml` (comment), `.github/workflows/ci.yml`, `container/README.md`
+**Commit:** d532ff6
+**Applied fix:** The pidfd and `/proc` descendant sweep (and its unit tests) are `#[cfg(target_os = "linux")]`. On other unix, `kill_tree` signals the child's group through rustix's portable `kill_process_group`. A non-unix host hits a `compile_error!` with a plain message. The `setsid`-based runner tests are Linux-only. The README no longer says the runner behaves the same on a Mac: it says `mt` builds on macOS, is only run and tested on Linux, and that a Mac cannot find a descendant that left the group.
+**Verification:** `rustup target add aarch64-apple-darwin`, then `cargo check -p mt-toolchain -p mt-cli --target aarch64-apple-darwin` failed before the change with the reported unresolved pidfd imports and passed after it. `cargo check --workspace --all-targets --locked --target aarch64-apple-darwin` and `cargo clippy ... --target aarch64-apple-darwin -- -D warnings` also pass (no linker needed for a check). The target was removed afterwards with `rustup target remove`.
+**CI:** a new `ci.yml` step adds the target and runs `cargo check --workspace --all-targets --locked --target aarch64-apple-darwin` on ubuntu (no new `uses:`, so no new action to pin). It passed in `ci` runs 38198934560 and 38199978794.
+
+### WR-12: The "unobserved" stream record states false facts and drops partial output
 
 **Files modified:** `crates/mt-toolchain/src/runner.rs`, `crates/mt-toolchain/tests/tool_01_runner.rs`
-**Commit:** 2bbd431
-**Status:** fixed: requires human verification (supervision logic)
+**Commit:** 9f988ad
+**Applied fix:** `StreamRecord` has a new `complete: bool`: true when the pipe reached end-of-file, false when a process the runner could not find still held it. Reader threads accumulate into shared state (`Arc<Mutex<..>>`: running digest, stored bytes, byte count), so a stream that never closes is reported with the bytes read so far and the digest of exactly those bytes, not the empty-input digest. `truncated` again means only "the cap was exceeded"; its doc and the `sha256`/`bytes_total` docs say what `complete: false` means. `RUN_RECORD_SCHEMA_VERSION` is 2. Tests: an orphaned `setsid` escapee gives `complete: false` with zero bytes and `truncated: false`; an escapee that prints `partial` keeps `partial\n` with its exact sha256; the JSON key set and schema version are asserted; empty streams still report `complete: true`.
+
+### WR-11: A normal exit with a lingering descendant discards the result, leaves the process running and leaks a reader thread
+
+**Files modified:** `crates/mt-toolchain/src/runner.rs`, `crates/mt-toolchain/src/check.rs`, `crates/mt-toolchain/src/fetch.rs`, `crates/mt-toolchain/tests/tool_01_runner.rs`
+**Commit:** 1daa730
+**Applied fix:** On Linux the runner detects exit with `rustix::process::waitid(WaitId::Pid, EXITED | NOHANG | NOWAIT)`, so an exited child stays an unreaped zombie and its pid and group id cannot be reused. After a normal exit the pipes get `RunnerConfig::drain_grace` (new field, default 5 s) to close; if they do not, `kill_tree` runs while the pid is still held, then the child is reaped. The record is returned with its real exit code and a new `exit.descendants_killed: true`. A stream that still does not close is returned `complete: false` with its partial bytes (WR-12). `RunnerError::OutputNotDrained` is removed. Non-Linux unix keeps `try_wait` (which reaps), does not kill after a normal exit, and returns the stream incomplete. `check.rs` records an incomplete stream as an `error` observation (not proven) and `fetch.rs` returns a new `FetchError::Incomplete` instead of a digest, so a partial stream is never parsed or hashed as whole. Tests: `sh -c 'sleep 30 & echo $!; exit 0'` returns in under 4 s with code 0, `descendants_killed`, complete streams, the sleeper gone (or a zombie), and the digest equal to the printed pid line; a `setsid`-orphaned sleeper after a normal exit returns the record with stdout incomplete.
+**Status note:** logic change in process supervision; the behaviour is covered by the new tests (stable over three consecutive full gate runs) but deserves a human read.
+
+### WR-08: One build step still downloads an unchecksummed tarball
+
+**Files modified:** `container/pins.toml`, `container/Dockerfile`, `container/README.md`, `.github/workflows/pin-discovery.yml`, `crates/mt-toolchain/tests/container_static.rs`
+**Commits:** 736256f (pin-discovery computes the checksum), defbe68 (pin, Dockerfile, tests), d909893 (README records the published image)
 **Applied fix:**
-- The child now leads its own process group (`CommandExt::process_group(0)`, safe std API).
-- On timeout the runner kills the whole group by running `/bin/kill -s KILL -- -<pgid>` from inside `runner.rs`, and also calls `child.kill()`. The group is signalled while the child is still unreaped, so its pid cannot be reused.
-- The wait loop is split into `supervise`. Any supervision error (`try_wait`, `kill`) and the "pipes not created" path now go through `abort`: group kill, `child.kill()`, `child.wait()`. No early return leaves a running or zombie child.
-- If a timeout happens and a pipe is still held by a process that left the group (for example via `setsid`), the run returns a record with `timed_out: true` and that stream marked `truncated` (empty digest, zero bytes) instead of `OutputNotDrained`. A non-timeout undrained pipe still returns `OutputNotDrained`.
-- New test `tool_01_runner_timeout_kills_descendants_and_reports_timed_out` runs `sh -c 'sleep 30 & sleep 30; wait'` with a 300 ms timeout and asserts it ends in under 4 s (below the 5 s drain grace) with `timed_out`. I confirmed that it fails (after about 10 s) with the group kill disabled.
-- Limits: the group kill depends on `/bin/kill` existing (it does on ubuntu-24.04 and in the image's base). If it is missing, only the direct child is killed, as before. A descendant that calls `setsid` escapes the group; the unobserved-stream record covers that case.
+- `[source.klee_uclibc_locale]` (kind `archive`, version `030818`, URL `https://www.uclibc.org/downloads/uClibc-locale-030818.tgz`, sha256 `c4362be318a38f18d98dccf462d22d95bab92f05548bb93f65298fe9afaebd57`). The URL is the one the klee-uclibc Makefile (`extra/locale/Makefile.in` at the pinned commit 955d502) uses. `www.uclibc.org` is blocked for cloud sessions, so the checksum was computed with `mt toolchain hash` on a GitHub runner (pin-discovery run 38198676698, annotation `locale-tarball-sha256`). `pin-discovery.yml` now recomputes it on every run and fails if it differs from the pin.
+- The networked RUN that clones klee-uclibc now also downloads the tarball into `extra/locale/`, checks it with `sha256sum -c` against the pin, and asserts the Makefile names that exact file (`LOCALE_DATA_FILENAME := ...`). The klee-uclibc `make` runs in `RUN --network=none`; the Makefile's rule for a file with no prerequisites does not fetch again.
+- `Remains networked:` label, the Dockerfile header exception and the `NETWORKED_STEPS` entry are removed. New test `tool_03_dockerfile_pins_the_klee_uclibc_locale_tarball` requires the pin, the checked download before an offline make, and that no exception comes back; it fails against the old Dockerfile (checked). Build-arg and Dockerfile-ARG tests pass with the three new `KLEE_UCLIBC_LOCALE_*` args.
+**Manifest:** the manifest records pin sources, so its sha256 changed from `40e55cc6...` to `d70029186639d0030fc6cf22b284b3b849ce0680656fecfe06623f6ffdc44142`; the only pin change is the new source. Both builds were byte-identical.
+**CI (commit defbe68):** `container` push run 38198934488: `mt`, `image-a`, `image-b`, `compare`, `publish` all `success`; `manifest-compare` reports manifest-a and manifest-b byte-identical, sha256 `d70029186639...44142`. `container` pull_request run 38198937060: success, `publish` skipped. `ci` runs 38198934560 and 38198937044, and `pin-discovery` run 38198934501: success.
+**Published image from that run (recorded in `container/README.md` "Current image"):** `ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee` (archive sha256 `c5ce0042f017664ba95a752177916fecfee513b8be091eb3dc80a8a13dfd5b93`, image id `sha256:5f1a410fa23e7874901c6f5ea70cd6fe609a46c0085b474e446bba23ac025e27`, commit defbe68309b4e1fc3a517ca49a11fed0087a2fd8).
 
-### WR-02: `mt toolchain hash` lets curl read user config and expand URL globs
+### WR-09: Publishing with `packages: write` is open to a hard-coded feature branch
 
-**Files modified:** `crates/mt-toolchain/src/fetch.rs`, `crates/mt-toolchain/tests/check_and_manifest.rs`
-**Commit:** 3507c27
-**Applied fix:** The curl argv is now built by a public `curl_argv(url)`: `curl -q --globoff --fail --silent --show-error --location --max-redirs 5 --proto =https,file --proto-redir =https <url>`. New tests assert `-q` is the first option and `--globoff` and `--max-redirs 5` are present, and a behavioural test hashes a file literally named `a[1-2].txt` through a `file://` URL (this fails if curl expands the glob). The optional small stderr cap for `FetchError::Failed` was not added (the output cap of 0 is unchanged).
-
-### WR-03: The single-LLVM-major probe inspects only the first library in `ldd` output
-
-**Files modified:** `crates/mt-toolchain/src/check.rs`, `crates/mt-toolchain/src/version.rs`, `crates/mt-toolchain/tests/check_and_manifest.rs`
-**Commit:** 3145918
-**Status:** fixed: requires human verification (check logic)
-**Applied fix:** `regex_major` now collects every match of the `major` group across stdout and stderr (new `version::extract_all`). One distinct major is returned; several distinct majors give `Mismatch` ("more than one LLVM major in the output: 16, 17") with no `llvm_major`; no match is still `Mismatch`. New test `tool_02_check_fails_when_the_ldd_probe_lists_mixed_llvm_majors` covers two mixed fixtures and a repeated-same-major pass.
-The existing c2rust test `tool_02_check_fails_when_any_tool_llvm_major_differs` had the bug baked in: the recorded `ldd` output lists both `libclang-cpp.so.16` and `libLLVM-16.so.1`, and the test changed only the first. It passed because the first match decided. It now changes both.
-
-### WR-04: Any branch push (and the weekly schedule) publishes to GHCR; the cancel group covers the publish
-
-**Files modified:** `.github/workflows/container.yml`, `crates/mt-toolchain/tests/container_static.rs`
-**Commit:** 336ac81
-**Applied fix:**
-- The login and push steps are now gated on `github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/gsd-discuss-phase-1-mzdw5v')`. Pull requests, the weekly schedule, `workflow_dispatch` and other branches no longer publish.
-- Concurrency is now `container-${{ github.event_name }}-${{ github.ref }}` with `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`, so a push run is never cancelled between `docker push` and the compare job, and a scheduled run does not share a group with a push run.
-- Gating order is unchanged: the pin-binding gate and all other checks still come before login and push, and `verified-image` is still announced by the compare job only after the manifest diff. Actions remain SHA-pinned. `packages: write` is still in `image-a` only.
-- The static test now requires the exact guard on exactly two steps, rejects `!= 'pull_request'`, and requires the new `cancel-in-progress` expression.
-- Not done (kept to the instructed scope): moving publishing to a separate job that needs `compare`, and refusing to re-push an existing `sha-<commit>` tag. A re-run of the same commit on a gated branch can still push a new, differently built image to the same tag.
-- CI validation pending: the workflow is valid YAML and the static tests pass, but the new conditions have not been exercised by a GitHub run.
-
-### WR-05: The "process launching only in runner.rs" guard misses the idiom `runner.rs` itself uses
-
-**Files modified:** `crates/mt-toolchain/tests/repo_checks.rs`
-**Commit:** 8776a4c
-**Applied fix:** New matcher `process_launch_violations` ignores full-line comments and flags: a `use` statement that names the process module together with `Command`, a glob import, or the module itself (`use std::process;`, `... as p`, `process::{self}`); a qualified `process::Command` path; and any mention of the `disallowed_types` lint (which only the runner may allow). `use std::process::ExitCode` and `std::os::unix::process::CommandExt` are allowed. `tool_01_command_only_in_runner_module` uses it. New tests: `tool_01_command_matcher_flags_grouped_imports_aliases_and_globs` (13 positive and 6 negative fixtures, including multi-line braces and a nested `std::{..., process::Command}`) and `tool_01_command_walk_flags_a_planted_file`. The fixtures are assembled from pieces so this file does not trip its own check.
-
-### WR-06: The new static rules are whole-RUN and spelling-bound, so several ways back to an unbound install pass them (new, plan 01-09)
-
-**Files modified:** `crates/mt-toolchain/tests/container_static.rs`, `container/Dockerfile`
-**Commit:** 2fc0a1a
-**Applied fix:** `run_issues` now splits each RUN into simple commands and parses each one (leading `NAME=value` assignments, wrappers such as `sudo`, `env` and `command`, `sh -c '...'`, `sh script`, absolute program paths, extra blanks, `cargo +toolchain`). The rules apply per command:
-- **rustup:** every verb that can download (install, update, `toolchain add|install|update`, `target add`, `component add`, `default`, `show`, `self ...`) needs a `file://` `RUSTUP_DIST_SERVER` in that same command. Only `--version`, `help`, `which` and `toolchain|target|component list` are exempt. Installs and updates also need `--no-self-update`.
-- **rustup-init:** needs `--default-toolchain none` (also `=none`).
-- **cargo install / cargo binstall / cargo-binstall:** each needs `--locked`, an exact `--version =`, and `--path`. The path must lie under the `-C`/`--directory` of a `tar` extraction (short, clustered and long forms) of an archive that a `sha256sum -c` line in the RUN names, with no `..`.
-- The RUN-wide checks that still make sense per RUN (pipe to shell, curl needs a checksum, git clone needs `rev-parse HEAD`, non-file dist server) are kept.
-- Three new negative-test functions cover the cases above, including the review's examples (second unprefixed install, `rustup install`/`add`/`update`/`target add`/`component add`/`default`, `cargo  install`, `cargo +1.99.0 install`, `cargo binstall`, an unrelated checked file plus an unrelated unpacked archive plus an out-of-tree `--path`). All earlier fixtures and messages still hold.
-- To satisfy the stricter rule the Dockerfile's `rustup default` now carries the `RUSTUP_DIST_SERVER="file:///tmp/rust-dist"` prefix. The toolchain already exists at that point, so behaviour is unchanged, and a missing toolchain would now fail instead of being fetched. CI validation of this Dockerfile edit is pending.
-- Not done: the structural alternative `RUN --network=none` for the install step. Not done: variable indirection and `xargs`/`find -exec` spellings are not parsed; the check is a lint, not a sandbox.
-
-### WR-07: The `Pin binding evidence` gate checks the Dockerfile's own bookkeeping, and its update-hash witness is tautological (new, plan 01-09)
-
-**Files modified:** `.github/workflows/container.yml`, `container/Dockerfile`, `crates/mt-toolchain/tests/container_static.rs`
-**Commit:** a2db70b
-**Applied fix:**
-- The container-side script now runs with `set -eu` (a failing read of the record or ledger now fails the gate instead of passing), and also prints `/opt/cargo-tools/.crates2.json`.
-- `check_crate` additionally requires the ledger key `"<name> <version> (path+file:///tmp/crates/<name>-<version>)"` for each pinned crate. A registry source or a missing entry is a `MISMATCH` and fails the job before login and push. I confirmed the key format with a local `cargo install --path` on cargo 1.99.0, the same version as the image toolchain.
-- The Dockerfile's rustup stage now fails the build if the update-hash rustup stored for either pinned toolchain is shorter than 16 characters or is not the start of that toolchain's pin (checked with dash). This asserts the update-hash against the pins at build time, while the mirror still exists.
-- The gate's update-hash lines no longer say "is a prefix of the pin" as if corroborating. They say the value equals the leading characters of the pin from pins.toml and is a witness, because the Dockerfile wrote the sidecar from that pin. The notice header states the same.
-- Tests: `tool_03_workflow_gates_on_pin_binding_evidence` now also requires the ledger path, the `path+file:///tmp/crates/${name}-${version}` source, `set -eu`, and the witness wording, and rejects the old wording. New `tool_03_dockerfile_asserts_the_rustup_update_hash_comes_from_the_pins`.
-- I dry-ran the extracted gate step locally with a fake `docker`: a matching ledger gives exit 0 with a notice, and a registry-sourced c2rust gives a `MISMATCH` line and exit 1.
-- **CI validation pending.** Not exercised in the container: the real `.crates2.json` contents under `--root /opt/cargo-tools`, the `set -eu` container script against the real image, and the new Dockerfile update-hash assertion (it assumes `${RUSTUP_HOME}/update-hashes/<version>-<host>` holds at least 16 characters, which matches the file names and values the existing gate already reads).
-- Not done: gating each recorded archive line against its manifest's `xz_hash`, and the `RUN --network=none` install (see WR-06).
+**Files modified:** `.github/workflows/container.yml`, `crates/mt-toolchain/tests/container_static.rs`, `container/README.md`
+**Commit:** 3fa71a1
+**Applied fix:** The publish job, image-a's save step and its archive upload are guarded by `github.event_name == 'push' && github.ref == 'refs/heads/main'` and nothing else. `PUBLISH_GUARD` and its count assertion (3) are updated, and a new assertion requires that the workflow names no other ref (exactly three `refs/heads/` occurrences, none under `claude/`, no `||` alternative). The README states that only a push to `main` publishes, that other runs build, gate and compare with `publish` skipped, and that the recorded image was published from the phase branch before the restriction.
+**CI (commit 3fa71a1):** `container` push run 38199978785: `mt`, `image-a`, `image-b`, `compare` `success`, `publish` `skipped`; `manifest-compare` byte-identical, sha256 `d70029186639...44142` (equal to the previous run). `container` pull_request run 38199981938: success. `ci` runs 38199978794 and 38199981904: success.
 
 ## Skipped Issues
 
 None.
 
-## CI validation needed
+## Verified image
 
-- WR-04: the new publish conditions and concurrency expression.
-- WR-06: the Dockerfile `rustup default` mirror prefix (build must still pass).
-- WR-07: the pin-binding gate against the real image (`.crates2.json` ledger check, `set -eu` container script) and the new in-build update-hash assertion.
+Final verified image digest (published by run 38198934488 at defbe68, the last run that was allowed to publish from this branch; the 3fa71a1 run built and gated an identical-manifest image and skipped publish by design):
 
-Source-only fixes (WR-01, WR-02, WR-03, WR-05) are verified by the local test suite. WR-01 and WR-03 are marked as logic changes for a human to read.
+```
+ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee
+```
+
+## Residual limits
+
+- The locale tarball checksum is trust-on-first-use: it is the hash that a runner computed from `www.uclibc.org` (pin-discovery run 38198676698), confirmed by a second independent download in the image build (`sha256sum -c` passed) and by every later pin-discovery run, but no second source vouches for the bytes. The tarball is not a line of the `pin-binding` record (that record covers the Rust toolchains and crates), and the manifest holds only its pin, not an installed-content digest (IN-11).
+- The `klee-uclibc.bca` content is still not hashed into the manifest (the first bullet of WR-08's optional fix); a divergence in that input shows up only if a pin changes (IN-11).
+- Linux only for post-exit tree kill: on macOS (type-checked in CI, never run there) a descendant that outlives the child is reported through `complete: false`, and an escapee that left the group is not found. On Linux a descendant whose parent chain was cut before the kill (double fork whose middle process already exited, then `setsid`) is still not found; its pipe is reported `complete: false` after `drain_grace`.
+- A child that exits cleanly leaving a descendant that does NOT hold an output pipe is not killed (only a pipe that stays open triggers the kill).
+- IN-18 (unbounded wait for a process in uninterruptible sleep after SIGKILL) is unchanged.
+- `check.rs`'s handling of an incomplete stream has no dedicated test (it goes through the private `run_one`); the runner side is tested.
+- The `main` publish path itself was not exercised by this branch's CI after WR-09; the guard is checked statically and by the skipped `publish` job on this branch.
 
 ---
 
-_Fixed: 2026-10-11_
+_Fixed: 2026-10-12T03:40:00Z_
 _Fixer: Claude (gsd-code-fixer)_
 _Iteration: 1_
-
-## CI Validation (orchestrator, after push)
-
-Commit a2db70b, GitHub Actions on push to `claude/gsd-discuss-phase-1-mzdw5v`:
-- container run 38156036821: success. Jobs mt, image-a, image-b and compare all passed. The `Pin binding evidence` step passed with the new `.crates2.json` ledger check (it shows `c2rust 0.22.1 (path+file:///tmp/crates/c2rust-0.22.1)`). The in-build update-hash assertion passed, so the image built. GHCR login and push ran on a push to the phase branch (WR-04 condition). manifest-a and manifest-b are byte-identical, with sha256 40e55cc69fa93f238960bad268cfa4ec5775d51f98dd10efcf92741801d7aed3, unchanged from the previous verified image.
-- verified-image: ghcr.io/sat-wik/migrationtool-toolchain@sha256:291bc4375b1496eb10fe2e3590f934b01a6fcc8b505ca6e4461fed70a92c9f14
-- ci run 38156036810 and pin-discovery run 38156036773: success.
-- The pull_request-event container run 38156039782 was cancelled by a newer pull_request run, as WR-04's concurrency change intends. Push runs are no longer cancelled.
-
-WR-04, WR-06 and WR-07 no longer have pending CI validation.
