@@ -614,11 +614,10 @@ fn cargo_fetch_issues(
 const NETWORKED_INSTALLS: &[(&str, &str)] = &[];
 
 /// `(name, reason)` of other build steps (not installs) that still run with
-/// network access, under the same rule as [`NETWORKED_INSTALLS`].
-const NETWORKED_STEPS: &[(&str, &str)] = &[(
-    "cd /src/klee-uclibc && make",
-    "make downloads uClibc-locale-030818.tgz from www.uclibc.org, which no pin covers",
-)];
+/// network access, under the same rule as [`NETWORKED_INSTALLS`]. Empty since
+/// WR-08 pinned the klee-uclibc locale tarball: `tool_03_dockerfile_pins_the_klee_uclibc_locale_tarball`
+/// requires it to stay empty.
+const NETWORKED_STEPS: &[(&str, &str)] = &[];
 
 /// Evidence earlier `RUN`s of one stage gathered, for a later offline install.
 #[derive(Default)]
@@ -1634,6 +1633,76 @@ fn tool_03_dockerfile_installs_only_in_network_none_runs() {
             "{name}: no `# Remains networked:` comment repeats the reason"
         );
     }
+}
+
+/// WR-08: the one download the klee-uclibc `make` used to do on its own is a
+/// pinned archive, fetched and checked in a networked RUN, and `make` runs in a
+/// `RUN --network=none`. Nothing is excused any more.
+#[test]
+fn tool_03_dockerfile_pins_the_klee_uclibc_locale_tarball() {
+    // The pin: an https archive whose file name carries its version, with a
+    // well-formed sha256.
+    let pins = container_pins();
+    let Some(SourcePin::Archive {
+        version,
+        url,
+        sha256,
+    }) = pins.source.get("klee_uclibc_locale")
+    else {
+        panic!("pins.toml needs [source.klee_uclibc_locale] with kind = \"archive\"");
+    };
+    assert!(url.starts_with("https://"), "{url}");
+    assert_eq!(
+        url.rsplit('/').next(),
+        Some(format!("uClibc-locale-{version}.tgz").as_str()),
+        "the URL must end in the file name the klee-uclibc Makefile looks for"
+    );
+    assert!(
+        sha256.len() == 64
+            && sha256
+                .bytes()
+                .all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')),
+        "{sha256}"
+    );
+
+    // No step keeps network access for a reason, and none says it does.
+    assert!(NETWORKED_INSTALLS.is_empty(), "{NETWORKED_INSTALLS:?}");
+    assert!(NETWORKED_STEPS.is_empty(), "{NETWORKED_STEPS:?}");
+    let dockerfile = read_repo_file("container/Dockerfile");
+    assert!(
+        !dockerfile
+            .lines()
+            .any(|line| line.trim_start().starts_with("# Remains networked:")),
+        "a `# Remains networked:` label is back in the Dockerfile"
+    );
+
+    // The klee-build stage: the clone RUN downloads and checks the tarball into
+    // the directory the Makefile reads, and the make RUN is offline and later.
+    let runs = stage_runs(&dockerfile, "klee-build");
+    let position = |needle: &str| runs.iter().position(|(_, body)| body.contains(needle));
+    let download =
+        position("${KLEE_UCLIBC_LOCALE_URL}").expect("no RUN downloads the locale tarball");
+    let (download_flags, download_body) = &runs[download];
+    assert!(
+        !is_offline(download_flags),
+        "the download RUN cannot be offline"
+    );
+    assert!(
+        download_body.contains("curl")
+            && download_body.contains("/src/klee-uclibc/extra/locale/")
+            && download_body.contains("${KLEE_UCLIBC_LOCALE_SHA256}")
+            && download_body.contains("sha256sum -c"),
+        "the locale tarball must be checked against its pin in the RUN that downloads it: {download_body}"
+    );
+    let make = position("cd /src/klee-uclibc && make").expect("no RUN runs the klee-uclibc make");
+    assert!(
+        is_offline(&runs[make].0),
+        "the klee-uclibc make must be RUN --network=none"
+    );
+    assert!(
+        download < make,
+        "the tarball must be in place before make runs"
+    );
 }
 
 #[test]

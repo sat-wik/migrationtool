@@ -17,7 +17,7 @@ those values only as build arguments rendered by `mt toolchain build-args`, and
 |------|-------------------------------------|
 | Debian bookworm base, apt snapshot | `[image]` (`base`, `base_digest`, `snapshot_timestamp`) |
 | clang, llvm-config and LLVM libraries, one major | `[llvm]` and the `clang-16`, `llvm-16`, `llvm-16-dev`, `libclang-16-dev`, `libclang-cpp16-dev` entries of `[apt]` |
-| KLEE 3.2 with klee-uclibc | `[source.klee]`, `[source.klee_uclibc]` (tag and commit, built from source against the one LLVM major) |
+| KLEE 3.2 with klee-uclibc | `[source.klee]`, `[source.klee_uclibc]` (tag and commit, built from source against the one LLVM major) and `[source.klee_uclibc_locale]` (the locale tarball the klee-uclibc Makefile downloads, by URL and sha256) |
 | c2rust 0.22.1 | `[source.c2rust]` (crates.io checksum) |
 | cargo-mutants 27.1.0 | `[source.cargo_mutants]` |
 | Bear 3.1.1, QEMU (`qemu-user`, `qemu-system-arm`), libz3 | `[apt]` |
@@ -146,10 +146,13 @@ D-20). There is no Renovate or Dependabot.
    file and the archives it lists. A crate `sha256` is that of its `.crate` file on
    `static.crates.io`, and that verified file is the one the image unpacks and
    installs.
-2. For apt versions and the Arm checksum, run the `pin-discovery` workflow
-   (it also runs when `pins.toml` or the Dockerfile change): it prints the apt
-   candidate versions at the pinned snapshot timestamp and the official Arm
-   checksum as a `pin-discovery` annotation.
+2. For apt versions, the Arm checksum and the klee-uclibc locale tarball
+   checksum, run the `pin-discovery` workflow (it also runs when `pins.toml` or
+   the Dockerfile change): it prints the apt candidate versions at the pinned
+   snapshot timestamp, the official Arm checksum and the computed checksum of
+   the locale tarball as a `pin-discovery` annotation, and fails when a pinned
+   checksum differs from the computed one. (`www.uclibc.org` is not reachable
+   from cloud sessions, only from runners.)
 3. Keep `rust-toolchain.toml` equal to `[rust.tool]`; `cargo test` checks it.
 4. CI rebuilds the image twice and diffs the manifests (the `container`
    workflow), and runs the check against the live image and against an off-pin
@@ -221,10 +224,6 @@ ghcr.io/sat-wik/migrationtool-toolchain@sha256:acdfe312b21c6af19bc61750cf454f391
 - Commit: 2f77537febe4e529eff05b9ba0beca6def02ecc8
 - Manifest sha256 (identical for both builds):
   40e55cc69fa93f238960bad268cfa4ec5775d51f98dd10efcf92741801d7aed3
-
-The `make` of klee-uclibc still downloads a locale tarball with no pinned
-checksum, so that one step keeps network access; the `Dockerfile` labels it
-`Remains networked:`.
 
 Later commits that do not touch the Dockerfile, `pins.toml`, the smoke crate,
 the Rust sources or the workflow do not rebuild the image, so this stays the

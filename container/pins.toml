@@ -81,6 +81,18 @@ url = "https://github.com/klee/klee-uclibc"
 tag = "klee_uclibc_v1.4"
 commit = "955d502cc1f0688e82348304b053ad787056c754"
 
+# Fetched with no checksum by the klee-uclibc Makefile (extra/locale/Makefile.in
+# at the commit above). The Dockerfile downloads it from this URL, checks the
+# sha256 and places it where the Makefile looks, so `make` runs offline (WR-08).
+# The checksum is `mt toolchain hash` of the URL, computed on a GitHub runner
+# (www.uclibc.org is not reachable from cloud sessions): pin-discovery run
+# 38198676698, and the pin-discovery workflow recomputes it on every run.
+[source.klee_uclibc_locale]
+kind = "archive"
+version = "030818"
+url = "https://www.uclibc.org/downloads/uClibc-locale-030818.tgz"
+sha256 = "c4362be318a38f18d98dccf462d22d95bab92f05548bb93f65298fe9afaebd57"
+
 [source.rustup]
 kind = "archive"
 version = "1.29.1"

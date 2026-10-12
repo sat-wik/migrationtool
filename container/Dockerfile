@@ -16,8 +16,10 @@
 #
 # WR-06: every step that consumes only files already downloaded and checked runs
 # in `RUN --network=none`, after a separate networked RUN that downloads and
-# checks its inputs. A step that cannot run offline is labelled `Remains
-# networked:` with its reason, and tests/container_static.rs lists it.
+# checks its inputs. A step that cannot run offline would be labelled `Remains
+# networked:` with its reason and listed in tests/container_static.rs; there is
+# none now (WR-08), so the only networked RUNs are downloads and clones that
+# are checked against a pin in the same RUN.
 
 # Global build arguments: exactly the image-scope keys of `mt toolchain build-args`.
 ARG ARM_GNU_SHA256
@@ -35,6 +37,9 @@ ARG CARGO_MUTANTS_VERSION
 ARG KLEE_COMMIT
 ARG KLEE_TAG
 ARG KLEE_UCLIBC_COMMIT
+ARG KLEE_UCLIBC_LOCALE_SHA256
+ARG KLEE_UCLIBC_LOCALE_URL
+ARG KLEE_UCLIBC_LOCALE_VERSION
 ARG KLEE_UCLIBC_TAG
 ARG KLEE_UCLIBC_URL
 ARG KLEE_URL
@@ -407,12 +412,20 @@ RUN --network=none set -eux; \
 # install tree is copied into the final image. The assertion build option is
 # off because the packaged LLVM is built without assertions (RESEARCH Pitfall 4).
 # WR-06: each clone is a networked RUN that checks the commit; configure and the
-# KLEE build run in the RUN --network=none that follows it. Only the klee-uclibc
-# make remains networked, see the label above its RUN.
+# KLEE build run in the RUN --network=none that follows it.
+# WR-08: the klee-uclibc Makefile (extra/locale/Makefile.in) downloads
+# uClibc-locale-030818.tgz with no checksum. The networked RUN that clones
+# klee-uclibc downloads that tarball from the pinned URL, checks it with
+# `sha256sum -c` against the pin of pins.toml, and places it where the Makefile
+# looks for it (a file with no prerequisites is never fetched again). `make` then
+# runs in RUN --network=none and has no network to fetch anything else with.
 FROM build-base AS klee-build
 ARG KLEE_COMMIT
 ARG KLEE_TAG
 ARG KLEE_UCLIBC_COMMIT
+ARG KLEE_UCLIBC_LOCALE_SHA256
+ARG KLEE_UCLIBC_LOCALE_URL
+ARG KLEE_UCLIBC_LOCALE_VERSION
 ARG KLEE_UCLIBC_TAG
 ARG KLEE_UCLIBC_URL
 ARG KLEE_URL
@@ -421,21 +434,25 @@ ARG SOURCE_DATE_EPOCH
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 RUN set -eux; \
     : "${KLEE_UCLIBC_URL:?}" "${KLEE_UCLIBC_TAG:?}" "${KLEE_UCLIBC_COMMIT:?}"; \
+    : "${KLEE_UCLIBC_LOCALE_URL:?}" "${KLEE_UCLIBC_LOCALE_SHA256:?}" "${KLEE_UCLIBC_LOCALE_VERSION:?}"; \
     git clone --depth 1 --branch "${KLEE_UCLIBC_TAG}" "${KLEE_UCLIBC_URL}" /src/klee-uclibc; \
-    test "$(git -C /src/klee-uclibc rev-parse HEAD)" = "${KLEE_UCLIBC_COMMIT}"
+    test "$(git -C /src/klee-uclibc rev-parse HEAD)" = "${KLEE_UCLIBC_COMMIT}"; \
+    locale="uClibc-locale-${KLEE_UCLIBC_LOCALE_VERSION}.tgz"; \
+    test "${KLEE_UCLIBC_LOCALE_URL##*/}" = "${locale}"; \
+    grep -qxF "LOCALE_DATA_FILENAME := ${locale}" /src/klee-uclibc/extra/locale/Makefile.in; \
+    curl -fsSL --retry 5 --retry-delay 5 -o "/src/klee-uclibc/extra/locale/${locale}" "${KLEE_UCLIBC_LOCALE_URL}"; \
+    echo "${KLEE_UCLIBC_LOCALE_SHA256}  /src/klee-uclibc/extra/locale/${locale}" | sha256sum -c -
 RUN --network=none set -eux; \
     : "${LLVM_MAJOR:?}"; \
     llvm_bin="/usr/lib/llvm-${LLVM_MAJOR}/bin"; \
     cd /src/klee-uclibc; \
     ./configure --make-llvm-lib --with-cc "${llvm_bin}/clang" --with-llvm-config "${llvm_bin}/llvm-config"
-# Remains networked: make downloads uClibc-locale-030818.tgz from www.uclibc.org, which no pin covers
-# The CI error under RUN --network=none was `curl: (6) Could not resolve host:
-# www.uclibc.org` from `make -C extra/locale locale_headers` (the klee-uclibc
-# Makefile fetches that tarball with no checksum). The clone is checked against
-# its pinned commit and configure runs offline; the tarball cannot be bound to a
-# pin without a new entry in pins.toml, so only this make keeps its network and
-# it is listed in NETWORKED_STEPS.
-RUN set -eux; \
+# The tarball is already in extra/locale, checked by the RUN above, so the
+# Makefile's download rule has nothing to do. The CI error that once forced this
+# step to stay networked was `curl: (6) Could not resolve host: www.uclibc.org`
+# from `make -C extra/locale locale_headers`; a fetch of anything else now fails
+# the build instead of reaching the network.
+RUN --network=none set -eux; \
     cd /src/klee-uclibc && make; \
     test -f /src/klee-uclibc/lib/libc.a
 RUN set -eux; \

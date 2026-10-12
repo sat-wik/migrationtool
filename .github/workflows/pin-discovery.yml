@@ -35,18 +35,6 @@ jobs:
       - name: Build mt
         run: cargo build --locked -p mt-cli
 
-      # WR-08: www.uclibc.org is reachable from GitHub runners but not from cloud
-      # sessions. This is the URL the klee-uclibc Makefile (extra/locale/Makefile.in
-      # at the pinned commit) fetches, hashed with the repo's own helper so the
-      # checksum can be pinned in container/pins.toml.
-      - name: Hash the klee-uclibc locale tarball
-        run: |
-          set -euo pipefail
-          url="https://www.uclibc.org/downloads/uClibc-locale-030818.tgz"
-          line=$(target/debug/mt toolchain hash "$url")
-          echo "::notice title=locale-tarball-sha256::${line}"
-          echo "$line" >> "$GITHUB_STEP_SUMMARY"
-
       # Values are only ever read as data: never evaluated by the shell.
       - name: Render the pins
         id: ci-pins
@@ -124,6 +112,16 @@ jobs:
             fail "Arm checksum mismatch: official=${official:-none} computed=${computed:-none}"
           fi
 
+          # WR-08: www.uclibc.org is reachable from GitHub runners but not from
+          # cloud sessions. This is the klee-uclibc locale tarball that the
+          # Makefile downloads; the Dockerfile checks it against the pin.
+          LOCALE_URL=$(arg KLEE_UCLIBC_LOCALE_URL)
+          LOCALE_SHA256=$(arg KLEE_UCLIBC_LOCALE_SHA256)
+          locale_computed=$(target/debug/mt toolchain hash "$LOCALE_URL" | awk '{ print $1 }')
+          if [ -z "$locale_computed" ] || [ "$locale_computed" != "$LOCALE_SHA256" ]; then
+            fail "klee-uclibc locale tarball checksum mismatch: pinned=${LOCALE_SHA256:-none} computed=${locale_computed:-none}"
+          fi
+
           # Informational: where the base tag points today (for pin bumps).
           today=$(docker buildx imagetools inspect "$BASE_REF" 2>> "$LOG" | sed -n 's/^Digest:[[:space:]]*//p' | head -n 1 || true)
 
@@ -133,6 +131,8 @@ jobs:
             echo "arm_gnu official sha256: ${official}"
             echo "arm_gnu computed sha256: ${computed}"
             echo "arm_gnu pinned sha256:   ${ARM_GNU_SHA256}"
+            echo "klee_uclibc_locale computed sha256: ${locale_computed}"
+            echo "klee_uclibc_locale pinned sha256:   ${LOCALE_SHA256}"
             echo "base digest pinned:      ${BASE_DIGEST}"
             echo "base digest today:       ${today:-unavailable}"
           } > "$RUNNER_TEMP/block.txt"
