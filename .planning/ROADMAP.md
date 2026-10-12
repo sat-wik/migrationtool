@@ -89,7 +89,7 @@ Plans:
   3. For every target and configuration the capture command writes a `compile_commands.json` covering every translation unit, and replaying it in the container reproduces the original build output (byte-identical objects, or identical after a documented normalisation); targets that cannot be reproduced are dropped with the cause logged, leaving at least 10.
   4. Each target has a seed corpus extracted from its own tests and fixtures, or at least 10 hand-made seeds (proposed) when it has none.
 
-**Plans:** 9 plans
+**Plans:** 10 plans
 
 Plans:
 **Wave 1**
@@ -107,10 +107,11 @@ Plans:
 - [ ] 02-07-PLAN.md — mt-seeds crate: C lexer, hex and zip readers, deterministic selection under caps, seed index
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 02-06-PLAN.md — Tracer: `mt testbed` CLI and testbed workflow, qcbor (Make plus Bear) and corejson (CMake) end to end in the real image; static tests; CI fixtures
+- [ ] 02-06-PLAN.md — Tracer: `mt testbed` CLI and testbed workflow, qcbor (Make plus Bear) and corejson (CMake) end to end in the real image; static tests; CI fixture notices
 
 **Wave 6** *(blocked on Wave 5 completion)*
 - [ ] 02-08-PLAN.md — Committed seed corpus: seed sources, `mt testbed seeds [--check]`, hand-made sets, CI regeneration check
+- [ ] 02-10-PLAN.md — CI-captured fixtures from the tracer run (compile_commands, reports, readelf, Arm objects, AST dump) and their offline tests; no push
 
 **Wave 7** *(blocked on Wave 6 completion)*
 - [ ] 02-09-PLAN.md — Full bed: drop log, remaining recipes, `--all` round trips with one fix attempt per failure, at least 10 retained
