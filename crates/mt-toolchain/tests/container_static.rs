@@ -2404,9 +2404,11 @@ fn positions(haystack: &str, what: &str, needles: &[&str]) -> Vec<usize> {
         .collect()
 }
 
-/// The publish guard every publishing step and job repeats: a push to `main` or to
-/// the phase branch, never a pull_request, schedule or dispatch (WR-04).
-const PUBLISH_GUARD: &str = "if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/gsd-discuss-phase-1-mzdw5v') }}";
+/// The publish guard every publishing step and job repeats: a push to `main`
+/// only, never a pull_request, schedule, dispatch or any other branch (WR-04,
+/// WR-09). No other ref may ever be named in it.
+const PUBLISH_GUARD: &str =
+    "if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}";
 
 #[test]
 fn tool_03_workflow_publishes_by_digest_with_least_privilege() {
@@ -2454,8 +2456,8 @@ fn tool_03_workflow_publishes_by_digest_with_least_privilege() {
         "publishing must not be gated on `!= pull_request` (any branch, schedule, dispatch)"
     );
 
-    // publish runs after every gate, for pushes to main or the phase branch only,
-    // one at a time per commit, and neither builds nor checks out anything.
+    // publish runs after every gate, for pushes to main only (WR-09), one at a
+    // time per commit, and neither builds nor checks out anything.
     assert!(publish.contains("needs: [image-a, image-b, compare]"));
     assert!(
         publish.contains(PUBLISH_GUARD),
@@ -2472,6 +2474,22 @@ fn tool_03_workflow_publishes_by_digest_with_least_privilege() {
             "publish must not contain `{forbidden}`: the gated image is never rebuilt"
         );
     }
+    // WR-09: `main` is the only ref the workflow names. A branch name (or any
+    // `||` alternative) in a guard would let anyone who can push that branch
+    // publish into the package.
+    assert_eq!(
+        workflow.matches("refs/heads/").count(),
+        3,
+        "only the three publish guards may name a ref"
+    );
+    assert!(
+        !workflow.contains("refs/heads/claude/"),
+        "no working branch may hold publish rights"
+    );
+    assert!(
+        !workflow.contains("refs/heads/main' ||") && !workflow.contains("|| github.ref"),
+        "the publish guard must not have an alternative ref"
+    );
     // The guard: publish's job-level if, image-a's save step and its upload step.
     assert_eq!(
         workflow.matches(PUBLISH_GUARD).count(),

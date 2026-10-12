@@ -231,8 +231,16 @@ ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e
   records pin sources, and the one pin change since the previous image
   (manifest `40e55cc6...`) is the new `klee_uclibc_locale` source.
 
+Only a push to `main` publishes (WR-09). A run for a pull request, another
+branch, a manual dispatch or the weekly schedule still builds both images,
+gates them and compares the manifests, but its `publish` job is skipped, so it
+announces no `verified-image` and pushes nothing to GHCR. The image above was
+published by a run on the phase branch (`claude/gsd-discuss-phase-1-mzdw5v`)
+while that branch still held publish rights; no branch other than `main` does
+now, and the first publish from `main` will replace this reference.
+
 Later commits that do not touch the Dockerfile, `pins.toml`, the smoke crate,
 the Rust sources or the workflow do not rebuild the image, so this stays the
-current reference until one of those changes; a rebuild publishes a new digest
-and this section is updated with it. A `sha-<commit>` tag that already exists is
-never overwritten: `publish` skips the push with a warning.
+current reference until one of those changes; a rebuild on `main` publishes a
+new digest and this section is updated with it. A `sha-<commit>` tag that
+already exists is never overwritten: `publish` skips the push with a warning.
