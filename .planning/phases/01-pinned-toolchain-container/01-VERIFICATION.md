@@ -1,11 +1,12 @@
 ---
 phase: 01-pinned-toolchain-container
-verified: 2026-10-10T06:00:00Z
+verified: 2026-10-12T04:10:00Z
 status: passed
 score: 4/4 must-haves verified
 covered_files:
   - .github/workflows/ci.yml
   - .github/workflows/container.yml
+  - .github/workflows/pin-discovery.yml
   - .planning/phases/01-pinned-toolchain-container/01-01-PLAN.md
   - .planning/phases/01-pinned-toolchain-container/01-01-SUMMARY.md
   - .planning/phases/01-pinned-toolchain-container/01-02-PLAN.md
@@ -30,55 +31,45 @@ covered_files:
   - crates/mt-toolchain/src/check.rs
   - crates/mt-toolchain/src/runner.rs
   - crates/mt-toolchain/tests/container_static.rs
-covered_digest: "v3:sha256:fc69c94739f645592bd30997551f820c017450156e5014025ebcea3316e01a14"
+  - crates/mt-toolchain/tests/tool_01_runner.rs
+covered_digest: "v3:sha256:cfc8ee922e8b9498e8057ff25f3e9eca6e28fb7b2a804cd29597f429c9a3fa95"
 behavior_unverified: 0
 overrides_applied: 0
-re_verification:
-  previous_status: gaps_found
-  previous_score: 3/4
-  gaps_closed:
-    - "ROADMAP SC3 / TOOL-03 / CR-01: the pinned sha256 of both Rust channel manifests, c2rust and cargo-mutants now governs the installed bytes (plan 01-09)"
-  gaps_remaining: []
-  regressions: []
 gaps: []
 deferred: []
-human_verification:
-  - test: "On the founder's Apple Silicon Mac, `docker pull --platform linux/amd64 ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f3b392427d2588e6ba0e3da2067bc503f40e6749b48bc6553832c27e96e518d`, then run `mt toolchain check --pins /opt/mt/pins.toml` with mt and pins.toml mounted read-only, --network none, as an unprivileged user (container/README.md steps)"
-    expected: "Pull succeeds anonymously (or after docker login ghcr.io), the check prints every row OK, hayroll and kani as not_installed, and exits 0; the image is the digest recorded under Current image in container/README.md (this replaces the earlier b8032124... digest)"
-    why_human: "No Docker daemon in this cloud session, and the Mac pull under emulation is a founder-environment fact. CI already proved the same digest on x86-64 runners (container run 38019633821)."
-coincidental_reliance_items: []
 behavior_unverified_items: []
+coincidental_reliance_items: []
 advisory:
-  - finding: "WR-07: the image-a Pin binding evidence gate compares the Dockerfile's own build record (sha256 lines it writes after each sha256sum -c) and a tautological update-hash prefix, not an independent re-measurement of the installed bytes"
+  - finding: "WR-13 residual: after a normal exit, a tool descendant that left the process group (setsid) has already been reparented, so the runner's /proc walk cannot find it. The record shows that stream as complete=false and the field exit.tree_kill_sent says only that SIGKILL was sent, not that every pipe holder died."
     category: other
-    reason: "The primary control is the in-RUN `sha256sum -c` on the file the installer consumes (traced in the Dockerfile; rustup has only the file:// mirror, cargo installs --path the unpacked checked crate). The gate is regression evidence layered on top. Hardening: read .crates2.json for path+file sources, assert update-hashes in the Dockerfile, RUN --network=none for the install."
-    evidence_status: "reviewed; traced in the Dockerfile; CI run 38019633821 pin-binding notice matches all four pins"
-  - finding: "WR-06: the new run_issues static rules are whole-RUN and spelling-bound (other rustup fetch verbs, `cargo  install`, `cargo +tc install`, per-install file:// prefix, rustup-init without --default-toolchain none)"
+    reason: "Fixed by renaming and documenting (commit 2916af8), not by closing the gap. No Phase 1 tool is a daemonizing one. Close it (find pipe holders by pipe inode under /proc/*/fd) before KLEE or another forking analyser is run through the runner in Phase 2 or later."
+    evidence_status: "01-REVIEW-FIX.md; test tool_01_runner_normal_exit_with_an_orphaned_escapee_is_incomplete_not_an_error passes locally"
+  - finding: "IN-01..IN-21 from 01-REVIEW.md remain at disposition 'open' (21 open of 35). Most relevant: IN-11 (the manifest holds versions and pins, not installed content, so manifest identity proves version-level reproducibility only), IN-14 (dependency crates bound through the packaged Cargo.lock), IN-08 (final image runs as root), IN-09 (pin-discovery does not compare the Arm checksum), IN-18 (no upper bound on the post-kill wait)."
     category: other
-    reason: "Affects regression protection only. The current Dockerfile has none of those spellings (grep: two rustup toolchain install lines, both with the file:// prefix and --no-self-update; two cargo install --path lines; one rustup-init with --default-toolchain none). Hardening for a later pin bump."
-    evidence_status: "reviewed; grep of the real Dockerfile"
-  - finding: "WR-03: regex_major in check.rs takes the first LLVM library match in the c2rust-transpile ldd output"
+    reason: "Hardening and documentation items; none contradicts a ROADMAP success criterion. IN-11 matches what criterion 3 and TOOL-03 actually say (identical tool-version manifests)."
+    evidence_status: "01-REVIEW.md and 01-REVIEW-DISPOSITION.md read"
+  - finding: "Latest head b974caa: ci and container runs (38201196211, 38201196303) were still in_progress when this report was written. Only the mt job had finished (success)."
     category: other
-    reason: "Not currently exploitable: image installs only LLVM 16 packages (llvm_packages row OK in CI)."
-    evidence_status: "reviewed; no failing test"
-  - finding: "WR-01: runner timeout kills only the direct child; descendants can surface as OutputNotDrained instead of timed_out=true"
-    category: other
-    reason: "Tested single-process timeout path works; fix before Phase 2 relies on tools that spawn children (KLEE, cargo)."
-    evidence_status: "reviewed; no test covers the path"
-  - finding: "WR-02, WR-04, WR-05, IN-01..IN-14 from 01-REVIEW.md remain open (dispositions 'open')"
-    category: other
-    reason: "Hardening items; none contradicts a ROADMAP criterion. IN-11 is relevant context for SC3: the manifest contains versions, not installed content, so manifest identity proves version-level reproducibility only, which is exactly what the criterion and TOOL-03 say."
-    evidence_status: "reviewed"
+    reason: "b974caa and its parents 1c4017b, 88b4bc4, 58d7ae9 change only planning files; the last source change after the last fully green container run (3fa71a1, run 38199978785) is 2916af8, which touches only runner.rs and tool_01_runner.rs (a field rename). Local fmt, clippy -D warnings and the whole test suite pass on that source. The Dockerfile, pins.toml, smoke crate and check.rs are byte-identical to what run 38198934488 built and published (git diff defbe68..HEAD lists no Dockerfile, pins or check.rs change). Re-read the run results before merging."
+    evidence_status: "gh api actions/runs; git diff --stat defbe68 HEAD"
 ---
 
 # Phase 1: Pinned Toolchain Container Verification Report
 
 **Phase Goal:** Every compiler and analyser the harness and translator need runs as a pinned subprocess inside one reproducible container, on a single pinned LLVM.
-**Verified:** 2026-10-10
-**Status:** human_needed
-**Re-verification:** Yes, after gap closure (plan 01-09, CR-01)
+**Verified:** 2026-10-12
+**Status:** passed
+**Re-verification:** No new gaps to close. This report replaces the stale 2026-10-10 report, which was written before the review fixes WR-08..WR-13, the publish-from-main change and the image rebuild. Every criterion was checked again from scratch against the current tree and the current CI record.
 
-Evidence base: local source at HEAD 0eed2ef; `cargo test --workspace --locked` (all suites pass, 77 tests: 8 + 20 + 21 + 12 + 7 + 9); and the GitHub Actions record read directly with `gh api`: container run 38019633821 at 686b56b (jobs mt, image-a, image-b, compare all `success`, run_attempt 1), ci run 38019633791 and pin-discovery run 38019633805 at 686b56b (both `success`). Since 686b56b only planning files and `container/README.md` changed (`git diff 686b56b..HEAD --name-only`); README is not in the container workflow's trigger paths and the Dockerfile, pins, workflow and Rust sources are byte-identical to what CI built, so that run proves the shipped image. Annotations were read directly, not taken from SUMMARY.
+## Evidence base
+
+- Source: branch `claude/gsd-discuss-phase-1-mzdw5v` at HEAD `b974caa6a084e577d1830107fe225e426d7a880b`.
+- Local: `cargo test --workspace --locked` passes (101 tests: 8 + 2 + 23 + 30 + 12 + 9 + 17, no failures; 32 `tool_01_*`, 21 `tool_02_*`, 44 `tool_03_*`, 2 `tool_04_*` test names listed). `cargo fmt --check` and `cargo clippy --all-targets --locked -- -D warnings` exit 0.
+- CI, read directly with `gh api` (no Docker daemon in this session):
+  - container push run 38198934488 at defbe68: jobs `mt`, `image-a`, `image-b`, `compare`, `publish` all `success`, run_attempt 1. It published `ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee` (annotations `verified-image`, `image-digest`, `image-archive` on the publish and image-a jobs; archive sha256 c5ce0042..., loaded image id equals the id image-a gated).
+  - container push run 38199978785 at 3fa71a1: `mt`, `image-a`, `image-b`, `compare` `success`; `publish` `skipped` (main-only guard).
+  - Between defbe68 and HEAD no change touched `container/Dockerfile`, `container/pins.toml`, `container/smoke/` or `check.rs`; the diff is the workflow (publish guard), README, `runner.rs` and two test files. Run 3fa71a1 rebuilt the image from the same Dockerfile and pins and produced the same manifest sha256, so the published digest still corresponds to the tree.
+- UAT: `01-UAT.md` records the founder running `mt toolchain check --pins` on Apple Silicon against exactly that digest: every row OK, hayroll and kani not_installed, rustc_bitcode 1.72.1 LLVM 16.0.5, `result: OK`, exit 0. Status complete, 1 passed, 0 issues. Not re-raised as a human item.
 
 ## Goal Achievement
 
@@ -86,60 +77,69 @@ Evidence base: local source at HEAD 0eed2ef; `cargo test --workspace --locked` (
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | One command in the container prints the exact version of every pinned tool and exits non-zero if any is missing or off its pin | VERIFIED | image-a annotation `check-a` (run 38019633821, `--network none`, unprivileged): rows OK for apt pins, arm_gcc 14.3.Rel1, bear 3.1.1, c2rust 0.22.1 (LLVM 16), cargo_mutants 27.1.0, clang 16.0.6, klee 3.2, llvm_config 16.0.6, qemu_arm and qemu_system_arm 7.2, rustup 1.29.1, rustc_tool 1.99.0 (LLVM 23), rustc_bitcode 1.72.1 LLVM 16.0.5, rust_default, both target sets; `result: OK`, exit 0. Annotation `negative-pin` on a pins copy with LLVM 17: exit 1 with MISSING/MISMATCH on clang, llvm_config, c2rust, klee, rustc_bitcode, llvm_packages. Hayroll and Kani `not_installed` with reasons (CONTEXT D-10; not in the roadmap list of tools for this criterion). |
-| 2 | One LLVM major in 16-19 pinned for clang, KLEE, c2rust; check fails on a different major; pinned rustc LLVM at or below 19, recorded provisional until Phase 6 R1 | VERIFIED | `container/pins.toml` `[llvm]` major 16, max_major 19, status provisional, decision D-15; check output line "llvm pin: 16 (provisional, decision D-15); bitcode rustc must report LLVM 16.x and at most 19". Rows show LLVM 16 for clang, klee, c2rust, llvm_config, rustc_bitcode (16.0.5). `negative-pin` proves MISMATCH when the pinned major differs (klee, c2rust, rustc_bitcode, llvm_packages). Advisory WR-03 (first-match ldd probe) is not exploitable in this image. |
-| 3 | Building the image twice yields identical tool-version manifests, and every base image and tool source is pinned by digest, commit or checksum with no floating tags | VERIFIED | **Identical manifests:** compare annotation `manifest-compare`: "manifest-a.json and manifest-b.json are byte-identical; sha256 40e55cc69fa93f238960bad268cfa4ec5775d51f98dd10efcf92741801d7aed3" (build B with `--no-cache`); same hash as the pre-fix run, as expected since the manifest holds versions. **Pins:** base by `sha256:` digest, BuildKit by digest, apt snapshot timestamp plus exact versions, KLEE and klee-uclibc commits asserted with `rev-parse HEAD`, tinycbor commit asserted in the checksum-verified c2rust crate, rustup-init and Arm archive by `sha256sum -c`, no floating FROM or syntax directive. **CR-01 closed, traced in the Dockerfile myself:** (a) rustup stage downloads each channel manifest, `sha256sum -c` against `RUST_*_CHANNEL_SHA256`, then every archive that verified manifest lists against its manifest hash, and `rustup toolchain install` runs only with `RUSTUP_DIST_SERVER="file:///tmp/rust-dist"` and `--no-self-update` (lines 226-227; the only two `rustup toolchain install` lines in the file; no ENV for the server), so rustup has no network source and the installed bytes are the checked bytes; (b) cargo-tools stage `sha256sum -c`, `tar -xzf`, then `cargo install --locked --root /opt/cargo-tools --path /tmp/crates/<name>-<version>` of that unpacked directory (lines 295-296), with dependency crates bound by the packaged Cargo.lock under `--locked`. **Evidence in CI:** image-a `pin-binding` notice shows record lines `ce6dddc8...b6a2  .../channel-rust-1.99.0.toml`, `77113b96...a229  .../channel-rust-1.72.1.toml`, `e331f411...3f3b  /tmp/crates/c2rust-0.22.1.crate`, `07072e7b...1cf9  /tmp/crates/cargo-mutants-27.1.0.crate`, each equal to the corresponding value in `container/pins.toml` (lines 41, 51, 64, 70); the record also lists 11 component archives; rustup's stored multirust-channel-manifest.toml hashes (28e24aa2..., 3bd93d33...) differ from the pins and are printed as "not the binding", matching the plan's finding that rustup re-serialises. The step ran before "Log in to GHCR" and "Push the verified image" (steps 10 vs 16, 17) and all succeeded. |
-| 4 | A trivial `no_std` crate builds for `thumbv7em-none-eabihf` in the container; the workspace launches an analyser through the subprocess runner with stdout, stderr, exit status and version stamp captured; a repository check fails on Python outside `research/` | VERIFIED | `smoke` annotation (user 65534, no network): `Finished release`, arm-none-eabi-gcc 14.3.1, `nm libmt_smoke.a` shows `T mt_smoke_add`, `nm smoke.o` shows `U mt_smoke_add`, exit 0. `runner::run` returns a `RunRecord` with argv, cwd, sorted env, ToolStamp, exit code/signal/timed_out and stdout/stderr hashes (9 `tool_01_runner_*` tests pass); `mt toolchain check` launches every analyser through it in the image (tool-outputs annotations show captured stdout/stderr for klee, llvm_config, qemu, rustc, rustup). `tool_01_no_python_outside_research` passes; `find` for `*.py*` outside research, `.claude`, target and .git returns nothing. Persisted run records for real analyser-on-input runs begin with Phase 2 (hand-off, not a Phase 1 gap, as in the first report). |
+| 1 | One command in the container prints the exact version of every pinned tool and exits non-zero if any is missing or off its pin | VERIFIED | Run 38199978785 image-a annotation `check-a` (run in the image, no network, unprivileged): rows for clang 16.0.6, llvm_config 16.0.6, klee 3.2, c2rust 0.22.1, bear 3.1.1, arm_gcc 14.3.Rel1, qemu_arm and qemu_system_arm 7.2, cargo_mutants 27.1.0, rustup 1.29.1, rustc_tool 1.99.0 (LLVM 23), rustc_bitcode 1.72.1 LLVM 16.0.5, the apt pins and both Rust target sets, all `OK`; `result: OK`; `exit code: 0`. Annotation `negative-pin` (pins copy with LLVM 17) exits 1 with `MISSING` on clang, llvm_config and the 17-named apt packages, `MISMATCH` on c2rust, klee, rustc_bitcode and llvm_packages. Local: `tool_01_check_end_to_end` (8 tests) and `check_and_manifest` (23) pass, including `tool_01_check_unobserved_failed_and_missing_runs_never_pass`. `mt-cli` `toolchain check` calls `run_check_observed`, which drives every probe through `runner::run`. Hayroll and Kani print `not_installed` with a reason (decision D-10; Hayroll licence R3 gates Phase 8, Kani is v2.0). They are not in the tool list this criterion names. |
+| 2 | One LLVM major in 16-19 recorded as the pin for clang, KLEE, c2rust; check fails on a different major; pinned rustc reports LLVM at or below 19, provisional until Phase 6 R1 | VERIFIED | `container/pins.toml` `[llvm]`: `major = 16`, `max_major = 19`, `status = "provisional"`, `decision = "D-15"`. The `check-a` output ends with `llvm pin: 16 (provisional, decision D-15); bitcode rustc must report LLVM 16.x and at most 19; provisional until the Phase 6 R1 verdict`. LLVM column: clang 16, klee 16, c2rust 16, llvm_config 16, rustc_bitcode 16 (16.0.5), llvm_packages 16. `negative-pin` shows `MISMATCH  LLVM major 16 differs from the pinned 17` on klee, c2rust and rustc_bitcode. Local tests `tool_02_pins_llvm_major_in_supported_range_and_provisional`, `tool_02_pins_llvm_major_tokens_are_consistent`, `tool_02_parses_rustc_vv_release_commit_and_llvm` and the other 18 `tool_02_*` tests pass. The tool rustc (LLVM 23) is a separate row, correctly outside the bitcode bound. |
+| 3 | Building the image twice yields identical tool-version manifests, and every base image and tool source is pinned by digest, commit or checksum with no floating tags | VERIFIED | **Identical manifests:** annotation `manifest-compare` (run 38199978785, job `compare`): `manifest-a.json and manifest-b.json are byte-identical; sha256 d70029186639d0030fc6cf22b284b3b849ce0680656fecfe06623f6ffdc44142`; the same sha256 is in `manifest-a` and `manifest-b`, and in the earlier run 38198934488. Build B is a separate job. **Pins:** every `FROM` in `container/Dockerfile` (lines 70, 97, 126, 171, 318, 353, 422, 491) is `${BASE_REF}@${BASE_DIGEST}` or a prior stage; `base_digest` is a sha256 in pins.toml; apt by snapshot timestamp plus exact versions; Arm archive, rustup-init, both Rust channel manifests, c2rust and cargo-mutants `.crate` files and the klee-uclibc locale tarball by `sha256sum -c`; KLEE and klee-uclibc by commit with `rev-parse HEAD`. Floating-tag and unchecked-download rules are enforced by the 30 `container_static` tests. **CR-01 stays closed:** the `pin-binding` annotation of image-a shows the build record lines equal to the pins (`ce6dddc8...b6a2` channel-rust-1.99.0, `77113b96...a229` channel-rust-1.72.1, `e331f411...3f3b` c2rust crate, `07072e7b...1cf9` cargo-mutants crate), 11 archive lines `OK`, cargo's ledger `path+file:///tmp/crates/...`, rustup update-hashes equal to the pin prefixes; the install RUNs are `RUN --network=none` (13 such RUN lines in the Dockerfile). **WR-08 closed:** the locale tarball is a pin (`[source.klee_uclibc_locale]`) checked with `sha256sum -c` and the klee-uclibc `make` runs offline; its sha is not part of the pin-binding record or the manifest (IN-11, advisory). **Limit that is true and stated in the README:** the guarantee is manifest identity (versions and pins), not bit-for-bit image identity. |
+| 4 | A trivial `no_std` crate builds for `thumbv7em-none-eabihf` in the container; the workspace launches an analyser through the subprocess runner with stdout, stderr, exit status and version stamp captured; a repository check fails on Python outside `research/` | VERIFIED | **Build:** annotation `smoke` (run 38199978785): ran as user 65534, `Finished release`, `arm-none-eabi-gcc ... 14.3.1`, `nm libmt_smoke.a` shows `T mt_smoke_add`, `nm smoke.o` shows `U mt_smoke_add`, `exit code: 0`; local `tool_04_smoke_crate_has_emitted_rust_shape` and `tool_04_smoke_crate_is_outside_the_workspace` pass. **Runner:** `runner::run` is the only `Command::new(` in the workspace (`runner.rs:668`); the 17 `tool_01_runner_*` tests pass, covering argv, cleared environment, exit code and signal, stdout/stderr hashes, output caps, timeouts that kill descendants and report `timed_out`, partial output on incomplete streams, and the run record JSON schema (key set and determinism). Tool stamps and per-tool stdout/stderr are in the `tool-outputs` annotations of image-a (klee, llvm_config, qemu, rustc, rustup). **Python guard:** `tool_01_no_python_outside_research` and `tool_01_python_walk_flags_a_planted_file` pass; `find` for `*.py` outside `research/`, `.claude`, `target` and `.git` returns nothing. Also passing: `tool_01_command_only_in_runner_module`, `tool_01_command_matcher_flags_grouped_imports_aliases_and_globs` (WR-05), `tool_01_never_links_an_analyser_library`, `tool_01_every_tool_crate_forbids_unsafe`. |
 
 **Score:** 4/4 truths verified, 0 present-but-behavior-unverified.
 
-### Judgement on the new review warnings (WR-06, WR-07) against criterion 3
+Behavior-dependent truths: the runner kill/cleanup invariants inside criterion 4 are exercised by named tests that pass locally (`tool_01_runner_timeout_kills_a_setsid_descendant`, `..._kills_a_forking_setsid_subtree`, `..._normal_exit_with_a_lingering_descendant_returns_the_record`), so they are not left at PRESENT_BEHAVIOR_UNVERIFIED. The one invariant they do not establish, killing an escapee after a normal exit, is not claimed by the criterion; see the WR-13 advisory.
 
-Neither leaves criterion 3 or TOOL-03 unmet.
+### Deferred Items
 
-- The criterion is "every base image and tool source is pinned by digest, commit or checksum". The control that delivers it is the `sha256sum -c` on the file the installer then consumes, in the same RUN, with the installer unable to reach any other source (file:// mirror with no fallback; `--path` of the unpacked checked crate). I read those RUNs line by line; the check and the consumption are the same bytes. That was the CR-01 defect and it is gone.
-- WR-07 is about the CI gate, which compares the record the Dockerfile writes, so it cannot detect a future edit that keeps the record right but points the installer elsewhere. It is regression evidence layered over a correct control, not the control. Its real value today is that CI shows, for the published image, the pins and record agree and rustup's update-hashes are consistent. The "witness" wording in the gate is honest that the update-hash is derived from the Dockerfile-written sidecar. Treat as hardening.
-- WR-06 says the static rules would miss alternate spellings. I grep-checked the real Dockerfile: the only `rustup toolchain install` lines (226, 227) carry the file:// prefix and `--no-self-update`; the only `cargo install` lines (295, 296) use `--locked --path`; the only `rustup-init` use passes `--default-toolchain none`; `rustup default` (228) acts on an already-installed toolchain. So the current file has none of the evading spellings. It is a weaker guard, not a present hole. Treat as hardening to land before the next pin bump or Dockerfile edit.
-- Residual limits that remain true and are not criterion-3 failures: apt packages are pinned by snapshot timestamp plus exact version rather than checksum (accepted at planning, CONTEXT D-04; apt verifies signed Release files); dependency crates are bound via the packaged Cargo.lock (IN-14); the tinycbor check greps for the commit string in the verified crate (IN-14). The stated guarantee remains manifest-identical builds, not bit-for-bit, and the README says so.
+None.
+
+### Advisory (carried, not blocking)
+
+| # | Finding | Category | Why Advisory |
+|---|---------|----------|--------------|
+| 1 | WR-13 residual: a `setsid` escapee of a tool that already exited normally is not killed; `exit.tree_kill_sent` only records that a kill was sent | other | Documented in the runner header and field docs; not a ROADMAP criterion; close before forking analysers run through the runner |
+| 2 | IN-01..IN-21 open | other | Hardening and docs, no criterion contradicted |
+| 3 | CI of head b974caa was in progress at verification time | other | Source after the last green container run differs only by a runner field rename and planning files; local gates pass |
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `container/Dockerfile` | Pinned multi-stage image, installs bound to checked files | VERIFIED | Built twice in CI; mirror install and `--path` crate install present; build record written; no TBD/FIXME/XXX |
-| `container/pins.toml` | Single source of pins | VERIFIED | Channel and crate pins match the CI record lines |
-| `container/README.md` | Current image digest and founder guide | VERIFIED | Current image `0f3b3924...e518d`, run 38019633821, commit 686b56b, manifest sha256 40e55cc6...aed3 equal the CI `image-digest` and `verified-image` annotations; no certified/compliant claims (grep) |
-| `.github/workflows/container.yml` | image-a Pin binding evidence gate before push | VERIFIED | Step 10 of image-a precedes login (16) and push (17); fails with exit 1 on mismatch; WR-07 and IN-12 hardening open |
-| `crates/mt-toolchain/tests/container_static.rs` | Rules refusing CR-01 patterns, three new tool_03 tests | VERIFIED | Tests `tool_03_dockerfile_installs_rust_toolchains_from_verified_manifests`, `..._crates_from_verified_files`, `tool_03_workflow_gates_on_pin_binding_evidence` exist and pass; WR-06 limits noted |
-| `crates/mt-toolchain/src/{runner,check,pins,version,build_args,manifest,fetch}.rs` | Runner, check, pins | VERIFIED | Unchanged since first verification; wired from `mt-cli`; tests pass |
-| `.github/workflows/{ci,pin-discovery}.yml`, `container/smoke/*`, `deny.toml`, `research/.gitkeep`, repo_checks.rs | CI proofs and repository guards | VERIFIED | ci and pin-discovery green at 686b56b |
+| `container/Dockerfile` | Pinned multi-stage image, installs bound to checked files | VERIFIED | 509 lines, built twice in CI at defbe68 and 3fa71a1; no TBD/FIXME/XXX; installs in `RUN --network=none` after checked downloads |
+| `container/pins.toml` | Single source of pins | VERIFIED | LLVM 16 / max 19 / provisional D-15; base digest; Rust channel and crate checksums equal the CI build record |
+| `container/README.md` | Current image digest and founder guide | VERIFIED | "Current image" names run 38198934488, commit defbe68, digest `0f5a5d25...e152ee` and manifest sha256 `d7002918...4142`, all equal to the CI `verified-image` annotation; the main-only publish rule is stated; no forbidden claim words (grep) |
+| `.github/workflows/container.yml` | Double build, gates, compare, main-only publish | VERIFIED | Runs 38198934488 and 3fa71a1 behaved as designed, publish skipped off main |
+| `.github/workflows/ci.yml`, `pin-discovery.yml` | CI proofs, pin recomputation | VERIFIED | ci green on 3efc5fd and earlier head commits; pin-discovery green on defbe68 |
+| `crates/mt-toolchain/src/{runner,check,pins,version,build_args,manifest,fetch}.rs` | Runner, check, pins | VERIFIED | Wired from `mt-cli`; all tests pass; `#![forbid(unsafe_code)]` in both crates |
+| `crates/mt-toolchain/tests/{container_static,repo_checks,tool_01_runner,...}.rs` | Requirement-ID tests | VERIFIED | 101 tests pass |
+| `container/smoke/*`, `deny.toml`, `research/.gitkeep` | no_std smoke crate, dependency policy, Python home | VERIFIED | Smoke annotation green; repo checks pass |
 
 ### Key Link Verification
 
 | From | To | Via | Status |
 |------|----|-----|--------|
-| mt-cli main.rs | check::run_check | toolchain check subcommand | WIRED |
-| check.rs | runner::run | every version probe | WIRED |
-| container.yml | Dockerfile | `--target final`, args from `mt toolchain build-args` | WIRED (CI green) |
-| Dockerfile ARG block | pins.toml | `tool_03_dockerfile_args_match_pins` | WIRED |
-| Dockerfile rustup stage | pins.toml `channel_manifest_sha256` | sha256sum -c on the mirror manifest that rustup reads via RUSTUP_DIST_SERVER=file:// | WIRED (was NOT_WIRED; CI record lines equal pins) |
-| Dockerfile cargo-tools stage | pins.toml `sha256` of c2rust, cargo-mutants | sha256sum -c then `cargo install --locked --path` of the unpacked crate | WIRED (was NOT_WIRED) |
-| container.yml image-a | image build record | `Pin binding evidence` reads pin-binding.sha256 from mt-toolchain:ci, fails before push | WIRED (self-reported record, see WR-07) |
-| pins.toml `[llvm]`, `[rust.bitcode]` | PROJECT.md D-15 | decision-token test | WIRED |
+| `mt-cli` `toolchain check` | `check::run_check_observed` | main.rs line 150 | WIRED |
+| `check.rs` probes | `runner::run` | `run_one` | WIRED |
+| `mt-cli` | `runner::run` | main.rs line 468 | WIRED |
+| `container.yml` | Dockerfile | `--target final`, args from `mt toolchain build-args` | WIRED (CI green) |
+| Dockerfile ARG block | `pins.toml` | `tool_03_dockerfile_args_match_pins` | WIRED |
+| Dockerfile installers | `pins.toml` checksums | `sha256sum -c` then file:// mirror or `--path` install | WIRED (pin-binding annotation equals pins) |
+| image-a gates | publish | archive sha256 and loaded image id checked, publish guarded by `refs/heads/main` | WIRED |
+| `pins.toml` `[llvm]`, `[rust.bitcode]` | PROJECT.md D-15 | decision-token test | WIRED |
 
 ### Data-Flow Trace (Level 4)
 
-Not applicable: no component renders dynamic data. The equivalent trace was done for the pins: pins.toml -> build-args -> Dockerfile ARG -> `sha256sum -c` -> installer input -> check row, all connected.
+Not applicable: nothing renders dynamic data. The equivalent trace for pins was done: `pins.toml` to `mt toolchain build-args` to Dockerfile ARG to `sha256sum -c` to installer input to check row to manifest.
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Workspace tests | `cargo test --workspace --locked` | 77 tests, all suites ok | PASS |
-| Python guard | `find . -name '*.py*'` outside research/.claude/target/.git | none | PASS |
-| Install lines in Dockerfile | `grep -n "RUSTUP_DIST_SERVER\|rustup toolchain install\|cargo install\|rustup-init" container/Dockerfile` | only the file://-prefixed installs and `--path` installs | PASS |
+| Workspace tests | `cargo test --workspace --locked` | 101 passed, 0 failed | PASS |
+| Formatting | `cargo fmt --check` | exit 0 | PASS |
+| Lints | `cargo clippy --all-targets --locked -- -D warnings` | exit 0 | PASS |
+| Python outside research | `find . -name '*.py'` excluding research, .claude, target, .git | no output | PASS |
+| Single process launcher | `grep -n "Command::new" -r crates/*/src` | only `runner.rs:668` | PASS |
+| Forbidden claim words | grep for the two words in README, pins, crates src, workflows | no match | PASS |
 
-Container behaviours were not re-run (no Docker daemon); they were read from CI annotations of run 38019633821.
+Container behaviours were not re-run (no Docker daemon); they were read from the annotations of run 38199978785 and run 38198934488, and from the founder's UAT on the published digest.
 
 ### Probe Execution
 
@@ -149,37 +149,33 @@ Step 7c: SKIPPED. No `probe-*.sh` is declared by any plan or present under `scri
 
 | Requirement | Source Plans | Description | Status | Evidence |
 |-------------|-------------|-------------|--------|----------|
-| TOOL-01 | 01-01, 01-02, 01-04, 01-05, 01-07, 01-08 | Analysers as pinned subprocesses, never linked; Python outside research/ fails a check | SATISFIED | Runner, `process::Command` confinement test, Python walk test, CI check run. Hayroll and Kani `not_installed` by D-10 |
-| TOOL-02 | 01-03, 01-05, 01-06, 01-07 | One LLVM major 16-19; check fails on different major or rustc LLVM above 19 | SATISFIED | Pins, check rules, negative-pin step in CI |
-| TOOL-03 | 01-02, 01-03, 01-05, 01-06, 01-07, 01-08, 01-09 | Image reproducible: base, tool sources, Rust toolchain pinned by digest, commit or checksum; two builds give identical manifest | SATISFIED | CR-01 closed (traced, plus CI pin-binding record equal to pins); manifests byte-identical in run 38019633821. Hardening items WR-06 and WR-07 open |
-| TOOL-04 | 01-04, 01-07 | arm-none-eabi GCC, thumbv7em target, trivial no_std crate builds | SATISFIED | Smoke annotation in CI |
+| TOOL-01 | 01-01, 01-02, 01-04, 01-05, 01-07, 01-08 | Cargo workspace; analysers run only as pinned subprocesses, never linked; check fails on Python outside `research/` | SATISFIED | `runner::run` is the only launcher; `tool_01_never_links_an_analyser_library`, `tool_01_command_only_in_runner_module`, `tool_01_no_python_outside_research` and the 17 runner tests pass; CI check run exits 0 in the image. Hayroll, Kani are `not_installed` by D-10 (Hayroll licence gate R3, Kani in v2.0). |
+| TOOL-02 | 01-03, 01-05, 01-06, 01-07 | One LLVM major 16-19 for clang, KLEE, c2rust, Hayroll; check fails on another major or on bitcode rustc LLVM above 19 | SATISFIED | Pin 16, bound 19, `check-a` all 16, `negative-pin` exit 1 with MISMATCH; 21 `tool_02_*` tests pass. Hayroll is not installed, so it has no row to be on a different major (D-10); its LLVM requirement applies when Phase 8 installs it. |
+| TOOL-03 | 01-02, 01-03, 01-05, 01-06, 01-07, 01-08, 01-09 | Image reproducible: base, tool sources and Rust toolchain pinned by digest, commit or checksum; two builds yield an identical manifest | SATISFIED | `manifest-compare` byte-identical (sha256 d7002918...4142); pin-binding record equals pins; 44 `tool_03_*` tests pass. Guarantee is version-level, as stated (IN-11). |
+| TOOL-04 | 01-04, 01-07 | arm-none-eabi GCC and the `thumbv7em-none-eabihf` target; a trivial `no_std` crate builds for it in the image | SATISFIED | `smoke` annotation, arm_gcc 14.3.Rel1 row OK, `rust_targets_tool` row contains `thumbv7em-none-eabihf`; 2 `tool_04_*` tests pass. |
 
-All four IDs appear in at least one PLAN's `requirements:` and are the only IDs REQUIREMENTS.md maps to Phase 1. No orphans. Bookkeeping: REQUIREMENTS.md traceability rows (lines 168-171) and checkboxes (16-19) still read "Gaps Found" / unchecked after the first verification; they should be moved to Complete by the orchestrator only after the human item below is accepted, or immediately if the founder treats it as non-blocking.
+All four IDs appear in at least one PLAN's `requirements:` field (01-01 to 01-09) and are the only IDs REQUIREMENTS.md maps to Phase 1 (lines 168-171). No orphaned requirements. Bookkeeping for the orchestrator: REQUIREMENTS.md still shows TOOL-01..04 unchecked (lines 16-19) and `Gaps Found` in the traceability table (lines 168-171), and ROADMAP.md still shows Phase 1 unchecked; these should move to Complete now that this report is `passed`.
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| crates/mt-toolchain/src/runner.rs | 342-354 | Timeout kills only the direct child (WR-01) | Warning | Descendants can outlive a timeout |
-| crates/mt-toolchain/src/check.rs | 730-745 | First-match LLVM major (WR-03) | Warning | Stray second major in ldd output passes |
-| .github/workflows/container.yml | 16-47, 372-414 | Publish on any branch push; cancel group (WR-04) | Warning | A tag can move before compare; unverified image can be pushed |
-| crates/mt-toolchain/tests/container_static.rs | 297-370 | Whole-RUN, spelling-bound rules (WR-06) | Warning | Guard weaker than its name; current Dockerfile passes correctly |
-| .github/workflows/container.yml | 229-330 | Gate compares self-reported record (WR-07) | Warning | Regression evidence, not independent measurement |
-| crates/mt-toolchain/tests/repo_checks.rs | 109-126 | Needle misses brace imports (WR-05) | Warning | Guard weaker than stated |
+| crates/mt-toolchain/src/runner.rs | 693-748 | Post-exit escapee not found (WR-13 residual) | Warning | Flag renamed and documented; gap remains for daemonizing tools |
+| crates/mt-toolchain/src/runner.rs | 605-620 | Post-kill wait unbounded (IN-18) | Info | Uninterruptible child would hang `run` |
+| container/Dockerfile | 491 onward | Final image runs as root, unpinned runtime packages (IN-08) | Info | Smoke and check ran unprivileged in CI |
+| .github/workflows/pin-discovery.yml | 108-113 | Arm checksum not compared (IN-09) | Info | Regression aid only |
 
-No TBD/FIXME/XXX markers in the Dockerfile, README, workflows or crate sources (the one FIXME string is a test fixture in `pins_and_versions.rs`). The CR-01 blocker from the first report is resolved and no new blocker was found.
-
-CI note on a03afa5: ci run 38020608044 attempt 1 failed in the step "Install the pinned Rust toolchain" (a runner-side toolchain download), and attempt 2 passed. That commit changed only planning files, so the failure is infrastructure flake in the CI toolchain-install step, not the phase deliverables. It does not affect any criterion; if it recurs, it points at the same network-fetch fragility already tracked as a hardening topic. The ci run for HEAD (0eed2ef, docs only) was still in progress when checked.
+No `TBD`, `FIXME` or `XXX` marker in any file the phase modified (the single `FIXME later` is a test fixture string in `pins_and_versions.rs`, line 143). No blocker found.
 
 ### Human Verification Required
 
-1. **Apple Silicon pull and check (new digest).** On the founder's Mac, `docker pull --platform linux/amd64 ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f3b392427d2588e6ba0e3da2067bc503f40e6749b48bc6553832c27e96e518d`, then run `mt toolchain check --pins /opt/mt/pins.toml` with `mt` and `pins.toml` mounted read-only, `--network none`, unprivileged (README steps). Expect all rows OK, hayroll and kani `not_installed`, exit 0. Why human: no Docker here and the emulated-Mac pull path (and anonymous GHCR access) cannot be seen from CI. This is the only item keeping the status from `passed`.
+None. The one human item (Apple Silicon pull and check) already passed on the current digest `sha256:0f5a5d25...e152ee` (01-UAT.md). No new item arose: the changes after that UAT are the WR-13 field rename in the runner (the `mt` binary is mounted, not part of the image) and planning files.
 
 ### Gaps Summary
 
-No gaps. The one gap from the first report (CR-01 against criterion 3 / TOOL-03) is closed: the Rust channel-manifest pins, c2rust and cargo-mutants are now consumed by the installers in the same RUN as their `sha256sum -c`, rustup can read only a local mirror of verified files, and CI run 38019633821 shows the build record equal to the pins, byte-identical manifests, check exit 0, negative-pin exit 1, and a green smoke build, all before the image was pushed. The new review warnings WR-06 and WR-07 are regression-protection hardening that do not make any pinned source unbound today; they, plus WR-01..WR-05 and IN-01..IN-14, should be scheduled (WR-01 and WR-06 before Phase 2 and before the next Dockerfile edit respectively). The Apple Silicon pull-and-check remains with the founder.
+No gaps. All four ROADMAP success criteria are met by the code and by the CI record of the current image: the check passes in the container and fails on an off-pin LLVM, one LLVM major (16, provisional) governs clang, KLEE, c2rust and the bitcode rustc, two builds give a byte-identical manifest with every source pinned and bound to the bytes the installers consume, and the no_std smoke crate builds for the Cortex-M target. The remaining items are hardening, tracked as advisory. Two things to do next outside this phase: re-read the CI result for head b974caa before merging, and close the WR-13 gap before a forking analyser runs through the runner.
 
 ---
 
-_Verified: 2026-10-10_
+_Verified: 2026-10-12_
 _Verifier: Claude (gsd-verifier)_
