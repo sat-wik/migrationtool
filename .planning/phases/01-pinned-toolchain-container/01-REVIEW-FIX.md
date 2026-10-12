@@ -28,7 +28,7 @@ not from the local checkout.
 
 ## Fixed Issues
 
-### WR-10: The runner now compiles only on Linux
+### WR-10: The runner now compiles only on Linux, but the README tells the founder to run `mt` natively on a Mac
 
 **Files modified:** `crates/mt-toolchain/src/runner.rs`, `crates/mt-toolchain/tests/tool_01_runner.rs`, `Cargo.toml` (comment), `.github/workflows/ci.yml`, `container/README.md`
 **Commit:** d532ff6
@@ -36,7 +36,7 @@ not from the local checkout.
 **Verification:** `rustup target add aarch64-apple-darwin`, then `cargo check -p mt-toolchain -p mt-cli --target aarch64-apple-darwin` failed before the change with the reported unresolved pidfd imports and passed after it. `cargo check --workspace --all-targets --locked --target aarch64-apple-darwin` and `cargo clippy ... --target aarch64-apple-darwin -- -D warnings` also pass (no linker needed for a check). The target was removed afterwards with `rustup target remove`.
 **CI:** a new `ci.yml` step adds the target and runs `cargo check --workspace --all-targets --locked --target aarch64-apple-darwin` on ubuntu (no new `uses:`, so no new action to pin). It passed in `ci` runs 38198934560 and 38199978794.
 
-### WR-12: The "unobserved" stream record states false facts and drops partial output
+### WR-12: The "unobserved" stream record states false facts about what was captured and drops partial output
 
 **Files modified:** `crates/mt-toolchain/src/runner.rs`, `crates/mt-toolchain/tests/tool_01_runner.rs`
 **Commit:** 9f988ad
@@ -49,7 +49,7 @@ not from the local checkout.
 **Applied fix:** On Linux the runner detects exit with `rustix::process::waitid(WaitId::Pid, EXITED | NOHANG | NOWAIT)`, so an exited child stays an unreaped zombie and its pid and group id cannot be reused. After a normal exit the pipes get `RunnerConfig::drain_grace` (new field, default 5 s) to close; if they do not, `kill_tree` runs while the pid is still held, then the child is reaped. The record is returned with its real exit code and a new `exit.descendants_killed: true`. A stream that still does not close is returned `complete: false` with its partial bytes (WR-12). `RunnerError::OutputNotDrained` is removed. Non-Linux unix keeps `try_wait` (which reaps), does not kill after a normal exit, and returns the stream incomplete. `check.rs` records an incomplete stream as an `error` observation (not proven) and `fetch.rs` returns a new `FetchError::Incomplete` instead of a digest, so a partial stream is never parsed or hashed as whole. Tests: `sh -c 'sleep 30 & echo $!; exit 0'` returns in under 4 s with code 0, `descendants_killed`, complete streams, the sleeper gone (or a zombie), and the digest equal to the printed pid line; a `setsid`-orphaned sleeper after a normal exit returns the record with stdout incomplete.
 **Status note:** logic change in process supervision; the behaviour is covered by the new tests (stable over three consecutive full gate runs) but deserves a human read.
 
-### WR-08: One build step still downloads an unchecksummed tarball
+### WR-08: One build step still downloads an unchecksummed tarball, contradicting the Dockerfile's own header, and nothing in the manifest or gate would notice a change
 
 **Files modified:** `container/pins.toml`, `container/Dockerfile`, `container/README.md`, `.github/workflows/pin-discovery.yml`, `crates/mt-toolchain/tests/container_static.rs`
 **Commits:** 736256f (pin-discovery computes the checksum), defbe68 (pin, Dockerfile, tests), d909893 (README records the published image)
