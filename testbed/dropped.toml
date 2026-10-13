@@ -21,3 +21,22 @@ schema_version = 1
 # failing default drops the target. A variant that changes no compiled code is
 # dropped as a variant under either policy (D-05).
 variant_failure = "drop_variant"
+
+# Run A (testbed run 38387515333, head 564f256): the first full-bed run. Fetch
+# verified all 16 tree hashes and the seeds check found no drift. Capture refused
+# exactly two pairs, both at the entry check; the other 29 captured.
+
+[[dropped]]
+target = "isotp"
+cause = "entry_mismatch"
+detail = "capture isotp/default: entry_mismatch: isotp_on_can_message: clang ast dump exited with Some(1): /work/run/isotp/default/src/isotp_defines.h:66:5: error: unknown type name 'uint8_t'. The entry check includes isotp.h alone; isotp.h includes <stdint.h> only under __cplusplus, so it does not compile on its own in C (isotp.c includes <stdint.h> first)."
+fix_attempted = "No data-only fix exists, found on the host dry run before run A and confirmed by run A: forcing the include with cflags = [\"-include\", \"stdint.h\"] on the default configuration is refused by the manifest validator (the default configuration must set nothing, D-06), CMake C flags belong to the capture driver (cmake_options may not set CMAKE_C_FLAGS*), and no other header declares isotp_on_can_message. The entry check, the validator and the driver were left unchanged (D-11, T-02-38)."
+ci_run = 38387515333
+
+[[dropped]]
+target = "paho"
+config = "server"
+cause = "entry_mismatch"
+detail = "capture paho/server: entry_mismatch: MQTTDeserialize_connack: defining TU not captured. The variant builds the CMake target MQTTPacketServer, which does not compile MQTTConnectClient.c where the approved entry MQTTDeserialize_connack is defined."
+fix_attempted = "The entry header of paho was corrected to MQTTPacket.h for both configurations before run A (MQTTPublish.h and MQTTConnect.h do not compile alone); that fixed paho/default, which captured in run A. For the server variant no data-only fix exists: the entry list is the founder-approved one (D-03) and every entry must be built by every configuration, so replacing MQTTDeserialize_connack by a server-side or shared entry would change the approved list, not the recipe. Dropped as a variant under drop_granularity variant; paho/default stays retained."
+ci_run = 38387515333

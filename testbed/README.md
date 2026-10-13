@@ -90,6 +90,51 @@ come from the pinned sources. If it reports drift, find out why; do not
 regenerate the corpus from CI output. No seed is hidden from anything in this phase;
 a held-out split is a later design (GATE-05).
 
+## Dropped pairs
+
+`testbed/dropped.toml` lists the targets and configurations that still failed after
+their one documented fix attempt (CONTEXT D-11); `testbed/DROPPED.md` explains each.
+`--all`, and any id named on the command line, skips a dropped pair and prints it
+as `dropped (<cause>)`. A dropped pair is never counted as passing and never counts
+toward the 10 targets that must stay retained; a dropped target stays in
+`manifest.toml`. `mt testbed seeds` skips fully dropped targets, which keep no
+corpus under `testbed/seeds/`.
+
+## Current bed
+
+15 of the 16 approved targets are retained, with 29 target-configuration pairs
+(`default` first):
+
+| Target | Configurations |
+|--------|----------------|
+| cjson | default, no-locale |
+| corejson | default, depth-8 |
+| coremqtt | default, sub-vectors-2 |
+| httpparser | default, strict |
+| libfdt | default, assume-valid |
+| lz4 | default, heap-small |
+| mbedtls | default, suite-b |
+| microcoap | default, release |
+| nanopb | default, buffer-only |
+| nimble | default, peripheral |
+| paho | default |
+| qcbor | default, no-hw-float |
+| tinycbor | default, no-float |
+| zcbor | default, stop-on-error |
+| zlib | default, no-gzip |
+
+Dropped, with the CI run that showed the failure (details in `DROPPED.md`):
+
+- `isotp` (whole target): the entry check cannot compile `isotp.h` alone; testbed
+  run 38387515333.
+- `paho/server` (variant only): the variant's CMake target does not build the
+  defining translation unit of an approved entry; testbed run 38387515333.
+
+Each retained pair is captured and then replayed in a clean copy. The run passes
+only when every retained pair's replay verdict is `identical` or
+`identical_after_normalisation`; the `testbed-replay` annotation of a run lists the
+verdict of every pair.
+
 ## Where it runs
 
 CI is the primary place it runs: the `testbed` workflow
