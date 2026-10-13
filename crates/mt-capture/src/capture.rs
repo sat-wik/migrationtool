@@ -60,6 +60,10 @@ const CONFIGURE_LOGS: [&str; 3] = [
     "CMakeFiles/CMakeError.log",
 ];
 
+/// The make driver CMake generates at the top of the build directory: not an
+/// input of any compile command, and not byte-stable ([`is_cmake_product`]).
+const MAKE_DRIVER: &str = "CMakeFiles/Makefile2";
+
 /// Whether a file of the CMake build directory (`relative` to it) is something
 /// the build or CMake's own probes produced rather than an input of a compile
 /// command, so it is left out of the configure-time file hashes.
@@ -68,12 +72,23 @@ const CONFIGURE_LOGS: [&str; 3] = [
 /// member times. CMake's diagnostic logs hold scratch-directory names. The
 /// compiler-ABI probe (`CMakeFiles/<version>/CMakeDetermineCompilerABI_C.bin`) is
 /// the output of a test compile, and its bytes differ from run to run.
+///
+/// `CMakeFiles/Makefile2` is the make driver of the Unix Makefiles generator: it
+/// schedules the targets and holds their prerequisite lists and progress counters.
+/// No compile command reads it (a replay runs the captured argv, and the flags and
+/// definitions of each object live in `flags.make`, which stays hashed), and its
+/// bytes are not stable: CMake emits the prerequisite lines of equal-rank targets
+/// in pointer order, so two configures of the same tree can differ only in the
+/// order of two lines (zcbor's `app.dir/all` prerequisites, measured with plain
+/// `cmake` runs and seen in testbed run B). That one path is left out; every other
+/// generated file stays in the hashes, so a real change still shows.
 #[must_use]
 pub fn is_cmake_product(relative: &str) -> bool {
     if [".o", ".obj", ".a", ".so"]
         .iter()
         .any(|suffix| relative.ends_with(suffix))
         || CONFIGURE_LOGS.contains(&relative)
+        || relative == MAKE_DRIVER
     {
         return true;
     }

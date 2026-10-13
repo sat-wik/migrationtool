@@ -478,7 +478,10 @@ jobs:
           source "$RUNNER_TEMP/ci-lib.sh"
           out="$RUNNER_TEMP/out"
           objcopy=/opt/arm-gnu-toolchain/bin/arm-none-eabi-objcopy
-          small=$(find "$RUNNER_TEMP/work/capture" -path '*/objects/*' -type f -printf '%s %p\n' | sort -n -k1,1 -k2 | head -n 1 | cut -d' ' -f2-)
+          # sed -n 1p reads the whole listing. With --all the listing outgrows a pipe
+          # buffer, and `sort | head -n 1` under pipefail then fails: the runner
+          # ignores SIGPIPE, so sort reports "Broken pipe" and exits 2.
+          small=$(find "$RUNNER_TEMP/work/capture" -path '*/objects/*' -type f -printf '%s %p\n' | sort -n -k1,1 -k2 | sed -n 1p | cut -d' ' -f2-)
           rel=${small#"$RUNNER_TEMP/work"}
           cp "$small" "$out/arm-small.o"
           printf 'mt-fixture-comment\0' > "$out/comment.bin"
