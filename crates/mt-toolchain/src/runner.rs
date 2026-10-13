@@ -62,7 +62,7 @@ use rustix::fd::OwnedFd;
 use rustix::process::{Pid, Signal, kill_process_group};
 #[cfg(target_os = "linux")]
 use rustix::process::{PidfdFlags, pidfd_open, pidfd_send_signal};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 /// Version of the serialized [`RunRecord`] schema.
@@ -135,7 +135,7 @@ pub struct RunRequest {
 }
 
 /// The tool identity stamped into a record.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ToolStamp {
     /// Logical tool name.
     pub name: String,
@@ -146,7 +146,7 @@ pub struct ToolStamp {
 }
 
 /// How the child ended.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExitRecord {
     /// Exit code, absent when the child was killed by a signal.
     pub code: Option<i32>,
@@ -166,7 +166,7 @@ pub struct ExitRecord {
 }
 
 /// What was captured from one output stream.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StreamRecord {
     /// Lowercase hex sha256 of every byte read from the pipe. It covers every
     /// byte the child wrote only when `complete` is true.
@@ -188,7 +188,7 @@ pub struct StreamRecord {
 }
 
 /// The versioned record of one run (becomes evidence in Phase 11).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RunRecord {
     /// [`RUN_RECORD_SCHEMA_VERSION`].
     pub schema_version: u32,
