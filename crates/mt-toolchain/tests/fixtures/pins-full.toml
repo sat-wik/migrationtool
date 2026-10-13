@@ -81,12 +81,17 @@ commit = "d393c16f3eb30d0c47e6f9d92db62272f0ec4dc7"
 
 [apt]
 "bear" = "3.1.1-1"
+"bzip2" = "1.0.8-5+b1"
 "clang-16" = "1:16.0.6-15~deb12u1"
+"cmake" = "3.25.1-1"
+"curl" = "7.88.1-10+deb12u15"
+"git" = "1:2.39.5-0+deb12u3"
 "libclang-16-dev" = "1:16.0.6-15~deb12u1"
 "libclang-cpp16-dev" = "1:16.0.6-15~deb12u1"
 "libz3-4" = "4.8.12-3.1"
 "llvm-16" = "1:16.0.6-15~deb12u1"
 "llvm-16-dev" = "1:16.0.6-15~deb12u1"
+"make" = "4.3-4.1"
 "qemu-system-arm" = "1:7.2+dfsg-7+deb12u18+b3"
 "qemu-user" = "1:7.2+dfsg-7+deb12u18+b3"
 
@@ -105,6 +110,12 @@ bin = "/usr/bin/bear"
 version_args = ["--version"]
 version_regex = 'bear (?P<version>\d+\.\d+\.\d+)'
 expect = "3.1.1"
+
+[tool.bzip2]
+bin = "/usr/bin/bzip2"
+version_args = ["--help"]
+version_regex = 'Version (?P<version>\d+\.\d+\.\d+)'
+expect = "1.0.8"
 
 [tool.c2rust]
 bin = "/opt/cargo-tools/bin/c2rust"
@@ -135,6 +146,24 @@ expect = "16.0.6"
 [tool.clang.llvm]
 source = "version"
 
+[tool.cmake]
+bin = "/usr/bin/cmake"
+version_args = ["--version"]
+version_regex = 'cmake version (?P<version>\d+\.\d+\.\d+)'
+expect = "3.25.1"
+
+[tool.curl]
+bin = "/usr/bin/curl"
+version_args = ["--version"]
+version_regex = '^curl (?P<version>\d+\.\d+\.\d+)'
+expect = "7.88.1"
+
+[tool.git]
+bin = "/usr/bin/git"
+version_args = ["--version"]
+version_regex = 'git version (?P<version>\d+\.\d+\.\d+)'
+expect = "2.39.5"
+
 [tool.hayroll]
 status = "not_installed"
 reason = "licence unconfirmed (R3); decided at the Phase 8 gate"
@@ -161,6 +190,12 @@ expect = "16.0.6"
 
 [tool.llvm_config.llvm]
 source = "version"
+
+[tool.make]
+bin = "/usr/bin/make"
+version_args = ["--version"]
+version_regex = 'GNU Make (?P<version>\d+\.\d+(?:\.\d+)?)'
+expect = "4.3"
 
 [tool.qemu_arm]
 bin = "/usr/bin/qemu-arm"

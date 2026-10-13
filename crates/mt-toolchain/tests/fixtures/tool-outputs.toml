@@ -25,6 +25,15 @@ bear 3.1.1
 """
 stderr = ""
 
+[bzip2]
+source = "representative, plan 02-01 Task 2; replaced by the CI capture in Task 3"
+stdout = ""
+stderr = """
+bzip2, a block-sorting file compressor.  Version 1.0.8, 13-Jul-2019.
+
+   usage: bzip2 [flags and input files in any order]
+"""
+
 [c2rust]
 source = "captured in CI image-a, run 37969688167"
 stdout = """
@@ -75,8 +84,24 @@ InstalledDir: /usr/lib/llvm-16/bin
 """
 stderr = ""
 
+[cmake]
+source = "representative, plan 02-01 Task 2; replaced by the CI capture in Task 3"
+stdout = """
+cmake version 3.25.1
+
+CMake suite maintained and supported by Kitware (kitware.com/cmake).
+"""
+stderr = ""
+
+[curl]
+source = "representative, plan 02-01 Task 2; replaced by the CI capture in Task 3"
+stdout = """
+curl 7.88.1 (x86_64-pc-linux-gnu) libcurl/7.88.1 OpenSSL/3.0.22 zlib/1.2.13
+"""
+stderr = ""
+
 [dpkg_query]
-source = "captured in CI image-a, run 37969688167"
+source = "representative, plan 02-01 Task 2; replaced by the CI capture in Task 3"
 stdout = """
 adduser\t3.134\tinstalled
 apt\t2.6.1\tinstalled
@@ -88,9 +113,12 @@ binutils\t2.40-2\tinstalled
 binutils-common\t2.40-2\tinstalled
 binutils-x86-64-linux-gnu\t2.40-2\tinstalled
 bsdutils\t1:2.38.1-5+deb12u3\tinstalled
+bzip2\t1.0.8-5+b1\tinstalled
 ca-certificates\t20250419~deb12u1\tinstalled
 clang-16\t1:16.0.6-15~deb12u1\tinstalled
+cmake\t3.25.1-1\tinstalled
 coreutils\t9.1-1\tinstalled
+curl\t7.88.1-10+deb12u15\tinstalled
 dash\t0.5.12-2\tinstalled
 debconf\t1.5.82\tinstalled
 debian-archive-keyring\t2023.3+deb12u2\tinstalled
@@ -100,6 +128,7 @@ dpkg\t1.21.23\tinstalled
 e2fsprogs\t1.47.0-2+b2\tinstalled
 findutils\t4.9.0-4\tinstalled
 gcc-12-base\t12.2.0-14+deb12u1\tinstalled
+git\t1:2.39.5-0+deb12u3\tinstalled
 gpgv\t2.2.40-1.1+deb12u2\tinstalled
 grep\t3.8-5\tinstalled
 gzip\t1.12-1\tinstalled
@@ -323,6 +352,13 @@ zlib1g\t1:1.2.13.dfsg-1\tinstalled
 """
 stderr = ""
 
+[git]
+source = "representative, plan 02-01 Task 2; replaced by the CI capture in Task 3"
+stdout = """
+git version 2.39.5
+"""
+stderr = ""
+
 [klee]
 source = "captured in CI image-a, run 37969688167"
 stdout = """
@@ -339,6 +375,14 @@ stderr = ""
 source = "captured in CI image-a, run 37969688167"
 stdout = """
 16.0.6
+"""
+stderr = ""
+
+[make]
+source = "representative, plan 02-01 Task 2; replaced by the CI capture in Task 3"
+stdout = """
+GNU Make 4.3
+Built for x86_64-pc-linux-gnu
 """
 stderr = ""
 
