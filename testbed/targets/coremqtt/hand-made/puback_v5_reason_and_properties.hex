@@ -1,0 +1,3 @@
+# MQTT Version 5.0 (OASIS Standard, 7 March 2019), section 3.4 PUBACK (reason code, properties)
+# case: reason 0x10 and a Reason String property 'a'
+40 08 00 0a 10 04 1f 00 01 61

@@ -1,0 +1,5 @@
+# LZ4 Frame Format specification (lz4_Frame_format.md), content size flag
+# case: FLG 0x68: an 8-byte content size follows the descriptor
+# generated once by: python3 -I research/testbed-seeds/lz4.py frame_with_content_size
+04 22 4d 18 68 40 05 00 00 00 00 00 00 00 61 05
+00 00 80 68 65 6c 6c 6f 00 00 00 00

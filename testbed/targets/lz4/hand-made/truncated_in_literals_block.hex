@@ -1,0 +1,4 @@
+# LZ4 Block Format specification (lz4_Block_format.md)
+# case: token announces 4 literals, only 3 follow
+# generated once by: python3 -I research/testbed-seeds/lz4.py truncated_in_literals_block
+44 61 62 63

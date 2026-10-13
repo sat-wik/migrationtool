@@ -1,0 +1,4 @@
+# LZ4 Block Format specification (lz4_Block_format.md), the last sequence has literals only
+# case: the block ends right after a match
+# generated once by: python3 -I research/testbed-seeds/lz4.py ends_after_match_block
+44 61 62 63 64 04 00

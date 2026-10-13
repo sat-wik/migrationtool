@@ -1,0 +1,2423 @@
+{
+  "schema_version": 1,
+  "target": "mbedtls",
+  "commit": "068ff080b369adfac81509f9b57b2afabaf82dc5",
+  "licence": {
+    "spdx": "Apache-2.0 OR GPL-2.0-or-later",
+    "elected": "Apache-2.0",
+    "file": "LICENSE"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "0135bf69430620321b84534a898ae23ca651318a2fbf4f847ee4d8a98511e5e3",
+      "bytes": 2414,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbe_sha1_4096_2des.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0199662493338a5c801a24e43476a70c6c3be577c75e4e96d114877364406b21",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes256cbc_sha384.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "024d0b21603a3ba559fec561e392d270aa65006a1ec18dbbf3b4b90ce0cbef00",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes256cbc.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "036c8d1d5a030658232b2ec50f68f97824543bccfe7d7216283ccca076eced8e",
+      "bytes": 1312,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_3des_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "03d551c2342481551217d0586a3a9a1a0d1600146bff72d4d6c325b8aaef3230",
+      "bytes": 483,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/server5-nonprintable_othername.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "054175df6ddd2b515b973b1fea981f9b7a2fb64c7e37274b57e1fb637bae828c",
+      "bytes": 1185,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_3_signed.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "066799f295a92258bbf8299612ed784127b66ca64ca112231c6cc7b2397038d3",
+      "bytes": 2464,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_3des_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "06dafb4012829f055a7d3e8239942d6123b4e9cb7690e3d7b9a1c20d4bb6c9c1",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes256cbc_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "07a45d24466d4451387f3c11631fee2a7a569d799b6bad4a6ddf8f833e75699c",
+      "bytes": 678,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbe_sha1_1024_3des.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "095f477af1d10e1be9432c2cc8655b5a1099e155a2c0faeda8a2d8f51d00032b",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes128cbc_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "09ce34140f0fca9c73c786a90c883351dcf2c22713538dd70af33024c0af0860",
+      "bytes": 711,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_des.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0d5da167f89ce24d8715b48aedcaeb531efaee70cd88ab08c9b548eb511ee681",
+      "bytes": 931,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_subjectKeyId_sn_len_malformed.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "100702a29a8fb761f11931009a91b426d42a5918e76fa655a5356ff29c4260a8",
+      "bytes": 525,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/server5-second-directoryname-oid-malformed.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1034bbec7502c29f5098d7057659fb85da9b37abbdb80781da71873cc7dc13e6",
+      "bytes": 1185,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_signed_badsigner2_badtag.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "10f758162c2b8fa9c1882d4173b12423dd0e755028810c54544eddf027666202",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_extension_data_len2.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1250423ababf0af90113cfa5c0e68e048eb4c88d24ebd459ff8fda439bbd01b6",
+      "bytes": 1284,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_cert_signed_v2.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1459b5d3cbce943f56f01d69ee2ad2f40877638be699486c8805e7ccd01cf8fc",
+      "bytes": 725,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_des_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "14900c8e0500418775322e7d7ee4d666c0dac142630479fc9b3788c9c899968d",
+      "bytes": 2414,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbe_sha1_4096_3des.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1528b3dba6da80e638cdba8f5b6c078d2012a478e7bd46b6337b2fd362afebcf",
+      "bytes": 678,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbe_sha1_1024_2des.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "155c8ffb59754a9e096b6afb529ae853b7439a36b023861f22538e86dd510232",
+      "bytes": 835,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/cli-rsa-sha256-badalg.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "17ee29467d863d009ca6cb1a7c90f9ec1804d56b260d90dc0d34eaca6af4c28d",
+      "bytes": 1185,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_signed_badsigner2_fuzzbad.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "180d7c4a5906177aee3d87b1d106b47657ce7278604e69a4d8c288f369e4fd48",
+      "bytes": 931,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_subjectKeyId_sequence_tag_malformed.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "18e078c57c4124bbd1c06a9f494af5878e0e7ee311387bde381bcf19ae3bc4fc",
+      "bytes": 810,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_signerInfo_1_serial_invalid_tag_after_long_name.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1a317b113e33fb48df2a3d23dd6658959d5662e01bb6e2f821bcb39bbc563fad",
+      "bytes": 223,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_521_short_prv.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1b51847bfc58c71a866ffb307f3608aaf0e33ae489685428530a9e94abb5de5c",
+      "bytes": 931,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_subjectKeyId_tag_malformed.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "20f9635cd74121e7f40099585ed44e3df6fad7d27b594b71e4a4cb7f931802c0",
+      "bytes": 1262,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbe_sha1_2048_3des.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "212264f9eef95b72eeb5777b95e0a042e78180d6749f79938c58bc70d928cdd8",
+      "bytes": 728,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_3des_sha384.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "222d1a1c862cab7a152d10935e1fd87f353b69b5480378e2c4061cf695a8aa74",
+      "bytes": 931,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_subjectKeyId_tag_len_malformed.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "22d2162c7b342417c33034ac3aa56f79c01b9874a2df694db9ebd95542380ae9",
+      "bytes": 67,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_prv.pk8nopub.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "230605b9f889784fce7bbc09e9ce09d40723e0449464367a9fed8c933c258e45",
+      "bytes": 91,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_256_pub.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "23a91e99977ee1f2470d32721801ee17f1a11ff0f28d982b6ad076dfc974f62c",
+      "bytes": 1276,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_cert_signed_ripemd160.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "240b3dcda4f0c6b438925af62910f0da734f9d05198950afbbaaa06c4780a9f1",
+      "bytes": 931,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_subjectKeyId_issuer_tag1_malformed.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "28127e180fa4b350a3787eaf2b9db2b27d58c770184ab785640d2a9c7333eb7d",
+      "bytes": 498,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/server5-directoryname.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "29d98c0b6ea1606beede37bb95e3d1b933dfbe35bf2b61c764f7d74102937efc",
+      "bytes": 931,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_subjectKeyId_length_malformed.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "29fa915cd292f1a2da8c9ba15e611f74b6dca858b7d59da34dae9d1eb27b7a69",
+      "bytes": 2349,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa4096_prv.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2a3381bab277bbca12f4b909335f7a1c13e46c19419c03b18a93be671bc6fe55",
+      "bytes": 79,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_prv.pk8nopubparam.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2a3bf39a791ccb4e71029bd4924e8be98cd73bab1a61322a9200dab2a0ea66d6",
+      "bytes": 158,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_521_pub.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2d1c28777ed1b84414d8c17e0be1a667cd46c98e8d10dfa6aead383c503688a0",
+      "bytes": 2464,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_3des_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2d502dda0c522d92ccb5b946ea29b8733e682cc4298cf4a6eeb5f0edae0e2109",
+      "bytes": 1312,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_3des_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2e49b8f16ddb0ef98957d27b88398441840f77307a84150e1f4ac4ae102d0d7b",
+      "bytes": 1185,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_signed_badsigner2_badsize.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2edfa57c72fb189827bc8f16b9ac519b4aa33cea0c890f50a488d35d41256f04",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes192cbc_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2f2803d5580ce9c014a2914b9f7b475251b89342d601e5dba357a59a9f698694",
+      "bytes": 52,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_no_signers.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "32626afbb17cbe89cea2e8dcf06217a63c15eae6bb41b9fb923152bd5f05d298",
+      "bytes": 1192,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs1_2048_clear.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "347c840d857dce107bcd050999d632c3b26450763c979956873a6d4463f5347c",
+      "bytes": 931,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_subjectKeyId_keyid_tag_malformed.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "35db883d818fe19799250e126441451c4dfdafdbbe2ffa92a5c68dcdaac715e4",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes128cbc_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "377485165326983aa5a84efeafbaa2ab2bfc6b2ef26b7d0cb0ac62a6e76c4333",
+      "bytes": 714,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_3des.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3aaf4a66d1168c48e66cbf62a4016b5b9ddf5ef631db394fab628fc7dee30eaa",
+      "bytes": 809,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_no_authorityKeyId.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3b4f6afb4c18b1d51a5f702a1706db7c039fd60ce9de9c242af7d4e6183c4cc5",
+      "bytes": 121,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_256_prv.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3e4fdc83bf77888d42c2980b8ffa2deabae655ea68882788ea836bd3b59de444",
+      "bytes": 931,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_subjectKeyId_sn_tag_malformed.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "414a6ab8d9f0a1e91ccccb7b9b8f00e624c42eea8bd4f18efdfbc6812ae96f4e",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes192cbc_sha384.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "420f7d15d7123478b22d2a0cdfbca16a65809e9e98c4daa1bcf168f348e7f971",
+      "bytes": 728,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_3des_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "43e5e1e47857c23c62bdfaecfce0e5643e8cee89841b94a1b6b27462a1bd1f65",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_extensions_sequence_tag.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "46c062c7390225dbf7a8ed6f2837a8a37e724986b82c1e64490acf49ce783ff3",
+      "bytes": 2464,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_3des_sha384.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "47905380c77231834a773dccdf06c376fc294a1e13b59f6727196db570f4319b",
+      "bytes": 728,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_3des_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "49a0940cdc1a524dde2111a544c565152b6f3a9fc6e9ecfe1c3b955d0f1e94fb",
+      "bytes": 463,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs1_768_clear.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4a512b19730d9febaf2f5d41680693da5d4b732bc3fd1b7c549d7a9bfbcdf090",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_extension_type_oid.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4ac48937c8eea09c6f541e8b27b6576276224301ff1c6a6781f3636604540286",
+      "bytes": 214,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_prv.specdom.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4b3d847ceb28e1527398013d84b7e7a3ee4fc0225bf6d91ae170f376b4a759a8",
+      "bytes": 2450,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_3des.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4e8333f005c4165aaab1746a23940c3fcbfe233306c0fbfe6b7dc5546954f285",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes192cbc_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "502c635d074c6e4191967526e0307cc6cc4e4f45ebfa3d9b9fadde7ab3a26113",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes256cbc_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "50b19c5f318a0bb8badbc93b5e58922888689c00a604d4ada0299ec9749fa9b4",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes192cbc_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "514a1b1d2244b28527de5364e68b1ec1dc88f3af19aff52647ac45e87d4fefe0",
+      "bytes": 677,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_cert_rfc822name.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "519ef5bd173cd890b162f93516a3e16e9c9faafe063ff72af8e68be0667298fd",
+      "bytes": 472,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/server5-unsupported_othername.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "51c46a25a8aa53fcd65c2f5bec350b115a140544d46c248a4106feaf3886bb6e",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes256cbc_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5408d3b730a49b89454651bb2fa431b67215fcdacd8548af5914f1ed0bb786cf",
+      "bytes": 1262,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbe_sha1_2048_2des.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "54583e3f6b904cc7d15940b84510df367493e85b74e273b0c7fa06e9cbdf762a",
+      "bytes": 835,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/cli-rsa-sha256.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "552a43101bad2680fdc6d460cc9de95580d6289cbfccbb282d60029c84f44fb2",
+      "bytes": 530,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/dh.optlen.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "557e06381c7e6448cd0d98c664172f6c143dd93cbc0e0d54561bac06fe86c62d",
+      "bytes": 121,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/cli2.key.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "58745f764a72731ed60100d7236e1592406b4ade79dbb76d08769e1a61621ced",
+      "bytes": 898,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/rsa_single_san_uri.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5a1787b7a20695a5a83032f78c9e28014967efc25c1e3f3a052f828084eae844",
+      "bytes": 1302,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_rsa_expired.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5ae04a18d41d2096637cd25c2b0c4178ff64ecce3fb4de5776fe732118f3661c",
+      "bytes": 44,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_x25519_pub.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5b51a94cd09b3d9627f1ce32359b1cf42c4d515a140cc2f6a4615cc1e3aa518e",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes256cbc.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5bf1c383bf314e08f27c1f2dcd06bab1c2e869c28810e41c1640e076ec21165b",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_duplicated_extension.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5cdba51065bdb33f2b194b08ff99d3f1d18a7bf9a26e9dc1c286b15bf07df62e",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes128cbc.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5d330544d8b1afcae6f36d0e43362d057769dc851e3b7e51fd6b7b3dcd3d4f0c",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes192cbc.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5d55e216f28d122dd724aa474ec6665b800e22881fb05ed3ddc61da46038e38f",
+      "bytes": 1185,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_signed_badsigner1_fuzzbad.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5da640d4079d14bf9d9c4934ee25f92328394ac1c73f92a70951a5643cffb780",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes256cbc_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5e0947189f851ba0df2daca870fa8a7597e841238c0340e488b4898598e0205b",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes192cbc_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5e781c29a63f0345d373ed2f609124e39ac396ce552bde3be851f9703f8b8c5f",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes128cbc.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5f409c99efa3c088f97b01e5db813ef9d87ab2d014a6c2921dfc4b2ef673e0cd",
+      "bytes": 1309,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_des_sha384.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5f9b98613a34b6637f556c963bd6bdcde74bddfabf0a6dac048109f63c0d75ac",
+      "bytes": 1312,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_3des_sha384.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5fa3565403026c08ae066699e43571d21fc2b0b83c260374934d86d79f3f3359",
+      "bytes": 446,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_with_signature.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "605989160552b60a6f71d33bb3913b8cdcd7337ff37108d6073ad90f9facf5d4",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_attributes_extension_request.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6097b07820ba2b7b8389787e4ffca9ca6949209bd8f9d49a6d0eb90b7ce42ede",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes128cbc_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6199b4fbdad6cbfa5b9bba964ab6e51e5b3be5fcb0863204536001d69a1115f0",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes256cbc_sha384.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "63dc5047cdac50db02c52f69d1c62c94ec0402621e33e5a3796b03c6012ad198",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_attributes_len2.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "667347c69f0c4d17d3a5f603cd6a8fcfa79589c646c38f7b0013bc8110c2f03f",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes128cbc_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6993c7888176701e270b1cf57e5a328c742c2be874604b770e550a9d58e454be",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_attributes_id_tag.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "69a133b2a8c850cba8f629953b04e91e3e00fe34ff5001181d3710616567403f",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes192cbc_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6b90d54b2456cc3472f19e6f71a4dfe9bd30e6704f8280f76a63e867081c1807",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes192cbc_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6bf29b0c751184277649dda5c34333e6dd2a6610df9cee06c8b93eca99a2e72e",
+      "bytes": 466,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs1_776_clear.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6ccd71b10d9171ad49db8a9ddb6d496b57f5c1b9cf7b9c1302f35d7e3b117b15",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_extension_data_len1.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6cf06096fc2e23a82f4f70a7197efaf8f148e02ad450cc8ac7a9f3dc4334d85b",
+      "bytes": 1298,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_3des.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6d0ce22c297f655fab66099424eea1485a5c4cba965116838b58c03e4c2925a5",
+      "bytes": 1284,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_signed_badsigner.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6fabb1625c1548fb83f9b4a0fa4556c4c558a7a361453f1a700c2182fee3d5a3",
+      "bytes": 1309,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_des_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "713cef5560b064413ea1ba7347be7e671f80f17c8aef41aa8042acc4814a81c2",
+      "bytes": 525,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/server5-two-directorynames.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "715566f5d9b2734d7713d563907733bcb6464108d9d3acf2f8cbb7c85de5fa3a",
+      "bytes": 1295,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_des.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "74a4dc68e65c6882a333a5db845d5ea4ef5cec21089d6d8012cd0c381e200830",
+      "bytes": 121,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_256_long_prv.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7918a302a028eb0cf910266fc126c6c0729a990be1948243417c8ab603a36f9e",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes256cbc_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7a5cf685a3dbae4b5c23fbea67a8a50aed013dc341827478485ad66acfc631d2",
+      "bytes": 845,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7-rsa-sha256-2.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7cc27d0b8315cc9dc936397132fbe8ad200e4ee6d8e09db152be6f417c78ee99",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes128cbc_sha384.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7de3aa71c1833416e288b81d6dd08a92602d802131ada97199c0fa819d891d2f",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_attributes_sequence_tag.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7dfb56f7c63791d065f4b711fada03ca810f0142ce615fcc95f8d021238cf157",
+      "bytes": 1282,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_cert_signed_md5.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7f3133ce4106e33ce9be5dcf8becb7d456f984e61ea2426b0b2dc4a0ce64b9d9",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes256cbc.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7f77e8fa7d8e9a6fde5c7ba23184fda68e7b156702a9305ee75cedbbd54c82c6",
+      "bytes": 1284,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_cert_signed_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7f9c3c01a3a067f5f5b085ad362872f91142ac5de59f02195bea3fc5a2e59888",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_attributes_len1.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7fd72de8a9f7396ec78c62c4179a6ae98d0db3efbecd23032c6c2eff09c3b468",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_attributes_extension_request_set_tag.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8202284bd6753ef5305c3effe66915ebdd3968c5d3e12d622be9fa51700afc8c",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes128cbc_sha384.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "82af48739b12b9768c8e0b6639d9154b1a25a2650e779520d1f843ba0d09dbcd",
+      "bytes": 449,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/server5-othername.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "837d448f7b9e60cd6458de73db4648a07efbb4daccca26025e0e98e91dfcd134",
+      "bytes": 368,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_keyUsage.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "83cd3e76cacd1375be2815ef5073f6ec3db3542c9b76f92c7cc56ca7f1f8b78d",
+      "bytes": 909,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_no_keyid.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "86173ab0dca94ab2f81fc8a73dbcb453b33aa3820767379460b271914cdb634f",
+      "bytes": 2504,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_multiple_certs_signed.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "88a683a8761821a6db77f2f224511b0c52d77c6bf50e6b6bd20e46b4e141c7e3",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes256cbc_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "89c6b9e553ed60d58042803a20e8360de3a18c7f0f60893bab9375677030668d",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes192cbc_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8c39cffbb2b8da30c9781306c7030ff0a9e8ed7a0a02b483851d0b2c2a2ea137",
+      "bytes": 525,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/server5-directoryname-seq-malformed.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8ce732d2459ff68205f6846449a688b1f0e7c72ecb6af11f5d741b0f88c6a0e1",
+      "bytes": 1284,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_signerInfo_issuer_invalid_size.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8d91cc155501bfb170e98c59c6a828c1ecb3f11b6762b7af4ea368f06ee6fb93",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes128cbc_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9172bd5c29dff754d8b2dc094fb402c0db98445f77beb99865513badee29ebd2",
+      "bytes": 725,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_des_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "924f859d61541ce78eb318cb344a4467a6c6acded6651965bcd818fe70e4e07e",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_extension_subject_alt_name_sequence_tag.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "944ae555aa4531be859083d4866dee268fa8f99f535ffae9ad1602699cb0f3e4",
+      "bytes": 397,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/clusterfuzz-testcase-minimized-fuzz_x509crt-6666050834661376.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "944ce7132f14f96a6b7fae4be6d93c30733fb11f99a60f0ef4c61a60cd04e6ec",
+      "bytes": 471,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs1_784_clear.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9596b99a6c868114f4c1b3f7fa56e2bf41efe7a33005f24845f93898ac51d418",
+      "bytes": 550,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa4096_pub.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "95bff3dc143382f6c5de5baf2f72e3f41a0da2ef308f613b25312034c3740cab",
+      "bytes": 1312,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_3des_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "98988d9e7d5ac25f3f392cba0106a3a104aff6b3dd94b121a81eb16921f3bdea",
+      "bytes": 810,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_multiple_signed.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "993abab8b5db9a36081611d7eeb018b3143f235d7f6407bcb2a786e286d108e4",
+      "bytes": 68,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_x448_pub.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9bcf4812716a74abe4f08d0b4dddb104f47251816f1d163fa4a78abddda35fd1",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_extension_ns_cert_bitstream_tag.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9c5b6f7b10e2a73a7bdff474cda5301a6b04ad4858268d2d37b36e24925e0b94",
+      "bytes": 2464,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_3des_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a1e9f7ca94578cb5d21b71292c3a56a6e147751924b67820dd9aad9249b5ab47",
+      "bytes": 148,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_prv.pk8.pw.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a369fced2ff687ac4bcb7a31015f33dceddb83c65a9f5e8721f9d52fbc9acf8d",
+      "bytes": 121,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_256_prv.pk8.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a4a168d0cb8214f21ecf51a1af140ff468416fdb13c86809b658fe5c2e643d53",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes128cbc.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a51ad7c84591007089e60fdbb05d8cb164a107bbabaac40ee948d9bafe4c7e34",
+      "bytes": 1309,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_des_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a5840d25cec86696afd8c66551c4da8b5302008e8937c5265a24282872ac553f",
+      "bytes": 931,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_subjectKeyId_issuer_tag2_malformed.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a69e2202fb4136d2438e7f5d4f9af72d6f07a2e6cf9842f193369ae7ba38fcc1",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes128cbc_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a7a00697d31eb4b75916b02a618244fd9bc3347d7bdf2dec05af4440e0834aff",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_attributes_extension_request_sequence_len2.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a7ffd8f02b40b30b0658c8a71e41b5607848efddac89163a780d9fb6dfdf6275",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes256cbc_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ad83ca58585e4b4dcf88feb1f14d25858aa3a011d9d022e16d1f973bc7ecddd5",
+      "bytes": 223,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_521_prv.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ae436c69d6d701d29594670e791f5e8c5e5a68d37a7a61c6416fc95ce556c6eb",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes192cbc_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "aebdbc8324265dab166be334ff9fa2d4201bfd5c8b70d0907878451ad4d8fdcf",
+      "bytes": 725,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_des_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "af7445cc9701f668131ecdfe1f328beec3e47f4bb5c1048294128be83eac0c1c",
+      "bytes": 221,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_bp512_prv.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b1e0dae5a4cbd544ed8ecc56147062a4170bec776f3fb626f05c4a9c4c5e286a",
+      "bytes": 464,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs1_769_clear.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b39ab313bdf9a68274eeac993b0539281219e342ffc24bbb1fad59e5a79d3e8e",
+      "bytes": 2348,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs1_4096_clear.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b452f57dc89b4ad2a0e161dcf3117660861da9039acf23c658dda5869deefeef",
+      "bytes": 1185,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_signed_badsigner1_badtag.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b49b57e64c27e2ee265a215bd56c82e176bf6c1334dd5acb715f95425c4e9b1c",
+      "bytes": 408,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/server5-fan.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b51479a36945a241ce1e2d387bd3e2b97a5910ef7f104cf1e1386f78ca8c0d89",
+      "bytes": 1284,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_signed_badcert.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b5bd37bae8f19d4b3d5bb86e7674517165ad71f07ed0a2a84cd0503572d0edeb",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes128cbc_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b5d2c1bd8da490fd6ffd8a4c1c77f0e946d9f943e564e29ca0af2e55e8bffb33",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes128cbc_sha384.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b6cc4647b75d49cfdf45b23ce11aa981f122bc37dfedb0c34cd9cae1835a865f",
+      "bytes": 294,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_2048_public.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b815ae9017db2b914ffbaec066b1103d2250b73ca2ceaa447f2500381a2847cb",
+      "bytes": 931,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_subjectKeyId.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bccf368a323cb0f1a131d6b7d4a6479b0015a890ce3eb7922ed8ab7147eae820",
+      "bytes": 845,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7-rsa-sha256-1.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c4352a035ff6e0afce8f8b5f8358e10a871c373f93f3fef3b247245d8ba4d509",
+      "bytes": 150,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_prv.pk8param.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c568d43a87134cc2b4e66c27697a390ab09e403857fe8e6e6ef069b956708b8b",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes128cbc_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c5eca7361e00be801678a707c5ca3c3b0dd588fbdfde82f1d29a410868f1c5c5",
+      "bytes": 97,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_prv.sec1.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c7595eb54ad5ee1124767a49156fc1279d3bd63d1745f16666e0df2c88c82612",
+      "bytes": 728,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_3des_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c812c2e209e1affe25b628671d08e3217f28806047d8ee2bd094e4ebd6e6be3a",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_attributes_extension_request_sequence_tag.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c8959934f853c19904a654ae8cd35f48f46f415c5ebafd97e42bb39a9302e92d",
+      "bytes": 608,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs1_1024_clear.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c9af85bb77cb430f57ee1012b3af2aaebe8ae7263a618f19236a09b686e5b615",
+      "bytes": 1192,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/cli-rsa-sha256.key.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cb07257477a569d24e50b499d83f7354a9503b08b77be2eee774ff529c68832b",
+      "bytes": 1284,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_cert_signed_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cdd7a4ed25e848bfacdf0630a275393b2da655fb60ec7f4a4b5a595febf76ab3",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes256cbc_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ce894b18e838614539c163ba1e0fb53e46630647af192657279f21e0dd4ba102",
+      "bytes": 857,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7-rsa-expired.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cf9eb112d264e3597bb508c97a4030ff242289447fbd0d634496aff50dcbe3ac",
+      "bytes": 954,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/rsa_multiple_san_uri.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cfa3f90c5dc2b1e10eea74561e9aac5a6929b6c35f74c7ddcc7e95ad5dd1948a",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes192cbc.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d060925688ccbd271376bafeaa79389b20f2f5f48e06bbf22056e76816d9464a",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes192cbc_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d12d0fc3a3a5b540f0aa1f0c84d1675ab8672c46ceb624d671c08594bd96011c",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes192cbc.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d1397b7bbc76dad97529e3b1c59923a732e19cc3c7caf099149adbb57536d0a2",
+      "bytes": 2447,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_des.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d25c12bacfb421506a58bdd4620fd88674af157fd654e54ea3e1b27a3874fc64",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d277d326771d241ed17154ad594359c0228cc350863b876a4c6b15ffcafaf97f",
+      "bytes": 1309,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_des_sha224.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d2ae3024ffc46e785163539a421eb7eaa046126505212937863d510493e6dcbc",
+      "bytes": 483,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/cli2.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d2d3e6d9d8f19ad1511dfbcf3847217c5a3f3b42837d1eadfe75485fca944fce",
+      "bytes": 837,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test-ca.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d43e069f003c6bf490e5ed090028c1c6f397864966b65ea91417b7c628dcb458",
+      "bytes": 931,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_subjectKeyId_keyid_tag_len_malformed.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d964e0b2830f0342e3a5747fbb173a0d8e3907d2c6122656657567f2fe6dc877",
+      "bytes": 465,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs1_770_clear.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "db1747899779d1ae2db8335dd0e23ce87ba2d97b1043ecf71cdf88da472d1e38",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_extension_data_tag.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "db660b470dff850635aa52519268156605a2b1986622b50f31238c2662d47a12",
+      "bytes": 842,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/authorityKeyId_no_issuer.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dbe07cf31fb4c8d0baa7a50cb12d9fa8f21ecd669912612beabea93dc1e266f6",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_attributes_extension_request_sequence_len1.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e0e4deb81619f62ce2f76795a2f1c49c53c641775c66ae5fbbfdfca7f459442d",
+      "bytes": 162,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_1024_public.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e134635878b5c79eb795a0a52a5a732c6c3c9125f439808d4d2170ce62943ac1",
+      "bytes": 72,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_x448_prv.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e4f1ab95f90fe7762ea3aa343ad2f6e8a5c98e015d8aeb5154ed504af942b3b1",
+      "bytes": 407,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_subjectAltName.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e5c72da0200820f25265b67bf6ceee8986120f82697a222eb526539bb8529911",
+      "bytes": 1185,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_signerInfo_2_invalid_tag.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e6538fb44f31293d339e0d1e61aacbf7384cb531428100ef248a3717b571bddb",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_extension_id_tag.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e65d6858fd9929d70d025f092366920ed255d76ecd5ecd6523fa0e1991de538e",
+      "bytes": 158,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_bp512_pub.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e72008809b1a48731f7b7e85af428b98ac7bb394b1dfd4e46310d79e04ce8df8",
+      "bytes": 435,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_zerolendata_detached.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e7b5124ce0c41f49082635b2423d6044e117c5db983606c1fabedb3d6c77cee2",
+      "bytes": 737,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_aes192cbc_sha384.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e8d6026e3036d37b9c5f04ce1b048cfc7d04b977765f9e5dfd9e642ede49796f",
+      "bytes": 1265,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_cert_signeddata_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "eb039497b23caffe9347e731ab942c0a6fc4bedb57a05d4a4777c9161ad75253",
+      "bytes": 1276,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_cert_signed_sha1.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ec410cf1ce5137ad9d36e78606fd8bae6f01afdd7fd461d04bc4a4bd7d82b063",
+      "bytes": 827,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/server2.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ede0b64648401b4d26a293bd2d728525ed4a08eb1aeb26521bf4bc3de320a9a1",
+      "bytes": 48,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_x25519_prv.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f09f144c0815fade5f3b14289a3a75f2de70af08f671e86d2a3a503c28322cc4",
+      "bytes": 374,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_nsCertType.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f16bc0108e8135328b8bab44ee3157bd35eb12eb03fce0e1c95458dcccb51b76",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes128cbc_sha512.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f40d2fc72b7c438b44603b8551d57c8725f4c72be369b3f1510dba74c4a3c56c",
+      "bytes": 1284,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_signerInfo_serial_invalid_size.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f4f6bad9de9bf4f0511382cb066900353f1f1a4cfea0df9f8de5af556c3abd01",
+      "bytes": 437,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/test_csr_v3_all_malformed_extension_key_usage_bitstream_tag.csr.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f63b20f3086040a0b72f2baf198c2dcd867eb437800700698e22c1e3476ab26d",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes256cbc_sha384.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f7f656a0fc2cb8fe14c56ad6e90124ead5518cf33911bcd427e8772c698d6973",
+      "bytes": 1329,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_2048_aes256cbc_sha256.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f8fd956e8a86aa258fa961ffe80e53b561c290667f66b01a498b753d09d92957",
+      "bytes": 75,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_pub.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f9020011c92bc526c75ec849ed15ca63c12d64129cd6b3fcbc5e4fbd9df9b810",
+      "bytes": 270,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs1_2048_public.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f905b37f7f142b093154f387c4ae9ccb43396e94f3b649a992fa01cae2fb831b",
+      "bytes": 435,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_without_cert_signed.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fbd74fde74fb949bc221997ce1a557364f02217bb0a21e7ddbb9b3f29b26c491",
+      "bytes": 835,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/parse_input/server1.crt.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fcbaa8f794614e49bfaddbd3b8251707425630e9b870627766a70c5a4f093f57",
+      "bytes": 452,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_cert_encrypted.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fcf617efcdabb117988a32e5ec0291bfca9116212412d0343bfdd077aefd7a65",
+      "bytes": 725,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_1024_des_sha384.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fd7e1a365af2323008b0195ec77a95ed9e59104fdbfef1639cb7022ee09c9a01",
+      "bytes": 113,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/ec_prv.pk8.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fe2539a1df57e185d56d509a9f360921a9ee11ea87b66458a9a731d7c6dbbdaa",
+      "bytes": 1185,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/pkcs7_data_signed_badsigner1_badsize.der"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ff835178e3c141717bb4dceb0b1127c1c91b6c347df5ef13ba726872f6a8c3bc",
+      "bytes": 2481,
+      "entries": [
+        "mbedtls_x509_crt_parse_der"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "framework/data_files/rsa_pkcs8_pbes2_pbkdf2_4096_aes192cbc_sha384.der"
+      },
+      "proposed": false
+    }
+  ],
+  "skipped": {
+    "duplicate": 1,
+    "too_large": 0,
+    "over_cap": 25,
+    "unsupported": 0
+  }
+}

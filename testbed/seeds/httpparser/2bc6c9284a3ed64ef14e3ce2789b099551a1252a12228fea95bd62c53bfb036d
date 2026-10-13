@@ -1,0 +1,1 @@
+eat CRLF between requests even if "Connection: close" is set

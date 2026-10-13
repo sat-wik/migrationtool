@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "target": "isotp",
+  "commit": "5593428d95af10dde1e565cebcda16089fc74857",
+  "licence": {
+    "spdx": "MIT",
+    "elected": "MIT",
+    "file": "LICENSE"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "0d48f39b0c94e378461116e587da07ba3e3884b9b74d5955780ce9b90a25af9f",
+      "bytes": 8,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/first_frame_total_4095.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "10c3452f6ae61cd7fe144a5abcbbf2955c0521e3162765daf84f7fffd9bddc6b",
+      "bytes": 3,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/invalid_pci_type.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "125f881ef382ecf16f51dc9a65b9f1ce713413d8f9b6cfa854d6c778a8ba191c",
+      "bytes": 3,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/flow_control_cts.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "2903b0771faa97a8f985cb3e312e8d7dcb6b8704d4dbbba52c1ded4aeab8199c",
+      "bytes": 4,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/single_frame_3_bytes.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "29290e82e38a1c42f63861b32386785533b177dff6511f94a8f11850383d5540",
+      "bytes": 3,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/consecutive_frame_short.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "48d6b5bba80cc1277242b97860c34ccd4c195476f409d42a9b030424ad340ea7",
+      "bytes": 3,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/flow_control_stmin_reserved.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "5a223df62f6ce7cb6277fa36e75a98f29bf7a2aa22cafe2ac1ff6834c890f716",
+      "bytes": 8,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/single_frame_length_8_invalid.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "5e12cbd64129f292629af84ae85cc3cdcc231c05cab567e7b3adc04de76609d2",
+      "bytes": 3,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/flow_control_stmin_microseconds.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "5e9da77a672cb094963e10219ad5ff900cba90a6d2b65491350e4f501e524179",
+      "bytes": 3,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/flow_control_wait.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "6459687c12c43000c1538e5da183729f7668bfbcaec09111cbd42c3a58d40bc2",
+      "bytes": 8,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/consecutive_frame_sn1.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "6829c4733c40ba340e8255218de94f435b0838a6de5cfdab2646aab98c1b5800",
+      "bytes": 8,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/single_frame_7_bytes.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "6bb8814629f87f9533bb5ba1c033a7abeccb631c3b6b9b5fa8a1a75b19f874e9",
+      "bytes": 8,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/first_frame_total_5_invalid.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "bytes": 1,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/single_frame_zero_length.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "7bac3deb7e0babdb95e3781df0679735c65b97fedbe504413ea76b29d42cecfa",
+      "bytes": 8,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/consecutive_frame_sn0_wrap.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "9ef1b54739f35234a97871752d7981677d4ca40aa3cba2fbfe8c052526d3942a",
+      "bytes": 8,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/consecutive_frame_sn15.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "def623e539be18ca61118ac894a09b7b65ce73d6346e2c4c61647c87cf262f16",
+      "bytes": 3,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/flow_control_invalid_status.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/empty_frame.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "f58dbef25af42a6dd526b5fb2b6834911de20e5639ee1c1373fa5e8fd679ca6f",
+      "bytes": 8,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/first_frame_total_20.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "faa9f8664ec3ce096ea3523a41deee37e2640518b48708faab5208d38cf44871",
+      "bytes": 3,
+      "entries": [
+        "isotp_on_can_message"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/isotp/hand-made/flow_control_overflow.hex"
+      },
+      "proposed": true
+    }
+  ],
+  "skipped": {
+    "duplicate": 0,
+    "too_large": 0,
+    "over_cap": 0,
+    "unsupported": 0
+  }
+}

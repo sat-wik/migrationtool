@@ -1,0 +1,3 @@
+# RFC 7252 (CoAP), section 3 message format, section 3 (lengths 9..15 are reserved)
+# case: TKL 9
+49 01 00 03 01 02 03 04 05 06 07 08 09

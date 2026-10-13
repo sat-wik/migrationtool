@@ -1,0 +1,2823 @@
+{
+  "schema_version": 1,
+  "target": "tinycbor",
+  "commit": "6442e749ca811e24afad1551338a45c75e09808f",
+  "licence": {
+    "spdx": "MIT",
+    "elected": "MIT",
+    "file": "LICENSE"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "00d18a907afdb0310b395fba66428d88a7983f9d32fb29b108c9101ca0d2cf94",
+      "bytes": 10,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 402
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 50
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0230e609224621d971e31d76483cb33c3c0d9cfa33173105aa805e0a4880ce95",
+      "bytes": 6,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 535
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "024fc6703ebd42bbe7b3de65e7df4ecb90f22a64fc77129526a55946bad32330",
+      "bytes": 8,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 113
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "05307d38e1bd651bd573e12c75992c422a6148a5358dd51416aa4857a5171002",
+      "bytes": 7,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 120
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "064e4df3a90b3e9be1a6725f70cdc2b5babac97959213573afd96fcf2467bae7",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 109
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "06dfbb65094a85d23ebd3bff3d01785ecaa0537d2429c66d83ba1f5b0075e121",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 53
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "074c2453f056f9c216de43ae81f5a7da8e9aadfcfec5ff53dfa4958976390c8a",
+      "bytes": 13,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 87
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "07afbc41404d5811304162672975adceca817a774c40e593838ff12bfa61bc36",
+      "bytes": 6,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 100
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "07c3357565bb1cfce2136ced6c3999c80e4cb2b5c76e1967f05fee19082286df",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 98
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "097e63c2a20ab1cb71842a1814572ea555e08faf4e9d63d475d2ff781a28f819",
+      "bytes": 11,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 42
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0a07f659461970d8d8dcefe4fff96a1745599810dc7d47391e95c803b7b2072c",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 569
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0ae7b0503ae77d153e4747c652deeaba896527ea5199e0771d69be32ef26f03a",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 421
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0b0fecea27dbb87479c576359a71eedaa276969da5ac02f76b017532f1c135c2",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 619
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0b462b1fc3c8e1ce2bb676bbd19d17851711aa43229c35170f4129f4a1443d6e",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 105
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0d43b979c7df3a20d28c206cb3a26467d93ac27b66fe29cecb6073b460c1a231",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 124
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0d4fb56512ff1f41cda77168d616f28c97c798612cea862ff1e19de6c557ea94",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 110
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0d549a9e1389098a9e7c5d1e01e30a361da49f46c8f166e55d8a7f18e063b3c3",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 411
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0eb2f36faa2b0e5cf54fb92e3bcca9e6a20d88631f08f6763c2125380d674615",
+      "bytes": 11,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 54
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0ec5c5ea45532e7c4ca8006c92d436f2dac7d356e3a1f1e5ba17f8f2c78a398d",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 619
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0f28f3a2da7ac0674936b3fe9a3612937fcdbde59cb49b131f37828d6ef955a1",
+      "bytes": 14,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 115
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0f90f28b160faf91891d4c8ae43124f94f39d166a534433d54c87aa5dcc9957d",
+      "bytes": 12,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 95
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1063eb15e2c30f29302f87dad4bf656f34193314ee5598fa50cc1a8ae8e52b8e",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 107
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "11007be698347e0ecf18ebb6acd1d3102b61e0bf664c1ef9419c617166388b03",
+      "bytes": 11,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 76
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1190de8d55c196d1d932fc6f93e343d88cec8a25a501ca2e51340d7cebf3f5dc",
+      "bytes": 11,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 84
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "13713c3692359d7c8773ee40d21218bde64a0f370533cb4d27903d75dbb86992",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 535
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "15e21edde0d3cc3b640adff27b3c2e77cdeb0a5d6f89032d16ee751875885968",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 102
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1b84581bae5d987de9653f9a6ab913acdd7730af5580435b188beea4db5d6513",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 118
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1bad6b8cf97131fceab8543e81f7757195fbb1d36b376ee994ad1cf17699c464",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 66
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1e1576cf957799ec3a6009e785b96d0e5b1df789860c1226ecac8e4a22df0421",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 75
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1e9de57bf29ef2a6521c63907fb3c45c6468995ba0f20105a2d849619b66f5f5",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 258
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1f184f101c67d585ba00d24cfde36863f747fbab9e84af7760ec771e9b36ca51",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 608
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "218b7a0cb13844aba723087490b81fa1883818aef0112e1af3339c5b01d7f484",
+      "bytes": 11,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 360
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2928012187f03446d1e9ec37dae5cc9586656c20bd6e28ff4953181b933cb3f0",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 56
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2980b96166234d9747e952fc0902911bf8739860d8afcc804258dde3b7d7437d",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 412
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2d7cb0927d162df726656d7155780f0486760e4327b537b54d0187e57209517c",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 62
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2db082e2edd52d0baafb76a5dee2110c8ab80f0623b760f5d364b9ba9e58d7a3",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 110
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2e64b1c78e49446bbf3d328f727454b6a57055208ad31ca8a6cfba55f71d9ee5",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 100
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "300b0bed35a846686123e184803e4373396d61c2438f992023c79c7580898d78",
+      "bytes": 13,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 73
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "31df2c0c8634b6b943b9e4672e791232b59034597c36533061aefa099019c2e7",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 622
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "31fd27fd168340fcd24de99dec8e6d7f5c4d1d4c0a9ab8b53931561067feefeb",
+      "bytes": 20,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 195
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3294faa23e2599caa846715a22c31c5cac4883f80fa31ea5472c1fd58e7a2284",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 69
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "33174ca8e8e022841e6977741a249663ef3683f3d587a24afdc85d9d6fb801ea",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 73
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3376a919702b03a958c12e41617608e39b360f2bcd5146d8c23636c57483b3e6",
+      "bytes": 13,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 43
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3383b291b8a1d0e4af7ebf6ae29410d5ab67ff2476e7fb4fb89ffbfd4067bbcb",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 533
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "33ca876f4a43d2c43a277a01976f68edc94c92c823f9c5904ea7388b53596719",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 102
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "33e8e1a8a64256bb97739d561e89d928629ca18a09591f33c9ca1e97f9494ea9",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 114
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3628dfc9f9b5ff72ce85dc216f43883c2cca8e408e03a6f8c7671c456e9a1c46",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 421
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "36a9e7f1c95b82ffb99743e0c5c4ce95d83c9a430aac59f84ef3cbfab6145068",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 66
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "37c2b212b94e5372b33df924ea2a91182d90c237d0bf942c1768e794ebef2376",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 412
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "38ae6197a29b92b6a8c76aaabe07b69c2336e8db6fb25e598070731576216f0c",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 631
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 41
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3aad0199273618d3219d585e62134603c9eb776c4d9bec94f104992591f83ee9",
+      "bytes": 14,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 171
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3c213998cb56b97b31168d9dce02d084fb5f5103caef41fb6dc375f593749a7d",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 97
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3febf792083952b9033ad36ecf2a9ebe37b58c7c261b91e247ab70a942cd5007",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 579
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "41ab156a8f4e3ded3a181ef70e19b2e3259393b7d0b37663b16f10cc7506cb18",
+      "bytes": 6,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 109
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4216f204f5fd4af0f79aae3b995fbb0cf3dd143625a9a3507a678a25f128eee3",
+      "bytes": 12,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 58
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "444fd21f42b3e9bf6f35ea4abaf4aa48a8225c498af989f55592f8abcdd4adad",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 121
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "459fbd327a935784702aca36217445923f8794e11be0b8a2e9f9b3ea9b800e91",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 55
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "45c8a1529425ed3c81e4da66eb0a3f3d5715c17b072130002e171c7ff8f2022b",
+      "bytes": 12,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 56
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "47b99dd0ed823caafbfc94a2e3f1ae8d4df95de8678247c71891e854fce53f97",
+      "bytes": 11,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 400
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4a2a7b898f79e4e459b8bb00c50430a11d5936ad43ee9c14660a267789f7be23",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 408
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4a44dc15364204a80fe80e9039455cc1608281820fe2b24f1e5233ade6af1dd5",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 50
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4a506c6ee6fb1e20040971d048cda67e119ebdfc63bd78002b99e150052f9dcc",
+      "bytes": 6,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 638
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4aeac6b71a3c07c37b023e4e1d5eba1813c322c0f6f7b6730732bf03e20749e5",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 628
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 49
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4d5098b3ec77294a206dbf84ea5d7ee98849e9dfcd8330034d0b77865212fb41",
+      "bytes": 14,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 182
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4f2e968b543c835e6648ddcc49faeb6987b4c293d8cd50a2db5d109741007579",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 400
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4f5b26de0276ffaee18e15fe92f799a2f75eb56c07a896f0f6f2229a5bddbba2",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 622
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "500d4ee460578be4b448710c704b738c0c34e5ecc48db9e6edb75e6355dd5c2a",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 577
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "510364a22f07e10b06ba37c25de66e4b549ed7a63394eb73388b36d8deed536a",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 120
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "523fcea1654d712ad9d8accfe6e92ca3c7e10bd0538822ee552ebe0417aff915",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 579
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "526a83f4494e1132ebba81d6fdd40f1a8643bd0235d98c50aeced9d12152b961",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 608
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 51
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "53eeac6460eaf25b52ff9604ceea1a0a7be415a45edf60a1c8105fa84bbe401d",
+      "bytes": 13,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 75
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5541b4e60363bcb4e09bb4cf897af943593d76d497a0f0f72b8b315b87182a41",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 116
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "58044be471df124a7af62e3df1b2f2c118ab4bfb772138348a0aae9d6c34eddb",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 115
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "591b7cc95037822dec5a4d593a2e2e8b19c07ddd2570e5699003d17f14c440a6",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 566
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "591e35f7c09e66f6a174fdc0754b308272f6c6d8b52f5d57c5f58431ea4d0055",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 619
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "59316c1a765f0c95af8be7f3f75371aa38612e5ceffc4785ef22f5541635413a",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 423
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5b8a8aa0c4b1c5228eb44fdc9369ec75cd7f802cbbf0a8d71839d7cdbd0c22c6",
+      "bytes": 11,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 72
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5c60924f7081ca56066f79f4592c97cfb49753f88e597dab70f40541c84de096",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 406
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 48
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "60833876231c79733c3af776fe98a811f7b21c766aff6a5db3899a45d1c281e6",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 76
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "628eee823448ed34c634b578436a53dcbb6559f18b696db721fb25ab0aa1fb4b",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 68
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "62b9d4c06e92a757889bfc336f2c80bccc49c90dcfc5c3a1bbc40c4b94751de9",
+      "bytes": 6,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 533
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "64acb77ed4ace36fc5b55c0dea2686af8dfbacee0b170cd02125e61f457619e1",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 625
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "67e32b647dedafb41220d36a02052aef91939a03a6fa875a68645cc07f290606",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 80
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6a091766d62bcb6befb4b38d46c57f1b108b4db8b5af2ed9a3ad4dce31d3581c",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 98
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 49
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 48
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6f49a9bfdde477b2fef3c9f6dcf9aba267889ff443669299b55c374029efe4dd",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 97
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6fc0dc23e12aa0026e52cc9082b72fff32251eb6ecd7f44f87149964cb177ad0",
+      "bytes": 10,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 55
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "706eeaa07b6877a2210221c38936660203bbc54911261ef4855657058cf360af",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 106
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "70aa0275e34b1dd6f23f2e97a23ffaffa642ad71a935484e5e878d33c89f1e21",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 54
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "71986f44802acac707cb6ae5c14d2f168eb325ffe18a435f9fc5741b1b0ccde2",
+      "bytes": 10,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 70
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "71c9f66b6ee1e02d63087202063d1e6e71765e4884724681cc633017057b0f44",
+      "bytes": 10,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 399
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "737f0b59f0006eb69b6d9ed56efe6df7667fe1c0921ad3097a76cb2e86a847b2",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 123
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "74925985507bbda0c27009d32686859a69ac1e7d2870986694ee73ece429bd68",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 57
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "778fbefd4ff46506f151117b4b4bfa3a7134e2990d804d083f386cd1ff6eeead",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 71
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7902699be42c8a8e46fbbb4501726517e86b22c56a189f7625a6da49081b2451",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 68
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7adc2fb4cf775287d07a4668d79de4b1a34bd987c77284a9b7d8b17859bb4572",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 622
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7c6348f7ea8a4e831aafe688a2557d7a3ab0be8549cdb190a029956ade971b15",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 52
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "80a46548fe92debff084e322d6caa952b772f7cd173e6f01858268b0b801ea37",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 74
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "82bdef05ae371e7d84198bb2dd31ad9ef3ff172a9066789736b77bff08be9ec1",
+      "bytes": 11,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 85
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "840472b6c65587472708eb61d70e7ae3f13bdcf510601f08481126a75a296849",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 599
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "84fb328f7a46ad7150702665237f24993970f05f5adb04ad6be4e4bca832c221",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 403
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8509b81230019d2ad970d970f791dfbdc8caf54f5c594fcd327cef9feed206c1",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 397
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8846aa84845dca486da0536729cadf549f39b6919cc15107710b5f2e054f9c05",
+      "bytes": 13,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 116
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "892f6e09c02c35b5381a165395599f21770c19b4f05d2ed71ccd2a45af414b1c",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 99
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8997121ec78297657e7c92452d38c5436d50e0be5c90d616fafbf7d04fdee62d",
+      "bytes": 10,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 112
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "89d1d64da0cbfcb4d2122232b2aed066ead3a3b83c3cc595f7872cea00a6a125",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 406
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8a331fdde7032f33a71e1b2e257d80166e348e00fcb17914f48bdb57a1c63007",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 290
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8df933e785a0b518cf55b79b3f8507a6cf13a14464ab137ab644622d0abed50d",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 84
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8f11b05da785e43e713d03774c6bd3405d99cd3024af334ffd68db663aa37034",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 51
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "90a54f15ea724d38139ff69c280937dcba4bbc5df7d2474121b4765ba8a38e08",
+      "bytes": 11,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 106
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9286143dbf25ee8c8ad2bd40078b8709628f85e81e5af3252a45e7d62e1d81af",
+      "bytes": 10,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 57
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "93e741f63370511192456f3a5b44730dbc1f058290cd00277ac28cc741e2268c",
+      "bytes": 19,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 329
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 396
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "971aa28f2d3e77f49a1e15daf5bd8af65b37d42383566b4f4ac50e11fc2062db",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 85
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "981ffee900fa2002b126342be55b499ad2037b04ff1a500c6f3a6f75036bdbfa",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 420
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9863e18434e1ccea44d3baddd67471d87ed3b4a509599add0ed5016bccf3cea5",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 575
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "996fe5057c8b20790dc5a5501e7511e02e83fe5f597a22567c1caf3167960288",
+      "bytes": 12,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 182
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9a506580c7d1110f64200eb7d3f12575c74d4e419dce663690b6e2d61754a32a",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 112
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9b0210b8829c242b979da1081a27450b1607c31688b5e0f84af06e818e6bd630",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 628
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9b2d5b4678781e53038e91ea5324530a03f27dc1d0e5f6c9bc9d493a23be9de0",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 420
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9b5032b1d71b47deeb8beaf8d976e7b5a0a21582cea872ce336e01bfdec68c11",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 638
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9baf3a40312f39849f46dad1040f2f039f1cffa1238c41e9db675315cfad39b6",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 414
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9f29a130438b81170b92a42650f9a94291ecad60bd47af2a3886e75f7f728725",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 411
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9fd9dc59b0112a100f6d22c31c9ca4f4e088f44e2244b7965f4f80b555284f7f",
+      "bytes": 7,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 114
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a079ce0bee235137008a8523c38544f9b42c1d4c9dfc0dd86f5b597280ef2ad4",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 418
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a5ab782c805e8bfbe34cb65742a0471cf5a53a97f0a1160ab6cccbb64c9131ce",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 569
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a5f2f2b5c3449350e0db830e4b1da2201b6a0cfc966e03b680d7c92549afed49",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 423
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a8100ae6aa1940d0b663bb31cd466142ebbdbd5187131b92d93818987832eb89",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 608
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "aebce7e28c5a3b38985f087e260a6246416b3985147a4769718cb09acce8e9e9",
+      "bytes": 13,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 290
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b29c223ea36cd1c423a9e5dc887d8d8199e7f727561378d78278cf532bb08c36",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 101
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b2daee8371a0a6e62f1300611e5950fcbddea44e9ead56c738db3cc4382102fd",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 121
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b3c6a387ef377d30fe76d78298a73342918d4ac65a18494aaf76fb5fc2d3e5f4",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 402
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b413f47d13ee2fe6c845b2ee141af81de858df4ec549a58b7970bb96645bc8d2",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 399
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b4379f328984c85038356302a3d3759635ce0036840302d832b5e00a6f73f317",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 589
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b59bff9ddacf53998668161846ed52d8a517f3f7403dec7f45a781107f6f8de8",
+      "bytes": 11,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 74
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b6828a513f32c15068a3f7669402f839fc91d94e4d2f3c923fb6ed89f6998660",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 111
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b77abc0e154a55875d0afb3d8728761dcf247423ce9b4a470f3016666f0f7738",
+      "bytes": 6,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 124
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b8d4e89aeb8a112de3e681e5771d627489070f914eb7bfd0056601c01dc39e64",
+      "bytes": 6,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 635
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b935e9bdcec7f1c96c6bf16378a91e74e2b017e036dc093c8edaa139b5015d33",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 573
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "baec259a2439d69395a0bb806bad9c00b86bb22b4c8518962b5f77005e275581",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 80
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bb64b1a31bedee17d5dba1b71b91f6f972543f2acc6ae7779e407f552aa4c07a",
+      "bytes": 12,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 45
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bb7208bc9b5d7c04f1236a82a0093a5e33f40423d5ba8d4266f7092c3ba43b62",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 67
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bb85b676802f80fc4fb93efe7c9e6bdb8c41b1be118adb53853ad0b00697e765",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 72
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bbcf2bb858199a0adddaf0ef8c042eeb5258008f276818abefa27f28281c2cb7",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 409
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bc6358003f740ff0c3dca4c06b51f2370c6f574e72189e88712b030037e37bfa",
+      "bytes": 11,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 403
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bd5e5c1dc7db876d053abecb0bb2dc0e92edad4c233f0d2e8a9e1adda10edabf",
+      "bytes": 10,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 107
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "be50eb0959a603ddef1259da134eac7b78791d49bbfd164c717244ff09c2efbb",
+      "bytes": 12,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 535
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c0ba8a33ac67f44abff5984dfbb6f56c46b880ac2b86e1f23e7fa9c402c53ae7",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 405
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c146802ac82dda8edcb673b9cea39717337ac8e86d12bf9dc8fb8cdfbe645557",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 104
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 52
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c2a0b3e484ed456576794d3914eadf66693ff8e068048f0fd24ce4f32ae40e90",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 396
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c34bbb2a6569bad93a2784738eea7aa01db2d1714a1947cbc81117658167fe76",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 70
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c38cc6e055656fd337b7aec70bb7cbcbaf8a8cdcf6b59ebc077d71010190f43c",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 101
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c3c01d29e7d8d42beb35f6d3db7b7c5ee0c66237110e34fe24e1cb92fd6b0d49",
+      "bytes": 8,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 123
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c506e71bf0d63103b485ae56e5845d34162aed9a1d29ab655e142f46e9a984f1",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 573
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c7012a8d3abb31deae1fc4cc664cf67ab3a762ee6c79662751c30e8241eceae2",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 105
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c7a0b2fb24a887e3b99385cc27fd23546d12a29b9e719f532e039a16acaeef07",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 122
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c9a9f74995cd3ca73b97ca7bc8ed634cc71c737f3426751b516bff4efecc4f26",
+      "bytes": 10,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 62
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ca2fd00fa001190744c15c317643ab092e7048ce086a243e2be9437c898de1bb",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 635
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cb7b5ceb87a6148502b884950c9e7917d7f2a7cc5905f0bfc4fea8dd05703836",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 635
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cba0fcb4e9f13072de6681187741347cd3ebbaa8bc31ef97764cfb706e002792",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 415
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cf3bae39dd692048a8bf961182e6a34dfd323eeb0748e162eaf055107f1cb873",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 67
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cfae0d4248f7142f7b17f826cd7a519280e312577690e957830d23dcf35a3fff",
+      "bytes": 1,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 628
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cfdb3239f8356ecdb858f37a8334b3547c61b8edc258824bdbb1f88fe4ccd98d",
+      "bytes": 12,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 71
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d0ff5974b6aa52cf562bea5921840c032a860a91a3512f7fe8f768f6bbe005f6",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 408
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d2cbad71ff333de67d07ec676e352ab7f38248eb69c942950157220607c55e84",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 111
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d34e9cd20975de76f07459cd78e5f80eea529cccfc79996b3a9361478ad544f2",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 417
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d6066775ccd09a83f1b76b0148b83b5f88fcaa651a5132ca507aba0fb83926c5",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 422
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d89c8064ed7c41649671f975f535f78ec0275deb8e08ab518eeaec859a59e711",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 59
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "da73abdb5c5eca1f53d241f53c2aec335b43f356584e1f66c1f38750221eb236",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 422
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dabb7a334c9c27d4d91722509daf16612a576d6926d113003c40480db8bd9c24",
+      "bytes": 5,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 117
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "db8fed54159afe40ace5b49d702259fd88c9c4009307181824487baab5c6bdea",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 415
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dd29b3a3356e6064cd80c259f67384ec6381f0f22be259fa164b16e0a7e62108",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 577
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dd7baa54409c052850ed2e03e586086bfed37a275ae4aee888711cd7c46bc91f",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 69
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dddc32b402e30e3e948f8234297d14469138d41e0fc65cfbe1c64e85fcf87823",
+      "bytes": 8,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 405
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e01405418b7c9b7c9949829dd98e82aa0a5deb5499aabf3d1624ffaf00546525",
+      "bytes": 10,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 104
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e2da7787d8252df7b19ca247c901d29c6c1de28b2694f23202a198b2515d7382",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 414
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e31e15e95aefb844f628c833950495d69826718cb113706563c88322df39a12a",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 103
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 280
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e539158e5cc0c246cbc3fdbef808ec59a2f7f45e939ec45c53f4ce01e0a0a49f",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 125
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e99270c4fa9f6ea70486c8a763d7519b57ce1a4a9a0c6e0ca3bec74a82e38c24",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 417
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ed79f26d03f412bde3db206601a698e0bb451bea9e3cc25289636ac17ea74b0a",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 397
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ed9f70a961a1326005936a306e7dd6ae2ec8c3045ecb48b6f55091f62cb1364a",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 418
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "edc0032d3d76dd83eeec014e1deb7923bbdf53f6316744d23c4041f75ee857b3",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 118
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f006c4915bce75dd9588871a11328f1acac2cba2af8b786e66f70b6301469193",
+      "bytes": 4,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 409
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f25ab726bf4ef7b160f972c5b2ffdc4cf9625dc6249332ff46b4c8ac215eb3db",
+      "bytes": 10,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 44
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f5c6aa1852f46bdb4ea6bf642388523d2395df848dd09133281818c2284a324c",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 103
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f88292cc89bf0c81060d6012628fd329ecce35229997a44f3bf5581e684b4ff2",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 99
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fa6be0a3e80b9abc5c0c4cba78a4045e827afe723f4b5531db5a9dd171a3505a",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 59
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fb61a4f170496decf60d5a15905488c435b85cf7c20dc3cc530ae9d5d0a5150d",
+      "bytes": 6,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 117
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fb8d7b2d10875f0f24e309953f3853a87136947eede2a44116fb52761f48e374",
+      "bytes": 3,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/tst_parser.cpp",
+        "line": 575
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fcaae93768b1722dcefc0a06729388acfe35a4d08cbdfc996309a15fad7e62af",
+      "bytes": 2,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 53
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fe8908232e288502601792e108c3d65f2aa3b2b226090851b224aee4175f020c",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 87
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ff0a4ebee87c783ebeb2197fb436cfee11c1172a7363c7c133e085878c7d58ff",
+      "bytes": 9,
+      "entries": [
+        "cbor_parser_init",
+        "cbor_value_validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/parser/data.cpp",
+        "line": 58
+      },
+      "proposed": false
+    }
+  ],
+  "skipped": {
+    "duplicate": 36,
+    "too_large": 0,
+    "over_cap": 2197,
+    "unsupported": 0
+  }
+}

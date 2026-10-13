@@ -1,0 +1,2623 @@
+{
+  "schema_version": 1,
+  "target": "qcbor",
+  "commit": "930708bb86481e88879eb1d87fd4d664f1d69503",
+  "licence": {
+    "spdx": "BSD-3-Clause",
+    "elected": "BSD-3-Clause",
+    "file": "LICENSE"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "0139dad52df2b67acd128f2a542d6c6d27e42daadd52a0b495c6bfd929a5e342",
+      "bytes": 80,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 4736
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "016099cc644ba7c0e4fe5b00b86ba1fc3cc9cbab1911ded1a9f53721a0bdfe21",
+      "bytes": 99,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 633
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "bytes": 1,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 65
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "02814da93b76de514afff799e4df6d70bed65e8b2c668494c13298e32063ed9e",
+      "bytes": 186,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 134
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 569
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "03d5e33f3c15cf47c7c9731b229237092157d2d92a8f5445f4c51fd83dea2d11",
+      "bytes": 158,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 3583
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "03dff17df223642c4a1a84ae2ae4f8aab8dc2b7aaf96c4ce72acace57772a766",
+      "bytes": 137,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 625
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "04a3b98c9572f5e786a3788f31085a5ce139ff4ff0a402c1c5260c9c7ff4bfed",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 51
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "04c22f90e37aad19eb4195a62faa12f224c711fce90a67884052eb7ba64b581b",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 2303
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "064f08c8a2c2ea479134af1e3b0779469f41c75c526a4b70daaada2078db3368",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 2405
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "08b17cc1b87129f9c368debaf43372cc7f56d19c75832e548189d14d283b58d1",
+      "bytes": 26,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 359
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "09656d9ff23f388aaf37c5ca8198e1a9186e1786a3850b6227fa22e8ae1c259d",
+      "bytes": 15,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 758
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "09c353db08ccaf66972841188dfc30e940160691779f8b3bb94bf16d4cccb2cc",
+      "bytes": 154,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 624
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0b6551b0653fa6fedfa7831541f38281a7e7a6365d0919d835e12dcfed65ed1e",
+      "bytes": 14,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 4025
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0f73652807b2754e2524482f34106de7899decef640b8f1b2a8c4397a33af4e7",
+      "bytes": 6,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 1812
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "119953efae0cc477adae53d44a19391329dc0ecb625d6e5ea9e1dec0f87665d8",
+      "bytes": 13,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 594
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "142cc5a3b151c158b9b9f6dd782f1d79073f9a05995754d499588ac64c886b56",
+      "bytes": 30,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 270
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "14da253852f84a2baaca99e4e8975c0c9af2ab617c01a636efe8d056832337e7",
+      "bytes": 64,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 2363
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "159df808c55504ab433e7e8292c029918bef7dd44bc8126cfccfe8b74df48bdc",
+      "bytes": 6,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 565
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "168f068e013e056e51da28de05d65fc012e873ddc62e4c17e1042949a45d67ca",
+      "bytes": 205,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 1164
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1c53d1a46b3330cc470eecfb6a3d9b8d61cebe92f81c6551c5c6afe5a35071d5",
+      "bytes": 2,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 73
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1c603fd2656e3b34de1fa73263864ce8cb9bd31124bb83c2145b3b2393bc0a8f",
+      "bytes": 11,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1251
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1c63df2c6deef5d1f7ac803607a418719aa67f8c010f6fd49a2413e109254e35",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 104
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1ee8f6decf498fafb8cb04792f7876e55a51a03be81eb0dc721cbe6c50c485ba",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 3047
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1f184f101c67d585ba00d24cfde36863f747fbab9e84af7760ec771e9b36ca51",
+      "bytes": 1,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 86
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "21ba56d1d67edf58885f8745da81eae72be52db80a1be035bac366cad2143fa2",
+      "bytes": 35,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 258
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "222c03b6823bb6cbb2ebe0a336df3f4f4959f46ad149dd93375c51aab7743ccb",
+      "bytes": 15,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 962
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "23905612124f2dc7d504563c2ef3a8e6f92e266220c6a5e39783a36727002ac5",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1508
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2481a63c85a62cf889d2b149f1a52e985a9341750173fe01eff50cc27b5941b5",
+      "bytes": 4,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1229
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2c99e051cc1bc435aaca827b548db6b411f8862b1115ede37b1999f6ca50f496",
+      "bytes": 4,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1241
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "bytes": 5,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 568
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "33198540d806815f249ae78851dafcb865dbff2fdae12608808a95fdd68a9857",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 96
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "36a9e7f1c95b82ffb99743e0c5c4ce95d83c9a430aac59f84ef3cbfab6145068",
+      "bytes": 1,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 345
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3917955eb20bd744da5c4b2737ce86ed86960dbaa29a065877665deced37a446",
+      "bytes": 194,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 1472
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3c213998cb56b97b31168d9dce02d084fb5f5103caef41fb6dc375f593749a7d",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 81
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3cc5787ed666ceee4d4198a5697ea75e792ea94931250cbf5db918dd7f582053",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 49
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3cf78ad0aea5be1d809bf63277c0652ca029e7b500fd7b40ba4229ca696750f6",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 2306
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "418ff832be53e9c7b99cb8c4d3a5f332b7639ba19f2a315008e50f3e98a78763",
+      "bytes": 13,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 325
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4285df8a33760fbbacfc9e640e899cc46a5617a76873e2cb8305a56c20b0710e",
+      "bytes": 8,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 132
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "42d741de8bf30d29cac82a82a83bc6e1bb49b0b00cb3627222c7df987542388b",
+      "bytes": 25,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 764
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4304a41d973a39469a2187885fa84066f38cab88e3cb35e335b05bd3a4468f5a",
+      "bytes": 8,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 53
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "44fec998fe184c19224dd8a282bb67c5a141dae01c173db0b4a9e444d10251db",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 36
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "452ba1ddef80246c48be7690193c76c1d61185906be9401014fe14f1be64b74f",
+      "bytes": 1,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 115
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "463c49f2406338580205b7fdb34759f9674a9d848dff6a92f80a1ded9e89b0db",
+      "bytes": 13,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 914
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4912326e465b6efb1d5b1b276e321709d99a506e230a31f3c158c976d4a8a4e8",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 4262
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4c291a682d1cc8c83bb2cd15a587112e472a9c6be8ddac92698dbd43cd6b6199",
+      "bytes": 23,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 246
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4e3d4dda9fd7989229c431e861b63f4f9d71e12ee7d086c2c0176ae066509d7e",
+      "bytes": 44,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 77
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4faafa522329d6e30b126d33612bf93e6575d2f9873083b904845bfabd03e151",
+      "bytes": 25,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 357
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "510364a22f07e10b06ba37c25de66e4b549ed7a63394eb73388b36d8deed536a",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 91
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5179fc0acd1fcb3642b2131e1bae71f0dad8ddf3a8136ae32ab8c87a6fe06af2",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 88
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "51ff2c0cc6b9738e963eb572588ce48526a11953f7141f941f7badb1c48dfe35",
+      "bytes": 26,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 358
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "58d03305eec39581412fba9ee49ec0ce7a0899ce1d5c1ebbfdc90cd2861707d8",
+      "bytes": 5,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 92
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "58f7b0780592032e4d8602a3e8690fb2c701b2e1dd546e703445aabd6469734d",
+      "bytes": 1,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 119
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "591b7cc95037822dec5a4d593a2e2e8b19c07ddd2570e5699003d17f14c440a6",
+      "bytes": 1,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 71
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5a8dcb18be75626c21be7497a52c5a278148bc61b513cdd69ec0a8efa4c85bb8",
+      "bytes": 5,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 2312
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5ca98cc4dfccc76f163ba28c6212a1adb2d0353355331435ae688b172e090e48",
+      "bytes": 2062,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 290
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5cc1a9b763efd6b22cbd87882243a1998b4196bc7e4a00d65797967c8d9b5caf",
+      "bytes": 4,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 570
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5eea779f7ef5b2a3e0dd342f70a89924240e8f735f82f0e496ec636298b4680e",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 53
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5ffbf313154cd3739d1a1064d092ee49dd4b7d1e07bf5c11249f66b94dc7099b",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 102
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6078a87aaf5bc27a2373e018e450d0d8b7ea066bfa15fd55a4a770869d24cb40",
+      "bytes": 4,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 45
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "60a8ea89ab07545ece6cfe930030eaeb74958e99a0cd7cdab272fe49118fa480",
+      "bytes": 24,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 364
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "64a7a73d546aa67208d8dfc44604d578f0ed917b6afb83eb824ea1b00acbe060",
+      "bytes": 22,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 362
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "65c79c5e53eab47f999686d6b496ca40fb7592672efa6981dc58bd8e37bd2caa",
+      "bytes": 7,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1225
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "666ed3f12d82625d7078bb7da4af3a0ebb712d4115712b5f5a77bf0d4bf4c00e",
+      "bytes": 228,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 1253
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "688665f9f81e502245e2d47380455061ec5a3ef838221d68118f2f745bb212dd",
+      "bytes": 107,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 579
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "68aa2e2ee5dff96e3355e6c7ee373e3d6a4e17f75f9518d843709c0c9bc3e3d4",
+      "bytes": 1,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 117
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "690fda3ca35af1fa63fcbcfaacb5acb7e7d906f4e5f9362c4c87d7bc9ddf6889",
+      "bytes": 26,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 546
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "691e4d366567961e4f6b57651737d544053d2f63e176cb429d0403e2b362fee6",
+      "bytes": 8,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 1712
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "69be923bc11d23d4378e4b50ebe09e52c3c486f601aa81a48e87562ddf37563a",
+      "bytes": 7,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 126
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6ca13d52ca70c883e0f0bb101e425a89e8624de51db2d2392593af6a84118090",
+      "bytes": 6,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 279
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6cdec179976a412f59a2f158ccd5a8d85755b1a00f5975264510030c3f2426c4",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 96
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "bytes": 1,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 567
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "72014e826c6f648601b16aa96e4e4b4596477ead385e2b0a2488f477732b82ee",
+      "bytes": 10,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 4015
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "730ec252962f112e03dcc5554d9155c1c45ffde53f534c2be4b567dc2a55998a",
+      "bytes": 13,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 142
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "737f0b59f0006eb69b6d9ed56efe6df7667fe1c0921ad3097a76cb2e86a847b2",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 101
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "73bcef65553df1c3b6f61ab03b117a29fc84f662a92d3bcf995c01211b8bbd8a",
+      "bytes": 4,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 56
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7431ad12bf9a661dd2da57bb6ea493c6ec78847b471962f106d3bf2acf4b259a",
+      "bytes": 6,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 556
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "75445b0fc3682d391244aff89ad9cf467724ffb3e08159081c8eaa3227e2ff43",
+      "bytes": 17,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 3071
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7840a611763164277f04d5009043587d843b14f0f4be0d685e9932d2e8bae56b",
+      "bytes": 125,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 2820
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7a46b37853a5cb5daf066ca4838949eb521436422707e82a0b4b5581bf35c301",
+      "bytes": 12,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 323
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7ab25d26a4e64f96216b75293fcef9d16e0e1be936d78b093756ad859aa8ad88",
+      "bytes": 30,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 264
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7ade156182b64dfc3ab6e5ee60947c1867deb2bb82dde8ffacd5b9669f88e31b",
+      "bytes": 98,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1108
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7bc1d33280754fa220a829f06d98087c2c4e09018d67b3742c042125d81e7114",
+      "bytes": 6,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 67
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8051ccbe68e23077ca61f526e8f3276f481ec06ecd9f79e4e1a65a024a93adf9",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 1810
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8249e8dc5e3523868cc4458218eb97188c19c88474852f354abf4aaf8741acec",
+      "bytes": 140,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 4050
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "82de77a64770cede67275cfe6511419810c60d0407d2791bb1a43f576634496e",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 593
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "840bb0eb175d5c1106f7829989776571444dd569054d331f2d526c7103eb2617",
+      "bytes": 6,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 61
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "851846e27eff0e3db3221fc725f7fb471fa6354fe74e55518532c29ae8bff874",
+      "bytes": 15,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 150
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "857f57c330f1479475a54d9624f638fdca238b4682f71f3927c5131ea9320a69",
+      "bytes": 18,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 258
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "85a5f7ede0b37c4dfd3bbf1a9d1df040e155a547c40a0abedcbb710ee44a3ce9",
+      "bytes": 26,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 267
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "878c6bc6abaa4725e43c73c53fc3aed49d2ddb0f28769d6557425f70ea15b105",
+      "bytes": 7,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 582
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "882cfda5508df494452afa705150dcc4049e2437127c179068797eedb1fe34f9",
+      "bytes": 13,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1174
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "88dfe4dbb7f9415de601679e8a3aa9c699c87fab2422babe0610feb38dced245",
+      "bytes": 15,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 587
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "89d389694ceee4ceaec86e33250fdbb105cd8b3536d176f8b16b0e46b40e3301",
+      "bytes": 26,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 360
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8a8950f7623663222542c9469c73be3c4c81bbdf019e2c577590a61f2ce9a157",
+      "bytes": 1,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 77
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8a8a7f18a259328ad3797bef297c8d51d8eda3dfc869c0e1dbfd6e1400d1ec51",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 111
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8bace76708c37a1f45e288782c947646cf58096e14579ae12c4794c9291ed5b9",
+      "bytes": 20,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 555
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8ceb27083e57d156ac2d8d90e1c3f1334c44ca650e3cc5f4eb774e44078a7639",
+      "bytes": 11,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 559
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8df933e785a0b518cf55b79b3f8507a6cf13a14464ab137ab644622d0abed50d",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 494
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "907643059993d1c87bf51d3543ccfc9c98cbc45b4d3fd0d69bea463cb523ad30",
+      "bytes": 15,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 574
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "90e193b754bad09c7e58cb12d7889d6f504f5b96f94ff243d77a19939db7a322",
+      "bytes": 72,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 4932
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "91aafaceaba89f1f204d4c8d838e8c60e9d27b6363af866f1a03971bb2ae82bb",
+      "bytes": 6,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 589
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "91c20a9eb389dd66b3912d7edec837e278d58b89b933a17a86faf93fd4711181",
+      "bytes": 8,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 1804
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "920c13214303b154113606a5f2b7d310a1177b23960af0af1803a73d85a467b8",
+      "bytes": 98,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 2393
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "93fedde43203e0a76172135221b8636313635d7afff96a490ae9066330505d47",
+      "bytes": 7,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1195
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "94a79031bfbcd9359bcf3781bc66bcd60b5f1df4905443e72e7c75b719d52d1c",
+      "bytes": 7,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 50
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "94aaf9d1a737c80193a7a35e414c1fd02334f4bf47be6192c07990f946f70d54",
+      "bytes": 343,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 502
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "964e03c77d0e17496b3546e868ea6a1429d0b99118d74f890303403981ff2f7d",
+      "bytes": 6,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 63
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9702b0df3ad90bf9f59239189cef37fda036083c41ab092456e7886ec1b54da3",
+      "bytes": 5,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 1412
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "98bd4a535a91e2aa995a596935da116cf9f4309f0f1ca4776e485083ee289bb6",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 686
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "99eae231524f02ce8de08cf179e4c5da83d5c5bd098e7baac46b291862db772e",
+      "bytes": 10,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 108
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9a1b1802d84ef5dc886e05031712f98f0376d4ac90276121f581f66a43c9eb31",
+      "bytes": 22,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 2390
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9b38b8f5877f2395b4361c1f68c059078ee9c0c8b0cbb22c97d2906e011e40a3",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 191
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9cd4820e963e58a6e36f2d7372dfa8b749a0145e273f28ab6a051920e93b0264",
+      "bytes": 7,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 119
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9d56858ab62ca2d6de624b262a3d7b522403026982a01b6b4f82e46f0146ee51",
+      "bytes": 5,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 587
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9dad6730638caf6d4861eb735013695b2c9cef93bb6c596ef1e872f223544039",
+      "bytes": 23,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 363
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9f4be77f8a2c331a8a989e0bffb85a4df0d954fca5959aaf474eeddceed16fce",
+      "bytes": 12,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 45
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a11bb9484b7a0ed455fcdf2cd6a235d2974265a5b5b68dc58089cf8ab1efeb3d",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 34
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a222a2bbb8d2c5c2b432313485cdfa997c29683ae683c03a798bbf090d342bdd",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 939
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a280f4ef5303209318878e26e496c5b378b5381fa1035bbaf52405e6ddf370ca",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 71
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a32ecfd09001ac84e067d63452ab37f70f650eb1626f86083b5f5c8b907164d9",
+      "bytes": 60,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 4087
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a5055a49469c0d13e43bc2de750a6071ad5b16a96af4403e37cc67206f5f8d4f",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 321
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a536aa3cede6ea3c1f3e0357c3c60e0f216a8c89b853df13b29daa8f85065dfb",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 689
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a53704fbdced9553c87d6a0908a322790ea37ab11f7d08ee3a2f9966239f9e6a",
+      "bytes": 7,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 265
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a569406d0b5919d59c5b53caaf64065ea2b75f94a5399d2cd1006c802725effa",
+      "bytes": 4,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 75
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a6612e2bddaf0c8cc17f9e9db25686b1388fe61cb29fb82940158271ff9cd667",
+      "bytes": 6,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 533
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a71f1a0aecff7d6b40aaa661069ac66eec569658bb0397623fa3d078fd30de35",
+      "bytes": 21,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 242
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a777b3b06f922500ef88b0c29eea262ad9de2ad66ab3be588087ff9b97c68d74",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 47
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ad0387b3bd8652f730ca46d25f9c170af0fd589f42e7f23f5a9e6412d97d7e56",
+      "bytes": 6,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1260
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ae290d404ff3daaebba47f9166bab146d54697612d08af04d7414a6f3618d7f8",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 116
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b0b355e2c3b9d3971b9270350d1fef8547e13655e5c25d5ea34a3d0c6491f361",
+      "bytes": 346,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 2854
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b0e8af85ddecdb32f7471d08520d5a2dfce7d78e2646d02f9d7ad4c2e8effe85",
+      "bytes": 100,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 574
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b0fabafad9d8e80869fe747b700728260b7e107b4e16177a75a5dec2ac252e48",
+      "bytes": 114,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 1764
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b12dc850a3b0a3b79fc2255e175241ce20489fe45df93ff35c42c6c348df4fbf",
+      "bytes": 1,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 90
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b1726aea8786ebe32908184ba9d3c945c8f7aeed1434f93f0b0f48312d522905",
+      "bytes": 10,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 981
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b23549dda157801533d1d272da5ff88683bf1fbe6ee46deb3066bf55f7d05507",
+      "bytes": 4,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 792
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b292c3b4d7d662504153a05110f91cdffc2ed8e8bce387af53825f3ac8d1cae9",
+      "bytes": 5,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 63
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b4b84c1b491b11284626ffe5e8485fa8265f8e9903a36ccffa4df701ac5b86df",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 106
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b55dc5b9e3ccfe0ce61e9bee88e423ccad538cc01ef1391f90198b6e4aad62e3",
+      "bytes": 79,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 2066
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b993212a26658c9077096b804cdfb92ad21cf1e199e272c44eb028e45d07b6e0",
+      "bytes": 7,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1205
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ba5ec51d07a4ac0e951608704431d59a02b21a4e951acc10505a8dc407c501ee",
+      "bytes": 1,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 260
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bc2657d9580530bc1deef392eaac92e7fe5512abdf025324b9b62f3ecd4b93ea",
+      "bytes": 28,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 250
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bc98bb50e8094b2ac3ceb90ba2512587c0513cd294a07efcfdcf467198da6266",
+      "bytes": 4,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 81
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bd879bdb26b5ce9240ad93d485e8b9f464a6adb7f21eb033fe11f2070f1ec417",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 75
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bf66f3e41e470b7d073db8c5fb82e737962d63080edbcc4f9ef3c3ce735472ea",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 416
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c04f595dac68a38b5274c5750ff0a53382dbbf440e4ca0fbf675558615ee1d54",
+      "bytes": 18,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 2384
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c0a694d0d434fedd659912c1858f11a03a90dc3711fdcc2c843478946dabe5d0",
+      "bytes": 4,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 588
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c1963778e38010ba3ebf19e8882614bf2eb34b09dd514069e5b28643e7f31fc5",
+      "bytes": 12,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1215
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c1b87f1bc08c6f5d3fe249f93e226942489ede06de1b58eaf7d99f8207bf1974",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 86
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c220ca55a7c23c5ac7321f3891280c9b75f908788450c7dfc560a27811d3e6fd",
+      "bytes": 4,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 4109
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c4852a2f2e7827fc7814dd26ff0eedca9d59522f21429b14b8783c407f15b801",
+      "bytes": 100,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 545
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c4d7d18b390a6aae43fb8550c404481f4ac8ae51086717b0fbc40a830c7ddd28",
+      "bytes": 101,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 613
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c4f88044b0f84ebc1c23052f55f45a7b344e5e7bb7452f65ff7fcc0857689cce",
+      "bytes": 100,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 594
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c5359eb8cc384ae6249889cb7b5979301a1e8a4eb3f30b492581fcffdad7dae3",
+      "bytes": 10,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 2908
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c7a0b2fb24a887e3b99385cc27fd23546d12a29b9e719f532e039a16acaeef07",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 91
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c88cf62a2d09e65ba541f1c1500e388b17274cc9e0dcedffe2b389b5d400d8a5",
+      "bytes": 151,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 600
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cce90cdba9ec3c3d1b009617c8ec7903742c798888b23fca16bb0dba9cd5d1e0",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 59
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cd2eb0837c9b4c962c22d2ff8b5441b7b45805887f051d39bf133b583baf6860",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 64
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ceeef2e05037f018e43f196c8fbad3937df115594aba6709e76dee937952e854",
+      "bytes": 7,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1237
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cfe434d3f2850b9e6fb471cc562acbe537e8ed47e7994678031d4e748124d024",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 98
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cffb09405cc2e2a9a7ac429ede0ab66df72bd14832c8421e1953a5d32185d3b5",
+      "bytes": 6,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 569
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d03246324a51c99af4c912e1141f2fde59afdbc92f3d23a99220baf2cb8700fa",
+      "bytes": 4,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 575
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d154634a7465aa22767d4a2c32bd04675b5eb898844dacd5404447d664e0b70c",
+      "bytes": 95,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 3352
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d1fbfb0c28f8cd29235012d2defd050114edc800ed60ec31f7367a607c5200f3",
+      "bytes": 17,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 361
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d40b3f96a8b455963542dadb0531fe9f986b707286dc2dde2a9fb54088e48227",
+      "bytes": 11,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 591
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d650320d1fbba2723e3df6c4c024ced8ebc45195781b73b2ea78ad724c8998e3",
+      "bytes": 4,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 43
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d662b83ebdba5c9b406d74b9abaee1d0fe898243fb5c2be8432da1ee2784dbb4",
+      "bytes": 5,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 709
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d729b8a62bd553ed702f74d4bc3d1bc2d19a10d0f5b156cb871d06eb1f891c6c",
+      "bytes": 15,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 592
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d823dcdc2d6aaab28aef32ce978988f5108ff31130f79d7f77117826d2cebc15",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 106
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "db4bbf29a4cb94179c1a0e2137b72f410bb92661f32460afc8399da705cf71f4",
+      "bytes": 8,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 558
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "db8a156284bd6f562fae8bf3c26ee99d3f2ba9ac0500ed69ec80efb68639bf74",
+      "bytes": 28,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 581
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dbbca4fc9bdfef21e0c5599acec6323564199fc98bc618764887f4ed28fdd238",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 2309
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dd2049fe079a3ddf131f748a8bdff2acf11cfa70dae5840b522a4e79ba902219",
+      "bytes": 2,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 100
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dd9c8445e43d2717ad906b284ae560a4e9e16eb87f64ce27d0fdf3446e64ef44",
+      "bytes": 2,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 593
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "de19d8fdbe418a18d853063062437e2fe3d477357e5b68d664d582fed7a7f62f",
+      "bytes": 29,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 261
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "deb1f9d4eaa2b7d6b02f9767ccaf564666bfda575cca9ccd07f1d2fa6991e2cc",
+      "bytes": 25,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1012
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dfecc0a5e5048db4a9248ffae3b807204b345c76c74248e03e8e09758818b0ce",
+      "bytes": 94,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 3953
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e1337101e096ca050fba2f0383762ddb937f83da84c5315fce4ed8abbd4b3d5d",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/not_well_formed_cbor.h",
+        "line": 79
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e250d28aebbda791e6442e5159b0ccbec3de613b6e821a011d93c8bd180d0da1",
+      "bytes": 5,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 536
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/run_tests.c",
+        "line": 208
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e4e7ab0c4c811b018267409d056fc47d3445d68ca4b9dd5dbdcd7dc6729aad32",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 4113
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e539158e5cc0c246cbc3fdbef808ec59a2f7f45e939ec45c53f4ce01e0a0a49f",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 101
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e609161659afe6de490eae1508baa2579628d53e9d3d7f24dd3f3267105ca829",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 544
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e6cfd197e6d7915c89447729caf484f7bb9a92020b63f4c60d63c3f09fe5bf53",
+      "bytes": 23,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 164
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e95873bb6549017f8cd72cc8af178667d65261077ca89caf09a330742965f851",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 86
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ea5dbf9596d187e9500f23e9a680109475341cf4e81f7e043f7d97152c10772f",
+      "bytes": 2,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 561
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ebb25f923d3beaf23df9cacf44c5a51762270728b5f81b693d7e82aa774bc85c",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 596
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ebcfed4f7c89e1ac8532699d61a6c5c1b433960ecb51e8c485e5ed1da28e5b49",
+      "bytes": 29,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 254
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f3843dbcd99858e2e8b0772a9f45a72cd6fe636a6d48a44f0b624e2739d2559b",
+      "bytes": 37,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 113
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f3bffba2b0bbc80a1c4ba39c789bb8e1eef08dc2792e4beb0fbaff1369b7a035",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 106
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f41a67d8b1f1e62b58f64ed719d8ce26d3826429f1c36e7e32a47fda57aaad8a",
+      "bytes": 30,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1264
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f445bcdcc3b0c9593c36a9a0d211b16ac1dd6367353c60732b9af499fb98b80d",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 111
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f4bbc9aaceb8ab2ae5198a33cb4c3e6334d9503fdc25ffdffaf131370fe6ca10",
+      "bytes": 153,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 656
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f6220972ee4c914b0074f08452e28cb8193d035ca868cbad27664b238449d14f",
+      "bytes": 16,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 670
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f8632a2bad8e3afc916bc8438d68bf5faea05466e193a7e4b14c7472af620c5b",
+      "bytes": 188,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 797
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f88292cc89bf0c81060d6012628fd329ecce35229997a44f3bf5581e684b4ff2",
+      "bytes": 9,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/float_tests.c",
+        "line": 81
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fa62d9fac228679f2c60f55dfbd89ec0b173b191514c968125c51c25b08b09bb",
+      "bytes": 19,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/UsefulBuf_Tests.c",
+        "line": 134
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fac7c4742dd6d296ac352372e252a0a562557bfe93f835fda8a82d8c8c00b528",
+      "bytes": 23,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 1184
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fbc1a9f858ea9e177916964bd88c3d37b91a1e84412765e29950777f265c4b75",
+      "bytes": 7,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_encode_tests.c",
+        "line": 588
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fe2dfd1bf6225e995d403f8f7153cb49fb2b64e33ee170cfa01bc6663f04c132",
+      "bytes": 3,
+      "entries": [
+        "QCBORDecode_Init"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/qcbor_decode_tests.c",
+        "line": 52
+      },
+      "proposed": false
+    }
+  ],
+  "skipped": {
+    "duplicate": 42,
+    "too_large": 0,
+    "over_cap": 995,
+    "unsupported": 343
+  }
+}

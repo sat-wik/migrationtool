@@ -89,6 +89,12 @@ name = "default"
 name = "no-float"
 cmake_options = ["-DWITH_FLOATING_POINT=OFF"]
 
+# Seeds (BUILD-03): the parser tests hold raw("\x..") rows.
+[[target.tinycbor.seed_source]]
+path = "tests/parser"
+methods = ["c_string"]
+entries = ["cbor_parser_init", "cbor_value_validate"]
+
 # ---------------------------------------------------------------------------
 # 2. zcbor: CBOR (spec example), the generated decoder used across Zephyr.
 # ---------------------------------------------------------------------------
@@ -129,6 +135,19 @@ name = "default"
 name = "stop-on-error"
 defines = ["ZCBOR_STOP_ON_ERROR"]
 
+# Seeds (BUILD-03): the SUIT and corner-case examples as hex text, and the byte
+# arrays of the decode and encode tests.
+[[target.zcbor.seed_source]]
+path = "tests/cases"
+methods = ["hex_text"]
+extensions = ["cborhex"]
+entries = ["zcbor_new_decode_state"]
+
+[[target.zcbor.seed_source]]
+path = "tests"
+methods = ["c_array"]
+entries = ["zcbor_new_decode_state"]
+
 # ---------------------------------------------------------------------------
 # 3. qcbor: CBOR for COSE and EAT. Tracer target (Make plus Bear).
 # ---------------------------------------------------------------------------
@@ -168,6 +187,12 @@ name = "default"
 [[target.qcbor.config]]
 name = "no-hw-float"
 defines = ["QCBOR_DISABLE_FLOAT_HW_USE", "QCBOR_DISABLE_PREFERRED_FLOAT"]
+
+# Seeds (BUILD-03): not_well_formed_cbor.h and the arrays and \x strings of the tests.
+[[target.qcbor.seed_source]]
+path = "test"
+methods = ["c_array", "c_string"]
+entries = ["QCBORDecode_Init"]
 
 # ---------------------------------------------------------------------------
 # 4. nanopb: Protocol Buffers for microcontrollers (spec example).
@@ -210,6 +235,25 @@ name = "default"
 name = "buffer-only"
 defines = ["PB_BUFFER_ONLY=1", "PB_NO_ERRMSG=1"]
 
+# Seeds (BUILD-03): the fuzz test's sample messages and regression archives, and
+# the \x literals of the tests. An archive above 2 MiB is not opened.
+[[target.nanopb.seed_source]]
+path = "tests/fuzztest/sample_data"
+methods = ["file_copy"]
+extensions = ["pb"]
+entries = ["pb_decode_ex", "pb_istream_from_buffer"]
+
+[[target.nanopb.seed_source]]
+path = "tests/fuzztest"
+methods = ["zip_member"]
+extensions = ["zip"]
+entries = ["pb_decode_ex", "pb_istream_from_buffer"]
+
+[[target.nanopb.seed_source]]
+path = "tests"
+methods = ["c_string"]
+entries = ["pb_decode_ex", "pb_istream_from_buffer"]
+
 # ---------------------------------------------------------------------------
 # 5. cjson: the most-copied C JSON parser. It allocates.
 # ---------------------------------------------------------------------------
@@ -242,6 +286,19 @@ name = "default"
 [[target.cjson.config]]
 name = "no-locale"
 cmake_options = ["-DENABLE_LOCALES=OFF"]
+
+# Seeds (BUILD-03): the test inputs (files without an extension; the .expected
+# files are outputs) and the fuzzing inputs.
+[[target.cjson.seed_source]]
+path = "tests/inputs"
+methods = ["file_copy"]
+extensions = [""]
+entries = ["cJSON_ParseWithLength"]
+
+[[target.cjson.seed_source]]
+path = "fuzzing/inputs"
+methods = ["file_copy"]
+entries = ["cJSON_ParseWithLength"]
 
 # ---------------------------------------------------------------------------
 # 6. corejson: allocation-free JSON. Tracer target (CMake).
@@ -287,6 +344,14 @@ name = "default"
 name = "depth-8"
 defines = ["JSON_MAX_DEPTH=8"]
 
+# Seeds (BUILD-03): the string literals of the unit tests. The repository's
+# .clusterfuzzlite directory holds no corpus files at this commit.
+[[target.corejson.seed_source]]
+path = "test/unit-test"
+methods = ["c_string"]
+extensions = ["c"]
+entries = ["JSON_SearchT", "JSON_Validate"]
+
 # ---------------------------------------------------------------------------
 # 7. coremqtt: MQTT from FreeRTOS. Both entries are struct-wrapped (D-28).
 # ---------------------------------------------------------------------------
@@ -329,6 +394,13 @@ name = "default"
 name = "sub-vectors-2"
 defines = ["MQTT_SUB_UNSUB_MAX_VECTORS=2U"]
 
+# Seeds (BUILD-03): the packet byte arrays of the unit tests.
+[[target.coremqtt.seed_source]]
+path = "test/unit-test"
+methods = ["c_array"]
+extensions = ["c"]
+entries = ["MQTT_DeserializeAck", "MQTT_DeserializePublish"]
+
 # ---------------------------------------------------------------------------
 # 8. paho: Eclipse embedded MQTT packet library. Dual-licensed (D-27).
 # ---------------------------------------------------------------------------
@@ -370,6 +442,9 @@ name = "default"
 name = "server"
 cmake_target = "MQTTPacketServer"
 
+# Seeds (BUILD-03): none. MQTTPacket/test/test1.c only round-trips packets it
+# builds itself, so the seeds are hand-made (testbed/targets/paho/hand-made).
+
 # ---------------------------------------------------------------------------
 # 9. microcoap: CoAP, whose options are TLV (D-29). Unmaintained.
 # ---------------------------------------------------------------------------
@@ -402,6 +477,9 @@ name = "default"
 [[target.microcoap.config]]
 name = "release"
 make_vars = ["CFLAGS=-Wall"]
+
+# Seeds (BUILD-03): none in the repository; the seeds are hand-made
+# (testbed/targets/microcoap/hand-made).
 
 # ---------------------------------------------------------------------------
 # 10. mbedtls: ASN.1 and X.509, DER is TLV (spec example). Archive source.
@@ -445,6 +523,13 @@ name = "default"
 name = "suite-b"
 cflags = ["-DMBEDTLS_CONFIG_FILE='\"{src}/configs/config-suite-b.h\"'"]
 
+# Seeds (BUILD-03): the DER certificates and structures of the test data.
+[[target.mbedtls.seed_source]]
+path = "framework/data_files"
+methods = ["file_copy"]
+extensions = ["der"]
+entries = ["mbedtls_x509_crt_parse_der"]
+
 # ---------------------------------------------------------------------------
 # 11. nimble: BLE advertising data and UUID parsers; AD structures are TLV.
 # ---------------------------------------------------------------------------
@@ -485,6 +570,12 @@ name = "default"
 name = "peripheral"
 defines = ["MYNEWT_VAL_BLE_ROLE_OBSERVER=0", "MYNEWT_VAL_BLE_ROLE_CENTRAL=0"]
 
+# Seeds (BUILD-03): the advertisement and attribute byte arrays of the host tests.
+[[target.nimble.seed_source]]
+path = "nimble/host/test/src"
+methods = ["c_array"]
+entries = ["ble_hs_adv_parse_fields", "ble_uuid_init_from_buf"]
+
 # ---------------------------------------------------------------------------
 # 12. libfdt: stands in for the OTA image header (a FIT image is a devicetree
 # blob, D-29). Only libfdt is dual-licensed; dtc and its tests are GPL.
@@ -520,6 +611,10 @@ name = "default"
 [[target.libfdt.config]]
 name = "assume-valid"
 make_vars = ["ASSUME_MASK=0xff"]
+
+# Seeds (BUILD-03): none that may be taken. The repository ships devicetree
+# sources, not blobs, and its tests directory is GPL; the seeds are hand-made
+# (testbed/targets/libfdt/hand-made).
 
 # ---------------------------------------------------------------------------
 # 13. httpparser: HTTP, widely embedded. Its Makefile appends -O3 after the
@@ -563,6 +658,12 @@ name = "default"
 name = "strict"
 make_vars = ["CPPFLAGS_FAST=-I. -DHTTP_PARSER_STRICT=1"]
 
+# Seeds (BUILD-03): the raw requests and responses of test.c.
+[[target.httpparser.seed_source]]
+path = "test.c"
+methods = ["c_string"]
+entries = ["http_parser_execute"]
+
 # ---------------------------------------------------------------------------
 # 14. isotp: CAN ISO-TP framing. Configured through isotp_config.h only, so it
 # has the default configuration alone.
@@ -592,6 +693,9 @@ signature = "void (IsoTpLink *, uint8_t *, uint8_t)"
 
 [[target.isotp.config]]
 name = "default"
+
+# Seeds (BUILD-03): none in the repository; the seeds are hand-made
+# (testbed/targets/isotp/hand-made).
 
 # ---------------------------------------------------------------------------
 # 15. lz4: decompression, lib/ only (the rest of the repository is GPL).
@@ -634,6 +738,9 @@ name = "default"
 name = "heap-small"
 defines = ["LZ4_HEAPMODE=1", "LZ4_MEMORY_USAGE=10"]
 
+# Seeds (BUILD-03): none may be taken. Test data outside lib/ is GPL-2.0-or-later
+# (RESEARCH Pitfall 18), so the seeds are hand-made (testbed/targets/lz4/hand-made).
+
 # ---------------------------------------------------------------------------
 # 16. zlib: inflate.
 # ---------------------------------------------------------------------------
@@ -674,3 +781,8 @@ name = "default"
 [[target.zlib.config]]
 name = "no-gzip"
 defines = ["NO_GZIP"]
+
+# Seeds (BUILD-03): none taken. test/example.c holds error messages and test/
+# infcover.c holds its inflate streams as hex text inside C strings, so a string
+# extraction would yield the ASCII of those messages, not zlib streams. The seeds
+# are hand-made streams (testbed/targets/zlib/hand-made).

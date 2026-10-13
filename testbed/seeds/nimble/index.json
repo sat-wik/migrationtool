@@ -1,0 +1,2823 @@
+{
+  "schema_version": 1,
+  "target": "nimble",
+  "commit": "a7a156f28954819e158b62dd613008f22f9cf73b",
+  "licence": {
+    "spdx": "Apache-2.0",
+    "elected": "Apache-2.0",
+    "file": "LICENSE"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "02c4addcdaa3db5bec60a6943f0f9e92f8b0eda35778d1d6cf73cd8d140b911f",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 395
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81",
+      "bytes": 3,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 1817
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "041c9e930f482d5dceef8af2d0bf801a468bbfcc83087d2d1b4a7edf36818a4c",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 478
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0488cd1104793edb7467998202babda2bef3061a13d7a940b6cb50f70c5d5070",
+      "bytes": 4,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_read_test.c",
+        "line": 603
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "05a9bf223fedf80a9d0da5f73f5c191a665bf4a0a4a3e608f2f9e7d5ff23959c",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 217
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "060cdcd53ceb657aa876276eeb647444c26832f3f75555fe2a09270c5171daa7",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 293
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "06aa5c85a0d29d3b5b3cb0afcd2544827e03f76edbdcef9b72f14ff05f9c16a7",
+      "bytes": 60,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_read_test.c",
+        "line": 645
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "07653ec08000c93dedea7816c582fd08db6135d606ef57a1f55cdab8928a24c3",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_read_test.c",
+        "line": 737
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0af74b4c9f98c2e7eb85d56e9bcf1f83b5cbb17df2c6b477cf18717b2a0a87cf",
+      "bytes": 8,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_test_util_hci.c",
+        "line": 269
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0b2feb75ea56fd43c746daf59a369c04e45acab93f40157f5e944520b70bb3b3",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_write_test.c",
+        "line": 537
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0b92367346f62f8709a25e609c89ea99ab7d0935a5f9340adcb2a4016dd84c5e",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 73
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0ba6e5518ecf0a60a0fa498e54a7e68ab91240508a64e05b418b0d436d6940f0",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 371
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0bc705cdb0d82c9b0e2e42bade1adb72d477648d67e4d1ca05b7064d57d10ce9",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 160
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0dbea64d4275627cbbd092e72a44ebfe30cdc170993b539cc5ba587ce30995d4",
+      "bytes": 4,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_read_test.c",
+        "line": 789
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "10ea0ab4a27825c5da0ca27fcd1feca03ad0f8c2314beac76373c32a3ff0e9cf",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 203
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "117c9035800fb3497693c4c08747397e1c69e3b3b799ed286adb2978df427f49",
+      "bytes": 8,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_clt_test.c",
+        "line": 34
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "13c530c006e94886e4804730e86d8919b3d1b6223343b5429663227fce963cb2",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 107
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "13f2d9cbe1c7f7359fd16ac3d227870b88e46c5c1cc32da42a0f9d3a8aa5ae4c",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 359
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "154dc2fbb5774ef440f55b40a16a33c8164b84e1774e04d5182a29c7795357c6",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 512
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "18ac3e7343f016890c510e93f935261169d9e3f565436429830faf0934f4f8e4",
+      "bytes": 1,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 1000
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "193c2932d891a247a4b65a1b553588f649de619e9c1ac0e48c0c1fe1511136b9",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 534
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1a1ce1b73a8f50ffbad655572e4b66d4635996ffe9d25ec6361ed5b5a960e8af",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 359
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1aa2454e38e78fbe098be157ee8112d85d6e667e2304fde4220850faa2f46341",
+      "bytes": 4,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_read_test.c",
+        "line": 745
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1c9abf62bbfdec0e718cfd33c4bc2a52abee1516deee042916a2de008382ce41",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 257
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1d0601cc8a47031a510d8441daae390490a8a6c0857ba50d5b9432f735eb22b5",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 209
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1d83f1598f253e6a5491637c6dcda3cd4a661887c7b9ea588dccdc61bc05f512",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 223
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1f528ffd2895634c176537c055daa5c0971b7915519999337a0e355410d8fd98",
+      "bytes": 3,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_read_test.c",
+        "line": 581
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1f90d04a6f5bab7e3f57598c8b79177fad710072c6c7a2d5c6b7e6a01270cd64",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_pvcy_test.c",
+        "line": 279
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1ff7d15707ff577d4dac0298a3ebae06c9a6c2604e719b0047add25360a713f8",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 261
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "213fbbb019ad0ab35bc3279b962cc6bcb35a62ade6aeb53bc8e74fd169d64286",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 233
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "24e0230effc6debd1c9547ee26673981e13772eeaae2ca71379d50cee73f2c40",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 208
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "25b4e54f76ad8f0b705b83f35ec7383a021790c7472e94a66a328dc7525e569d",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 490
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "268f7ece7967f9f47686cb382a30ddbd591b951d6aeef655f0e8fe858b45a586",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 327
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "26e7f98cfafee5b213726e22632923bf31bf3e988233235f8f5ca5466b3ac0ed",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 201
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "27a710aff3e1e54d3b49fd0861dcba74be7c488d6a47b8baf075b85e16b5dcaa",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 50
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "292afde3b64e6636d68f1120d9242f1f85e38ef7bf306e4407c2303eb63791ef",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 215
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2b70e5f09efc9b04c9a690d0d702c03b8b4d5ce4d8ca6f1895e9a602ef1541b0",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 472
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2e8fe714fb4aeacd01af3cd6dfb23d586866c5752f8d6dda15daa3663e5eeaa0",
+      "bytes": 5,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_conn_test.c",
+        "line": 30
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2e9b259f58a904a32d1c6dde1f2bf0a0bdc7f8cf5ca0769da673fad2309ccbde",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 425
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2f2870eae96502d21b63536cd8d5db2a53a6cec21ad9cb7de25d0cc86b009bc0",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 152
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "31427fa3bb79f6589016fcdac600ce1ede22d1c89f2f44d9cd8dfaabadaa2ff8",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 97
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "32517c43099e9a605864478ded1fd1918d04008fd9ead91e3beee33eb8861302",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gap_test.c",
+        "line": 1431
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "32bbe378a25091502b2baf9f7258c19444e7a43ee4593b08030acd790bd66e6a",
+      "bytes": 7,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_read_test.c",
+        "line": 508
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "35f72407e3efceba23881cb72e42fc79fc0a52806d620dce3ad95c10fafc6c37",
+      "bytes": 32,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 72
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "36030fcc7e566294905b49a720eb45bf962209d2ee1c9b73e2b7bc7ae8830376",
+      "bytes": 15,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_l2cap_test.c",
+        "line": 1431
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "36536c77cb8cf7792d51fe1248722269e8bd7c0b93ff87e9d5700778950f5f4b",
+      "bytes": 20,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_write_test.c",
+        "line": 569
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 373
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "37672634bb32bea1da3a7ad209f5cf4629f40678d4265481dcf2347695ab26bc",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 108
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3774fed6f81e6d77fb664109f8ac3e35088e89722c6c8747166afe631cfcf43a",
+      "bytes": 3,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_conn_test.c",
+        "line": 489
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3791f1d409b02e78c9e69b41866e85b890228653cd66209a568de790a81e50cb",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 215
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "38af1f85b0645bacb4511938d98dc36128138370e14f40f3f569809d96d17227",
+      "bytes": 7,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_read_test.c",
+        "line": 567
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "38d509eeeed72fa98e010ba58c613bb9a8a13a926767aa7c8e294aa8ff5caf61",
+      "bytes": 8,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_conn_test.c",
+        "line": 403
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3e96b2cd64d7237dba2869516d18c37024ee0f358e34a87c3260360efa66e4a1",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 574
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "414b7623569d2ff8bf540000002c778fefba6641d70ad59c067be86d9238bff9",
+      "bytes": 32,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 229
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "436019cc36f295eecd72e32360e5ee33fedb3ebb4e47ad60dc91d87ee1a6dbc2",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 223
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "458ede2e3acd9a89e3cea1c3fdc75058f464ca1a3912df5e09e2d04ed39d4430",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 419
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "46c41cd04aff87ee4954e1b7ce524618617848d2b8aab7c68460c36e9b60f2d0",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 149
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "471e0721f2fe51cb59f7a83ce8d2d1c5fd7fa18f7a87568e8e20b09e97c5bcab",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 506
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4a748b57dc5e49770c969668d3be80ac7291ef4e9585a4aca54fedba678de396",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 135
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "bytes": 1,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 2042
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4d87f041cef5d4ab0793e83e758644c4de5dd27009423b1d36448619df5174b1",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 409
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4e7a6f9ab6f71f35c278aa4316b2204aea82b6572fed5588b2375324f20e5be4",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 355
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5397f57d900440833567f1ec7b70e83c65819ad323ee48a72b640a53ff219dd4",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 255
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "541c3bce889f3a098e56c81ad82f734c34b8fdf740efe3dfe234d90ef441789c",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 269
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "547f4ace3c46a23486a4310e6cca73a5aa1755d127d0abe936f973de0b2e72b8",
+      "bytes": 32,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 43
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5491360b2cae59c7440370b50e8d124aee84a033fb62adae5fe9937570eb8933",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 443
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5560824509138d9f77b44799f4b85098d5465e6022edc1db5d91dcf629d4d8a0",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 147
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "56f497e9c56aff3520e590f451161dcb5b3fbb4e4b6feb17fc5ba46fb3e43104",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 484
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "580e72c5a26e7aa6d60cd24fe964be44f9aa1543eb2ad4fb0c46c275201dc34f",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 431
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "583f4b2485b478143a3c8e691fb8b63d69d64ceb02795bce1b9234e39ef1521b",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 361
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5853d0a6998c2fc27529a99f8eb1429aec3e1b927dcc0a224c433796b4d111f7",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 209
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5884a3eba3b512efc5666f3c6e58a3bfbdbbcaa52bcdf18a8395ee3243a98526",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 335
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5ac6a5945f16500911219129984ba8b387a06f24fe383ce4e81a73294065461b",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 367
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5aed7c4675fb4d97c356f6682b813e0a75dd0070b53bdfc98dcc1d6693b84126",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 204
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5d54e974f2716e6a8cfc66e5371cb9b07b980cd2c56f3b17e2b65c8b5a929b6a",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 365
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5dfbabeedf318bf33c0927c43d7630f51b82f351740301354fa3d7fc51f0132e",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_pvcy_test.c",
+        "line": 218
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5faa4eec3611556812c2d74b437c8c49add3f910f10063d801441f7d75cd5e3b",
+      "bytes": 40,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 866
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "602e095f719ebf3489efd77bf87da01d705871d82c9d401369bfd0641a2e3e8d",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 53
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "61f7e842f56ea74ebe7aea731169bb39083cb3583004e2e4901117d9567f3ca7",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 147
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "61fc1bad7481acb8bd80e09b61aac10e32b2f99fb9ab29f98ed3e632718c181a",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 207
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6421a99befe335e4e5504c9a05099b52c89082209f4eb4e899347538ba59ae5f",
+      "bytes": 32,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 99
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "66840dda154e8a113c31dd0ad32f7f3a366a80e8136979d8f5a101d3d29d6f72",
+      "bytes": 8,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_conn_test.c",
+        "line": 399
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6787e7a1761c418d0bea48333fbb5e8062c28ff07b181d76ba52526b8d426a33",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 280
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "678d287309e5dd196c1615b46a89cf4cc180b2c0f26686e07cea47995831351c",
+      "bytes": 8,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_adv_test.c",
+        "line": 275
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "679527a1f473d527ca8dec2ac7f058fd74864cba2fe8f89f277a5046a5ad0c9e",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 387
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "bytes": 1,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatts_reg_test.c",
+        "line": 308
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6e4940d870f7556a9e0bc775b4e1c21a7641f29efd6adc230a5be2d3d86956be",
+      "bytes": 32,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 64
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "70801eb4bac16df84658a7c0e49cbbf3b42d20c29d1a7f809f7cf6d31c76f2c2",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 213
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7192385c3c0605de55bb9476ce1d90748190ecb32a8eed7f5207b30cf6a1fe89",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_conn_test.c",
+        "line": 47
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "73d25a21e0f14282760dfdee13b010a028402d0a8d6d3d198a5aff9b55859271",
+      "bytes": 5,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_clt_test.c",
+        "line": 187
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7434d1a7081e75c8d0a3d7aec67a0bdcd69275f291fb661e5fd1c09e39163aeb",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gap_test.c",
+        "line": 488
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "74f81fe167d99b4cb41d6d0ccda82278caee9f3e2f25d5e5a3936ff3dcec60d0",
+      "bytes": 5,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_adv_test.c",
+        "line": 579
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "76581baee0fcad96d08bfc0cdd2d3e269ee9161f2fedaf078ce5212a1f6ce981",
+      "bytes": 3,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_read_test.c",
+        "line": 741
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "783f408189d4542eed038d2c4febc0f3cbf48f0320aef6384f2d4c4e2b1f73c1",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 263
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "784347ca3c81320fbf2e2dabfb7137d5f5993a1a308e16e93c493268d9d40ee5",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 437
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "786cad971039df05af8cb516f74762d1f68b481005309fa568a71a7d3547cd5b",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 539
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "79cf34b187cf095e3735e2f878b34306d5bf4d591126961ae3895d71a530c318",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 202
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7a936b3e89a520f2c1e538c9fd73a5337687d6b86ab1737415dcda20b1948e6c",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 287
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7d1cd774f9436cdfe62727b05e74ca834de584db077229175fd17a54ac09cf56",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 383
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "819e28c4d9dc47239b1488a7ecce30cf53dc3174923e93c0530af0dd8930ab39",
+      "bytes": 32,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 223
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "843487b6e076cc4d83a2e1112a29b1dab2e0b521314235cc7ab58f9b210b8a08",
+      "bytes": 3,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 150
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8737221b1ba77ba4150e17424728f5ac1b4a198e9159c26d8d850c2e0a729091",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 227
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8a4992eedfdd55734008950f2230e18ea584a6a14bcb8f85018aa0519c3d7093",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gap_test.c",
+        "line": 950
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8a851ff82ee7048ad09ec3847f1ddf44944104d2cbd17ef4e3db22c6785a0d45",
+      "bytes": 8,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 853
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9184f02d68ed3e9189d8e6a684dbc1710e880b78da7a939dd5ee1afac1dbafd0",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 329
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9263dda44761ead43a50b4f62bdc2237e561b1e4c3f4bba002ce53cc1c4ffc64",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatts_notify_test.c",
+        "line": 33
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "929ebbc72417a999279234a5ff90086ed5609aec14554e708cf322d356bb7eab",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 85
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9534135aa773e6feaec661638fc6bf0b9fd1964ff2af1e2e36bd826e015b4f61",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 47
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 1326
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9741c56b5d9f61184bb1782a26b76a06ce404cd3cde3328b5f5b1d23714882c5",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 119
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "97e14078fd4006fe20d0fdf31055c84d1d5f7d738a4d24b97ebba515d60a3917",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_read_test.c",
+        "line": 540
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "985930b3c0d5b34d8f750c8b879cde6480224c5d39f093d66489e4d98ceb4a42",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 212
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9a2fd10f5c5e46919414f8329bc09db437e578816c84fc0984eb33859c7dbc36",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 377
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9ab9bc90bc1e566f8dbc476bdd73aaf016b9e1527db52a3114e54c9e6d0e5b17",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 281
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9f4ca58ab933daefb5d7a6bcca88bd1daa8ec63d1ac81cdb6c3cdd075c4fc9a1",
+      "bytes": 3,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_test_util_hci.c",
+        "line": 290
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a",
+      "bytes": 4,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 175
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9f6dee396dda9ad4a49a6b4f6f344034409b9bcdf0d6aa865795c007f9b4d840",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 283
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a0b53bc4e3650c91c7dbf90a332fba060ecad2575d7d6c65da1d82119ac73945",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 165
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a12871fee210fb8619291eaea194581cbd2531e4b23759d225f6806923f63222",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_clt_test.c",
+        "line": 402
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a2655f70df973cb14458e35b6d5e848ab7781dd1c179234a817748e895702e24",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 413
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a3c71f9108d4c1c43c2bfd4acbdb9b25b0251bdf54929e3fea59617a0efd5ff0",
+      "bytes": 5,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_read_test.c",
+        "line": 795
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a3f15539d74c61923bbc1e3c4249e05abd669f6cc465e2f7a58a7574471ab46d",
+      "bytes": 32,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 39
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a40c2c2deb3dac99aa87ba2ad6946d51eb18e73f6cf9f5dd9d7bdfaae6c36d2b",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 305
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a4161f4839702e7ae6c7f5c1f96adf091939a3c2524ef0a9565d2811806e678f",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 50
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a4a4b5feaeb139f5dc7997c20a18ccd796c745fda6503de0048b268104983285",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 125
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a8100ae6aa1940d0b663bb31cd466142ebbdbd5187131b92d93818987832eb89",
+      "bytes": 1,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_read_test.c",
+        "line": 516
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a8faed6abbf35c12a4b26e40f6feb19d736d90045c83b9f9a31f638d323e6811",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_uuid_test.c",
+        "line": 97
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "aced468231e6bd4460dc9c42d1a7c40ec7adb5b186183771c8f6ce9f1db25b05",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gap_test.c",
+        "line": 1434
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "aedcaa09f32e7b3daa7fd094b6e063dc9e819414e1257cd462f495de82481c9c",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 496
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b082925a959b533431cb2f6b4b9f46e6b8d7c2994bc4971af50355b3fbe5f2be",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 347
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b0f66adc83641586656866813fd9dd0b8ebb63796075661ba45d1aa8089e1d44",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_id_test.c",
+        "line": 47
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b19e3b0f87565d74971a10ec7987cbf7105b99d6802630dd5d5171380ba6f442",
+      "bytes": 32,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 93
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b2106dd1ebbb35f628988d162f6fc8734dff96abdaa6ff22bb9ff5f26dbd0c82",
+      "bytes": 32,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 85
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b29b08ef693e9a43818a00cdf384adecf56d8d4be8019ad4f28fbf5f84209950",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 200
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b322f94927c014d539a5ca439625b64b51c11249175e9d1932930cc090fd82f0",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 401
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b325a105a4b9cf6149bc7500198db6798456f3fca269950812cef45e36ae13ef",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 79
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b4c13615108d2e2383cd17d343c06a885ffe1af9521ed35ee2765c1c1992dece",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_test_util.h",
+        "line": 59
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b5609376c87f00c645433e48648cb02e6a3f83467f2c827194de5d58f971c8f0",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_uuid_test.c",
+        "line": 96
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b70654fead634e1ede4518ef34872c9d4f083a53773bdbfb75ae926bd3a4ce47",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 206
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b736c1a8b5e6eed50f086ccd12d09f120a7fcaa5fc9278de75116a565a24b914",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_adv_test.c",
+        "line": 212
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b79463f8a19bd536d09de56b7e3987d833d1cbf2cee75b5a7c775ab6be1840b4",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 353
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b844dddccf51986e003b14ba2df3c786a3d8078a0334c37d17b09a0a68fb06e6",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 365
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b84ff8057ee3a7f87deac4ae29ac59292f02e6c28f987031648011018384d888",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 219
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b8f8e42fcad2c61e2057df4d0f9bc6af9a082a8dffd3c5b48e7a59e87184bfd1",
+      "bytes": 3,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 149
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "baa3b1d2805e4e495fcc8269c365888d6c4c7161890e91da83cacf2883d652ff",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 288
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bbc57df898c7f4775d2ac2e78a686ff67f147dda5c2430e6e0ea43adecca3b41",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 113
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bd5e4da7a339adc2bb9546ab77fd426f080892264ccb26ffac91de5bc826f7e4",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 181
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_clt_test.c",
+        "line": 120
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c115e1a062c0042ae9c11feae1132f6491f97bba3f37ecb142a32f010715427f",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 311
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c148ab6f848f28c7872e9b7ceb7d8aaedc5415b298642b6b6c7a5c3d93261169",
+      "bytes": 32,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 79
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c2700d4cce7d459cd181083e544181da579d7ca986f3bc055b58832053438b20",
+      "bytes": 12,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_adv_test.c",
+        "line": 498
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c424a003051791c95cda3780991b35787e22c067208ccaa2ff5535126a90c02d",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 50
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c89953f4d30fe1fad2adc5eb8763c0df65eac3b702467da7a1b30489db066f7a",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gap_test.c",
+        "line": 70
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c9815ea0cd889a1056f19ee90830793c68ce00406d2a0f44e6e572e15e4cbdd1",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 323
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cab5b387471daa8664ee16bcb3278e0244a5646e9eccd5771b441bdf044d2005",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 75
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cbbd5f990c53684d7ae650b40fcb5656e02261b53da5f6a7d8c819c92f2828f8",
+      "bytes": 8,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_test_util_hci.c",
+        "line": 250
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cc8cd41cef907c4d216069122c4b89936211361f9050a717a1e37ad1862e952f",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 211
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cd26d767b377e0bbc986be1cfe3c81ed7f24a6cfde77d9adea04030ece5cc11a",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 125
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cdbbc7a93245d4eebee8c750de79a3c5f66e6e47854b18c273357bf125be50c7",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 205
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d135ed719653ee9cf1ec79c78a781092b0e1b34362b4b65591373b2553b9f05c",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 91
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d60e1911a7ef21c700e66ac7c13f1a6bae57e42f8500349e9ac8c045baafbf98",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 107
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d69f3b3b46818f2bbdd2827f29c48f85ce2739e883d113b8f83bfbd051aa01ce",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatts_read_test.c",
+        "line": 205
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d6f8dcb22e9f786001ccb263a41fea24a273ef436f5f3f37629e3e62f63f1476",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 73
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d76f36cc0553a752a7498c9b898b5d88f77a914d7d66c112dce416d4c1d60774",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 341
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d7d37b10171bf265fb2c8da48e8365edf55c8770d80a81c6ab18bf08a369de4c",
+      "bytes": 30,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_l2cap_test.c",
+        "line": 1458
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "da4d3da1daaceba9b72635459fd6a17da13e7530d53a4932535e6dc1d49bde3d",
+      "bytes": 3,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 103
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "db43208596f36f9d070439ef0942812592c4f01f8704ba87ffae4b8cc8557ad2",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 371
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dbcdc86a09959eaa05442d63a1438b622e42c0a88e9d25e6fffac317fc034646",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 381
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dbe3faac46d9e1a0ddc4c427052a31bdf616a62fc0d51aabb6328582e7d69f9a",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 414
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dc9bbc59728e944af2c3d3c33afce6a95fad3e758a6569338dede4fde96beced",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 436
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dd3b761fabc8c4ef6a18ad9722c36f429c14a20697f812d36b8fd0cc1ea333c8",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 76
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "df3153762678d531e5a044492e169302be007fa367f33f9b38febcba6ffca465",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gap_test.c",
+        "line": 487
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "df7e198e676a9616a13bb7a7e79c41879593807dab8ed546a943f5e865d506b3",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 101
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e02dc5f2b186bdfa2f103950d13ad616c3355be54c7a8ca89ffd4ad0e14df7dc",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 389
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e0e6e3c1c64422cc76229d0c35ba817a281f8fc4014faa3e9152428a08a73ab3",
+      "bytes": 4,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_read_test.c",
+        "line": 705
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e12f08743344c0eab7afaa22bb71e2725f7e13dece6ac2d23711054ee787b6c2",
+      "bytes": 20,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_gatt_write_test.c",
+        "line": 565
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e489ea5e15995e75c321dc6dd3419f00fed47719b102091b3ec70cc5a838dd66",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 275
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e4ae337a0f03268a44d2a26687fa3b269cf7da431c80e12fe96951dc95d9ef92",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 155
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e54a851679cf1b4ee741665f106c2dc371ae563cf2d094467d8a9e8ae08a0e97",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 317
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e6050d28e368ba150fdf4e202128568be802d2eef66c1eb8544e3c11c9f8a50e",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 70
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e638914c44e947357e7d0c46e9ad2c1b01c58d6a42a5b18ff3e3fb97143ce24d",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 221
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e7181ffc00470ed4889b9a5578e81dd09ae803a33a8946cbcc20c3208b35b7e8",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 247
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e74d0e44a658ffcdc0ee7266ebd171413b8fcf182c97a27254d9f48abaea6266",
+      "bytes": 2,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_adv_test.c",
+        "line": 542
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e7990ad8e9ff127cd7b4d46b69f4a1a49a56247cd3a8544a91d76d0ad2a6ee86",
+      "bytes": 64,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_test_util_hci.c",
+        "line": 256
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e7aebf577f60412f0312d442c70a1fa6148c090bf5bab404caec29482ae779e8",
+      "bytes": 20,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 1022
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e8a5f21a65a81b3ba202ae5dc3791797b0e7271a4923bcd6b124ca062d886c5a",
+      "bytes": 5,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 978
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ec1f6f4419c2d14f603e4d4b058a98308a4001cf97c3ed378abd6e121dd55e79",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 131
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ec6a1b5cfed55902b951211c71e11c44162c1356c83891a222efe5386a11d108",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 407
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ed947c3d61d611f758e019f4b86f134fc1fcf972528d9575d5a57c8c0a3e512e",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 299
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ee083f5bd97e2e2b7a3c7e685def18a9c6db13eaae477d6ba6294daf8fc01994",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 119
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "efa12bd6972969fe9fbcb14c560f37b2c868265cc5229b016aaef2ea3dd68d47",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 353
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f1f1d9f5b64edc70fc46927d6d137c7440898e75dfa99fd63e08f6b119db0ba1",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 167
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f26e2267ceff42c09cd56180cc0353a28a9ec5affbd29b1bbff0d6f4547c5ad0",
+      "bytes": 18,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_hs_adv_test.c",
+        "line": 607
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f2858372df920878e5fd7ffa2c868fc13d8350b70d450252858b3f412c9c2eda",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 79
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f7574141cb2eb085242e82b0ed8527dec72391af88bf45d6eb4f511e9cd56e9c",
+      "bytes": 20,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_att_svr_test.c",
+        "line": 1028
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f8ef02cdd1de8b7d616136d589ed253d1b62d6b5478f72537ecb3bf27b993384",
+      "bytes": 6,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 323
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "faf7b5b7c81f8231feb1bf3fa5f03fdf79e97a8e64e8a1ca48b653f0b9cbe6e0",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_lgcy_test.c",
+        "line": 221
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fc137a896c8c29564ec619b309758fbf48c7c90955a2d89d80685d5d51e4b8ee",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 347
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fc4767c3e662ebaa091da8e120506d74f2a2f975c502bad9188c89892ccb2939",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_sc_test.c",
+        "line": 251
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ffd9a7113413abd9f8c7e0425d10c3f1e41fd6339439a566565b96c865bb3de3",
+      "bytes": 16,
+      "entries": [
+        "ble_hs_adv_parse_fields",
+        "ble_uuid_init_from_buf"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "nimble/host/test/src/ble_sm_test.c",
+        "line": 198
+      },
+      "proposed": false
+    }
+  ],
+  "skipped": {
+    "duplicate": 424,
+    "too_large": 0,
+    "over_cap": 873,
+    "unsupported": 471
+  }
+}

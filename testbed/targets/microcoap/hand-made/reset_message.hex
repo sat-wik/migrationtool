@@ -1,0 +1,3 @@
+# RFC 7252 (CoAP), section 3 message format, section 4.2 (Reset)
+# case: type RST, empty code, message id 0x7d34
+70 00 7d 34

@@ -11,7 +11,7 @@
 //! written and reports any difference as drift.
 //!
 //! Bounds (T-02-32): a source file above 8 MiB is counted unsupported and never
-//! read; a zip archive above the total-bytes cap is counted unsupported and never
+//! read; a zip archive above 2 MiB is counted unsupported and never
 //! opened, because the number of members of an archive is not bounded by the
 //! per-member limit. Symlinks are never followed.
 //!
@@ -36,6 +36,11 @@ use crate::testbed::{
 
 /// The largest source file that is read; a bigger one is counted unsupported.
 pub const MAX_SOURCE_FILE_BYTES: u64 = 8 * 1024 * 1024;
+
+/// The largest zip archive that is opened; a bigger one is counted unsupported.
+/// The members of an archive are bounded one by one but not in number, so the
+/// archive size is what bounds the memory a pinned archive can take.
+pub const MAX_ZIP_ARCHIVE_BYTES: u64 = 2 * 1024 * 1024;
 
 /// Extensions of C and C++ sources the lexer runs on.
 const C_EXTENSIONS: [&str; 5] = ["c", "cc", "cpp", "h", "hpp"];
@@ -352,9 +357,9 @@ fn extract_file(
         }
     }
     if is_zip && wants(Method::ZipMember) {
-        if meta.len() > caps.max_total_bytes {
-            // The member count is not bounded by the per-member limit, so an
-            // archive larger than the whole corpus may be is not opened.
+        if meta.len() > MAX_ZIP_ARCHIVE_BYTES {
+            // The member count is not bounded by the per-member limit, so a larger
+            // archive is not opened (T-02-32).
             gathered.unsupported += 1;
         } else {
             match zipsrc::zip_members(&bytes, caps.max_seed_bytes) {

@@ -1,0 +1,5 @@
+# RFC 1950 (zlib format) and RFC 1951 (deflate), RFC 1951 section 3.2.7 dynamic Huffman codes
+# case: one dynamic block with a two-symbol code-length alphabet, 40 times 'a'
+# generated once by: python3 -I research/testbed-seeds/zlib.py dynamic_huffman_40_a
+78 01 05 e0 81 00 00 00 00 00 10 b4 fa 9f 00 00
+00 00 00 20 36 eb 0f 29

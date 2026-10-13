@@ -1,0 +1,5 @@
+# LZ4 Frame Format specification (lz4_Frame_format.md)
+# case: magic, FLG 0x60 (version 1, independent blocks), BD 0x40 (64 KB), header checksum, one uncompressed block, end mark
+# generated once by: python3 -I research/testbed-seeds/lz4.py frame_uncompressed_block
+04 22 4d 18 60 40 82 05 00 00 80 68 65 6c 6c 6f
+00 00 00 00

@@ -1,0 +1,4 @@
+# RFC 1950 (zlib format) and RFC 1951 (deflate), RFC 1951 section 3.2.5 length/distance and 3.2.6
+# case: 'abc' then a match of length 6 at distance 3, decoding to abcabcabc
+# generated once by: python3 -I research/testbed-seeds/zlib.py fixed_huffman_with_match
+78 01 4b 4c 4a 86 20 00 11 3d 03 73

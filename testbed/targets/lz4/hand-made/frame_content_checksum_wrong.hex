@@ -1,0 +1,5 @@
+# LZ4 Frame Format specification (lz4_Frame_format.md), content checksum flag
+# case: FLG 0x64 (the well-known header 04 22 4d 18 64 40 a7) with a zero content checksum that is wrong
+# generated once by: python3 -I research/testbed-seeds/lz4.py frame_content_checksum_wrong
+04 22 4d 18 64 40 a7 05 00 00 80 68 65 6c 6c 6f
+00 00 00 00 00 00 00 00

@@ -1,0 +1,2821 @@
+{
+  "schema_version": 1,
+  "target": "nanopb",
+  "commit": "160d4f09e5fabb2b66aa2dea32d4f38ace2c4b3f",
+  "licence": {
+    "spdx": "Zlib",
+    "elected": "Zlib",
+    "file": "LICENSE.txt"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "00edafab66d7c7de21814ff94a8744a4b26e9d6b06ebafc450e81f8cd43051c4",
+      "bytes": 10,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/editions/decode_2024.c",
+        "line": 22
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "bytes": 1,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/raw_decode/raw_decode.c",
+        "line": 59
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "023e33504ab909cf87a6f4e4e545090e40bdc0a2153e5b68b19f7fad2b737904",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/alltypes_proto3/decode_alltypes.c",
+        "line": 57
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "024ffc03c4f00747ebfe9a9f2a076ac369e86453ef2fb4dddcbf3d5f61813671",
+      "bytes": 33,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/site_scons/platforms/stm32/vectors.c",
+        "line": 19
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "03fc4ab20a0057a8f5a84c65030636a2d82605a67b78cce84ecd1defa652b03a",
+      "bytes": 19,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/any_type/decode_any.c",
+        "line": 25
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "042c2c314979d9ca59773d743f7fbb6d7b3dd8eced4602e3712923029bba3e75",
+      "bytes": 29,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/io_errors/io_errors.c",
+        "line": 73
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "04583af1522c0fb6fd81c7ca47602e7078c20def48be16a78a39bd68a03f1ec4",
+      "bytes": 29,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/anonymous_oneof/decode_oneof.c",
+        "line": 62
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "04f932349ccd5f536011ec2e7014f5700f530a9478a1742b89f3343e6ad1e9d5",
+      "bytes": 17,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/max_depth/max_depth.c",
+        "line": 14
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "05cf62cdd96d84e755196688c461193e7bfc44a64afdbe2fe83a00256ef52ef5",
+      "bytes": 28,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/site_scons/platforms/avr/run_test.c",
+        "line": 128
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "067d83642a45da492b3e51c4ad9c71ac223264ad8cdb00094af99447f3f57c07",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_1061/test.c",
+        "line": 52
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0a2e7bfb740282598e7227c74817c037fdf7e98b0808329f4e8a7312da7e01c7",
+      "bytes": 9,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/site_scons/platforms/stm32/vectors.c",
+        "line": 16
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0d6e4079e36703ebd37c00722f5891d28b0e2811dc114b129215123adcce3605",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/site_scons/platforms/avr/avr_io.c",
+        "line": 53
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0ec296d03c0605633c6ed71ec511651cd1bf15cc7939d7ba5d197440418ad6c8",
+      "bytes": 21,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/infinity_nan/infinity_nan_test.c",
+        "line": 49
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "12b7e1b21367e5bfafb2a15d97c1e66e03ae9da2be8a943e34c149eacd2881aa",
+      "bytes": 23,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/intsizes/intsizes_unittests.c",
+        "line": 104
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "12d6b6c98dde65034f95051153ee94574cf0cd6170179d0fe44b9be794116ae6",
+      "bytes": 35,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/sort_by_tag/sort_by_tag.c",
+        "line": 37
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "15322d2af6d36e69b529e212c94862cbf588c8215c6f8897ef3970e8266ad670",
+      "bytes": 34297,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "006a7e621b67dd5b02c9378250dd929384422965"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1683645c2b0d7a5ca034d0e1262c0a6845a4138d9d9b4942fcc200a6b674539a",
+      "bytes": 12,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common_unittests/common_unittests.c",
+        "line": 131
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "17776d2680b9093634f6bab6b2d0ed2a54afc18339bbf031b487eecf57e6d682",
+      "bytes": 19,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/cyclic_messages/encode_cyclic_callback.c",
+        "line": 140
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "177ff04d3dbb57567f955541269b87c7066827651bffb2efc64d4b0b1498bef1",
+      "bytes": 44,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/any_type/encode_any.c",
+        "line": 22
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1c2e0260ba0a72cb4d4c393e0c9ea9891f471acebd23cee8277042b51bee0613",
+      "bytes": 16,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_407/test_extensions.c",
+        "line": 50
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1d3f012a0aef363e3df0a706ad69e076e31163e36c7ab69fd386c4b51189cd65",
+      "bytes": 31,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common/malloc_wrappers.c",
+        "line": 154
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1e3bdeb21588cdce2806029110122663f014cfaf559dd3f9e60b120ffb9bfb8c",
+      "bytes": 14,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/GHSA-gcx3-7m76-287p/test.c",
+        "line": 36
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "23942bf2648c1721fc77c5661af8aa57585b498736253253eb6c463f3fb1ef1b",
+      "bytes": 29,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/decode_unittests/decode_unittests.c",
+        "line": 51
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2603980171b2292962cd9a8036cd36240b71378d016dbfefc63801223427b877",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/GHSA-p24j-vqcp-x988/poc_positive.c",
+        "line": 20
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2a1e5d91c9956d829a2ff9e110a1e955d91a17c29e53b6a3ca6aa368de78a5e1",
+      "bytes": 30,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/msgid/decode_msgid.c",
+        "line": 30
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2b70da1a47805a830a60af21aab556a7c3fb544295fbbf97d11567dc4b8cead7",
+      "bytes": 32,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_322/defaults.c",
+        "line": 38
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2b8dacc2ea74f8f5965e19cd5742d86d8fe16c9c7c4a75c7d8f3f6168e005ec6",
+      "bytes": 36,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_166/enum_encoded_size.c",
+        "line": 33
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2e69923bfcb5eebb394aa0fd230f3e6e15cb790f9ce621226d622010da19b93e",
+      "bytes": 17,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/max_depth/max_depth.c",
+        "line": 40
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2f5c6ed743b2548eb0a8e16e0fce45bdb395849adbc5d1b412ed9077f3feeb1c",
+      "bytes": 22,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/callbacks/decode_callbacks.c",
+        "line": 80
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "32e6e1e134f9cc8f14b05925667c118d19244aebce442d6fecd2ac38cdc97649",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/callbacks/encode_callbacks.c",
+        "line": 49
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "34136d15199930abe3243b73f1effe639b09fc1acfaf0594766f6168d5cbe770",
+      "bytes": 32,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/enum_sizes/packed_enum_unittests.c",
+        "line": 46
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "34a1f239090ea33fc9f6458e3d49c41b1dba5bdfafe7fcc0aa33a384cec9c79d",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/alltypes_proto3_callback/encode_alltypes_callback.c",
+        "line": 234
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "35314d69db0c5bf752640b83ceb06a3b3de1de2d3703fd4ab2f170dcf1fc6b0f",
+      "bytes": 21,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/cxx_callback_datatype/cxx_callback_datatype.cpp",
+        "line": 72
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "359b8fa404b77daa8f4ee96eddbfa8996cd015dc9ade1da8b0af77c8c5727ef2",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/GHSA-p24j-vqcp-x988/poc_release.c",
+        "line": 16
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "35dc90cd12a286b5699eb1fb916f470250774566e8eaba93a7dd568dee586860",
+      "bytes": 14,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common/unittests.h",
+        "line": 8
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3664203e2c203e7ded623c7632892c3be99808c7e635751c71ad33fe8e4609fe",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/basic_buffer/encode_buffer.c",
+        "line": 19
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3885a96ec40996b4368430d69bd0688b73aad0ee74c32fd2dfef008160657ecc",
+      "bytes": 23,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_558/mixed.c",
+        "line": 40
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "38bad345c2f16cc495f2efc8d6a060b210d57bfeb5c0d4165812777a25bad50c",
+      "bytes": 26,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/cyclic_messages/encode_cyclic_callback.c",
+        "line": 71
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3989018f5f710fc50a008f6ba2baacf63466bc8dbb62d8a511a0c507dbe23b1f",
+      "bytes": 10,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/oneof_callback/decode_oneof.c",
+        "line": 93
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3a4245950586db5a1ef4aa4fc03ef9c9f80ebb1bc0ebcfdcef2e231c7abb1a24",
+      "bytes": 12,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common/unittests.h",
+        "line": 11
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3af78c7af0236b15de78079c29a0ff201d9629e832ce5015f006baf00386c37b",
+      "bytes": 149,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/regressions.zip",
+        "member": "27f7d07cd827165babd0b18bd1a92c503d23642d"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3b996d2d6264b05bd209b29f0570aa1edbc7ccefd53c5cc33a094536321c8cb2",
+      "bytes": 34,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_166/enum_encoded_size.c",
+        "line": 17
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3ba8d02b16fd2a01c1a8ba1a1f036d7ce386ed953696fa57331c2ac48a80b255",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/map/encode_map.c",
+        "line": 19
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3f2f800ab1041fe609bb592d8f766b73405baebdea9e6d1102c8a3a4962932e0",
+      "bytes": 15,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/missing_fields/missing_fields.c",
+        "line": 20
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3f4541b1871f9ed5ef08f1c1bca12060d8a2202f9bf0f221e77f798980a0c4eb",
+      "bytes": 32,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/enum_sizes/packed_enum_unittests.c",
+        "line": 31
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3fc4ccfe745870e2c0d99f71f30ff0656c8dedd41cc1d7d3d376b0dbe685e2f3",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/map/encode_map.c",
+        "line": 18
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "412ca345ccf75bf9c0806bce695be8de808b79984251a7a54d202cf6101dd451",
+      "bytes": 2,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/editions/decode_2024.c",
+        "line": 24
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "41f88d03dc0bc50c05a1603b7a2f89f86a29fd2fe350bf4474770711fec21365",
+      "bytes": 29,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/oneof/encode_oneof.c",
+        "line": 18
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4254ac05d8fe70f4c90330aac3a56cdd8039381df550b61bed0884d7d286a5bb",
+      "bytes": 33,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/decode_unittests/decode_unittests.c",
+        "line": 65
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "43302a97684f635541d4bc8341be93af48e1e4b226a899fedae041e79491445a",
+      "bytes": 18,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/callbacks/decode_callbacks.c",
+        "line": 76
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "446c43cc4818f20424cefaeb70e28f6cb73f0778004ad9cc475b7b49f93d1c72",
+      "bytes": 9,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_494/oneof_size.cc",
+        "line": 15
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "454349e422f05297191ead13e21d3db520e5abef52055e4964b82fb213f593a1",
+      "bytes": 1,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/site_scons/platforms/stm32/vectors.c",
+        "line": 21
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "463ef71bec417381dcd0551116fcd980234d3bfb7e4e9f8ca1bdccc1cf54cbf6",
+      "bytes": 17,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/any_type/decode_any.c",
+        "line": 45
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "46b04e9b9123184094d297d4a47dfc1b02af16915130df24cc08b2930bea4aaa",
+      "bytes": 24,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/site_scons/platforms/avr/avr_io.c",
+        "line": 41
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "474c65aab20f94d70d508c9806c3ace68e62f9917f4b0fc2955ca7a1008702f1",
+      "bytes": 34,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_166/enum_encoded_size.c",
+        "line": 24
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "48dbc6920dc83889bfc316ff7cf37a63ecb1849d449e13429c6b705ba5bf9a94",
+      "bytes": 39,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_256/submsg_array.c",
+        "line": 10
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4acadf05f32fbbf7aa453d5a00bc2cd7dc62db98433755d0b5f69eeedf6937c9",
+      "bytes": 24,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/float_double_conversion/float_double_conversion.c",
+        "line": 44
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "532eaabd9574880dbf76b9b8cc00832c20a6ec113d682299550d7a6e0f345e25",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/callbacks/encode_callbacks.c",
+        "line": 49
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5496667159db25d4e143273c2d121529d8f69cf5b2a72f873937baa68062e805",
+      "bytes": 77,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/GHSA-p24j-vqcp-x988/poc_positive.c",
+        "line": 28
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "551a6b12a9caa74b83fb70938f6274b77955228c53d3ee4c666a05abb959bedf",
+      "bytes": 23,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/inline/inline_unittests.c",
+        "line": 12
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "553f1b4a4206af97f4e1be622f92bc73ec147cae9891a11a40a9e564a21babcd",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/raw_decode/raw_decode.c",
+        "line": 64
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "59712c920a3cc7ca6887718c0dc5124b1f3e47b57d04e9e0ec9186e6d0a62f6b",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/alltypes_proto3/encode_alltypes.c",
+        "line": 79
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "59c3c1472720a73511ad9734b943d923a44bec8d936587d5a3eee8abc893466c",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/basic_buffer/decode_buffer.c",
+        "line": 27
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5bb1056cd90530ffe2ce21e67bb289e90b46317689717f4ed4f0844b8aa7c27c",
+      "bytes": 11,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/basic_buffer/decode_buffer.c",
+        "line": 26
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5be492bb487e8dc8683941194bc245aed2135f4aaf41d453c2221310b31a5eb1",
+      "bytes": 18,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_395/test.c",
+        "line": 22
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5c7163937601be977e4cf354a25be775c0c582d59c077aee14340e2d88324e10",
+      "bytes": 17,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/oneof_callback/decode_oneof.c",
+        "line": 36
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5dc9a783306e52d8795baabf803e881658123ef5fc79d026453c2899c3eea741",
+      "bytes": 9,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_504/test.c",
+        "line": 31
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "606f0d6c49fbf98207651960da723d4bdff2e8e9a86ec772313108f67006fb75",
+      "bytes": 46,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/stackusage/stackusage.c",
+        "line": 91
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "61ab550f4c85a975cd46f8606ede483d8ee720a76f627773de1bc1dd8ce5fb35",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/alltypes/decode_alltypes.c",
+        "line": 55
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "62eba2f7443b2ab9c5f62901a1a9d439e23b667131ac8a5a046b109d45e75e2b",
+      "bytes": 18,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/callbacks/decode_callbacks.c",
+        "line": 83
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "64c0bf3ead3dad576c61f448aff139676ed9b275b24cbfc7266bb92d1ff0092e",
+      "bytes": 13,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/enum_to_string/enum_to_string.c",
+        "line": 11
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "68f918cc0d11e2d8f1e7ef7ee880f2f5f0f4a42ab0710d0c942bd1609854d99c",
+      "bytes": 12,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common_unittests/common_unittests.c",
+        "line": 132
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6b373dead31f220148ef4af9893161485764e231d3973afcbd5066afbebd40fb",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/enum_to_string/enum_to_string.c",
+        "line": 10
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+      "bytes": 1,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/backwards_compatibility/alltypes_legacy.h",
+        "line": 163
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "70300973239e8b6e07d436ab1ec2122d384acb745693f35b875e180b08ba57cb",
+      "bytes": 30,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/raw_decode/raw_decode.c",
+        "line": 52
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "711e4bf1226c5aa3e95b78e9775aa20b77e0a3fedef631201f365c8719ea3bd7",
+      "bytes": 31,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/enum_minmax/enumminmax_unittests.c",
+        "line": 8
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7199a648b588394f21deed6d6c87a8a9ced37ec2856f643104acc033cb66791d",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/alltypes_proto3_callback/encode_alltypes_callback.c",
+        "line": 232
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "73b45eb1ea72faf9b894ac5daa1cfb1fe3f8138522a595186033ba9d1b6de0c0",
+      "bytes": 31,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/map/decode_map.c",
+        "line": 36
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "74d3fdae2e7600f3a3fb027e53c3d667d034feb0c6050f368ce8704a558cb574",
+      "bytes": 14,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/decode_unittests/decode_unittests.c",
+        "line": 47
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "75817538ab2704cfe436a0768d4800d207b6e4fd4f89b41f59687cdfdb1d71ca",
+      "bytes": 38,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_242/zero_value.c",
+        "line": 11
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7692c3ad3540bb803c020b3aee66cd8887123234ea0c6e7143c0add73ff431ed",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/map/encode_map.c",
+        "line": 17
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "769d98b60bc0f2471a91a306e7518d3114280f0d4d7cfae87cc0e6587ce66da8",
+      "bytes": 34,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/enum_sizes/packed_enum_unittests.c",
+        "line": 24
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "770fcfc5e75c7634fd22b0384a8b442eaeef8d0db2308fa449fc473da7498d37",
+      "bytes": 41,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_322/defaults.c",
+        "line": 30
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "77d88782e87b15d9576fee9892b80527e8298d42a3742e14f4f12b4a284a27f9",
+      "bytes": 41,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/GHSA-p24j-vqcp-x988/poc_release.c",
+        "line": 16
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "794e9a6eb80d9835415e4977375bee90c03107fe9f7ccd735ebb92d25c9e8382",
+      "bytes": 13,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/infinity_nan/infinity_nan_test.c",
+        "line": 56
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7a3093f4ae8d2c4574b0f7982e86e72ddbfebe9765993ac4f054039a78d3202e",
+      "bytes": 31,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/intsizes/intsizes_unittests.c",
+        "line": 92
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7a4b4a5e0110390d00754d97e7d350a8f30b20f71c12d158277851983c702073",
+      "bytes": 41,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/proto3_optional/optional.c",
+        "line": 12
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7ad45a74592dc742b124994d447828d4b7097b2178d590ed14c1b6c54b2266b1",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/msgid/encode_msgid.c",
+        "line": 37
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7b70d3ab4c7641542e1f158b458eeae7cfb7bdb815d4110cc6178bafcfdf43f8",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/encode_unittests/encode_unittests.c",
+        "line": 66
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7bc666a21bf65cb5a43b112f32bd76e37adb8ff10a9440f2aae3c81170ea56cd",
+      "bytes": 34,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/encode_unittests/encode_unittests.c",
+        "line": 69
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7d1a54127b222502f5b79b5fb0803061152a44f92b37e23c6527baf665d4da9a",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common_unittests/common_unittests.c",
+        "line": 130
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "85fc0d5d0eb16fe923f87f67ad005423d17cc7d788e48eeeac5ffc23ddf0a372",
+      "bytes": 15,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/site_scons/platforms/avr/avr_io.c",
+        "line": 44
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8737b865c721b3bbb048894ea342eb171575e67e2ec1770a5efd87da1853faa5",
+      "bytes": 29,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/callbacks/decode_callbacks.c",
+        "line": 74
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "88d4266fd4e6338d13b845fcf289579d209c897823b9217da3e161936f031589",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/stackusage/stackusage.c",
+        "line": 52
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8be31a1aae829c8e2e697f7a95a91ec7ac0aaebaca029573fba4e1c969393768",
+      "bytes": 27,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/mem_release/mem_release.c",
+        "line": 11
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8c99ff073994125a69898f0dee6c32c2b98e152a43445cfc5c266aa7991fe46c",
+      "bytes": 45,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/msgid/decode_msgid.c",
+        "line": 41
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8e1c386d6efff68c24ee6ea784cefa2850fc8a109f123801c436cafa80706f65",
+      "bytes": 9,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/site_scons/platforms/avr/run_test.c",
+        "line": 96
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "90bfe5d1517d91713fabc0aa2320476d46816cae25d93b65b741e19b77b519d9",
+      "bytes": 21,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/enum_sizes/enum_intsize_unittests.cc",
+        "line": 14
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9400407c32384b1bd7ad8504286cca4aaaaa8b27def850fddc5dd32e43ed04d2",
+      "bytes": 4122,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/regressions.zip",
+        "member": "3f5a1f8968141e4c72812ed8f794c48ed07b5e09"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9553627933b214db60798fe40d2b4f8497781d024f53d62dc1b12469b7d53784",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/alltypes/decode_alltypes.c",
+        "line": 50
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "96da37e95d5cc34fe3bef6c89428df859b8a217630d0c664da1daf1539caacf5",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/alltypes_proto3/decode_alltypes.c",
+        "line": 43
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "979ff8038a458bd08a2a5b484c63f69db249e782924d3651313b04adef44452a",
+      "bytes": 19,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_547/test.c",
+        "line": 19
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "984fe465de67cbcf7c4602405af3f5047aef64e3d15c21e11ab3f92573a9e5a3",
+      "bytes": 34,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/enum_sizes/packed_enum_unittests.c",
+        "line": 53
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "999c98ded2be6dd47145d758bb7da2a778d717cef3bfb1b15beab4da8d43f673",
+      "bytes": 21,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_259/callback_pointer.c",
+        "line": 21
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9b04274e3ff3cb526a234d5eee5e6144d76302ccebb848ca2d8ae858d540db4c",
+      "bytes": 37,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/sort_by_tag/sort_by_tag.c",
+        "line": 15
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/extensions/encode_extensions.c",
+        "line": 20
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a02ccd6dec93dcb098330e96c277ed2774c06cdad01b209414469c04112246db",
+      "bytes": 57,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_504/test.c",
+        "line": 22
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a19e1a35ea85f3b12c287171db8cdb86d6ddff957ec676cda7fbedadf36873f2",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/enum_to_string/enum_to_string.c",
+        "line": 8
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a1f7e4ad4bf7f4765c25b02ab162d6bebfca77125b4217997569120344a3d15a",
+      "bytes": 15,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/basic_buffer/encode_buffer.c",
+        "line": 17
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a26218192525b77b5eaa6a49b73e30a1cf14e3ed8de2154893e0ab6f24fbcba7",
+      "bytes": 20,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/editions/encode_2024.c",
+        "line": 35
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a285dd59b4d218ddefb8680446496b2fe4d795f313063dc479996115ff40c3e1",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_504/test.c",
+        "line": 8
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a46eb8dab0519851e67a1e0657b3157b6aa75236fee9f91c18223746f37a0cfc",
+      "bytes": 18,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common/malloc_wrappers.c",
+        "line": 80
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a6083775b471cc24c0a1fd922bf996fcffad2259b6796da72a38837b4a530027",
+      "bytes": 2,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_242/zero_value.c",
+        "line": 27
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a6faa1bed836c9f7fd851a36ade9d55abaa76d90cda47444ebceffc24d36888c",
+      "bytes": 32,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/fixed_count/fixed_count_unittests.c",
+        "line": 56
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a85e9db4851f7cd3efb8db7bf69a07cfb97bc528b72785a9cff7bdfef7e2279d",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/alltypes_proto3/decode_alltypes.c",
+        "line": 45
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a8ae44d3240509c2f00deb84c747c95726add86a9d892e59ca1b79937005fc3e",
+      "bytes": 23,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/options/options.c",
+        "line": 14
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a9d596b1f6a623400f9cbaf379eab96a7d8155451c9dc917677c0b4f2cecafad",
+      "bytes": 30,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_547/test.c",
+        "line": 21
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "af26c70bcfaaeffa1a57788c4d08e9ce5359ff3785a5c5307f39065ed7ca996c",
+      "bytes": 51,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/regressions.zip",
+        "member": "246e862159ebaec964f0882feda52eedc66a333a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "afd1a5b517fed773fe295f5a60540ccaedde3860f1f46721a2469037ef875ec0",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/basic_buffer/decode_buffer.c",
+        "line": 35
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b057d828360e50e62fc0c3c871edd94bcf6d39dfa14453e1dce3402f4a1072da",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/stackusage/stackusage.c",
+        "line": 90
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b0d40ae8f300a19cfb0283114bb5ca1157211e0e52bac35067eb5360704fa143",
+      "bytes": 22,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_544/submsg_callback.c",
+        "line": 16
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b20694deb89f753611c627ee0fbebde21313f9681cb74c0532977900f8722803",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common/unittests.h",
+        "line": 5
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b292c3b4d7d662504153a05110f91cdffc2ed8e8bce387af53825f3ac8d1cae9",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/raw_decode/raw_decode.c",
+        "line": 56
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b2a8d1094a6f2815e87576de66f42d4fc91f3309b48e74d502bbcb781f1b516f",
+      "bytes": 26,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/GHSA-p24j-vqcp-x988/poc_release.c",
+        "line": 16
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b36ff2fd38b7b98a158619535066231408aac48706f600ed5da40ccdec5d8065",
+      "bytes": 3616,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "000bbe6bda8a31e260c03433e882d0658b062c25"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b3b1906a8f57031147aea0e749825f8eba34f24c90bc7984415a680a625c4121",
+      "bytes": 14,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/fuzztest/fuzztest.c",
+        "line": 100
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b788cef0330a5ce820d205e2188515998ea709cb8c1c4e8a84e39ec5b213f130",
+      "bytes": 15,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/basic_buffer/decode_buffer.c",
+        "line": 36
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b8cafb4f25a3659054438eb3df417f77e967bd8ad37deccf30ef6f6daa1e7748",
+      "bytes": 243,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/regressions.zip",
+        "member": "673e8ef0d4e3785bf4f7a9cacb6b592e237a5731"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_342/test_extensions.c",
+        "line": 12
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "baed7e6c103631ec5121f97cd931e7ac97aaee8506407ae0175a9da77e0be960",
+      "bytes": 14,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/fixed_count/fixed_count_unittests.c",
+        "line": 52
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bc48dfe7fad296e56039343926f6858a282b31bdc0cff855df15922c9dc8860b",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/cxx_callback_datatype/cxx_callback_datatype.cpp",
+        "line": 80
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bd3ff47540b31e62d4ca6b07794e5a886b0f655fc322730f26ecd65cc7dd5c90",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/oneof_callback/encode_oneof.c",
+        "line": 51
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bd44a324e4a74d15f26952456626275fd17515f16cc0d67f955383d5913afa08",
+      "bytes": 30,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/alltypes_callback/decode_alltypes_callback.c",
+        "line": 14
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bd5b2d4c001f993877268c079f4fabaa927514f85eee7a8bfd6dfcf108005068",
+      "bytes": 16,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/map/decode_map.c",
+        "line": 48
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "be00e4074ee270ca5f2615ca8fa6ebf1f5ab70af62da5706ca01633a0628d272",
+      "bytes": 16,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/intsizes/intsizes_unittests.c",
+        "line": 77
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c0535e4be2b79ffd93291305436bf889314e4a3faec05ecffcbb7df31ad9e51a",
+      "bytes": 12,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/callbacks/encode_callbacks.c",
+        "line": 11
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c064fbca9d9de8dd9bb0624984403b28d0da807a69365d4f7fb09123ecb0c405",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/site_scons/platforms/stm32/vectors.c",
+        "line": 21
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c0db9dcd5ab0ca04e5cabfecdb0612672cd69342a1fe83c9bbbe3e50cdc36a36",
+      "bytes": 36,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/missing_fields/missing_fields.c",
+        "line": 46
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c2d0ca3d15bec5b4d05cb02ed627b212fba2788087f9984169eeb763b1f36b95",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_395/test.c",
+        "line": 28
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c32c578abf7fe822f1c022924eae5496e228e1be3fda0cb28dc42b925e765daf",
+      "bytes": 21,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/cxx_callback_datatype/cxx_callback_datatype.cpp",
+        "line": 64
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c3ab8ff13720e8ad9047dd39466b3c8974e592c2fa383d4a3960714caef0c4f2",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/decode_unittests/decode_unittests.c",
+        "line": 53
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c46199a6ff539e462005d8a8f122bda1e2c87939549e8669cdde3307ac38f646",
+      "bytes": 41,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/proto3_optional/optional.c",
+        "line": 26
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c4657fb7fafa979b509e71b01d007b8972d912b4925152528b0fd86c34fea2ab",
+      "bytes": 573,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/fuzztest/sample_data/sample1.pb"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c588545072359230fcb17d247ad84a3d1926afa394753f6eb42a8c440230c051",
+      "bytes": 23,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common_unittests/common_unittests.c",
+        "line": 128
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c59bb3616c56ff231d445500b0345bcfecdcdb1af34ef4e551fa65c6cc835b5d",
+      "bytes": 15,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/editions/decode_2024.c",
+        "line": 14
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c69d675161b381bc4f3e5e75dc003916c9889dc43065eac3268d9f571f703278",
+      "bytes": 20,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_544/submsg_callback.c",
+        "line": 13
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c6d04a6f46b54c9411755e2cdd101a5273e86aa724343797faae448d602c06f5",
+      "bytes": 12,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/oneof_callback/decode_oneof.c",
+        "line": 95
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c75809212ba15c3f121d4ca921dad49507da78f921bad58866981c78c46ac461",
+      "bytes": 31,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/msgid/decode_msgid.c",
+        "line": 53
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c980f0d7ae56ab5f0e997497ded8f5d66f035c70367556b7d635852f0809eee6",
+      "bytes": 14,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/basic_buffer/encode_buffer.c",
+        "line": 17
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c9bb523b460103d87154e84b8fb7beaf634950f0f5af7ffb184eea604922aa89",
+      "bytes": 18,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common/malloc_wrappers.c",
+        "line": 93
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "caad6706645d033eeb4a0bbaaa8e4ffa23a4080fa1b983de6aff5376caceb062",
+      "bytes": 31,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common/malloc_wrappers.c",
+        "line": 144
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cc9e835a923f1c253e1ae2eaa50c4063eb7a70320fe470462e45066d3363968d",
+      "bytes": 22,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_395/test.c",
+        "line": 26
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ce2a9416c54e7591ac2475ed3713ff1aa1184e63a5d931367c9e00dc33e7f789",
+      "bytes": 41,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/fixed_count/fixed_count_unittests.c",
+        "line": 26
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d1de6988d466c0547c3790b60da40381ac3e85d3fe07bb97e04874cd8d4f2d42",
+      "bytes": 16,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common/malloc_wrappers.c",
+        "line": 75
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d35c76c00f88d650a7bafa7df4948e89cfb80f6b47314ae95c1eb2e066481379",
+      "bytes": 9,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/GHSA-p24j-vqcp-x988/poc_release.c",
+        "line": 7
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d38a4f3f219eaa5d195b0cdbc7a9c5af7d860fc97d4aee747f20f8443d8ca911",
+      "bytes": 30,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/GHSA-p24j-vqcp-x988/poc_master.c",
+        "line": 11
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d3d0b0aa909833b99535f214b39a4735993d846c4ec7d9d2adff70a3b57e73dd",
+      "bytes": 52,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/GHSA-p24j-vqcp-x988/poc_positive.c",
+        "line": 18
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+      "bytes": 1,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/mem_release/mem_release.c",
+        "line": 15
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d4fab728c885091e9528c67fa17c681db0c95c608321c38e3321869cfde27cf4",
+      "bytes": 10,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/site_scons/platforms/avr/run_test.c",
+        "line": 125
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d5cd0ada8a09b629d86b0aef6413eb02dc7a950a41a901f0ad3339132e32f23d",
+      "bytes": 466,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/fuzztest/sample_data/sample2.pb"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d9a44e2afda5e0c3f574969afb419df6bcaae98451043efece858d2587611544",
+      "bytes": 23,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/cxx_descriptor/message_descriptor.cc",
+        "line": 10
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d9d3246cf53cea5f462cdf75f826f26e3f17b64069aae34087f070f5cbda163f",
+      "bytes": 9,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/max_depth/max_depth.c",
+        "line": 63
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "da6e2f539726fabd1f8cd7c9469a22b36769137975b28abc65fe2dc29e659b77",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/alltypes_proto3_callback/encode_alltypes_callback.c",
+        "line": 224
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "da889df7b2ee96a1338b3d628fd2df30514e5d2517cc1ba0e5126bbb71998004",
+      "bytes": 12,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/cxx_callback_datatype/cxx_callback_datatype.cpp",
+        "line": 77
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "daeb30e06dcf80565ac935eca8ec3e87a2cd7194440c14842b470d3cb7fed353",
+      "bytes": 9,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/io_errors/io_errors.c",
+        "line": 24
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "db336719b2255a3d640d275181d35f70c04191c61b9ea9779a1f6944f64b9f04",
+      "bytes": 20,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/callbacks/decode_callbacks.c",
+        "line": 78
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ddc9e795b648af54050bec7a9fa58713b63c9c4cc0948eb5fb3be925381f8058",
+      "bytes": 23,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_558/mixed.c",
+        "line": 23
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "de4293b3ddb18f1e2782068b3ab0cd52359041ed46c0301d7346f2b030e69780",
+      "bytes": 31,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/fuzztest/generate_message.c",
+        "line": 78
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "de7058513831b015dd4bbd8dda190891ba397aa092fec5e4fc532fca4b9c54c3",
+      "bytes": 10,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/site_scons/platforms/avr/run_test.c",
+        "line": 96
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "df4865fca1f159162557359ef967f9502087f57527b0e030e139933e54f3061e",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/alltypes/decode_alltypes.c",
+        "line": 48
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e0a4bc9179a9ae62408ae51e6e80ace520bd06c9c4a89ec9380f627ebf13e475",
+      "bytes": 31,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/intsizes/intsizes_unittests.c",
+        "line": 98
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e1eefe9c266415e925638de4dd389e5224e64e93ffadf000ac343479a50ba7e4",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common/unittests.h",
+        "line": 5
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/alltypes_callback/encode_alltypes_callback.c",
+        "line": 166
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e5957e85064b1fe6de6a4e54ef2f50e4024a48a40ff17711e740d6c119e9d796",
+      "bytes": 9,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/basic_buffer/encode_buffer.c",
+        "line": 20
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e5a6557015a641ec2cfc1a32a1038893677837f5deb8337f506b509737643bb3",
+      "bytes": 16,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_407/test_extensions.c",
+        "line": 18
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e5e088a0b66163a0a26a5e053d2a4496dc16ab6e0e3dd1adf2d16aa84a078c9d",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/oneof_callback/encode_oneof.c",
+        "line": 108
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e7e31b7a8c5891cb438f94e330eacbc61c63325e649b103b33e196dd82141db1",
+      "bytes": 38,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_1061/test.c",
+        "line": 95
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e8a38de4b5930629292a81dc0095453dc352510a67085d9eebc8ab58773ac523",
+      "bytes": 28,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/fixed_count/fixed_count_unittests.c",
+        "line": 44
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "eaca67f6845b8d67b0299b8bf17c0914985461a7cdd618a6c9b4b83eee544616",
+      "bytes": 11,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/fuzztest/flakystream.c",
+        "line": 15
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "eaf16bc07968e013f3f94ab1342472434a39fc3475f11cf341a6c3965974f8e9",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/decode_unittests/decode_unittests.c",
+        "line": 67
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "eca724ea92d3c5fbba5215c19097d4d29d5cf7c4869d7974d8e66811479e50ec",
+      "bytes": 11,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/namingstyle/test_naming_style_c.c",
+        "line": 55
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ef32cc5c2b7c62093d3ec4844b36a02b08bb83eee2efa6b6b5e85ad605790192",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/alltypes_callback/encode_alltypes_callback.c",
+        "line": 254
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "eff08e1df3572e2c59f7e1f145ecf78ff00b941123f8c877eca7a2a89344b308",
+      "bytes": 48,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_253/short_array.c",
+        "line": 9
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f17caa18739e3c4f88598b61ad35aeeb81aafe026763480d073f9e47fd71d8d8",
+      "bytes": 20,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_259/callback_pointer.c",
+        "line": 14
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f1c1a37c11cadcd3a4d8ae4d88abb041d75df7e17e7755023b41f4727bf5aac6",
+      "bytes": 18,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/missing_fields/missing_fields.c",
+        "line": 34
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f27f0a8c9932eb554da3a10ad6fc34d4d1d7fb7bf5eef5679af0f664a0f1e5c2",
+      "bytes": 30,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/encode_unittests/encode_unittests.c",
+        "line": 58
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f4b9b0b6324e1d1e21a3b9aebd7ec4f8cf61df44bace83e772d713c14bd4dd89",
+      "bytes": 20,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/anonymous_oneof/decode_oneof.c",
+        "line": 22
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f4be506873278bbf45a78a8f2676fe1dc2b5b2e0836d013559f873e28fa29f69",
+      "bytes": 12,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/basic_buffer/decode_buffer.c",
+        "line": 30
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f560a6ea5ae5e32f1283e1774c565d8738aab843337a3e671e5dca15bd8fe185",
+      "bytes": 22,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/cxx_callback_datatype/cxx_callback_datatype.cpp",
+        "line": 76
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f649c32e83b7185b9b0ec0d553f523af9217500aeb7feaf7c902cf8b8ec41433",
+      "bytes": 29,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/msgid/encode_msgid.c",
+        "line": 59
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f80b0f942c93325ef1c71407331ab80132de29c7322bd9a235a8e428ca2424ee",
+      "bytes": 37,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/common_unittests/common_unittests.c",
+        "line": 17
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f9d0f85caeda6896c67940197ef5fa5e5150401f91683c134ae3a5edee1c7db3",
+      "bytes": 39,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_547/test.c",
+        "line": 16
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f9e8b9d60c91558853c88745626a096063d5f5f5392a7dd845e7a4e5013efd51",
+      "bytes": 11,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/oneof_callback/decode_oneof.c",
+        "line": 88
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fbb9077c61fa98b874237f542445b710bec7398acdfb5a6591884cd8e0ed6171",
+      "bytes": 12,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/basic_buffer/encode_buffer.c",
+        "line": 18
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fbc37eaaddafcc5d7db1daf4fe4ea4ea1cb953a9c26dc1a6206b129530c27270",
+      "bytes": 34,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/cyclic_messages/encode_cyclic_callback.c",
+        "line": 131
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fd5fcec83484a8aa1b401e0088a2a4641fee23d4c65632161f2261aee6289482",
+      "bytes": 9,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/editions/decode_2024.c",
+        "line": 19
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fe3d147c5902a7c7e0956b7074527202a4965789669a78478a636108b32c63f4",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/enum_to_string/enum_to_string.c",
+        "line": 9
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fe5f6d719f56f20723dffee22d26268c1c9eca182f41ce6962a80dade021998e",
+      "bytes": 36,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "tests/regression/issue_242/zero_value.c",
+        "line": 33
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ffcfba38c03ecdb9632a4de690da25806845b2633f19be7d33fc4351f9bc97bf",
+      "bytes": 252,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "00706e3d975a8368e04dcf055aa113783a93cf4e"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ffe6a24c68b83ff7d9bf1ca1c2bfa17c0c28e9bfcc1ba554127c7e18296a6883",
+      "bytes": 32,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0032f1ac024b630cc50b72b787f8842719a2fde0"
+      },
+      "proposed": false
+    }
+  ],
+  "skipped": {
+    "duplicate": 127,
+    "too_large": 189,
+    "over_cap": 4056,
+    "unsupported": 0
+  }
+}

@@ -1,0 +1,4 @@
+# RFC 1950 (zlib format) and RFC 1951 (deflate), RFC 1950 section 2.2 (ADLER32)
+# case: Adler-32 off by one
+# generated once by: python3 -I research/testbed-seeds/zlib.py bad_adler32
+78 01 01 05 00 fa ff 68 65 6c 6c 6f 06 2c 02 14

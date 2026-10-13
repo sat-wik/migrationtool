@@ -1,0 +1,15 @@
+Seed corpus of the test-bed target mbedtls
+
+Upstream: https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2
+Commit: 068ff080b369adfac81509f9b57b2afabaf82dc5
+Licence (SPDX expression): Apache-2.0 OR GPL-2.0-or-later
+Elected licence: Apache-2.0
+Licence file: LICENSE
+
+Seeds whose method is not hand_made are copies of upstream test data taken
+from the paths the manifest declares as seed_source, and they carry the
+licence above.
+Seeds whose method is hand_made were written for this project from the
+format specification named in each source file under
+testbed/targets/mbedtls/hand-made/. They are not upstream test data, and
+index.json marks each of them proposed.

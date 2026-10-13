@@ -1,0 +1,3 @@
+# RFC 7252 (CoAP), section 3 message format
+# case: CON GET /test, token length 0
+40 01 12 34 b4 74 65 73 74

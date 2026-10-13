@@ -1,0 +1,15 @@
+Seed corpus of the test-bed target httpparser
+
+Upstream: https://github.com/nodejs/http-parser
+Commit: 2343fd6b5214b2ded2cdcf76de2bf60903bb90cd
+Licence (SPDX expression): MIT
+Elected licence: MIT
+Licence file: LICENSE-MIT
+
+Seeds whose method is not hand_made are copies of upstream test data taken
+from the paths the manifest declares as seed_source, and they carry the
+licence above.
+Seeds whose method is hand_made were written for this project from the
+format specification named in each source file under
+testbed/targets/httpparser/hand-made/. They are not upstream test data, and
+index.json marks each of them proposed.

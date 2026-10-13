@@ -1,0 +1,4 @@
+# RFC 1950 (zlib format) and RFC 1951 (deflate), RFC 1951 section 3.2.4
+# case: an empty stored final block
+# generated once by: python3 -I research/testbed-seeds/zlib.py stored_empty
+78 01 01 00 00 ff ff 00 00 00 01

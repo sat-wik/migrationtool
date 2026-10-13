@@ -1,0 +1,3 @@
+# ISO 15765-2 (ISO-TP), network protocol control information, classic CAN frames, flow control (STmin 0xf1..0xf9 is 100..900 microseconds)
+# case: STmin 0xf1
+30 00 f1

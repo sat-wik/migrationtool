@@ -1,0 +1,4 @@
+# RFC 1950 (zlib format) and RFC 1951 (deflate), RFC 1951 section 3.2.6 fixed Huffman codes
+# case: one literal 'a' and the end-of-block code
+# generated once by: python3 -I research/testbed-seeds/zlib.py fixed_huffman_literal
+78 01 4b 04 00 00 62 00 62

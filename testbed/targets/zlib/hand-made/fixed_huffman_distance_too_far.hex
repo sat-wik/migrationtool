@@ -1,0 +1,4 @@
+# RFC 1950 (zlib format) and RFC 1951 (deflate), RFC 1951 section 3.2.5
+# case: a match at distance 3 after a single output byte
+# generated once by: python3 -I research/testbed-seeds/zlib.py fixed_huffman_distance_too_far
+78 01 4b 04 21 00 05 b4 01 e6

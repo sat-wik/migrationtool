@@ -1,0 +1,4 @@
+# RFC 1950 (zlib format) and RFC 1951 (deflate)
+# case: the two header bytes only
+# generated once by: python3 -I research/testbed-seeds/zlib.py truncated_after_header
+78 01

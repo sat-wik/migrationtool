@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "target": "paho",
+  "commit": "6035ea2d4922bb7558b444fb2a051743f3f1974b",
+  "licence": {
+    "spdx": "EPL-2.0 OR BSD-3-Clause",
+    "elected": "BSD-3-Clause",
+    "file": "edl-v10"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "096f81c17543f7f50e9d1e0c8ff760734ec9dad834ef5a1704a7cb7d94eefea6",
+      "bytes": 6,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/truncated_publish.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "18330e390024fef7748ea4c2ccc5c3550525391b3baa43938e1c3c744a8ed5cd",
+      "bytes": 9,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/publish_qos0.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "35ade0d7bfe725e4d3116fd791b59f528bfd021cbe03d3d2922e9ed2e89b74ea",
+      "bytes": 4,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/connack_refused_not_authorized.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "3f4ddb43d9850645739dc26ae13bd05e45fb909bc512d85486c4d3fa84382e7a",
+      "bytes": 4,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/puback.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "5070084e20c14674ed06074a99af007d73fff4cae9150d5d6e8da14bc604d831",
+      "bytes": 6,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/remaining_length_five_bytes.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "57fade0a93f2559f89a6a29c6f1f4b242ee6ec2078b507f500124bc2fc900b7a",
+      "bytes": 131,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/publish_remaining_length_128.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "59c65e02bffb3f85e8992f4a308e0ef21fa42e57e8b38f1e2693de913e235655",
+      "bytes": 4,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/connack_refused_bad_protocol.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "683914de4c707d217d22e1fda1593473b74f71e71c4c2c67bf0dfdbfe0cb4fd3",
+      "bytes": 2,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/pingresp.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "a10b11ffbdf88f4952f5b732bb453d614479c9505ea7891ce85c7cfcc0b6a8b6",
+      "bytes": 4,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/connack_session_present.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "a1f34be22230606750895c6c7f6184a218b399f318409898a16956371ff23d48",
+      "bytes": 11,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/publish_qos1.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "a2c466e4add72f0c08d1b46aa8c3a0d2dda47ed271df35d4698266d70f64b968",
+      "bytes": 7,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/publish_qos0_empty_payload.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "b3e0adaf40f19d19ae5846a499ef09653350f3f359d52424cec547a12789b1fe",
+      "bytes": 4,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/connack_accepted.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "cecb9e45d0eb6ba3ca7613b4c74a0d7303bd8308a8b9ff50097d178974515880",
+      "bytes": 4,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/unsuback.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "d0e9333fd3e4e464bdb9d71a75c91dad9c2c80e4a35fd8beb237f80e68dae52c",
+      "bytes": 11,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/publish_qos2_dup_retain.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "d2231837b7e9f789dd77eae7365c909201cefb6ebce35ee1f9a0838f784e71a5",
+      "bytes": 5,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/suback.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "dec2ee680bd023f400d446ceffa8b0d4bdd5afa72a0c2107ad5ecc5e06260988",
+      "bytes": 7,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/publish_topic_length_overruns.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "ee2ece0a1e3d507c1e010862cef68430c8643df68daf92ff93320c8d93b5c535",
+      "bytes": 11,
+      "entries": [
+        "MQTTDeserialize_connack",
+        "MQTTDeserialize_publish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/paho/hand-made/publish_qos3_invalid.hex"
+      },
+      "proposed": true
+    }
+  ],
+  "skipped": {
+    "duplicate": 0,
+    "too_large": 0,
+    "over_cap": 0,
+    "unsupported": 0
+  }
+}

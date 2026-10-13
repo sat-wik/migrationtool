@@ -1,0 +1,1786 @@
+{
+  "schema_version": 1,
+  "target": "zcbor",
+  "commit": "9164bd18dcd88ff9d9ef98279501fc1093571017",
+  "licence": {
+    "spdx": "Apache-2.0",
+    "elected": "Apache-2.0",
+    "file": "LICENSE"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 255
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "033dcd7644624cbeba6881ef47761c3d1729f8aab8aa997a59f97836d00a7d23",
+      "bytes": 2,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 670
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "03d791304a14b01185585cd6adf8a51bbfcb8f50842f60f4c655f226d7a88372",
+      "bytes": 251,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 207
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "043a718774c572bd8a25adbeb1bfcd5c0256ae11cecf9f9c3f925d0e52beaf89",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test3_corner_cases/src/main.c",
+        "line": 1637
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "045d216639d5d7f33dfc9e0877a62fb54d9aa8e790644aa4a53ebd7528578842",
+      "bytes": 32,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test9_manifest14/src/main.c",
+        "line": 22
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "057e60ea85dcadd4c522b87da2469892396adfa27b68039bcb540bd9688a62eb",
+      "bytes": 33,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 138
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "084fed08b978af4d7d196a7446a86b58009e636b611db16211b65a9aadff29c5",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 1129
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0b9a470aa09c7d89dd9bc5f383c30215c3b454084b480f26ba8d762c6c0cd33e",
+      "bytes": 67,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 159
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0ce3940bebf2b22a5d2108ecf0c368a0541c7e3c45703f8540921b4eafc82947",
+      "bytes": 2,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 671
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "10f1f661252509f566f7641581ea0a3450af77671399552c71c327260529d955",
+      "bytes": 335,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test1_suit/src/main.c",
+        "line": 160
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "119a9fbce7d0f4665203877e688cd139fc646c944c5a903648ee4a3416452fbe",
+      "bytes": 196,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 512
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "13acbb07f81d5ae2888e0fc6646bf2deb06ac98db9c2867df385d7dc1bfa4247",
+      "bytes": 301,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test7_suit9_simple/src/main.c",
+        "line": 13
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "15d606ba2eb180d6490c2b0ad15ab66cf773d173d744e856c8e8ba0247345114",
+      "bytes": 27,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 152
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "162b2a6df3598349fdfeabb6019bf48019f424fa377ce2668466b2fe6a992b07",
+      "bytes": 193,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 446
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "16c2a330f8d0c00263e39cfd6ee62990ca1b6d1908bf397de5f83418d7e34e86",
+      "bytes": 10,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test3_corner_cases/src/main.c",
+        "line": 1310
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "17c54286274e0471039d9ef440e0b78ae2ea624c67fb1c230c669f5a641291fc",
+      "bytes": 193,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 558
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "189f6ea22b1dbb7013b3b2d183e43407f796687c479b44b4fb88ecb6883ee4f0",
+      "bytes": 4,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 1314
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "18f16e6d6fefbd2941b90da1eaadff5f98c55ab943ea51f60b4bff95549c8868",
+      "bytes": 4,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 679
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1adb2c41d73f57ced4f02f41efb6b3c15f84ff7438f4f11346d60f4430707472",
+      "bytes": 368,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 703
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1c38e1a1ee159cb9cf6be315b1891597df6476a9f1979a5ad606f76c5c1a8470",
+      "bytes": 11,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 671
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1cb5519126e536b9913164bc48399765b02b1bd761c90991b2d701375ebbdfd4",
+      "bytes": 10,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 1033
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "206f36010d087a8d12964f4d847a85ae6d9737f8db4852abafed88500d567fc3",
+      "bytes": 428,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 12
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "25d679a353524815960a0ec5c052e7192dae3a5534f6304c7cc3d9d76664465b",
+      "bytes": 2,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 1348
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "26afe821e60ffa1a23771bc03ea2d3db05f60038e3208d7901381e903116b8d4",
+      "bytes": 281,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 674
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "27218c1b875b4686552fd2de0753ed833cf2b9d36d47bb990caf8226cd5bbc8f",
+      "bytes": 382,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest20_example5.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "29f825cb63beb2ad574b2801af019945b7b377e5ec9becddc956e30d99cc3e7e",
+      "bytes": 115,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test1_suit_old_formats/src/main.c",
+        "line": 80
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2b4c342f5433ebe591a1da77e013d1b72475562d48578dca8b84bac6651c3cb9",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 251
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2d339e08fb6a5941f5081939f44ea5c57e184e24664f2085154e9c88ca4d0a60",
+      "bytes": 8,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 1350
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3083eeab1ed09a19d765afff2aa27e2589f7afd399ea6ed2b1be7de5b3fa83d6",
+      "bytes": 288,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 646
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "31f22fab5d0edb06f6e181b36a12da722cd18f6c2f288275153aaaee78c45556",
+      "bytes": 4,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 244
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "37c3ab3243f2704a66274049591d6d6ca07bbe92242e1e3579fb990471b5eda4",
+      "bytes": 2,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 1285
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "37eb302cc7b36d1baecc6a93138ad001768947c8890a840fe51e7bc395bf4e84",
+      "bytes": 10,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 1349
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3a3084010f7186cd9007e7478e973e2563e78b03913d2dea29332465516dc7db",
+      "bytes": 32,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 145
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3c213998cb56b97b31168d9dce02d084fb5f5103caef41fb6dc375f593749a7d",
+      "bytes": 3,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test3_float16/src/main.c",
+        "line": 45
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3e120fea195d6651532f9493beafee2cb708d11aaa70f95640dd8d6a524ac562",
+      "bytes": 124,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 192
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "414c200fafaa9968edd2fc82bd2898d5f3ced5cc3b38100530d39fcdb3a343cd",
+      "bytes": 267,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 345
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "43f4866d6798e34682e5d86867dec2b1df267442e97b1aa05ecf667c3a3a1136",
+      "bytes": 486,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 467
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "44e826d1ce95d606857e1c834859b6e4982fa45ebee4f293c5a58a2ff9d4267c",
+      "bytes": 3,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 1347
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "452ba1ddef80246c48be7690193c76c1d61185906be9401014fe14f1be64b74f",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 927
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "486ea46224d1bb4fb680f34f7c9ad96a8f24ec88be73ea8e5a6c65260e9cb8a7",
+      "bytes": 5,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 191
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 271
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4e11ad75124004e3520722f0a521593f250a8e8f1a1e2fe9bd3c6cea08cee44b",
+      "bytes": 112,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test1_suit/src/main.c",
+        "line": 37
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4e43000498eaefa6c7a0bb8edc37388178abfb5955d82e78b9d06e30c839d52a",
+      "bytes": 380,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest12_example5.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4e48be54aaa1534ef4e0cf7d826327c3a21efbef36698516d0e96063f421702e",
+      "bytes": 193,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 425
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4e50ea29e522b2bbba7e5adbe86a3406a90c66175cabfa647d0dfc7abddfa7cf",
+      "bytes": 174,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 288
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4ee761ab4bcf1cfc0eb5d77d4110bb74cbcd68d2724a983b82e3b239ec42659c",
+      "bytes": 396,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest20_example3.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "525c49c4716d2b6d1c1872ca0fb92e6ac5a4705fdc2169d7cc8fc1cfc18103e2",
+      "bytes": 10,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 1026
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "52c89fbec480ed1abbe4cad3fa3fbc3801a4cbc870d725d1c182c52f1f81f8f7",
+      "bytes": 5,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test3_corner_cases/src/main.c",
+        "line": 195
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "557932e000a336c4df392db7f5ee0a0435dab45098c8362294c6544868d508a0",
+      "bytes": 286,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 618
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "55fa2a1579f351c6b2be9da03ab2ecd7f25d2e024a047d7e6ecc07c2fcdc6a3b",
+      "bytes": 1195,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 78
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "569cb42ee377740c501baf9d3597b55c645946095aed6f87bf77d32db0f79f86",
+      "bytes": 142,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test1_suit/src/main.c",
+        "line": 55
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "57b27dbac7b15172012ab5715d05ac95372dc06b03cfdb2c0fd5da6f59c424a3",
+      "bytes": 20,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test2_cpp/src/main.cpp",
+        "line": 110
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "57fddc15bc6b310be78d92e0b5ee93681fa9f2b1851a353b2cd724cfa6da0b21",
+      "bytes": 240,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 303
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5871d29cbb1596f5cfb33487093ddcb6558b80128ddd04e5080a24ad04a9d1ef",
+      "bytes": 263,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test1_suit/src/main.c",
+        "line": 77
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "588e67ba744126c8a1871b2a74b318de5918a67db5975f8ad140284bff8d3401",
+      "bytes": 520,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test1_suit_old_formats/src/main.c",
+        "line": 23
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5986f3a1e078fca0010ed15810476e6ceaa6f1385d3b42bc679b46e60adacc03",
+      "bytes": 219,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 327
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5bbe433e0c3ffb777e38af277612d4e23867e53b9a2dd88511fb0b8cfd429ebe",
+      "bytes": 333,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test1_suit/src/main.c",
+        "line": 114
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5cb7b7944b062aecbd3765026d18fde93825bff2f044615e1a07aa6bb26fcf99",
+      "bytes": 12,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 675
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5d08975ac85e587f941172e2b4a821b83f6f602ec0cddc31ac39b6b35c8f0238",
+      "bytes": 237,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest20_example0.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "609f7e16303d4fbfce7c47a617d41b8b35b7ad9955d0d91d6cddfa3c193e57dc",
+      "bytes": 42,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 1367
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "63d9363285b1f7a685b2a2f51cbcf9bc0625811817ae8aa174a706b81d90d395",
+      "bytes": 240,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 258
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "664af5b7617ea6ee726bd980673d57fda5d3228934a6edaa23a792c875f7e061",
+      "bytes": 4,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 1316
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "66840dda154e8a113c31dd0ad32f7f3a366a80e8136979d8f5a101d3d29d6f72",
+      "bytes": 8,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test2_simple/src/main.c",
+        "line": 26
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "67586e98fad27da0b9968bc039a1ef34c939b9b8e523a8bef89d478608c5ecf6",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 248
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "67ebbd370daa02ba9aadd05d8e091e862d0d8bcadafdf2a22360240a42fe922e",
+      "bytes": 2,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test3_corner_cases/src/main.c",
+        "line": 852
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6990e447c3368ce602a322c7243ca82ecc24484d89fe860e1832b08633e03fc5",
+      "bytes": 172,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test2_suit/src/main.c",
+        "line": 13
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6b48da336a470bac1ae471e416d6ff95ea53e560bebd26dfda11514315aabf93",
+      "bytes": 3,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 680
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test3_corner_cases/src/main.c",
+        "line": 33
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7096dbd106d13c78e3577b90c85091bb8150f76135bdcb6a439b15f3d602714a",
+      "bytes": 382,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest14_example5.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "70bf3dc7a5c395af7e55178677af713b076d9dd22cc03a0ee4837d7528606362",
+      "bytes": 235,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest12_example0.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7192385c3c0605de55bb9476ce1d90748190ecb32a8eed7f5207b30cf6a1fe89",
+      "bytes": 6,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test3_corner_cases/src/main.c",
+        "line": 1347
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "71980120f4bf7bc50834ce00a2ff5695f20e4dea15fa21d8bb1dd6735ca7e90a",
+      "bytes": 255,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 52
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "74fe8a7ccd8a9c3f69fe6f4c56f4eff77eff9a46406723dd8b67e53f80ee3cd9",
+      "bytes": 4,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 681
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7a81f413f6b8b777055d9fa4cf34f27b7d38eb905a9e0393b849a268bf7711a5",
+      "bytes": 125,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 603
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "80753c240bbc1d2a19c3df400d70ae1744c1048d72375d543d830c4f4ee3a6d0",
+      "bytes": 14,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 682
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8176e0572f262217aab7181c2a0ea931f8dc3bdcd137f44ed8f3c5207d888d24",
+      "bytes": 238,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 206
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "861e146a57a4cc51d5440f5678bc9a38e76e889c087278c58c5444c6d4a6c99d",
+      "bytes": 301,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 396
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8927fb456108450628980c5b25c874ab1830428757bfd872b0dcc154d87c4374",
+      "bytes": 27,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 169
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8c8aae8431418f90ada3065d302834e6e8c5da069ac0e668d519cbc044305f72",
+      "bytes": 3,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test2_suit/src/main.c",
+        "line": 45
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8cbfb4629957a72949479b9b48ea1750f587a98eaac29ac0356ab14e0a6b5f9a",
+      "bytes": 27,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 176
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8f11b05da785e43e713d03774c6bd3405d99cd3024af334ffd68db663aa37034",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 925
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "900e177f8fbfd5d0e40ff18fb83fd225c3ad8235f50c025b70951c0fc1adba00",
+      "bytes": 363,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 11
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "92d1dd69921f3fc10941032bd79e8ff1c9be72574a59bc42232fecffbd3b0d30",
+      "bytes": 6,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 1283
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9354a45715d39771d92b16c427f03ed316decbe82fc04bc2a6a29f8787d6348d",
+      "bytes": 196,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 230
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9603a94c58e72cbd81d486f0fddd1ab05ea5e10eee5c44914646f160a89dbef8",
+      "bytes": 2,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 1284
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "961925bb22eb79760d2f0bc45328dd043667d7f4d51337eca7069dffe98b9545",
+      "bytes": 3,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test3_corner_cases/src/main.c",
+        "line": 209
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "98218061e6ec844d95b2867c09063d5a891f2cec1dc124b4dc01db571b8150bf",
+      "bytes": 300,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test3_corner_cases/src/main.c",
+        "line": 333
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "98a8319718f29fc316000bb024d01f92ae32920c07b3447ac49628822bd98a80",
+      "bytes": 32,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test1_suit_old_formats/src/main.c",
+        "line": 105
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "98c5b3842a626544d86d9b45a51d9a754a615f167505464bb6c15550851224b1",
+      "bytes": 8,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 672
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9b8bed6c13de205681b17dcde1080f07cb18f703a44cc5abdcd9813ce5cb21bd",
+      "bytes": 406,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest12_example3.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9bb0e8a074a154af5df7dadf9a54409051e5e2003f6c9793076493d5c25e4519",
+      "bytes": 408,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest14_example3.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a2313e835aaef488f0a662815def186f2292e447955215d80ed8a6fb48214ba8",
+      "bytes": 403,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest20_example4.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a32a5e2467eaea161ee093b45a0e6d968a2007abc210caffed4c63a638ddf38c",
+      "bytes": 272,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 398
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a3f97491fcc1e814695bd2c63a507d53d192e636f2bffc4d0261dae8ea7482a8",
+      "bytes": 5,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 522
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a41edf896f9758d6f9e750e2795ded0c9b3123d63d9b283cbfaf2b5804e2b988",
+      "bytes": 270,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest12_example1.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a7ecb0351b6df8a7809b0803ecf3fc3c65b24ccd2c8611ae4e50a05108fdff85",
+      "bytes": 50,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 183
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a8100ae6aa1940d0b663bb31cd466142ebbdbd5187131b92d93818987832eb89",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 929
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ae883314172835eb352f24c2a0d198f6b6afa8264d104688a41ed01ede7e7dea",
+      "bytes": 213,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 374
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "afed1ab4c621e791378bb35586c3ab71123972fcbc7a2fa181807ca28efc7922",
+      "bytes": 413,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test7_suit9_simple/src/main.c",
+        "line": 47
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b0305095ce86299baefe963073ce707b18448743666b7dd8db9af084bf6e942f",
+      "bytes": 272,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest20_example1.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b0b2988b6bbe724bacda5e9e524736de0bc7dae41c46b4213c50e1d35d4e5f13",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 2267
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b11322f6a936419319d4fbc8abe81a4bbbd29920f63f3d0b76544677dbe8deb6",
+      "bytes": 242,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 533
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b55acc217ffea46cdf54c6c118e9b27d446fe532bb0c6345c82afec6d4245841",
+      "bytes": 894,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest20_example2.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b6169ff681a622559e3da4df2d5737b4c0ba2c5a6c89b0f7dd59444d3bf9d19d",
+      "bytes": 5,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 1583
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b9c15f918d7fa2d88058acab8f57fb44505a83b71a27d3768954d2199726fb49",
+      "bytes": 4,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test3_float16/src/main.c",
+        "line": 137
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b9e9fa19116d9ffc2eab5811257843e89af259f9d7c64039eeb3ea687f5111cf",
+      "bytes": 399,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 307
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bcbd69d5afb15e7908889e32fd2a206b7de2f921fe728b4de00769161d4d31d0",
+      "bytes": 255,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 372
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "beead77994cf573341ec17b58bbf7eb34d2711c993c1d976b128b3188dc1829a",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 250
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c3de909e9b1183a12e4eab13886dc3c4f0cf1dc02c77530cc9295835bca06cbf",
+      "bytes": 27,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 131
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c57c2b2f66e74348c4566c90d4285db6c3c6fe08753c18cc4ba699e68f3c3277",
+      "bytes": 892,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest12_example2.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c846f87c9d6bdfaa33038ac78269cfd5a08aa89a0918e99c4c4ae2e804a4f9a3",
+      "bytes": 2,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 669
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ca358758f6d27e6cf45272937977a748fd88391db679ceda7dc7bf1f005ee879",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 249
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cc1d3754ac550c08ac016758322a2aeee1d29e19063801373b364694d0aa7972",
+      "bytes": 368,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest14_example4.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ce285d77e1813a2232a3718c9ca12c83ad213a5ed59bba37f65ce31423e16b78",
+      "bytes": 272,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest14_example1.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cf675b09709179d8643d37eaecd3339a9f68797e5a9e251b0867a85f1ff7be77",
+      "bytes": 64,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test1_suit_old_formats/src/main.c",
+        "line": 12
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d3337fcbac5d4aa549cb7366c661c4adcf6705a98ce098c5f265e0943d0e3aed",
+      "bytes": 64,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test9_manifest14/src/main.c",
+        "line": 28
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d78da3dac06a514535d9f6543edd11e055faf40d4aeaeab2e22a389fb61580a0",
+      "bytes": 16,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test9_manifest14/src/main.c",
+        "line": 88
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d7f77dc1a1416b031850ed52adecda5413d51067c92fa5b143781900c9f6ca8e",
+      "bytes": 393,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 251
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test3_corner_cases/src/main.c",
+        "line": 1640
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dc5f924827e7a3831402bd342bd3d8beabe914ea1c588f35ec71d86b8714a06c",
+      "bytes": 240,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 350
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "de141ec14dafc4478462570eccb65ca03f7f4aa0837c54c2690e9411011ab296",
+      "bytes": 366,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest12_example4.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "de9a4052016c146b0c8f96fca8a3a6608376861a850710883ff04265ecf80f48",
+      "bytes": 4,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 242
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dfd853e1e2ea84f0ff0df8cbbd7c8d6148ddd98768823f5ed75fe9dccd87735e",
+      "bytes": 258,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 232
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e52d9c508c502347344d8c07ad91cbd6068afc75ff6292f062a09ca381c89e71",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 1130
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e687939475122552b13d2cd64317cab5cf892a9be998d4765f90c1a9e5ca700b",
+      "bytes": 16,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test9_manifest14/src/main.c",
+        "line": 84
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e77b9a9ae9e30b0dbdb6f510a264ef9de781501d7b6b92ae89eb059c5ab743db",
+      "bytes": 1,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/unit/test1_unit_tests/src/main.c",
+        "line": 247
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e857752b871cc808e24a44e69b5c99bf3f71e5e4d777d6d8e5372ac0f6ca5b26",
+      "bytes": 237,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest14_example0.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ee225a4cd76dfaa0d4a5973becf0b48916ab0ece5761d239208d8f9877552a8f",
+      "bytes": 27,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 124
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f010cc80f4e87a4ec6cb190083469e91dc94175f292752024d5fc038192de888",
+      "bytes": 235,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 579
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f3577cb543db90ce388e8461dd0e5f65b7d5b2f9ae4c4e497b104f4dc72539dd",
+      "bytes": 5,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test2_suit/src/main.c",
+        "line": 44
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f69f8475231b6b3944403d4080c5f6a9290b172142ac05969e3d3a373d6a69bd",
+      "bytes": 4,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test5_corner_cases/src/main.c",
+        "line": 243
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f77ba25519d69e65bf24ceb8cb57e6ccf55bee4a879f9d8cef8d68ae6d3fdaf1",
+      "bytes": 239,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test8_suit12/src/main.c",
+        "line": 182
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f99be352211bf6ae7af7c38fa9e6d6cd6d83bd1f620c59030155beb891d0095d",
+      "bytes": 894,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "hex_text",
+      "source": {
+        "path": "tests/cases/manifest14_example2.cborhex"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f9a455dfefc96003f395cb8d8ff94eec8a709e7cecf0fb31e1c2f98ae89650f7",
+      "bytes": 196,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 282
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fb70e3c1efc02ac6d3df4b9e539f4208dd5549ba1e98eb11dfa5de8b01f3df29",
+      "bytes": 363,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test3_simple/src/main.c",
+        "line": 65
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fc79b81d65f524a7799f74211cd2e006282d192ed9bb8385e4beb8fe4410e654",
+      "bytes": 17,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/encode/test3_corner_cases/src/main.c",
+        "line": 1348
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fee4349a190ef12863fc999eeb82d4eb21e3d19109d10fb2e574af61362a1c7f",
+      "bytes": 32,
+      "entries": [
+        "zcbor_new_decode_state"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "tests/decode/test9_manifest14/src/main.c",
+        "line": 92
+      },
+      "proposed": false
+    }
+  ],
+  "skipped": {
+    "duplicate": 80,
+    "too_large": 0,
+    "over_cap": 0,
+    "unsupported": 354
+  }
+}

@@ -1,0 +1,4 @@
+# RFC 1950 (zlib format) and RFC 1951 (deflate), RFC 1951 section 3.2.3 (BTYPE 11 is reserved)
+# case: a final block with BTYPE 11
+# generated once by: python3 -I research/testbed-seeds/zlib.py reserved_block_type
+78 01 07 00 00 00 01

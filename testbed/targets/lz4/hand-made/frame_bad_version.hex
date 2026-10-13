@@ -1,0 +1,4 @@
+# LZ4 Frame Format specification (lz4_Frame_format.md), FLG version bits
+# case: FLG 0xa0: version bits 10
+# generated once by: python3 -I research/testbed-seeds/lz4.py frame_bad_version
+04 22 4d 18 a0 40 0f

@@ -1,0 +1,215 @@
+{
+  "schema_version": 1,
+  "target": "libfdt",
+  "commit": "8f48565e5cfedc74d3f7512f1e0188e9d85dc1de",
+  "licence": {
+    "spdx": "GPL-2.0-or-later OR BSD-2-Clause",
+    "elected": "BSD-2-Clause",
+    "file": "BSD-2-Clause"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "0bb67c272ef98154e54bbd8e8be8e5c70e1447bf744594a32da25d6fd01f87f1",
+      "bytes": 109,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/totalsize_beyond_buffer.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "0c12eb061087a9553b248f30875972e273a7c249f186d6878759ab697f707f2d",
+      "bytes": 109,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/version_too_old.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "1cbcfa05576fcc8430ff8e2cb0915c9317033a40f52adea2d05fdcf30882cbde",
+      "bytes": 109,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/structure_offset_unaligned.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "2d7453926970c60efb5d2982f64720d040f19f7604800630feaae1c77758301f",
+      "bytes": 109,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/structure_offset_out_of_range.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "3da9dbe5f7dd6fed8b945987e29c983fa62f43ea7aa2df5d6f35a01ffdfca580",
+      "bytes": 109,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/version_too_new.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "3e704e7f2b2b6097bc38ceae74b7a0572253ce8dd13ea70542e679a77b787352",
+      "bytes": 89,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/missing_fdt_end.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "62df4830903947f5bd55730a004d8cbe08e6759bc0a78cd951cc8dcb9e0510b4",
+      "bytes": 40,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/header_only_truncated.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "6565d0e5362108bf1b293bfb8e6640eaa508a405043774c03aac19446428e035",
+      "bytes": 109,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/property_name_offset_out_of_range.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "6c44d645683fcecf6454974850bbf307bbc80bcbba744b0011e84c5b97d21528",
+      "bytes": 97,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/unbalanced_end_node.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "6d262990b53e9dcbc64ce3de210ddf626f446cf6ec66d2a5bdf6f645bdb8b464",
+      "bytes": 169,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/nested_nodes_valid.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "9750126710b0970376e5eeb55926e2788dd1b7e3514b36076ae562885227bee4",
+      "bytes": 105,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/property_length_beyond_structure.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "aae8446fdaa306667fcb77a729375701b1bd7d74d20a02ffb04fbcc17bc65c91",
+      "bytes": 121,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/nop_tokens_valid.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "ae91c34ec1c6e060ba0295ca0b7715d9333f167c5ca2c6f9402026cf4735f651",
+      "bytes": 72,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/truncated_mid_structure.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "b808fee957800fdf66a60bc5e15dc25c64ac3569ee0bdc223d173a27879e6919",
+      "bytes": 109,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/bad_magic.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "bf0f17a40c80135cd6678a367ebe343d03257023253630283ddb3dd4a731e63e",
+      "bytes": 125,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/memory_reservation_valid.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "e88054831e78d07cc3403a0438b99beb5bb735a53dd4dd1aff86dd362b80e21d",
+      "bytes": 109,
+      "entries": [
+        "fdt_check_full"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/libfdt/hand-made/minimal_valid.hex"
+      },
+      "proposed": true
+    }
+  ],
+  "skipped": {
+    "duplicate": 0,
+    "too_large": 0,
+    "over_cap": 0,
+    "unsupported": 0
+  }
+}

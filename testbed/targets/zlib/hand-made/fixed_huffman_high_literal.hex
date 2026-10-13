@@ -1,0 +1,4 @@
+# RFC 1950 (zlib format) and RFC 1951 (deflate), RFC 1951 section 3.2.6 (literals 144..255 use 9-bit codes)
+# case: the literal 0xe9
+# generated once by: python3 -I research/testbed-seeds/zlib.py fixed_huffman_high_literal
+78 01 7b 09 00 00 ea 00 ea
