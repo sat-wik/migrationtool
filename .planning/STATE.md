@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 02
 current_phase_name: Test Bed and Build Capture
 status: executing
-stopped_at: Completed 02-06-PLAN.md
-last_updated: "2026-10-13T10:05:41.281Z"
+stopped_at: Completed 02-08-PLAN.md
+last_updated: "2026-10-13T10:33:22.611Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 02 execution started
-state_head: 749e9a25b6331ecd13972beb19ec2744d84ebe19
+state_head: 82a9266a5df174c8a5379da23aacee1b90f80224
 progress:
   total_phases: 12
   completed_phases: 1
   total_plans: 19
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 02 (Test Bed and Build Capture) — EXECUTING
-Plan: 8 of 10
+Plan: 9 of 10
 Status: Ready to execute
 Last activity: 2026-10-13 — Phase 02 execution started
 
@@ -64,6 +64,7 @@ Progress: [█░░░░░░░░░] 8%
 | Phase 02 P01 | 34 min | 3 tasks | 12 files |
 | Phase 02 P02 | 10min | 3 tasks | 1 files |
 | Phase 02 P06 | 25min | 2 tasks | 15 files |
+| Phase 02 P08 | 26 min | 3 tasks | 1759 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,9 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 02]: 02-02: Current image is sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9, published by container run 38342425433 (push to main, merge commit 69b5b7f4, PR #4); previous sha256:42c7fb0e... superseded
 - [Phase 02]: 02-06: the testbed determinism comparison excludes only the stdout digest and byte counts of the steps 'cmake configure' and 'clang ast <fn>' (CMake prints its elapsed time; clang's JSON AST holds node addresses); every other report field and every compile_commands file is compared byte for byte — Both fields change between identical runs and the runner records only digests; the entry results derived from the dump stay compared. Stated in the workflow and every testbed-determinism notice. Tracer green: run 38380382970, head 4195a6d, 4 pairs identical in the pinned image
 - [Phase 02]: 02-06: CMake's compiler-ABI probe output (CMakeFiles/<ver>/CMakeDetermineCompilerABI_*.bin) is not a configure-time input and is excluded from configure_files; notices longer than 9 annotation parts are published by several steps (GitHub keeps 10 annotations per level per step) — Found by the determinism step (Task 2 RT1) and the annotation listing (RT2); both fixed within the 3-round-trip cap
+- [Phase 02]: 02-08: zlib has no extracted seeds; test/example.c and test/infcover.c yield message text and hex text inside C strings, not zlib streams, so its 18 seeds are hand-made — A string extraction there would commit misleading seeds
+- [Phase 02]: 02-08: a zip archive above 2 MiB is not opened and a source file above 8 MiB is not read; seed_source paths may not be . or .git — The member count of an archive is unbounded; the archive size bounds the memory
+- [Phase 02]: 02-08: the mt testbed work directory is made absolute in mt-cli — git runs with the cache directory as cwd, so the relative default .mt-work broke verification of reused git sources
 
 ### Pending Todos
 
@@ -127,6 +131,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-13T10:05:31.560Z
-Stopped at: Completed 02-06-PLAN.md
+Last session: 2026-10-13T10:33:22.524Z
+Stopped at: Completed 02-08-PLAN.md
 Resume file: None
