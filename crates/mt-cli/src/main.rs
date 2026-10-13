@@ -311,10 +311,15 @@ fn build_args_command(pins_path: &Path, scope: Scope) -> anyhow::Result<()> {
 /// The options of a testbed step: the work directory is `--work-dir`, else
 /// `$MT_WORK_DIR`, else `.mt-work`.
 fn testbed_options(args: TestbedArgs, image: Option<String>) -> TestbedOptions {
-    let work_dir = args
+    let chosen = args
         .work_dir
         .or_else(|| std::env::var_os("MT_WORK_DIR").map(PathBuf::from))
         .unwrap_or_else(|| PathBuf::from(".mt-work"));
+    // Tools run with the cache directory as their working directory, so a
+    // relative path would be read from the wrong place. Keep a relative one
+    // as given only if the current directory cannot be read (the step then
+    // fails with a clear path in its message).
+    let work_dir = std::path::absolute(&chosen).unwrap_or(chosen);
     let testbed_dir = match args.manifest.parent() {
         Some(parent) if !parent.as_os_str().is_empty() => parent.to_path_buf(),
         _ => PathBuf::from("."),

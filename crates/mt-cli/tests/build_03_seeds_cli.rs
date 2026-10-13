@@ -193,3 +193,149 @@ fn build_03_seeds_cli_rejects_an_unknown_target_with_exit_two() {
         outcome.stderr
     );
 }
+
+/// Run one tool through the runner and require exit 0.
+fn tool(argv: &[&str], cwd: &Path, home: &Path) {
+    let cfg = RunnerConfig::new("/usr/bin:/bin", "1791158400");
+    let env: BTreeMap<String, String> = [
+        ("HOME", home.to_str().unwrap()),
+        ("GIT_CONFIG_GLOBAL", "/dev/null"),
+        ("GIT_CONFIG_NOSYSTEM", "1"),
+        ("GIT_AUTHOR_NAME", "Fixture"),
+        ("GIT_AUTHOR_EMAIL", "fixture@example.invalid"),
+        ("GIT_COMMITTER_NAME", "Fixture"),
+        ("GIT_COMMITTER_EMAIL", "fixture@example.invalid"),
+        ("GIT_AUTHOR_DATE", "2026-01-01T00:00:00Z"),
+        ("GIT_COMMITTER_DATE", "2026-01-01T00:00:00Z"),
+    ]
+    .iter()
+    .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+    .collect();
+    let request = RunRequest {
+        tool_name: "git".to_owned(),
+        argv: argv.iter().map(OsString::from).collect(),
+        cwd: cwd.to_path_buf(),
+        extra_env: env,
+        tool_version: None,
+    };
+    let output = runner::run(&cfg, &request).unwrap();
+    assert_eq!(
+        output.record.exit.code,
+        Some(0),
+        "{argv:?}: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn build_03_seeds_cli_accepts_a_relative_work_dir_for_a_git_source() {
+    const GIT: &str = "/usr/bin/git";
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tmp.path().join("home");
+    fs::create_dir_all(&home).unwrap();
+    let staging = tmp.path().join("staging");
+    write(&staging.join("tests/a.bin"), &[1, 2, 3]);
+    let staging_text = staging.to_str().unwrap();
+    tool(&[GIT, "init", "--quiet", staging_text], tmp.path(), &home);
+    tool(&[GIT, "-C", staging_text, "add", "-A"], tmp.path(), &home);
+    tool(
+        &[
+            GIT,
+            "-C",
+            staging_text,
+            "commit",
+            "--quiet",
+            "-m",
+            "fixture",
+        ],
+        tmp.path(),
+        &home,
+    );
+    let head = {
+        let cfg = RunnerConfig::new("/usr/bin:/bin", "1791158400");
+        let request = RunRequest {
+            tool_name: "git".to_owned(),
+            argv: [GIT, "-C", staging_text, "rev-parse", "HEAD"]
+                .iter()
+                .map(OsString::from)
+                .collect(),
+            cwd: tmp.path().to_path_buf(),
+            extra_env: BTreeMap::new(),
+            tool_version: None,
+        };
+        let output = runner::run(&cfg, &request).unwrap();
+        String::from_utf8(output.stdout).unwrap().trim().to_owned()
+    };
+    // The cache is relative to the working directory of the command.
+    let cache = tmp.path().join("work/cache/demo").join(&head);
+    fs::create_dir_all(&cache).unwrap();
+    fs::rename(&staging, cache.join("tree")).unwrap();
+    let tree_hash = tree_sha256(&cache.join("tree")).unwrap();
+    let manifest = format!(
+        "schema_version = 1\n\
+         [decisions]\n\
+         first_rtos = \"deferred\"\n\
+         first_rtos_reason = \"fixture\"\n\
+         first_rtos_candidates = [\"freertos\"]\n\
+         project_decision = \"D-18\"\n\
+         [image]\n\
+         digest = \"sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9\"\n\
+         [baseline]\n\
+         cflags = [\"-mcpu=cortex-m4\", \"-mthumb\", \"-mfloat-abi=hard\", \"-mfpu=fpv4-sp-d16\", \"-Os\"]\n\
+         [seed_caps]\n\
+         max_seeds = 10\n\
+         max_total_bytes = 1000\n\
+         max_seed_bytes = 100\n\
+         [target.demo]\n\
+         category = [\"tlv\"]\n\
+         build = \"make\"\n\
+         [target.demo.source]\n\
+         kind = \"git\"\n\
+         url = \"https://example.com/demo.git\"\n\
+         ref = \"v1\"\n\
+         commit = \"{head}\"\n\
+         tree_sha256 = \"{tree_hash}\"\n\
+         [target.demo.licence]\n\
+         spdx = \"MIT\"\n\
+         elected = \"MIT\"\n\
+         file = \"LICENSE\"\n\
+         [[target.demo.entry]]\n\
+         name = \"demo_parse\"\n\
+         header = \"demo.h\"\n\
+         source = \"demo.c\"\n\
+         form = \"direct\"\n\
+         signature = \"int (const unsigned char *, unsigned long)\"\n\
+         [[target.demo.config]]\n\
+         name = \"default\"\n\
+         [[target.demo.seed_source]]\n\
+         path = \"tests\"\n\
+         methods = [\"file_copy\"]\n",
+    );
+    write(
+        &tmp.path().join("testbed/manifest.toml"),
+        manifest.as_bytes(),
+    );
+    // Every path is relative to the command's working directory.
+    let args = [
+        os("testbed"),
+        os("seeds"),
+        os("--manifest"),
+        os("testbed/manifest.toml"),
+        os("--pins"),
+        repo_root().join("container/pins.toml").into_os_string(),
+        os("--work-dir"),
+        os("work"),
+        os("--out"),
+        os("out"),
+        os("--all"),
+    ];
+    let outcome = run_mt(tmp.path(), &args);
+    assert_eq!(
+        outcome.code,
+        Some(0),
+        "stdout: {} stderr: {}",
+        outcome.stdout,
+        outcome.stderr
+    );
+    assert!(outcome.stdout.contains("seeds 1"), "{}", outcome.stdout);
+}
