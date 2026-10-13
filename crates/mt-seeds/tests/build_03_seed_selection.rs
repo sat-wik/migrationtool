@@ -334,7 +334,8 @@ fn build_03_empty_input_is_one_seed() {
         cand(b"", Method::CString, "b.c", 2),
         cand(b"x", Method::CString, "a.c", 3),
     ];
-    // Zero bytes fit even when the total cap is already full.
+    // The empty seed costs no bytes and appears once; the 1-byte total cap
+    // still has room for the one-byte seed after it.
     let selection = select(candidates, &caps(10, 1, 10), 0);
     assert_eq!(selection.seeds.len(), 2);
     assert_eq!(selection.skipped.duplicate, 1);
@@ -404,15 +405,20 @@ fn build_03_zip_members_are_read_without_touching_disk() {
     assert_eq!(result.unsupported, 1, "../evil is not an enclosed name");
     assert_eq!(result.too_large, 2, "big and the compressed bomb");
 
-    // An absolute name is not enclosed either, and nothing appears on disk.
+    // An absolute name, and a name the zip crate would silently fold
+    // (`x/../y` becomes `y`), are unsupported; nothing appears on disk.
     let archive = zip_with(
-        &[(absolute.as_str(), b"P", false), ("ok", b"K", false)],
+        &[
+            (absolute.as_str(), b"P", false),
+            ("x/../y", b"F", false),
+            ("ok", b"K", false),
+        ],
         &[],
     );
     let result = zip_members(&archive, 100).unwrap();
     assert_eq!(result.members.len(), 1);
     assert_eq!(result.members[0].name, "ok");
-    assert_eq!(result.unsupported, 1);
+    assert_eq!(result.unsupported, 2);
     assert!(!Path::new(&absolute).exists());
     assert!(
         list_dir(tmp.path()).is_empty(),
