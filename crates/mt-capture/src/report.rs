@@ -107,6 +107,46 @@ pub struct ReplayReport {
     pub detail: Option<String>,
 }
 
+/// The report of one fetch (CONTEXT D-17, D-22).
+///
+/// It names what was pinned and what was found, and carries the full run record
+/// of every git, curl, tar and verification step. `reused` is the one field that
+/// differs between a first fetch and a later one; everything else is a function
+/// of the pin and the run records.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FetchReport {
+    /// [`REPORT_SCHEMA_VERSION`].
+    pub schema_version: u32,
+    /// Always `fetch`.
+    pub kind: String,
+    /// Test-bed target id.
+    pub target: String,
+    /// `git` or `archive`.
+    pub source_kind: String,
+    /// The pinned commit (the tag commit, for provenance, on an archive source).
+    pub commit: String,
+    /// The tree digest that was verified.
+    pub tree_sha256: String,
+    /// The archive digest that was verified, on an archive source.
+    pub archive_sha256: Option<String>,
+    /// True when the tree came from the cache and was verified again.
+    pub reused: bool,
+    /// Every subprocess, in the order it ran.
+    pub steps: Vec<Step>,
+}
+
+impl FetchReport {
+    /// Pretty JSON plus a trailing newline. Holds no timestamp.
+    ///
+    /// # Errors
+    /// [`serde_json::Error`] if serialisation fails.
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        let mut text = serde_json::to_string_pretty(self)?;
+        text.push('\n');
+        Ok(text)
+    }
+}
+
 impl ReplayReport {
     /// Pretty JSON plus a trailing newline. Holds no timestamp.
     ///

@@ -10,11 +10,15 @@
 //! `compile_commands.json` form and its gates, [`replay`] re-runs captured
 //! compiles in a clean copy and compares objects, [`report`] is the
 //! deterministic replay report, and [`elf`] reads sections and Arm build
-//! attributes. Fetch and capture drivers are added by later plans of the phase.
-//! Every external tool runs only through the `mt-toolchain` runner.
+//! attributes.
+//!
+//! [`fetch`] brings a pinned source into the git-ignored work directory and
+//! verifies it on every reuse. Every external tool runs only through the
+//! `mt-toolchain` runner.
 
 pub mod cc;
 pub mod elf;
+pub mod fetch;
 pub mod manifest;
 pub mod replay;
 pub mod report;
