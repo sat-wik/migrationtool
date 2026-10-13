@@ -190,3 +190,58 @@ pub fn to_json(entries: &[CcEntry]) -> Result<String, CcError> {
     text.push('\n');
     Ok(text)
 }
+
+/// One entry of an exported compile-commands file, as Bear or CMake wrote it.
+///
+/// The reader is tolerant on purpose: fields this crate does not know are
+/// ignored, because the two exporters add and drop fields between versions.
+/// Only the fields below ever influence what is executed, and `output` is
+/// carried but never trusted.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct RawEntry {
+    /// Working directory of the compile.
+    pub directory: String,
+    /// The source file.
+    pub file: String,
+    /// Bear writes an argv array.
+    pub arguments: Option<Vec<String>>,
+    /// CMake writes a shell-quoted command string.
+    pub command: Option<String>,
+    /// The exported output, relative to an unspecified directory. Not trusted.
+    pub output: Option<String>,
+}
+
+/// The result of canonicalising an export.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Canonical {
+    /// The entries whose object exists, sorted by (file, output).
+    pub entries: Vec<CcEntry>,
+    /// How many entries the export listed.
+    pub entries_exported: usize,
+    /// How many of them built an object.
+    pub entries_built: usize,
+    /// The `file` of each dropped entry, in export order.
+    pub dropped_unbuilt: Vec<String>,
+}
+
+/// Read an exported compile-commands file (a JSON array).
+///
+/// # Errors
+/// [`CcError::Json`] if the bytes are not a JSON array of entries.
+pub fn parse_raw(bytes: &[u8]) -> Result<Vec<RawEntry>, CcError> {
+    Ok(serde_json::from_slice(bytes)?)
+}
+
+/// Turn an export into the canonical, gated entries.
+///
+/// Not implemented yet.
+///
+/// # Errors
+/// [`CcError`].
+pub fn canonicalise(
+    _raw: &[RawEntry],
+    _policy: &CcPolicy,
+    _output_exists: &dyn Fn(&Path) -> bool,
+) -> Result<Canonical, CcError> {
+    Err(CcError::Empty)
+}

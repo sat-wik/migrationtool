@@ -13,6 +13,7 @@ mt-toolchain = { path = "../mt-toolchain" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+shlex.workspace = true
 thiserror.workspace = true
 toml.workspace = true
 

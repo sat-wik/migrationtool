@@ -1,0 +1,20 @@
+[
+  {
+    "directory": "/work/run/fixture/default/build",
+    "command": "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc -DNAME=\"a b\" -I/work/run/fixture/default/src/include -mthumb -Os -o CMakeFiles/core.dir/core.c.obj -c /work/run/fixture/default/src/core.c",
+    "file": "/work/run/fixture/default/src/core.c",
+    "output": "CMakeFiles/core.dir/core.c.obj"
+  },
+  {
+    "directory": "/work/run/fixture/default/build/MQTTPacket/src",
+    "command": "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc -mthumb -Os -o CMakeFiles/paho-embed.dir/MQTTConnectClient.c.obj -c /work/run/fixture/default/src/MQTTPacket/src/MQTTConnectClient.c",
+    "file": "/work/run/fixture/default/src/MQTTPacket/src/MQTTConnectClient.c",
+    "output": "MQTTPacket/src/CMakeFiles/paho-embed.dir/MQTTConnectClient.c.obj"
+  },
+  {
+    "directory": "/work/run/fixture/default/build/tools",
+    "command": "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc -mthumb -Os -o CMakeFiles/dump.dir/dump.c.obj -c /work/run/fixture/default/src/tools/dump.c",
+    "file": "/work/run/fixture/default/src/tools/dump.c",
+    "output": "tools/CMakeFiles/dump.dir/dump.c.obj"
+  }
+]
