@@ -5,6 +5,7 @@
 //! from the arguments, a compiler allow-list and a run-root containment check.
 //! Nothing here runs a shell or spawns a process.
 
+use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -232,16 +233,105 @@ pub fn parse_raw(bytes: &[u8]) -> Result<Vec<RawEntry>, CcError> {
     Ok(serde_json::from_slice(bytes)?)
 }
 
-/// Turn an export into the canonical, gated entries.
+/// The argv of one raw entry: Bear's `arguments` as they are, or CMake's
+/// `command` split into words without a shell.
+fn argv_of(raw: &RawEntry) -> Result<Vec<String>, CcError> {
+    match (&raw.arguments, &raw.command) {
+        (Some(arguments), _) => Ok(arguments.clone()),
+        (None, Some(command)) => shlex::split(command).ok_or(CcError::Unsplittable),
+        (None, None) => Err(CcError::NoCommand),
+    }
+}
+
+/// Canonicalise one entry and apply every gate that does not need the
+/// filesystem, in a fixed order.
+fn canonical_entry(raw: &RawEntry, policy: &CcPolicy) -> Result<CcEntry, CcError> {
+    let arguments = argv_of(raw)?;
+    if !arguments.iter().any(|argument| argument == "-c") {
+        return Err(CcError::NotCompileOnly);
+    }
+    let argv0 = arguments.first().map_or("", String::as_str);
+    if !policy
+        .allowed_compilers
+        .iter()
+        .any(|allowed| allowed == argv0)
+    {
+        return Err(CcError::CompilerNotAllowed {
+            argv0: argv0.to_owned(),
+        });
+    }
+    if let Some(flag) = arguments
+        .iter()
+        .find(|argument| argument.starts_with("-flto") || argument.starts_with("-fprofile-"))
+    {
+        return Err(CcError::ForbiddenFlag { flag: flag.clone() });
+    }
+    // The exported `output` is never consulted (RESEARCH Pitfall 4).
+    let output = derive_output(&raw.directory, &raw.file, &arguments)?;
+    let entry = CcEntry {
+        directory: raw.directory.clone(),
+        file: raw.file.clone(),
+        arguments,
+        output,
+    };
+    for path in [&entry.directory, &entry.output] {
+        if !lexically_under(&policy.run_root, Path::new(path)) {
+            return Err(CcError::OutsideRunRoot { path: path.clone() });
+        }
+    }
+    Ok(entry)
+}
+
+/// Turn an export into the canonical, gated entries (BUILD-01).
 ///
-/// Not implemented yet.
+/// Every entry is converted to an `arguments` array (CMake `command` strings are
+/// split with `shlex`, never a shell) and gated: it must be a compile-only
+/// command (`-c`), its `argv[0]` must be allow-listed, it may not use `-flto`
+/// or `-fprofile-*` (the object would not be reproducible), and its directory
+/// and output must lie under the run root. The output is derived from the
+/// arguments, never read from the export. Entries whose object does not exist
+/// are then dropped (CMake exports every target, built or not) and counted.
+/// `output_exists` decides existence; tests pass a set, the pipeline passes the
+/// filesystem.
 ///
 /// # Errors
-/// [`CcError`].
+/// The [`CcError`] of the first entry that fails a gate, [`CcError::Empty`]
+/// when no entry produced an object (a silent Bear failure looks like this),
+/// and [`CcError::DuplicateOutput`] when two kept entries write one object.
 pub fn canonicalise(
-    _raw: &[RawEntry],
-    _policy: &CcPolicy,
-    _output_exists: &dyn Fn(&Path) -> bool,
+    raw: &[RawEntry],
+    policy: &CcPolicy,
+    output_exists: &dyn Fn(&Path) -> bool,
 ) -> Result<Canonical, CcError> {
-    Err(CcError::Empty)
+    let mut entries: Vec<CcEntry> = Vec::new();
+    let mut dropped_unbuilt: Vec<String> = Vec::new();
+    for entry in raw {
+        let canonical = canonical_entry(entry, policy)?;
+        if output_exists(Path::new(&canonical.output)) {
+            entries.push(canonical);
+        } else {
+            dropped_unbuilt.push(canonical.file);
+        }
+    }
+    if entries.is_empty() {
+        return Err(CcError::Empty);
+    }
+    entries.sort_by(|a, b| {
+        (a.file.as_bytes(), a.output.as_bytes()).cmp(&(b.file.as_bytes(), b.output.as_bytes()))
+    });
+    // Sorted by file first, so equal outputs are not necessarily adjacent.
+    let mut outputs: BTreeSet<&str> = BTreeSet::new();
+    for entry in &entries {
+        if !outputs.insert(entry.output.as_str()) {
+            return Err(CcError::DuplicateOutput {
+                output: entry.output.clone(),
+            });
+        }
+    }
+    Ok(Canonical {
+        entries_exported: raw.len(),
+        entries_built: entries.len(),
+        entries,
+        dropped_unbuilt,
+    })
 }
