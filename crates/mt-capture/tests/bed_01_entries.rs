@@ -30,14 +30,18 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use mt_capture::capture::{RunLayout, ToolPaths};
+use mt_capture::capture::{RunLayout, ToolPaths, capture};
 use mt_capture::cc::CcEntry;
 use mt_capture::entries::{
     EntryError, check_entry, clang_ast_argv, clang_deps_argv, filter_flags, normalise_signature,
     parse_ast_stream, parse_make_deps, probe_source,
 };
-use mt_capture::manifest::{Entry, EntryForm};
-use support::{local_arm_tools, runner_config};
+use mt_capture::fetch::fetch;
+use mt_capture::manifest::{BuildArgs, BuildSystem, Config, Entry, EntryForm};
+use mt_capture::report::CaptureVerdict;
+use support::{
+    capture_context, fetch_context, git_target, local_arm_tools, make_upstream, runner_config,
+};
 
 const DUMP: &[u8] = include_bytes!("fixtures/ast/probe-dump.json");
 
@@ -434,6 +438,93 @@ fn bed_01_entry_a_failing_or_stuck_clang_never_passes() {
             .starts_with("not_proven: ")
     );
     assert!(stuck.steps.iter().all(|s| s.run.exit.timed_out));
+}
+
+#[test]
+fn bed_01_entry_mismatch_fails_the_capture() {
+    let Some(tools) = local_arm_tools() else {
+        return;
+    };
+    let upstream = make_upstream(&[
+        ("t.h", "int t_add(int a, int b);\n"),
+        (
+            "t.c",
+            "#include \"t.h\"\nint t_add(int a, int b) { return a + b; }\n",
+        ),
+        (
+            "Makefile",
+            "all: t.o\nt.o: t.c t.h\n\t$(CC) -c t.c -o t.o\n",
+        ),
+    ]);
+    let work = tempfile::tempdir().unwrap();
+    let testbed = tempfile::tempdir().unwrap();
+    let ctx = capture_context(work.path(), testbed.path(), tools);
+    let config = Config {
+        name: "default".to_owned(),
+        ..Config::default()
+    };
+    let entry = |name: &str, signature: &str| Entry {
+        name: name.to_owned(),
+        header: "t.h".to_owned(),
+        source: "t.c".to_owned(),
+        form: EntryForm::Direct,
+        signature: signature.to_owned(),
+        accepted_wrapped: false,
+    };
+    let mut target = git_target(&upstream, BuildSystem::Make);
+    target.build_args = Some(BuildArgs {
+        dir: ".".to_owned(),
+        goals: vec!["all".to_owned()],
+        make_vars: vec!["CC={cc} {cflags}".to_owned()],
+        cmake_target: None,
+        cmake_options: Vec::new(),
+    });
+    fetch(
+        &runner_config(),
+        &fetch_context(work.path()),
+        "demo",
+        &target,
+    )
+    .unwrap();
+
+    // Every entry matches: the capture passes and the report names each check.
+    target.entry = vec![entry("t_add", "int (int,  int)")];
+    let report = capture(&runner_config(), &ctx, "demo", &target, &config).unwrap();
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::Captured,
+        "{:?}",
+        report.causes
+    );
+    assert!(report.entries["t_add"].passed());
+    assert!(report.steps.iter().any(|s| s.name == "clang ast t_add"));
+    assert!(report.steps.iter().any(|s| s.name == "clang deps t_add"));
+
+    // A wrong signature, a missing function and an uncaptured TU each fail it.
+    let mut wrong = entry("t_add", "long (int, int)");
+    wrong.form = EntryForm::Direct;
+    let mut missing = entry("t_sub", "int (int, int)");
+    missing.form = EntryForm::Direct;
+    let mut uncaptured = entry("t_other", "int (void)");
+    uncaptured.source = "other.c".to_owned();
+    for (bad, detail) in [
+        (wrong, "signature mismatch"),
+        (missing, "no function named t_sub"),
+        (uncaptured, "defining TU not captured"),
+    ] {
+        let name = bad.name.clone();
+        target.entry = vec![entry("t_add", "int (int, int)"), bad];
+        let report = capture(&runner_config(), &ctx, "demo", &target, &config).unwrap();
+        assert_eq!(report.verdict, CaptureVerdict::CaptureFailed, "{name}");
+        assert_eq!(report.causes, ["entry_mismatch"], "{name}");
+        assert!(
+            report.cause_details[0].contains(detail),
+            "{:?}",
+            report.cause_details
+        );
+        assert!(!report.entries[&name].passed(), "{name}");
+        assert!(report.entries["t_add"].passed() || name == "t_add");
+    }
 }
 
 /// A tiny captured project under a temporary work directory.

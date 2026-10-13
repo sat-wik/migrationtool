@@ -34,6 +34,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cc::{CcEntry, CcError, CcPolicy, canonicalise, parse_raw, to_json};
 use crate::elf::{check_elf_header, code_digest, parse_readelf_a};
+use crate::entries::{EntryError, check_entry};
 use crate::fetch::{
     FetchContext, FetchError, TAR_PATH, cache_paths, is_safe_component, pinned_tool, verify_cached,
 };
@@ -166,6 +167,9 @@ pub enum CaptureError {
     /// The canonical compile commands could not be written.
     #[error(transparent)]
     Cc(#[from] CcError),
+    /// An entry could not be checked at all.
+    #[error(transparent)]
+    Entry(#[from] EntryError),
     /// The report could not be serialised.
     #[error("cannot serialise the capture report: {0}")]
     Json(#[from] serde_json::Error),
@@ -1142,6 +1146,45 @@ impl Session<'_> {
         Ok(())
     }
 
+    /// Check every manifest entry against the captured build (D-23). A failed
+    /// entry is the cause `entry_mismatch`; a check that timed out leaves the
+    /// capture `not_proven`.
+    fn check_entries(
+        &mut self,
+        target: &Target,
+        canonical: &[CcEntry],
+    ) -> Result<(), CaptureError> {
+        let mut failed = Vec::new();
+        for entry in &target.entry {
+            let checked = check_entry(
+                &self.cfg,
+                &self.ctx.tools,
+                &self.layout,
+                &self.env,
+                canonical,
+                entry,
+            )?;
+            self.report.steps.extend(checked.steps);
+            if checked.not_proven {
+                self.not_proven = true;
+            }
+            if !checked.result.passed() {
+                failed.push(format!(
+                    "{}: {}",
+                    entry.name,
+                    checked.result.detail.as_deref().unwrap_or("check failed")
+                ));
+            }
+            self.report
+                .entries
+                .insert(entry.name.clone(), checked.result);
+        }
+        if !failed.is_empty() {
+            self.cause("entry_mismatch", failed.join(" | "));
+        }
+        Ok(())
+    }
+
     /// Hash every file under the CMake build directory that is not a build
     /// product: the generated headers and other configure-time inputs of the
     /// compile commands (Pattern 7). Objects, static archives and shared
@@ -1222,6 +1265,7 @@ pub fn capture(
         && let Some(entries) = session.canonicalise()?
     {
         session.gates(&entries)?;
+        session.check_entries(target, &entries)?;
         if target.build == BuildSystem::Cmake {
             session.configure_files()?;
         }

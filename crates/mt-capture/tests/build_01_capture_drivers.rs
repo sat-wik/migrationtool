@@ -685,8 +685,29 @@ fn build_01_capture_cmake_end_to_end() {
     let canonical = fs::read_to_string(layout.capture_dir.join("compile_commands.json")).unwrap();
     assert!(canonical.contains("-mfloat-abi=hard") && canonical.contains("-DT_EXTRA=1"));
 
+    // Run again from scratch: the same report, byte for byte, except for the
+    // output digest of `cmake configure`, whose text includes its own elapsed
+    // time ("-- Configuring done (0.2s)").
     let again = capture(&runner_config(), &bed.ctx, "demo", &target, &config).unwrap();
-    assert_eq!(again.to_json().unwrap(), report.to_json().unwrap());
+    assert_eq!(
+        without_configure_output(&again),
+        without_configure_output(&report)
+    );
+}
+
+/// The report as JSON, with the standard output digest of every `cmake
+/// configure` step removed.
+fn without_configure_output(report: &CaptureReport) -> serde_json::Value {
+    let mut value = serde_json::to_value(report).unwrap();
+    for step in value["steps"].as_array_mut().unwrap() {
+        if step["name"] == "cmake configure" {
+            let stdout = step["run"]["stdout"].as_object_mut().unwrap();
+            stdout.remove("sha256");
+            stdout.remove("bytes_total");
+            stdout.remove("bytes_stored");
+        }
+    }
+    value
 }
 
 fn host_object(source_dir: &Path, define: &str, out_dir: &str) -> Vec<u8> {
