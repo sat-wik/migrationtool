@@ -12,6 +12,8 @@ use std::collections::BTreeMap;
 use mt_toolchain::runner::RunRecord;
 use serde::{Deserialize, Serialize};
 
+use crate::entries::EntryResult;
+
 /// Version of the serialised [`ReplayReport`].
 pub const REPORT_SCHEMA_VERSION: u32 = 1;
 
@@ -257,6 +259,10 @@ pub struct CaptureReport {
     /// sha256 of the configure-time files of a CMake build, keyed by
     /// run-root-relative path.
     pub configure_files: BTreeMap<String, String>,
+    /// The entry-function check of each manifest entry, keyed by function name
+    /// (CONTEXT D-23).
+    #[serde(default)]
+    pub entries: BTreeMap<String, EntryResult>,
     /// Every subprocess, in the order it ran.
     pub steps: Vec<Step>,
 }
@@ -285,6 +291,7 @@ impl CaptureReport {
             gates: Gates::default(),
             objects: BTreeMap::new(),
             configure_files: BTreeMap::new(),
+            entries: BTreeMap::new(),
             steps: Vec::new(),
         }
     }

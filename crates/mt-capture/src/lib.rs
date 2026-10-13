@@ -12,6 +12,9 @@
 //! deterministic replay report, and [`elf`] reads sections and Arm build
 //! attributes.
 //!
+//! [`entries`] confirms each hand-named entry function against the captured
+//! build with clang on a probe file.
+//!
 //! [`fetch`] brings a pinned source into the git-ignored work directory and
 //! verifies it on every reuse. Every external tool runs only through the
 //! `mt-toolchain` runner.
@@ -19,6 +22,7 @@
 pub mod capture;
 pub mod cc;
 pub mod elf;
+pub mod entries;
 pub mod fetch;
 pub mod manifest;
 pub mod replay;
