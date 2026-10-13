@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 02
 current_phase_name: Test Bed and Build Capture
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-10-13T02:59:14.069Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-10-13T04:31:34.945Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 02 execution started
-state_head: f9d454d3373fd26097a6743577a1f8130eee4b4c
+state_head: 342e8c0b8be9fdecbedf31a4e5e4f716d9a1131b
 progress:
   total_phases: 12
   completed_phases: 1
   total_plans: 19
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 02 (Test Bed and Build Capture) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 Status: Ready to execute
 Last activity: 2026-10-13 — Phase 02 execution started
 
@@ -62,6 +62,7 @@ Progress: [█░░░░░░░░░] 8%
 | Phase 01 P08 | 13 min | 2 tasks | 3 files |
 | Phase 01 P09 | 35 min | 3 tasks | 6 files |
 | Phase 02 P01 | 34 min | 3 tasks | 12 files |
+| Phase 02 P02 | 10min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,7 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 01]: 01-09: c2rust and cargo-mutants install with cargo install --locked --path from the sha256-verified, unpacked .crate; image-a pin-binding gate matches whole build-record lines to the pins before the GHCR push; verified image ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f3b392427d2588e6ba0e3da2067bc503f40e6749b48bc6553832c27e96e518d (container run 38019633821)
 - [Phase 01]: Final verified image ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee (container run 38198934488, manifest sha256 d7002918…); GHCR publishes from main only from now on (WR-09); founder UAT passed on this digest
 - [Phase 02]: 02-01: D-17 image extension: git, cmake, curl, bzip2 added to the final stage and make gets an [apt] pin (bzip2 1.0.8-5+b1, cmake 3.25.1-1, curl 7.88.1-10+deb12u15, git 1:2.39.5-0+deb12u3, make 4.3-4.1 at snapshot 20261005T000000Z) — Needed by D-07 CMake builds, D-19 fetch by commit and the Mbed TLS archive source; proven green on the session branch (container run 38338543797); only a push to main publishes (WR-09), so plan 02-02 ships it through a PR
+- [Phase 02]: 02-02: Current image is sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9, published by container run 38342425433 (push to main, merge commit 69b5b7f4, PR #4); previous sha256:42c7fb0e... superseded
 
 ### Pending Todos
 
@@ -122,6 +124,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-13T02:59:13.988Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-10-13T04:31:34.855Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None

@@ -11,7 +11,7 @@
     {
       "number": "2",
       "name": "Test Bed and Build Capture",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "3",
@@ -69,5 +69,5 @@
     "label": "Advance to the next step",
     "reason": "Phase 02 of 12 · executing"
   },
-  "updated_at": "2026-10-13T02:59:08.532Z"
+  "updated_at": "2026-10-13T04:31:33.686Z"
 }
