@@ -370,7 +370,7 @@ impl Manifest {
     /// # Errors
     /// [`ManifestError::Invalid`] listing every issue.
     pub fn validate(&self) -> Result<(), ManifestError> {
-        Ok(())
+        finish(self.collect_issues())
     }
 
     /// [`Manifest::validate`] plus the completeness rule: every target carries
@@ -379,7 +379,15 @@ impl Manifest {
     /// # Errors
     /// [`ManifestError::Invalid`] listing every issue.
     pub fn validate_complete(&self) -> Result<(), ManifestError> {
-        self.validate()
+        let mut issues = self.collect_issues();
+        for (id, target) in &self.target {
+            if target.build_args.is_none() {
+                issues.push(format!(
+                    "target.{id}.build_args: missing; every target needs a build recipe"
+                ));
+            }
+        }
+        finish(issues)
     }
 
     /// The canonical JSON form: configurations ordered `default` first and then
@@ -388,8 +396,422 @@ impl Manifest {
     /// # Errors
     /// [`ManifestError::Json`] if serialization fails.
     pub fn canonical_json(&self) -> Result<String, ManifestError> {
-        let mut text = serde_json::to_string_pretty(self)?;
+        let mut canonical = self.clone();
+        for target in canonical.target.values_mut() {
+            target.config.sort_by(|a, b| {
+                (a.name != "default", &a.name).cmp(&(b.name != "default", &b.name))
+            });
+            target.entry.sort_by(|a, b| a.name.cmp(&b.name));
+        }
+        let mut text = serde_json::to_string_pretty(&canonical)?;
         text.push('\n');
         Ok(text)
+    }
+
+    fn collect_issues(&self) -> Vec<String> {
+        let mut issues = Vec::new();
+        if self.schema_version != MANIFEST_SCHEMA_VERSION {
+            issues.push(format!(
+                "schema_version: must be {MANIFEST_SCHEMA_VERSION}, found {}",
+                self.schema_version
+            ));
+        }
+        decisions_issues(&self.decisions, &mut issues);
+        if self.baseline.cflags != BASELINE_CFLAGS {
+            issues.push(format!(
+                "baseline.cflags: must be exactly {BASELINE_CFLAGS:?} in this order (CONTEXT D-06), found {:?}",
+                self.baseline.cflags
+            ));
+        }
+        for (id, target) in &self.target {
+            target_issues(id, target, &mut issues);
+        }
+        issues
+    }
+}
+
+/// The ecosystems `decisions.first_rtos` may name.
+const RTOS_CHOICES: [&str; 3] = ["deferred", "freertos", "zephyr"];
+
+/// Sort and deduplicate the issues; an empty list is success.
+fn finish(mut issues: Vec<String>) -> Result<(), ManifestError> {
+    issues.sort();
+    issues.dedup();
+    if issues.is_empty() {
+        Ok(())
+    } else {
+        Err(ManifestError::Invalid { issues })
+    }
+}
+
+fn is_lower_hex(text: &str, len: usize) -> bool {
+    text.len() == len && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+}
+
+fn check_hex(issues: &mut Vec<String>, field: &str, value: &str, len: usize) {
+    if !is_lower_hex(value, len) {
+        issues.push(format!("{field}: must be {len} lowercase hex digits"));
+    }
+}
+
+fn check_https(issues: &mut Vec<String>, field: &str, url: &str) {
+    let host = url.strip_prefix("https://").unwrap_or("");
+    if host.is_empty() || url.chars().any(char::is_whitespace) {
+        issues.push(format!(
+            "{field}: must be an https:// URL without whitespace"
+        ));
+    }
+}
+
+/// `D-` followed by one or more digits.
+fn is_decision_id(text: &str) -> bool {
+    text.strip_prefix("D-")
+        .is_some_and(|digits| !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// A relative path with no `..` component and no NUL (CONTEXT D-20, T-02-10).
+fn is_safe_relative_path(path: &str) -> bool {
+    !path.is_empty()
+        && !path.starts_with('/')
+        && !Path::new(path).is_absolute()
+        && !path.contains('\0')
+        && !path.split('/').any(|part| part == "..")
+}
+
+fn check_path(issues: &mut Vec<String>, field: &str, path: &str) {
+    if !is_safe_relative_path(path) {
+        issues.push(format!(
+            "{field}: must be a non-empty relative path with no `..` component and no NUL, found {path:?}"
+        ));
+    }
+}
+
+/// `[A-Za-z_][A-Za-z0-9_]*`.
+fn is_c_identifier(text: &str) -> bool {
+    let mut bytes = text.bytes();
+    bytes
+        .next()
+        .is_some_and(|b| b.is_ascii_alphabetic() || b == b'_')
+        && bytes.all(|b| b.is_ascii_alphanumeric() || b == b'_')
+}
+
+/// One SPDX identifier: letters, digits, `-`, `.` and `+`.
+fn is_spdx_identifier(text: &str) -> bool {
+    !text.is_empty()
+        && text
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'+'))
+}
+
+/// True when `text` contains a `{` that does not start one of [`PLACEHOLDERS`].
+fn has_unknown_brace(text: &str) -> bool {
+    let mut rest = text;
+    while let Some(at) = rest.find('{') {
+        let tail = &rest[at..];
+        match PLACEHOLDERS.iter().find(|p| tail.starts_with(**p)) {
+            Some(placeholder) => rest = &tail[placeholder.len()..],
+            None => return true,
+        }
+    }
+    false
+}
+
+fn check_placeholders(issues: &mut Vec<String>, field: &str, values: &[String]) {
+    for (i, value) in values.iter().enumerate() {
+        if has_unknown_brace(value) {
+            issues.push(format!(
+                "{field}[{i}]: `{{` may only start one of {}, found {value:?}",
+                PLACEHOLDERS.join(", ")
+            ));
+        }
+    }
+}
+
+fn decisions_issues(decisions: &Decisions, issues: &mut Vec<String>) {
+    if !RTOS_CHOICES.contains(&decisions.first_rtos.as_str()) {
+        issues.push(format!(
+            "decisions.first_rtos: must be one of {RTOS_CHOICES:?}, found {:?}",
+            decisions.first_rtos
+        ));
+    }
+    if decisions.first_rtos == "deferred" && decisions.first_rtos_reason.trim().is_empty() {
+        issues.push("decisions.first_rtos_reason: required when first_rtos is deferred".to_owned());
+    }
+    if decisions.first_rtos_candidates.is_empty()
+        || decisions
+            .first_rtos_candidates
+            .iter()
+            .any(|c| c.trim().is_empty())
+    {
+        issues.push("decisions.first_rtos_candidates: must name at least one candidate".to_owned());
+    }
+    if !is_decision_id(&decisions.project_decision) {
+        issues.push("decisions.project_decision: must look like D-18".to_owned());
+    }
+}
+
+fn target_issues(id: &str, target: &Target, issues: &mut Vec<String>) {
+    let f = format!("target.{id}");
+    if id.is_empty()
+        || !id
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+    {
+        issues.push(format!(
+            "{f}: the id must be lower-case letters, digits and underscores"
+        ));
+    }
+    if target.category.is_empty() {
+        issues.push(format!("{f}.category: must name at least one category"));
+    }
+    for (i, category) in target.category.iter().enumerate() {
+        if target.category[..i].contains(category) {
+            issues.push(format!("{f}.category: {category:?} is listed twice"));
+        }
+    }
+    source_issues(&f, &target.source, issues);
+    licence_issues(&f, &target.licence, issues);
+    if let Some(args) = &target.build_args {
+        build_args_issues(&f, target.build, args, issues);
+    }
+    entry_issues(&f, &target.entry, issues);
+    config_issues(&f, target, issues);
+}
+
+fn source_issues(f: &str, source: &Source, issues: &mut Vec<String>) {
+    let f = format!("{f}.source");
+    let (url, reference, commit, tree_sha256) = match source {
+        Source::Git {
+            url,
+            reference,
+            commit,
+            tree_sha256,
+        } => (url, reference, commit, tree_sha256),
+        Source::Archive {
+            url,
+            sha256,
+            strip_components,
+            reference,
+            commit,
+            tree_sha256,
+        } => {
+            check_hex(issues, &format!("{f}.sha256"), sha256, 64);
+            if *strip_components > MAX_STRIP_COMPONENTS {
+                issues.push(format!(
+                    "{f}.strip_components: must be at most {MAX_STRIP_COMPONENTS}, found {strip_components}"
+                ));
+            }
+            (url, reference, commit, tree_sha256)
+        }
+    };
+    check_https(issues, &format!("{f}.url"), url);
+    if reference.trim().is_empty() {
+        issues.push(format!("{f}.ref: must not be empty"));
+    }
+    check_hex(issues, &format!("{f}.commit"), commit, 40);
+    check_hex(issues, &format!("{f}.tree_sha256"), tree_sha256, 64);
+}
+
+/// The most leading path components an archive source may strip.
+const MAX_STRIP_COMPONENTS: u32 = 4;
+
+fn licence_issues(f: &str, licence: &Licence, issues: &mut Vec<String>) {
+    let f = format!("{f}.licence");
+    let operands: Vec<&str> = licence.spdx.split(" OR ").collect();
+    if !operands.iter().all(|operand| is_spdx_identifier(operand)) {
+        issues.push(format!(
+            "{f}.spdx: must be one SPDX identifier or identifiers joined by ' OR ' (no AND, WITH or parentheses), found {:?}",
+            licence.spdx
+        ));
+    }
+    if !operands.contains(&licence.elected.as_str()) {
+        issues.push(format!(
+            "{f}.elected: {:?} is not one of the operands of spdx {:?}",
+            licence.elected, licence.spdx
+        ));
+    }
+    if !PERMISSIVE_LICENCES.contains(&licence.elected.as_str()) {
+        issues.push(format!(
+            "{f}.elected: {:?} is not on the permissive allow-list {PERMISSIVE_LICENCES:?} (CONTEXT D-02, D-27)",
+            licence.elected
+        ));
+    }
+    check_path(issues, &format!("{f}.file"), &licence.file);
+}
+
+fn build_args_issues(f: &str, build: BuildSystem, args: &BuildArgs, issues: &mut Vec<String>) {
+    let f = format!("{f}.build_args");
+    check_path(issues, &format!("{f}.dir"), &args.dir);
+    match build {
+        BuildSystem::Make => {
+            if args.goals.is_empty() {
+                issues.push(format!("{f}.goals: a make target needs at least one goal"));
+            }
+            if args.cmake_target.is_some() {
+                issues.push(format!("{f}.cmake_target: not allowed on a make target"));
+            }
+        }
+        BuildSystem::Cmake => {
+            if args.cmake_target.is_none() {
+                issues.push(format!("{f}.cmake_target: a cmake target needs one"));
+            }
+            if !args.goals.is_empty() {
+                issues.push(format!("{f}.goals: not allowed on a cmake target"));
+            }
+        }
+    }
+    check_placeholders(issues, &format!("{f}.goals"), &args.goals);
+    check_placeholders(issues, &format!("{f}.make_vars"), &args.make_vars);
+    check_placeholders(issues, &format!("{f}.cmake_options"), &args.cmake_options);
+    if let Some(target) = &args.cmake_target {
+        check_placeholders(
+            issues,
+            &format!("{f}.cmake_target"),
+            std::slice::from_ref(target),
+        );
+    }
+}
+
+fn entry_issues(f: &str, entries: &[Entry], issues: &mut Vec<String>) {
+    let f = format!("{f}.entry");
+    if !(1..=3).contains(&entries.len()) {
+        issues.push(format!(
+            "{f}: needs 1 to 3 entry functions (CONTEXT D-24), found {}",
+            entries.len()
+        ));
+    }
+    for (i, entry) in entries.iter().enumerate() {
+        let g = format!("{f}.{}", entry.name);
+        if !is_c_identifier(&entry.name) {
+            issues.push(format!("{g}.name: must be a C identifier"));
+        }
+        if entries[..i].iter().any(|e| e.name == entry.name) {
+            issues.push(format!("{f}: name {:?} is used twice", entry.name));
+        }
+        check_path(issues, &format!("{g}.header"), &entry.header);
+        check_path(issues, &format!("{g}.source"), &entry.source);
+        if entry.signature.trim().is_empty() {
+            issues.push(format!("{g}.signature: must not be empty"));
+        }
+        match (entry.form, entry.accepted_wrapped) {
+            (EntryForm::Wrapped, false) => issues.push(format!(
+                "{g}.accepted_wrapped: a wrapped entry needs accepted_wrapped = true (CONTEXT D-28)"
+            )),
+            (EntryForm::Direct | EntryForm::Range, true) => issues.push(format!(
+                "{g}.accepted_wrapped: only allowed on a wrapped entry"
+            )),
+            _ => {}
+        }
+    }
+}
+
+/// True when the configuration changes no setting at all.
+fn sets_nothing(config: &Config) -> bool {
+    config.defines.is_empty()
+        && config.cflags.is_empty()
+        && config.make_vars.is_empty()
+        && config.cmake_options.is_empty()
+        && config.goals.is_empty()
+        && config.cmake_target.is_none()
+}
+
+/// True when every setting of `config` already appears in the recipe, so the
+/// effective build equals the default build (edge BED-02/adjacency).
+fn equals_recipe(config: &Config, args: &BuildArgs) -> bool {
+    config.defines.is_empty()
+        && config.cflags.is_empty()
+        && config.make_vars.iter().all(|v| args.make_vars.contains(v))
+        && config
+            .cmake_options
+            .iter()
+            .all(|o| args.cmake_options.contains(o))
+        && config.goals.iter().all(|g| args.goals.contains(g))
+        && config
+            .cmake_target
+            .as_ref()
+            .is_none_or(|t| args.cmake_target.as_ref() == Some(t))
+}
+
+/// `[a-z0-9-]+`.
+fn is_config_name(text: &str) -> bool {
+    !text.is_empty()
+        && text
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+}
+
+fn config_issues(f: &str, target: &Target, issues: &mut Vec<String>) {
+    let f = format!("{f}.config");
+    let defaults = target.config.iter().filter(|c| c.name == "default").count();
+    if defaults != 1 {
+        issues.push(format!(
+            "{f}: exactly one configuration named default is required, found {defaults}"
+        ));
+    }
+    let variants = target.config.len() - defaults;
+    if variants > 1 {
+        issues.push(format!(
+            "{f}: at most one variant besides default is allowed (CONTEXT D-05), found {variants}"
+        ));
+    }
+    for (i, config) in target.config.iter().enumerate() {
+        let g = format!("{f}.{}", config.name);
+        if target.config[..i].iter().any(|c| c.name == config.name) {
+            issues.push(format!("{f}: name {:?} is used twice", config.name));
+        }
+        if !is_config_name(&config.name) {
+            issues.push(format!(
+                "{g}.name: must be lower-case letters, digits and hyphens"
+            ));
+        }
+        if config.name == "default" {
+            if !sets_nothing(config) {
+                issues.push(format!(
+                    "{g}: must set nothing; the default configuration is the upstream defaults"
+                ));
+            }
+        } else if sets_nothing(config) {
+            issues.push(format!(
+                "{g}: sets nothing; a variant must change at least one setting"
+            ));
+        } else if target
+            .build_args
+            .as_ref()
+            .is_some_and(|args| equals_recipe(config, args))
+        {
+            issues.push(format!(
+                "{g}: every setting already appears in build_args, so the build equals the default"
+            ));
+        }
+        match target.build {
+            BuildSystem::Make => {
+                if !config.cmake_options.is_empty() {
+                    issues.push(format!("{g}.cmake_options: not allowed on a make target"));
+                }
+                if config.cmake_target.is_some() {
+                    issues.push(format!("{g}.cmake_target: not allowed on a make target"));
+                }
+            }
+            BuildSystem::Cmake => {
+                if !config.make_vars.is_empty() {
+                    issues.push(format!("{g}.make_vars: not allowed on a cmake target"));
+                }
+                if !config.goals.is_empty() {
+                    issues.push(format!("{g}.goals: not allowed on a cmake target"));
+                }
+            }
+        }
+        check_placeholders(issues, &format!("{g}.defines"), &config.defines);
+        check_placeholders(issues, &format!("{g}.cflags"), &config.cflags);
+        check_placeholders(issues, &format!("{g}.make_vars"), &config.make_vars);
+        check_placeholders(issues, &format!("{g}.cmake_options"), &config.cmake_options);
+        check_placeholders(issues, &format!("{g}.goals"), &config.goals);
+        if let Some(cmake_target) = &config.cmake_target {
+            check_placeholders(
+                issues,
+                &format!("{g}.cmake_target"),
+                std::slice::from_ref(cmake_target),
+            );
+        }
     }
 }
