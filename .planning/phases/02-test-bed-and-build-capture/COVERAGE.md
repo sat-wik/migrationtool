@@ -1,0 +1,1 @@
+No external API integration: Phase 2 fetches pinned upstream sources with git and curl as runner subprocesses inside the pinned container, builds and replays them offline, and reads CI results through `gh api` and opens one PR through the GitHub MCP tool as executor operations only; no API or SDK is integrated into the tool.

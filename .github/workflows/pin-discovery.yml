@@ -87,7 +87,7 @@ jobs:
           BASE_DIGEST=$(arg BASE_DIGEST)
           SNAPSHOT_TIMESTAMP=$(arg SNAPSHOT_TIMESTAMP)
 
-          packages="clang-${LLVM_MAJOR} llvm-${LLVM_MAJOR} llvm-${LLVM_MAJOR}-dev libclang-${LLVM_MAJOR}-dev libclang-cpp${LLVM_MAJOR}-dev bear qemu-system-arm qemu-user libz3-4"
+          packages="clang-${LLVM_MAJOR} llvm-${LLVM_MAJOR} llvm-${LLVM_MAJOR}-dev libclang-${LLVM_MAJOR}-dev libclang-cpp${LLVM_MAJOR}-dev bear qemu-system-arm qemu-user libz3-4 bzip2 cmake curl git make"
 
           # Candidate versions from the snapshot sources of the built stage.
           docker run --rm mt-snapshot-sources sh -c \

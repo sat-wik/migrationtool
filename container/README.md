@@ -21,6 +21,7 @@ those values only as build arguments rendered by `mt toolchain build-args`, and
 | c2rust 0.22.1 | `[source.c2rust]` (crates.io checksum) |
 | cargo-mutants 27.1.0 | `[source.cargo_mutants]` |
 | Bear 3.1.1, QEMU (`qemu-user`, `qemu-system-arm`), libz3 | `[apt]` |
+| git, cmake, curl, bzip2 and make (Phase 2 test bed: fetch by commit, CMake builds, the Mbed TLS archive; make was installed since Phase 1 and is now pinned) | `[apt]` and the `[tool.git]`, `[tool.cmake]`, `[tool.curl]`, `[tool.bzip2]` and `[tool.make]` rows (PROJECT.md decision D-17) |
 | Arm GNU Toolchain 14.3.rel1 (`arm-none-eabi-gcc`) | `[source.arm_gnu]` (archive checksum) |
 | rustup 1.29.1 | `[source.rustup]` |
 | Rust 1.99.0 for the tool and the `no_std` crates, with the `thumbv7em-none-eabihf` and `x86_64-unknown-linux-musl` targets | `[rust.tool]` |
@@ -190,6 +191,18 @@ projects' own files, not recalled:
   no per-component licence is named here; read the licence files that ship with
   the toolchain under `/opt/arm-gnu-toolchain/` in the image.
 
+The Phase 2 additions are subprocess-only tools as well and are never linked
+into `mt`. The licence names below are the ones the Debian packages declare; they
+were not read from the image in the session that wrote this file, so for each
+package the text at `/usr/share/doc/<package>/copyright` in the image is the
+authoritative one:
+
+- **git**: GPL-2.0-only.
+- **make**: GPL-3.0-or-later.
+- **cmake**: BSD-3-Clause.
+- **curl**: the curl licence.
+- **bzip2**: the bzip2-1.0.6 licence.
+
 The remaining tools (the Debian packages, KLEE, c2rust, cargo-mutants, Rust)
 keep their own licences. For a Debian package the copyright file is
 `/usr/share/doc/<package>/copyright` in the image; for the rest, use the
@@ -200,14 +213,16 @@ is legal advice.
 ## Current image
 
 The verified image, published by the `publish` job of `container` workflow run
-38198934488 and announced as verified by that job. `publish` ran only after
-`image-a`, `image-b` and `compare` had all succeeded, so the two manifests had
-been found manifest-identical. It pushed the docker-save archive that `image-a`
-saved after its own gates (the pin-binding gate, check, off-pin check, manifest
-and smoke steps), not a rebuild: the archive sha256
-(`c5ce0042f017664ba95a752177916fecfee513b8be091eb3dc80a8a13dfd5b93`) was
+38202499776 on a push to `main` (merge commit
+67467607c52acb52ff5bdebc11e81d9fb31ccfb1, pull request #3) and announced as
+verified by that job. It is the first image published from `main`. `publish`
+ran only after `image-a`, `image-b` and `compare` had all succeeded, so the two
+manifests had been found manifest-identical. It pushed the docker-save archive
+that `image-a` saved after its own gates (the pin-binding gate, check, off-pin
+check, manifest and smoke steps), not a rebuild: the archive sha256
+(`92bc6d0a2c24cd7d3189e2db620d2208bda1d8c7542fbba4107b43d2f150ef00`) was
 checked before `docker load`, and the loaded image id
-(`sha256:5f1a410fa23e7874901c6f5ea70cd6fe609a46c0085b474e446bba23ac025e27`)
+(`sha256:8a1f04358e50f0b6b96715e20cedaa5b0cb763dbd30aa7c7c1dcce03971eb07d`)
 equalled the id `image-a` recorded. Both Rust toolchains are installed only from
 the sha256-checked channel manifests and the archives they list, and c2rust and
 cargo-mutants only from their sha256-checked `.crate` files; those installs, the
@@ -220,24 +235,34 @@ RUN that clones klee-uclibc, so a different tarball fails the build; it is not
 a line of the `pin-binding` record, which covers the Rust toolchains and crates:
 
 ```
-ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee
+ghcr.io/sat-wik/migrationtool-toolchain@sha256:42c7fb0e00e90e946b5a21e598517fb7189a0de5492fa1d4d6f18e2e9c39e13d
 ```
 
-- Run id: 38198934488 (jobs `mt`, `image-a`, `image-b`, `compare` and `publish`
-  all concluded `success`)
-- Commit: defbe68309b4e1fc3a517ca49a11fed0087a2fd8
+- Run id: 38202499776, a `push` to `main` (jobs `mt`, `image-a`, `image-b`,
+  `compare` and `publish` all concluded `success`)
+- Commit: 67467607c52acb52ff5bdebc11e81d9fb31ccfb1, pushed under the tag
+  `sha-67467607c52acb52ff5bdebc11e81d9fb31ccfb1` (a tag is never a reference to
+  use; see Reproducibility guarantee)
 - Manifest sha256 (identical for both builds):
-  d70029186639d0030fc6cf22b284b3b849ce0680656fecfe06623f6ffdc44142. The manifest
-  records pin sources, and the one pin change since the previous image
-  (manifest `40e55cc6...`) is the new `klee_uclibc_locale` source.
+  d70029186639d0030fc6cf22b284b3b849ce0680656fecfe06623f6ffdc44142. This is the
+  manifest of the previous image,
+  `sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee`,
+  built on the phase branch by run 38198934488 at commit
+  defbe68309b4e1fc3a517ca49a11fed0087a2fd8. No pin changed between the two; the
+  image digests differ because the image was built again, which
+  manifest-identical builds allow.
+
+The founder's Phase 1 check (UAT) was run on that branch-built
+`sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee`
+image, which has the same manifest; it has not been repeated on the image above.
 
 Only a push to `main` publishes (WR-09). A run for a pull request, another
 branch, a manual dispatch or the weekly schedule still builds both images,
 gates them and compares the manifests, but its `publish` job is skipped, so it
-announces no `verified-image` and pushes nothing to GHCR. The image above was
+announces no `verified-image` and pushes nothing to GHCR. The previous image was
 published by a run on the phase branch (`claude/gsd-discuss-phase-1-mzdw5v`)
-while that branch still held publish rights; no branch other than `main` does
-now, and the first publish from `main` will replace this reference.
+while that branch still held publish rights; no branch other than `main` holds
+them now.
 
 Later commits that do not touch the Dockerfile, `pins.toml`, the smoke crate,
 the Rust sources or the workflow do not rebuild the image, so this stays the

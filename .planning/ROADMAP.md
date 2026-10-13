@@ -89,7 +89,32 @@ Plans:
   3. For every target and configuration the capture command writes a `compile_commands.json` covering every translation unit, and replaying it in the container reproduces the original build output (byte-identical objects, or identical after a documented normalisation); targets that cannot be reproduced are dropped with the cause logged, leaving at least 10.
   4. Each target has a seed corpus extracted from its own tests and fixtures, or at least 10 hand-made seeds (proposed) when it has none.
 
-**Plans**: TBD
+**Plans:** 1/10 plans executed
+
+Plans:
+**Wave 1**
+- [x] 02-01-PLAN.md — Image extension on the session branch: pin discovery, git/cmake/curl/bzip2 plus a make pin, REQUIRED_TOOLS, fixtures, container round trips (D-30)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 02-02-PLAN.md — Ship the image to main: PR via GitHub MCP, founder merge checkpoint, merge-back, `## Current image` (checkpoint)
+- [ ] 02-03-PLAN.md — mt-capture crate: manifest schema and validator, tree hash, D-03 target-list approval, testbed/manifest.toml, PROJECT D-18/D-19/D-20 (checkpoint)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 02-04-PLAN.md — Offline capture/replay core: tiny host-cc replay, canonical compile_commands and gates, ELF sections, arch gate, D-09 normalisation
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 02-05-PLAN.md — Fetch by commit/archive with verified cache, Make/CMake capture drivers with silent-wrong-build gates, clang entry check
+- [ ] 02-07-PLAN.md — mt-seeds crate: C lexer, hex and zip readers, deterministic selection under caps, seed index
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 02-06-PLAN.md — Tracer: `mt testbed` CLI and testbed workflow, qcbor (Make plus Bear) and corejson (CMake) end to end in the real image; static tests; CI fixture notices
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 02-08-PLAN.md — Committed seed corpus: seed sources, `mt testbed seeds [--check]`, hand-made sets, CI regeneration check
+- [ ] 02-10-PLAN.md — CI-captured fixtures from the tracer run (compile_commands, reports, readelf, Arm objects, AST dump) and their offline tests; no push
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 02-09-PLAN.md — Full bed: drop log, remaining recipes, `--all` round trips with one fix attempt per failure, at least 10 retained
 
 ### Phase 3: Equivalence Contract and Test-Vector Schema
 
@@ -235,7 +260,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Pinned Toolchain Container | 9/9 | Complete    | 2026-10-12 |
-| 2. Test Bed and Build Capture | 0/0 | Not started | - |
+| 2. Test Bed and Build Capture | 1/10 | In Progress | - |
 | 3. Equivalence Contract and Test-Vector Schema | 0/0 | Not started | - |
 | 4. UB Detection and Decision Log | 0/0 | Not started | - |
 | 5. Target-Matched Differential Harness | 0/0 | Not started | - |

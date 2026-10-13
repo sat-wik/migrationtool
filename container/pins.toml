@@ -106,17 +106,23 @@ parent = "c2rust"
 commit = "d393c16f3eb30d0c47e6f9d92db62272f0ec4dc7"
 
 # Exact candidate versions at the pinned snapshot timestamp, taken from the
-# pin-discovery workflow annotation of the run for commit 6916bb2 and re-checked
-# live by `mt toolchain check`. The package list is the one pin-discovery.yml
-# resolves (tool_03_discovery_package_list_matches_apt_pins).
+# pin-discovery workflow annotation of the run for commit 6916bb2 (the original
+# nine) and of the run for commit c9b3c74 (bzip2, cmake, curl, git and make, phase
+# 02 D-30), and re-checked live by `mt toolchain check`. The package list is the
+# one pin-discovery.yml resolves (tool_03_discovery_package_list_matches_apt_pins).
 [apt]
 "bear" = "3.1.1-1"
+"bzip2" = "1.0.8-5+b1"
 "clang-16" = "1:16.0.6-15~deb12u1"
+"cmake" = "3.25.1-1"
+"curl" = "7.88.1-10+deb12u15"
+"git" = "1:2.39.5-0+deb12u3"
 "libclang-16-dev" = "1:16.0.6-15~deb12u1"
 "libclang-cpp16-dev" = "1:16.0.6-15~deb12u1"
 "libz3-4" = "4.8.12-3.1"
 "llvm-16" = "1:16.0.6-15~deb12u1"
 "llvm-16-dev" = "1:16.0.6-15~deb12u1"
+"make" = "4.3-4.1"
 "qemu-system-arm" = "1:7.2+dfsg-7+deb12u18+b3"
 "qemu-user" = "1:7.2+dfsg-7+deb12u18+b3"
 
@@ -135,6 +141,14 @@ bin = "/usr/bin/bear"
 version_args = ["--version"]
 version_regex = 'bear (?P<version>\d+\.\d+\.\d+)'
 expect = "3.1.1"
+
+# Phase 02 D-30: bzip2 serves the Mbed TLS archive source. `bzip2 --help` prints
+# its banner (to stderr); the check tries stdout, then stderr.
+[tool.bzip2]
+bin = "/usr/bin/bzip2"
+version_args = ["--help"]
+version_regex = 'Version (?P<version>\d+\.\d+\.\d+)'
+expect = "1.0.8"
 
 # `c2rust --version` prints `C2Rust 0.22.1` (confirmed in the CI image, plan 01-07).
 [tool.c2rust]
@@ -172,6 +186,27 @@ expect = "16.0.6"
 [tool.clang.llvm]
 source = "version"
 
+# Phase 02 D-30: cmake serves the CMake targets of the test bed (D-07).
+[tool.cmake]
+bin = "/usr/bin/cmake"
+version_args = ["--version"]
+version_regex = 'cmake version (?P<version>\d+\.\d+\.\d+)'
+expect = "3.25.1"
+
+# Phase 02 D-30: curl serves the Mbed TLS archive fetch.
+[tool.curl]
+bin = "/usr/bin/curl"
+version_args = ["--version"]
+version_regex = '^curl (?P<version>\d+\.\d+\.\d+)'
+expect = "7.88.1"
+
+# Phase 02 D-30: git serves fetching targets by commit (D-19).
+[tool.git]
+bin = "/usr/bin/git"
+version_args = ["--version"]
+version_regex = 'git version (?P<version>\d+\.\d+\.\d+)'
+expect = "2.39.5"
+
 [tool.hayroll]
 status = "not_installed"
 reason = "licence unconfirmed (risk R3); adapter gated in Phase 8"
@@ -198,6 +233,14 @@ expect = "16.0.6"
 
 [tool.llvm_config.llvm]
 source = "version"
+
+# Phase 02 D-30: make was installed in Phase 1 but not pinned; it now has an
+# `[apt]` pin and this row.
+[tool.make]
+bin = "/usr/bin/make"
+version_args = ["--version"]
+version_regex = 'GNU Make (?P<version>\d+\.\d+(?:\.\d+)?)'
+expect = "4.3"
 
 # Both QEMU binaries are installed: user mode cannot run bare-metal Cortex-M
 # images (RESEARCH correction 1, CONTEXT D-11). The expected version is the full

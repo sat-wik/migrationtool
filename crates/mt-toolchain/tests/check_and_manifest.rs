@@ -43,11 +43,16 @@ fn good_observations() -> BTreeMap<String, Observation> {
     for name in [
         "arm_gcc",
         "bear",
+        "bzip2",
         "cargo_mutants",
         "clang",
+        "cmake",
+        "curl",
         "dpkg_query",
+        "git",
         "klee",
         "llvm_config",
+        "make",
         "qemu_arm",
         "qemu_system_arm",
         "rustc_bitcode",
@@ -327,14 +332,19 @@ fn tool_02_check_table_rows_sorted_and_stable() {
     let mut expected: Vec<String> = [
         "arm_gcc",
         "bear",
+        "bzip2",
         "c2rust",
         "cargo_mutants",
         "clang",
+        "cmake",
+        "curl",
+        "git",
         "hayroll",
         "kani",
         "klee",
         "llvm_config",
         "llvm_packages",
+        "make",
         "qemu_arm",
         "qemu_system_arm",
         "rust_default",
@@ -698,7 +708,7 @@ fn tool_03_manifest_carries_pins_sources_and_parsed_rows_with_sorted_keys() {
         value["observed"]["apt:clang-16"]["actual"],
         "1:16.0.6-15~deb12u1"
     );
-    assert_eq!(value["observed"].as_object().unwrap().len(), 27);
+    assert_eq!(value["observed"].as_object().unwrap().len(), 37);
 
     // Top-level keys appear in sorted order in the text.
     let top: Vec<&str> = text

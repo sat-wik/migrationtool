@@ -141,7 +141,7 @@ const QEMU_USER_OUT: &str = "qemu-arm version 7.2.22 (Debian 1:7.2+dfsg-7+deb12u
 const QEMU_SYSTEM_OUT: &str = "QEMU emulator version 7.2.22 (Debian 1:7.2+dfsg-7+deb12u18+b3)\n";
 const RUSTC_TOOL_OUT: &str = "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.0\nLLVM version: 23.1.1\n";
 const RUSTC_BITCODE_OUT: &str = "rustc 1.72.1 (d5c2e9c34 2023-09-13)\nbinary: rustc\ncommit-hash: d5c2e9c342b358556da91d61ed4133f6f50fc0c3\ncommit-date: 2023-09-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.72.1\nLLVM version: 16.0.5\n";
-const DPKG_OUT: &str = "bear\t3.1.1-1\tinstalled\nclang-16\t1:16.0.6-15~deb12u1\tinstalled\nlibclang-16-dev\t1:16.0.6-15~deb12u1\tinstalled\nlibclang-cpp16-dev\t1:16.0.6-15~deb12u1\tinstalled\nlibllvm16\t1:16.0.6-15~deb12u1\tinstalled\nlibz3-4\t4.8.12-3.1\tinstalled\nllvm-16\t1:16.0.6-15~deb12u1\tinstalled\nllvm-16-dev\t1:16.0.6-15~deb12u1\tinstalled\nqemu-system-arm\t1:7.2+dfsg-7+deb12u18+b3\tinstalled\nqemu-user\t1:7.2+dfsg-7+deb12u18+b3\tinstalled\n";
+const DPKG_OUT: &str = "bear\t3.1.1-1\tinstalled\nbzip2\t1.0.8-5+b1\tinstalled\nclang-16\t1:16.0.6-15~deb12u1\tinstalled\ncmake\t3.25.1-1\tinstalled\ncurl\t7.88.1-10+deb12u15\tinstalled\ngit\t1:2.39.5-0+deb12u3\tinstalled\nlibclang-16-dev\t1:16.0.6-15~deb12u1\tinstalled\nlibclang-cpp16-dev\t1:16.0.6-15~deb12u1\tinstalled\nlibllvm16\t1:16.0.6-15~deb12u1\tinstalled\nlibz3-4\t4.8.12-3.1\tinstalled\nllvm-16\t1:16.0.6-15~deb12u1\tinstalled\nllvm-16-dev\t1:16.0.6-15~deb12u1\tinstalled\nmake\t4.3-4.1\tinstalled\nqemu-system-arm\t1:7.2+dfsg-7+deb12u18+b3\tinstalled\nqemu-user\t1:7.2+dfsg-7+deb12u18+b3\tinstalled\n";
 
 /// A script that ignores its arguments and prints `text` on stdout.
 fn prints(text: &str) -> String {
@@ -187,6 +187,18 @@ impl FakeContainer {
         fake.script("opt/cargo-tools/bin/c2rust", &prints("C2Rust 0.22.1\n"));
         fake.script("usr/bin/ldd", &prints(LDD_OUT));
         fake.script("usr/bin/bear", &prints("bear 3.1.1\n"));
+        // bzip2 prints its banner on stderr only (`bzip2 --help`), and exits 0.
+        fake.script(
+            "usr/bin/bzip2",
+            "echo 'bzip2, a block-sorting file compressor.  Version 1.0.8, 13-Jul-2019.' >&2\n",
+        );
+        fake.script("usr/bin/cmake", &prints("cmake version 3.25.1\n"));
+        fake.script(
+            "usr/bin/curl",
+            &prints("curl 7.88.1 (x86_64-pc-linux-gnu) libcurl/7.88.1 OpenSSL/3.0.22\n"),
+        );
+        fake.script("usr/bin/git", &prints("git version 2.39.5\n"));
+        fake.script("usr/bin/make", &prints("GNU Make 4.3\n"));
         fake.script(
             "opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc",
             &prints(ARM_OUT),

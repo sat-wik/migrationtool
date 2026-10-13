@@ -213,6 +213,11 @@ fn tool_03_tool_expectations_agree_with_sources() {
         ("clang", "clang-16"),
         ("llvm_config", "llvm-16"),
         ("bear", "bear"),
+        ("bzip2", "bzip2"),
+        ("cmake", "cmake"),
+        ("curl", "curl"),
+        ("git", "git"),
+        ("make", "make"),
     ] {
         assert_eq!(
             expect(tool),

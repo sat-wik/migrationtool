@@ -623,7 +623,7 @@ fn tool_02_fixture_pins_regexes_parse_fixture_outputs() {
         checked += 1;
     }
     assert_eq!(
-        checked, 10,
+        checked, 15,
         "every installed tool in the fixture was checked"
     );
 }
