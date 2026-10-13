@@ -89,7 +89,7 @@ Plans:
   3. For every target and configuration the capture command writes a `compile_commands.json` covering every translation unit, and replaying it in the container reproduces the original build output (byte-identical objects, or identical after a documented normalisation); targets that cannot be reproduced are dropped with the cause logged, leaving at least 10.
   4. Each target has a seed corpus extracted from its own tests and fixtures, or at least 10 hand-made seeds (proposed) when it has none.
 
-**Plans:** 8/10 plans executed
+**Plans:** 9/10 plans executed
 
 Plans:
 **Wave 1**
@@ -111,7 +111,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 - [x] 02-08-PLAN.md — Committed seed corpus: seed sources, `mt testbed seeds [--check]`, hand-made sets, CI regeneration check
-- [ ] 02-10-PLAN.md — CI-captured fixtures from the tracer run (compile_commands, reports, readelf, Arm objects, AST dump) and their offline tests; no push
+- [x] 02-10-PLAN.md — CI-captured fixtures from the tracer run (compile_commands, reports, readelf, Arm objects, AST dump) and their offline tests; no push
 
 **Wave 7** *(blocked on Wave 6 completion)*
 - [ ] 02-09-PLAN.md — Full bed: drop log, remaining recipes, `--all` round trips with one fix attempt per failure, at least 10 retained
@@ -260,7 +260,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Pinned Toolchain Container | 9/9 | Complete    | 2026-10-12 |
-| 2. Test Bed and Build Capture | 8/10 | In Progress | - |
+| 2. Test Bed and Build Capture | 9/10 | In Progress | - |
 | 3. Equivalence Contract and Test-Vector Schema | 0/0 | Not started | - |
 | 4. UB Detection and Decision Log | 0/0 | Not started | - |
 | 5. Target-Matched Differential Harness | 0/0 | Not started | - |
