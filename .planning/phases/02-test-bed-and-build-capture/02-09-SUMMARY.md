@@ -232,7 +232,7 @@ None. No new network endpoint, auth path or trust boundary; the container contro
 
 ## Issues Encountered
 
-The `container` workflow for f0a36b8 was still running when this was written (run 38430137007); it is not a Task 3 gate.
+None blocking. The `container` workflow (run 38430137007) and ci (38430137092) also finished green for f0a36b8, and ci (38431641116) for the docs commit 860bcd4.
 
 ## Next Phase Readiness
 
