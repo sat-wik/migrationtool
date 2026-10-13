@@ -205,7 +205,7 @@ pub fn cache_paths(work_dir: &Path, id: &str, commit: &str) -> CachePaths {
 
 /// A single path component made of letters, digits, `.`, `_` and `-`, not
 /// starting with `.` or `-`.
-fn is_safe_component(text: &str) -> bool {
+pub(crate) fn is_safe_component(text: &str) -> bool {
     !text.is_empty()
         && !text.starts_with(['.', '-'])
         && text

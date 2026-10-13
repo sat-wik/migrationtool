@@ -16,6 +16,7 @@
 //! verifies it on every reuse. Every external tool runs only through the
 //! `mt-toolchain` runner.
 
+pub mod capture;
 pub mod cc;
 pub mod elf;
 pub mod fetch;
