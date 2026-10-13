@@ -1,0 +1,117 @@
+[
+  {
+    "directory": "/work/run/qcbor/default/src",
+    "file": "/work/run/qcbor/default/src/src/UsefulBuf.c",
+    "arguments": [
+      "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc",
+      "-mcpu=cortex-m4",
+      "-mthumb",
+      "-mfloat-abi=hard",
+      "-mfpu=fpv4-sp-d16",
+      "-Os",
+      "-I",
+      "inc",
+      "-I",
+      "test",
+      "-Os",
+      "-fPIC",
+      "-c",
+      "-o",
+      "src/UsefulBuf.o",
+      "src/UsefulBuf.c"
+    ],
+    "output": "/work/run/qcbor/default/src/src/UsefulBuf.o"
+  },
+  {
+    "directory": "/work/run/qcbor/default/src",
+    "file": "/work/run/qcbor/default/src/src/ieee754.c",
+    "arguments": [
+      "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc",
+      "-mcpu=cortex-m4",
+      "-mthumb",
+      "-mfloat-abi=hard",
+      "-mfpu=fpv4-sp-d16",
+      "-Os",
+      "-I",
+      "inc",
+      "-I",
+      "test",
+      "-Os",
+      "-fPIC",
+      "-c",
+      "-o",
+      "src/ieee754.o",
+      "src/ieee754.c"
+    ],
+    "output": "/work/run/qcbor/default/src/src/ieee754.o"
+  },
+  {
+    "directory": "/work/run/qcbor/default/src",
+    "file": "/work/run/qcbor/default/src/src/qcbor_decode.c",
+    "arguments": [
+      "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc",
+      "-mcpu=cortex-m4",
+      "-mthumb",
+      "-mfloat-abi=hard",
+      "-mfpu=fpv4-sp-d16",
+      "-Os",
+      "-I",
+      "inc",
+      "-I",
+      "test",
+      "-Os",
+      "-fPIC",
+      "-c",
+      "-o",
+      "src/qcbor_decode.o",
+      "src/qcbor_decode.c"
+    ],
+    "output": "/work/run/qcbor/default/src/src/qcbor_decode.o"
+  },
+  {
+    "directory": "/work/run/qcbor/default/src",
+    "file": "/work/run/qcbor/default/src/src/qcbor_encode.c",
+    "arguments": [
+      "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc",
+      "-mcpu=cortex-m4",
+      "-mthumb",
+      "-mfloat-abi=hard",
+      "-mfpu=fpv4-sp-d16",
+      "-Os",
+      "-I",
+      "inc",
+      "-I",
+      "test",
+      "-Os",
+      "-fPIC",
+      "-c",
+      "-o",
+      "src/qcbor_encode.o",
+      "src/qcbor_encode.c"
+    ],
+    "output": "/work/run/qcbor/default/src/src/qcbor_encode.o"
+  },
+  {
+    "directory": "/work/run/qcbor/default/src",
+    "file": "/work/run/qcbor/default/src/src/qcbor_err_to_str.c",
+    "arguments": [
+      "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc",
+      "-mcpu=cortex-m4",
+      "-mthumb",
+      "-mfloat-abi=hard",
+      "-mfpu=fpv4-sp-d16",
+      "-Os",
+      "-I",
+      "inc",
+      "-I",
+      "test",
+      "-Os",
+      "-fPIC",
+      "-c",
+      "-o",
+      "src/qcbor_err_to_str.o",
+      "src/qcbor_err_to_str.c"
+    ],
+    "output": "/work/run/qcbor/default/src/src/qcbor_err_to_str.o"
+  }
+]
