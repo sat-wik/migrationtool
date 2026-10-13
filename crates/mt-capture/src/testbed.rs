@@ -33,6 +33,7 @@ use crate::capture::{
     CaptureContext, CaptureError, RunLayout, ToolPaths, VariantDiff, capture, variant_code_diff,
 };
 use crate::cc::{CcEntry, CcPolicy};
+use crate::droplog::Dropped;
 use crate::fetch::{FetchContext, FetchError, cache_paths, fetch, verify_cached};
 use crate::manifest::{BuildSystem, Config, Manifest, ManifestError, Target};
 use crate::replay::{Normaliser, ReplayError, ReplayPlan, replay};
@@ -169,6 +170,11 @@ impl StepSummary {
         let mut text = serde_json::to_string_pretty(self)?;
         text.push('\n');
         Ok(text)
+    }
+
+    /// Add the row of a dropped pair (D-11). The placeholder does not record it.
+    pub fn add_dropped(&mut self, name: &str, dropped: &Dropped) {
+        let _ = (name, dropped);
     }
 
     /// The table printed by `mt testbed`: the step, one aligned row per entry

@@ -11,6 +11,7 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use mt_capture::droplog::DropLog;
 use mt_capture::manifest::{Manifest, Source, Target};
 use mt_seeds::index::SeedIndex;
 use mt_seeds::{Method, sha256_hex};
@@ -25,6 +26,23 @@ fn manifest() -> Manifest {
     let manifest = Manifest::load(&repo_file("testbed/manifest.toml")).expect("manifest parses");
     manifest.validate().expect("manifest is valid");
     manifest
+}
+
+fn drop_log() -> DropLog {
+    let log = DropLog::load(&repo_file("testbed/dropped.toml")).expect("dropped.toml parses");
+    log.validate(&manifest())
+        .expect("dropped.toml is valid for the manifest");
+    log
+}
+
+/// The targets that are not fully dropped, with their manifest entries.
+fn retained(manifest: &Manifest) -> Vec<(&String, &Target)> {
+    let kept = drop_log().retained_targets(manifest);
+    manifest
+        .target
+        .iter()
+        .filter(|(id, _)| kept.contains(id))
+        .collect()
 }
 
 fn corpus_dir(id: &str) -> PathBuf {
@@ -47,7 +65,12 @@ fn commit_of(target: &Target) -> &str {
 #[test]
 fn build_03_every_retained_target_has_a_seed_corpus() {
     let manifest = manifest();
-    for id in manifest.target.keys() {
+    let retained = drop_log().retained_targets(&manifest);
+    assert!(
+        !retained.is_empty(),
+        "no target is retained, so no corpus was checked"
+    );
+    for id in &retained {
         let dir = corpus_dir(id);
         assert!(dir.join("index.json").is_file(), "{id}: no index.json");
         assert!(dir.join("NOTICE").is_file(), "{id}: no NOTICE");
@@ -55,9 +78,9 @@ fn build_03_every_retained_target_has_a_seed_corpus() {
         assert_eq!(index.target, *id);
         assert!(!index.seeds.is_empty(), "{id}: the corpus holds no seed");
     }
-    // No corpus for a target the manifest does not have (a dropped target must
-    // take its seeds with it).
-    let known: BTreeSet<&str> = manifest.target.keys().map(String::as_str).collect();
+    // No corpus for a target that is not retained (a dropped target must take
+    // its seeds with it), and none for a name the manifest does not have.
+    let known: BTreeSet<&str> = retained.iter().map(String::as_str).collect();
     for entry in fs::read_dir(repo_file("testbed/seeds")).unwrap() {
         let name = entry.unwrap().file_name().into_string().unwrap();
         assert!(
@@ -68,10 +91,36 @@ fn build_03_every_retained_target_has_a_seed_corpus() {
 }
 
 #[test]
+fn build_03_dropped_targets_have_no_seed_corpus() {
+    let manifest = manifest();
+    let log = drop_log();
+    let dropped = log.dropped_targets();
+    for id in &dropped {
+        assert!(
+            manifest.target.contains_key(id),
+            "{id} left the manifest instead of being dropped"
+        );
+        assert!(
+            !corpus_dir(id).exists(),
+            "{id} is dropped, so testbed/seeds/{id} must be removed"
+        );
+    }
+    // Every seed corpus belongs to a retained target and every retained target
+    // has one; the two sets are the same.
+    let on_disk: BTreeSet<String> = fs::read_dir(repo_file("testbed/seeds"))
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+        .collect();
+    let retained: BTreeSet<String> = log.retained_targets(&manifest).into_iter().collect();
+    assert_eq!(on_disk, retained);
+    assert_eq!(retained.len() + dropped.len(), manifest.target.len());
+}
+
+#[test]
 fn build_03_hand_made_seeds_marked_proposed_and_at_least_ten() {
     let manifest = manifest();
     let mut with_hand_made = 0;
-    for id in manifest.target.keys() {
+    for (id, _) in retained(&manifest) {
         let index = index_of(id);
         let hand_made = index
             .seeds
@@ -136,7 +185,7 @@ fn build_03_hand_made_seeds_marked_proposed_and_at_least_ten() {
 #[test]
 fn build_03_seed_provenance_records_source_path_commit_and_method() {
     let manifest = manifest();
-    for (id, target) in &manifest.target {
+    for (id, target) in retained(&manifest) {
         let index = index_of(id);
         assert_eq!(
             index.commit,
@@ -227,7 +276,7 @@ fn build_03_seed_provenance_records_source_path_commit_and_method() {
 fn build_03_committed_seeds_respect_the_caps() {
     let manifest = manifest();
     let caps = manifest.seed_caps;
-    for id in manifest.target.keys() {
+    for (id, _) in retained(&manifest) {
         let index = index_of(id);
         assert_eq!(index.caps.max_seeds, caps.max_seeds, "{id}");
         assert_eq!(index.caps.max_total_bytes, caps.max_total_bytes, "{id}");
@@ -251,7 +300,7 @@ fn build_03_committed_seeds_respect_the_caps() {
 #[test]
 fn build_03_seed_licence_matches_manifest() {
     let manifest = manifest();
-    for (id, target) in &manifest.target {
+    for (id, target) in retained(&manifest) {
         let index = index_of(id);
         assert_eq!(index.licence.spdx, target.licence.spdx, "{id}");
         assert_eq!(
@@ -293,7 +342,7 @@ fn build_03_seed_licence_matches_manifest() {
 #[test]
 fn build_03_seeds_come_only_from_declared_sources() {
     let manifest = manifest();
-    for (id, target) in &manifest.target {
+    for (id, target) in retained(&manifest) {
         let index = index_of(id);
         let hand_made_prefix = format!("testbed/targets/{id}/hand-made/");
         for seed in &index.seeds {
@@ -323,11 +372,17 @@ fn build_03_seeds_come_only_from_declared_sources() {
     }
     // The mixed-licence repositories give no upstream seed at all (Pitfall 18):
     // lz4 outside lib/ and dtc outside libfdt/ are GPL, so only hand-made seeds.
+    let kept = drop_log().retained_targets(&manifest);
     for id in ["lz4", "libfdt"] {
+        // A dropped target has no corpus to inspect; its declared sources stay
+        // empty in the manifest either way.
         assert!(
             manifest.target[id].seed_source.is_empty(),
             "{id}: a copyleft part of the repository must not be a seed source"
         );
+        if !kept.iter().any(|k| k == id) {
+            continue;
+        }
         assert!(
             index_of(id)
                 .seeds

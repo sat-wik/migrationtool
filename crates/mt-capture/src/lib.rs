@@ -19,11 +19,15 @@
 //! verifies it on every reuse. Every external tool runs only through the
 //! `mt-toolchain` runner.
 //!
+//! [`droplog`] is the validated drop log (`testbed/dropped.toml`, D-11): what
+//! was dropped, why, and which targets are retained.
+//!
 //! [`testbed`] wires fetch, capture and replay over the selected targets and
 //! returns the per-step summaries `mt testbed` prints.
 
 pub mod capture;
 pub mod cc;
+pub mod droplog;
 pub mod elf;
 pub mod entries;
 pub mod fetch;
