@@ -9,6 +9,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+mt-seeds = { path = "../mt-seeds" }
 mt-toolchain = { path = "../mt-toolchain" }
 object.workspace = true
 regex.workspace = true

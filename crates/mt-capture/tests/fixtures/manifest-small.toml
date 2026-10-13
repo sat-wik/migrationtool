@@ -17,6 +17,13 @@ digest = "sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b
 [baseline]
 cflags = ["-mcpu=cortex-m4", "-mthumb", "-mfloat-abi=hard", "-mfpu=fpv4-sp-d16", "-Os"]
 
+[seed_caps]
+# D-16: the caps every target's seed corpus is selected under (RESEARCH "Caps and
+# selection"). Each limit is inclusive and above zero.
+max_seeds = 200
+max_total_bytes = 1048576
+max_seed_bytes = 65536
+
 [target.demo_make]
 category = ["cbor"]
 build = "make"

@@ -131,6 +131,7 @@ pub fn git_target(upstream: &Upstream, build: BuildSystem) -> Target {
         build_args: None,
         entry: Vec::new(),
         config: Vec::new(),
+        seed_source: Vec::new(),
     }
 }
 

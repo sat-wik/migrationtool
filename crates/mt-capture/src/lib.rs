@@ -30,5 +30,6 @@ pub mod fetch;
 pub mod manifest;
 pub mod replay;
 pub mod report;
+pub mod seeding;
 pub mod testbed;
 pub mod treehash;

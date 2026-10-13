@@ -68,6 +68,8 @@ pub struct Manifest {
     pub image: ImageRef,
     /// The flags every configuration shares.
     pub baseline: Baseline,
+    /// The seed corpus caps every target is selected under (CONTEXT D-16).
+    pub seed_caps: SeedCaps,
     /// The targets, keyed by id.
     pub target: BTreeMap<String, Target>,
 }
@@ -104,6 +106,53 @@ pub struct ImageRef {
 pub struct Baseline {
     /// Must equal [`BASELINE_CFLAGS`] exactly.
     pub cflags: Vec<String>,
+}
+
+/// The caps a seed corpus is selected under (CONTEXT D-16): the most seeds, the
+/// most bytes in total and the largest single seed. Every cap is inclusive and
+/// must be above zero.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SeedCaps {
+    /// Most seeds kept per target.
+    pub max_seeds: u64,
+    /// Most bytes kept per target.
+    pub max_total_bytes: u64,
+    /// Largest single seed.
+    pub max_seed_bytes: u64,
+}
+
+impl From<SeedCaps> for mt_seeds::select::Caps {
+    fn from(caps: SeedCaps) -> Self {
+        Self {
+            max_seeds: caps.max_seeds,
+            max_total_bytes: caps.max_total_bytes,
+            max_seed_bytes: caps.max_seed_bytes,
+        }
+    }
+}
+
+/// The extraction methods a [`SeedSource`] may list (CONTEXT D-13). Hand-made
+/// seeds are not a source method: they come from `testbed/targets/<id>/hand-made/`.
+pub const SEED_METHODS: [&str; 5] = ["c_array", "c_string", "file_copy", "hex_text", "zip_member"];
+
+/// A place inside a target's pinned tree its seeds may be taken from (CONTEXT
+/// D-13, D-16, RESEARCH Pitfall 18). Nothing outside the declared paths is read.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SeedSource {
+    /// A file or directory of the tree, relative to the tree root. It must lie in
+    /// a permissively licensed part of the repository.
+    pub path: String,
+    /// Which of [`SEED_METHODS`] to apply to the files found.
+    pub methods: Vec<String>,
+    /// File extensions to take, without the dot; an empty string matches files
+    /// without an extension. Absent: every file.
+    #[serde(default)]
+    pub extensions: Option<Vec<String>>,
+    /// The entry functions the inputs exercise; empty means every entry of the target.
+    #[serde(default)]
+    pub entries: Vec<String>,
 }
 
 /// What kind of build system drives a target.
@@ -298,6 +347,9 @@ pub struct Target {
     /// The default configuration and at most one variant.
     #[serde(default)]
     pub config: Vec<Config>,
+    /// Where the target's seeds may come from (CONTEXT D-13); may be empty.
+    #[serde(default)]
+    pub seed_source: Vec<SeedSource>,
 }
 
 impl Target {

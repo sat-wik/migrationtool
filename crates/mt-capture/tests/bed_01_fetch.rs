@@ -78,6 +78,7 @@ fn target_with(source: Source) -> Target {
         build_args: None,
         entry: Vec::new(),
         config: Vec::new(),
+        seed_source: Vec::new(),
     }
 }
 
