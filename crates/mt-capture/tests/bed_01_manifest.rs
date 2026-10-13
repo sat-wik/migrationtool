@@ -667,3 +667,21 @@ fn bed_02_decision_record_is_validated() {
         assert_fails_naming(&text, needle);
     }
 }
+
+#[test]
+fn bed_01_image_digest_must_be_sha256_and_64_lowercase_hex() {
+    let good = "sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9";
+    assert!(SMALL.contains(good), "the fixture names the image digest");
+    for bad in [
+        "sha256:e83006c0",
+        "e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9",
+        "sha256:E83006C0A7E37F788AFCBD1C95554E8C4DFC61C3B68DA3FF964CAF47FB3851B9",
+        "sha512:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9",
+        "",
+    ] {
+        assert_fails_naming(&mutate(good, bad), "image.digest");
+    }
+    // A manifest with no [image] table is a parse error, not a default.
+    let without = remove_between(SMALL, "[image]", "[baseline]");
+    assert!(outcome(&without).unwrap_err().contains("image"));
+}

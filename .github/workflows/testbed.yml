@@ -150,6 +150,17 @@ jobs:
               -v "$RUNNER_TEMP/work:/work" -v "$RUNNER_TEMP/out:/out" \
               "$IMAGE" mt testbed "$@"
           }
+          # image_tool WORKDIR PROGRAM ARGS...: run one tool of the image (not mt) with NO
+          # network, /work read-only and /out writable. It reads what a step captured and
+          # writes the fixture files of the notices below.
+          image_tool() {
+            local workdir=$1
+            shift
+            docker run --rm --platform linux/amd64 --network none --user 65534:65534 --read-only --cap-drop ALL \
+              --security-opt no-new-privileges --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$RUNNER_TEMP/work:/work:ro" -v "$RUNNER_TEMP/out:/out" \
+              -w "$workdir" "$IMAGE" "$@"
+          }
           # evidence STEP: lines read from the step's reports, appended to its notice.
           evidence() {
             local step=$1 out="$RUNNER_TEMP/out"
@@ -300,6 +311,196 @@ jobs:
           rc=$?
           set -e
           finish_step replay "$rc"
+
+      # RESEARCH Pitfall 14: a second capture in the same run must produce the same
+      # reports and compile commands. Two fields cannot be compared byte for byte, and
+      # they are the only exclusions: the stdout digest and byte counts of the step
+      # `cmake configure` (CMake prints its own elapsed time) and of the steps
+      # `clang ast <function>` (clang's JSON AST dump holds node addresses that change
+      # from run to run). The entry results derived from that dump (found, signature,
+      # header) stay in the compared part, as does every other field of every report
+      # and every compile_commands file.
+      - name: Capture again and compare the reports (determinism)
+        id: determinism
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          # shellcheck disable=SC2086
+          run_offline capture --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out/capture-rerun --image "$IMAGE" $TESTBED_SELECTION > "$out/rerun.txt" 2> "$out/rerun.err"
+          rc=$?
+          set -e
+          cat "$out/rerun.txt"
+          a="$out/capture"
+          b="$out/capture-rerun/capture"
+          problems="$out/determinism-problems.txt"
+          : > "$problems"
+          norm() {
+            jq -S 'if .kind == "capture" then .steps |= map(if (.name == "cmake configure" or (.name | startswith("clang ast "))) then .run.stdout |= del(.sha256, .bytes_total, .bytes_stored) else . end) else . end' "$1"
+          }
+          list_a=$(cd "$a" && find . -type f | sort)
+          list_b=$(cd "$b" 2>/dev/null && find . -type f | sort)
+          if [ "$list_a" != "$list_b" ]; then
+            echo "the file lists differ:" >> "$problems"
+            diff <(printf '%s\n' "$list_a") <(printf '%s\n' "$list_b") >> "$problems" || true
+          fi
+          compared=0
+          while IFS= read -r rel; do
+            [ -n "$rel" ] || continue
+            compared=$((compared + 1))
+            case "$rel" in
+              *.compile_commands.json)
+                cmp -s "$a/$rel" "$b/$rel" || echo "differs byte for byte: $rel" >> "$problems"
+                ;;
+              *)
+                if ! cmp -s <(norm "$a/$rel") <(norm "$b/$rel"); then
+                  echo "differs: $rel" >> "$problems"
+                  diff <(norm "$a/$rel") <(norm "$b/$rel") | head -n 12 >> "$problems" || true
+                fi
+                ;;
+            esac
+          done <<< "$list_a"
+          {
+            echo "rerun capture exit code: $rc"
+            echo "compared $compared files of capture/ against the rerun"
+            echo 'excluded: stdout sha256 and byte counts of the steps "cmake configure" and "clang ast <function>"'
+            if [ -s "$problems" ] || [ "$rc" -ne 0 ] || [ "$compared" -eq 0 ]; then
+              echo "result: differences found"
+              cat "$problems"
+              if [ -s "$out/rerun.err" ]; then echo "--- stderr"; tail -c 1500 "$out/rerun.err"; fi
+            else
+              echo "result: identical"
+            fi
+          } > "$out/determinism.txt"
+          cat "$out/determinism.txt"
+          if [ -s "$problems" ] || [ "$rc" -ne 0 ] || [ "$compared" -eq 0 ]; then
+            annotate error testbed-determinism "$out/determinism.txt"
+            exit 1
+          fi
+          annotate notice testbed-determinism "$out/determinism.txt"
+
+      # D-26 fixtures. The notices below carry the real CI data that plan 02-10 commits
+      # as offline fixtures; each is its own step because GitHub caps the annotations
+      # of a step.
+      - name: Fixture qcbor-default compile_commands
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture qcbor-default compile_commands" "$RUNNER_TEMP/out/capture/qcbor/default.compile_commands.json"
+
+      - name: Fixture corejson-default compile_commands
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture corejson-default compile_commands" "$RUNNER_TEMP/out/capture/corejson/default.compile_commands.json"
+
+      - name: Fixture corejson-default capture report
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture corejson-default capture" "$RUNNER_TEMP/out/capture/corejson/default.json"
+
+      - name: Fixture corejson-default replay report
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture corejson-default replay" "$RUNNER_TEMP/out/replay/corejson/default.json"
+
+      # readelf -A of the corejson object, run in the image with no network.
+      - name: Fixture readelf-A
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          objects="$RUNNER_TEMP/work/capture/corejson/default/objects"
+          rel=$(cd "$objects" && find . -type f | sort | head -n 1 | sed 's#^\./##')
+          {
+            echo "object: $rel"
+            image_tool /work /opt/arm-gnu-toolchain/bin/arm-none-eabi-readelf -A "/work/capture/corejson/default/objects/$rel"
+          } > "$out/fixture-readelf-A.txt"
+          cat "$out/fixture-readelf-A.txt"
+          annotate notice "fixture readelf-A" "$out/fixture-readelf-A.txt"
+
+      # The smallest captured object, and a copy of it whose .comment section alone was
+      # replaced by arm-none-eabi-objcopy, as base64. Removing .comment from both must
+      # leave identical files, which is what the notice states.
+      - name: Make the two Arm fixture objects
+        id: armsmall
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          objcopy=/opt/arm-gnu-toolchain/bin/arm-none-eabi-objcopy
+          small=$(find "$RUNNER_TEMP/work/capture" -path '*/objects/*' -type f -printf '%s %p\n' | sort -n -k1,1 -k2 | head -n 1 | cut -d' ' -f2-)
+          rel=${small#"$RUNNER_TEMP/work"}
+          cp "$small" "$out/arm-small.o"
+          printf 'mt-fixture-comment\0' > "$out/comment.bin"
+          image_tool /work "$objcopy" --update-section .comment=/out/comment.bin "/work$rel" /out/arm-small-comment.o
+          image_tool /work "$objcopy" --remove-section=.comment "/work$rel" /out/arm-small-stripped.o
+          image_tool /work "$objcopy" --remove-section=.comment /out/arm-small-comment.o /out/arm-small-comment-stripped.o
+          echo "$rel" > "$out/arm-small.path"
+          if cmp -s "$out/arm-small.o" "$out/arm-small-comment.o"; then
+            echo "the two objects are identical; .comment was not replaced"
+            exit 1
+          fi
+          if ! cmp -s "$out/arm-small-stripped.o" "$out/arm-small-comment-stripped.o"; then
+            echo "the objects differ in more than .comment"
+            exit 1
+          fi
+          ls -l "$out"/arm-small*.o
+
+      - name: Fixture arm-small.o
+        if: ${{ !cancelled() && steps.armsmall.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          {
+            echo "source: $(cat "$out/arm-small.path")"
+            echo "sha256: $(sha256sum "$out/arm-small.o" | cut -d' ' -f1)"
+            echo "bytes: $(stat -c %s "$out/arm-small.o")"
+            echo "base64:"
+            base64 -w 76 "$out/arm-small.o"
+          } > "$out/fixture-arm-small.txt"
+          annotate notice "fixture arm-small.o" "$out/fixture-arm-small.txt"
+
+      - name: Fixture arm-small-comment.o
+        if: ${{ !cancelled() && steps.armsmall.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          {
+            echo "source: $(cat "$out/arm-small.path"), .comment replaced by arm-none-eabi-objcopy --update-section"
+            echo "sha256: $(sha256sum "$out/arm-small-comment.o" | cut -d' ' -f1)"
+            echo "bytes: $(stat -c %s "$out/arm-small-comment.o")"
+            echo "differs from arm-small.o only in .comment: yes (objcopy --remove-section=.comment gives identical files)"
+            echo "base64:"
+            base64 -w 76 "$out/arm-small-comment.o"
+          } > "$out/fixture-arm-small-comment.txt"
+          annotate notice "fixture arm-small-comment.o" "$out/fixture-arm-small-comment.txt"
+
+      # The AST dump of the QCBORDecode_Init probe, with the argv and working
+      # directory the entry check recorded in the capture report.
+      - name: Fixture qcbor entry ast
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          step=$(jq -c '[.steps[] | select(.name == "clang ast QCBORDecode_Init")][0] | {argv: .run.argv, cwd: .run.cwd}' "$out/capture/qcbor/default.json")
+          cwd=$(jq -r '.cwd' <<< "$step")
+          mapfile -t argv < <(jq -r '.argv[]' <<< "$step")
+          image_tool "$cwd" "${argv[@]}" > "$out/fixture-qcbor-ast.json"
+          annotate notice "fixture qcbor entry ast" "$out/fixture-qcbor-ast.json"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}

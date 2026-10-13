@@ -64,6 +64,8 @@ pub struct Manifest {
     pub schema_version: u32,
     /// The recorded first-RTOS decision (BED-02).
     pub decisions: Decisions,
+    /// The toolchain image every capture and replay runs in (CONTEXT D-10).
+    pub image: ImageRef,
     /// The flags every configuration shares.
     pub baseline: Baseline,
     /// The targets, keyed by id.
@@ -82,6 +84,18 @@ pub struct Decisions {
     pub first_rtos_candidates: Vec<String>,
     /// The PROJECT.md decision ID that records it, such as `D-18`.
     pub project_decision: String,
+}
+
+/// The toolchain image the test bed runs in.
+///
+/// The digest is kept here and under `## Current image` in
+/// `container/README.md`; a test ties the two together (RESEARCH Open Question
+/// 10).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ImageRef {
+    /// `sha256:` followed by 64 lowercase hex digits.
+    pub digest: String,
 }
 
 /// Flags shared by every configuration of every target.
@@ -417,6 +431,12 @@ impl Manifest {
             ));
         }
         decisions_issues(&self.decisions, &mut issues);
+        match self.image.digest.strip_prefix("sha256:") {
+            Some(hex) if is_lower_hex(hex, 64) => {}
+            _ => issues.push(
+                "image.digest: must be sha256: followed by 64 lowercase hex digits".to_owned(),
+            ),
+        }
         if self.baseline.cflags != BASELINE_CFLAGS {
             issues.push(format!(
                 "baseline.cflags: must be exactly {BASELINE_CFLAGS:?} in this order (CONTEXT D-06), found {:?}",

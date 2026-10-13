@@ -9,6 +9,11 @@ first_rtos_reason = "parsers are RTOS-independent; revisit after the design-part
 first_rtos_candidates = ["freertos", "zephyr"]
 project_decision = "D-18"
 
+[image]
+# The toolchain image every capture and replay runs in (D-10). The same digest is
+# under "Current image" in container/README.md; a test keeps the two equal.
+digest = "sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9"
+
 [baseline]
 cflags = ["-mcpu=cortex-m4", "-mthumb", "-mfloat-abi=hard", "-mfpu=fpv4-sp-d16", "-Os"]
 
