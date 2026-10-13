@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 02
 current_phase_name: Test Bed and Build Capture
 status: executing
-stopped_at: Completed 02-08-PLAN.md
-last_updated: "2026-10-13T10:34:36.721Z"
+stopped_at: Completed 02-09-PLAN.md
+last_updated: "2026-10-13T16:34:15.554Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 02 execution started
-state_head: 4e4c237e3c05df558202c40320f4caea7eed2abd
+state_head: f0a36b82895537aa730c8c354d921fa647875a3b
 progress:
   total_phases: 12
   completed_phases: 1
   total_plans: 19
-  completed_plans: 18
+  completed_plans: 19
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 
 Phase: 02 (Test Bed and Build Capture) — EXECUTING
 Plan: 10 of 10
-Status: Ready to execute
+Status: All plans have summaries; phase verification pending (the phase is not marked complete)
 Last activity: 2026-10-13 — Phase 02 execution started
 
 Progress: [█░░░░░░░░░] 8%
@@ -65,6 +65,7 @@ Progress: [█░░░░░░░░░] 8%
 | Phase 02 P02 | 10min | 3 tasks | 1 files |
 | Phase 02 P06 | 25min | 2 tasks | 15 files |
 | Phase 02 P08 | 26 min | 3 tasks | 1759 files |
+| Phase 02 P09 | 45min (resumed session) | 3 tasks | 37 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,8 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 02]: 02-08: zlib has no extracted seeds; test/example.c and test/infcover.c yield message text and hex text inside C strings, not zlib streams, so its 18 seeds are hand-made — A string extraction there would commit misleading seeds
 - [Phase 02]: 02-08: a zip archive above 2 MiB is not opened and a source file above 8 MiB is not read; seed_source paths may not be . or .git — The member count of an archive is unbounded; the archive size bounds the memory
 - [Phase 02]: 02-08: the mt testbed work directory is made absolute in mt-cli — git runs with the cache directory as cwd, so the relative default .mt-work broke verification of reused git sources
+- [Phase 02]: 02-09: CMakeFiles/Makefile2 is left out of the configure-time hashes by exact path (CMake pointer-order nondeterminism, measured; flags.make and every other generated file stay hashed)
+- [Phase 02]: 02-09: bed retained at 15 of 16 targets (29 pairs); isotp and paho/server dropped with cause entry_mismatch (testbed run 38387515333); final full-bed run 38430137113 green on f0a36b8, 3 of 3 round trips
 
 ### Pending Todos
 
@@ -131,6 +134,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-13T10:33:22.524Z
-Stopped at: Completed 02-08-PLAN.md
+Last session: 2026-10-13T16:34:15.419Z
+Stopped at: Completed 02-09-PLAN.md
 Resume file: None
