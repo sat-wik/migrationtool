@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "kind": "replay",
+  "target": "corejson",
+  "config": "default",
+  "verdict": "identical",
+  "normalisation_rule": "objcopy --strip-debug --remove-section=.comment on both objects, only when every differing section is .comment, .debug_*, .rel.debug_* or .rela.debug_*",
+  "normalisation_applied": false,
+  "objects": {
+    "build/CMakeFiles/core_json.dir/source/core_json.c.obj": {
+      "original": "93f55ee24173e08e4beb15b7c3d663ceac50be3e45f16ac0da25efcf457b9833",
+      "replay": "93f55ee24173e08e4beb15b7c3d663ceac50be3e45f16ac0da25efcf457b9833",
+      "status": "identical",
+      "normalised_original": null,
+      "normalised_replay": null,
+      "differing_sections": [],
+      "detail": null
+    }
+  },
+  "steps": [
+    {
+      "name": "compile /work/run/corejson/default/src/source/core_json.c",
+      "run": {
+        "schema_version": 2,
+        "argv": [
+          "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc",
+          "-I/work/run/corejson/default/src/source/include",
+          "-mcpu=cortex-m4",
+          "-mthumb",
+          "-mfloat-abi=hard",
+          "-mfpu=fpv4-sp-d16",
+          "-Os",
+          "-Os",
+          "-DNDEBUG",
+          "-o",
+          "CMakeFiles/core_json.dir/source/core_json.c.obj",
+          "-c",
+          "/work/run/corejson/default/src/source/core_json.c"
+        ],
+        "cwd": "/work/run/corejson/default/build",
+        "env": {
+          "LANG": "C.UTF-8",
+          "PATH": "/usr/lib/llvm-16/bin:/opt/klee/bin:/opt/cargo-tools/bin:/opt/arm-gnu-toolchain/bin:/opt/cargo/bin:/usr/local/bin:/usr/bin:/bin",
+          "SOURCE_DATE_EPOCH": "1791158400",
+          "TZ": "UTC"
+        },
+        "tool": {
+          "name": "arm_gcc",
+          "path": "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc",
+          "version": null
+        },
+        "exit": {
+          "code": 0,
+          "signal": null,
+          "timed_out": false,
+          "tree_kill_sent": false
+        },
+        "stdout": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes_total": 0,
+          "bytes_stored": 0,
+          "truncated": false,
+          "complete": true
+        },
+        "stderr": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes_total": 0,
+          "bytes_stored": 0,
+          "truncated": false,
+          "complete": true
+        }
+      }
+    }
+  ],
+  "detail": null
+}

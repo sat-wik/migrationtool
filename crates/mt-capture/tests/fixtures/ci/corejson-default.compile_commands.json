@@ -1,0 +1,22 @@
+[
+  {
+    "directory": "/work/run/corejson/default/build",
+    "file": "/work/run/corejson/default/src/source/core_json.c",
+    "arguments": [
+      "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc",
+      "-I/work/run/corejson/default/src/source/include",
+      "-mcpu=cortex-m4",
+      "-mthumb",
+      "-mfloat-abi=hard",
+      "-mfpu=fpv4-sp-d16",
+      "-Os",
+      "-Os",
+      "-DNDEBUG",
+      "-o",
+      "CMakeFiles/core_json.dir/source/core_json.c.obj",
+      "-c",
+      "/work/run/corejson/default/src/source/core_json.c"
+    ],
+    "output": "/work/run/corejson/default/build/CMakeFiles/core_json.dir/source/core_json.c.obj"
+  }
+]
