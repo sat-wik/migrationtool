@@ -800,6 +800,10 @@ fn build_01_cmake_probe_outputs_are_not_configure_files() {
         "CMakeFiles/CMakeError.log",
         "CMakeFiles/3.25.1/CMakeDetermineCompilerABI_C.bin",
         "CMakeFiles/3.28.3/CMakeDetermineCompilerABI_C.bin",
+        // The make driver of the Unix Makefiles generator: the order of equal-rank
+        // prerequisite lines follows CMake's pointer order and changes between runs
+        // (zcbor: two orders of the `app.dir/all` prerequisites in testbed run B).
+        "CMakeFiles/Makefile2",
     ] {
         assert!(is_cmake_product(product), "{product} is an output");
     }
@@ -813,6 +817,16 @@ fn build_01_cmake_probe_outputs_are_not_configure_files() {
         "tables/CMakeDetermineCompilerABI_C.bin",
         "CMakeFiles/3.25.1/data.bin",
         "CMakeCache.txt",
+        // Only the one driver file is a product. The files that carry the compile
+        // flags and definitions stay hashed, and so do look-alike paths.
+        "CMakeFiles/tj.dir/flags.make",
+        "CMakeFiles/tj.dir/build.make",
+        "CMakeFiles/tj.dir/depend.make",
+        "CMakeFiles/Makefile.cmake",
+        "Makefile",
+        "Makefile2",
+        "sub/CMakeFiles/Makefile2",
+        "tables/Makefile2",
     ] {
         assert!(!is_cmake_product(input), "{input} is a configure input");
     }
