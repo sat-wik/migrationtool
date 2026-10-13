@@ -8,6 +8,7 @@ use std::time::Duration;
 use anyhow::Context;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use mt_capture::manifest::ManifestError;
+use mt_capture::seeding::run_seeds_detailed;
 use mt_capture::testbed::{
     Selection, StepSummary, TestbedError, TestbedOptions, run_capture, run_fetch, run_replay,
     run_validate,
@@ -175,6 +176,22 @@ enum TestbedAction {
     /// identically after the fixed normalisation), 1 when one differs, failed or
     /// was not proven, 2 for invalid input.
     Replay(TestbedArgs),
+    /// Extract each target's seed corpus from its verified cached source (and its
+    /// committed hand-made inputs) into the seeds directory, or with --check
+    /// regenerate it in memory and compare. Needs no network. Exit 0 when every
+    /// corpus was written (or matches), 1 when one drifted or failed, 2 for invalid
+    /// input.
+    Seeds {
+        #[command(flatten)]
+        args: TestbedArgs,
+        /// Where the corpora are (default: `seeds` next to the manifest).
+        #[arg(long)]
+        seeds_dir: Option<PathBuf>,
+        /// Change nothing: report drift between the committed corpus and the
+        /// regenerated one.
+        #[arg(long)]
+        check: bool,
+    },
 }
 
 /// How much of the pins file must be present.
@@ -356,6 +373,29 @@ fn testbed_command(action: TestbedAction) -> anyhow::Result<bool> {
             finish_testbed(run_capture(&testbed_options(args, image)))
         }
         TestbedAction::Replay(args) => finish_testbed(run_replay(&testbed_options(args, None))),
+        TestbedAction::Seeds {
+            args,
+            seeds_dir,
+            check,
+        } => {
+            let opts = testbed_options(args, None);
+            let seeds_dir = seeds_dir.unwrap_or_else(|| opts.testbed_dir.join("seeds"));
+            match run_seeds_detailed(&opts, &seeds_dir, check) {
+                Ok(run) => {
+                    print!("{}", run.summary.render_table());
+                    for (id, lines) in &run.drift {
+                        for line in lines {
+                            eprintln!("drift: {id}: {line}");
+                        }
+                    }
+                    Ok(run.summary.passed)
+                }
+                Err(error) => {
+                    print_issues(&error);
+                    Err(error.into())
+                }
+            }
+        }
     }
 }
 

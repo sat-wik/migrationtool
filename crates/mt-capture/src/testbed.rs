@@ -43,7 +43,7 @@ use crate::treehash::sha256_hex;
 pub const SUMMARY_SCHEMA_VERSION: u32 = 1;
 
 /// Wall-clock limit of each fetch step.
-const FETCH_TIMEOUT: Duration = Duration::from_secs(600);
+pub(crate) const FETCH_TIMEOUT: Duration = Duration::from_secs(600);
 
 /// Wall-clock limit of each build, replay and normalisation step.
 const BUILD_TIMEOUT: Duration = Duration::from_secs(900);
@@ -197,13 +197,13 @@ fn one_line(value: &str) -> String {
 }
 
 /// The manifest, the pins and the selected ids of a step.
-struct Inputs {
-    manifest: Manifest,
-    pins: Pins,
-    ids: Vec<String>,
+pub(crate) struct Inputs {
+    pub(crate) manifest: Manifest,
+    pub(crate) pins: Pins,
+    pub(crate) ids: Vec<String>,
 }
 
-fn target_of<'a>(manifest: &'a Manifest, id: &str) -> Result<&'a Target, TestbedError> {
+pub(crate) fn target_of<'a>(manifest: &'a Manifest, id: &str) -> Result<&'a Target, TestbedError> {
     manifest
         .target
         .get(id)
@@ -228,7 +228,10 @@ fn resolve_ids(manifest: &Manifest, selection: &Selection) -> Result<Vec<String>
     }
 }
 
-fn load_inputs(opts: &TestbedOptions, need_recipe: bool) -> Result<Inputs, TestbedError> {
+pub(crate) fn load_inputs(
+    opts: &TestbedOptions,
+    need_recipe: bool,
+) -> Result<Inputs, TestbedError> {
     let manifest = Manifest::load(&opts.manifest_path)?;
     manifest.validate()?;
     let pins = Pins::load(&opts.pins_path)?;
@@ -248,7 +251,7 @@ fn load_inputs(opts: &TestbedOptions, need_recipe: bool) -> Result<Inputs, Testb
     })
 }
 
-fn runner_config(pins: &Pins, timeout: Duration) -> RunnerConfig {
+pub(crate) fn runner_config(pins: &Pins, timeout: Duration) -> RunnerConfig {
     RunnerConfig {
         timeout,
         ..RunnerConfig::new(
@@ -272,7 +275,10 @@ fn write_text(path: &Path, text: &str) -> Result<(), TestbedError> {
     fs::write(path, text).map_err(|source| io_error("write", path, source))
 }
 
-fn write_summary(opts: &TestbedOptions, summary: &StepSummary) -> Result<(), TestbedError> {
+pub(crate) fn write_summary(
+    opts: &TestbedOptions,
+    summary: &StepSummary,
+) -> Result<(), TestbedError> {
     let path = opts.out_dir.join(format!("summary-{}.json", summary.step));
     write_text(&path, &summary.to_json()?)
 }

@@ -495,6 +495,7 @@ impl Manifest {
                 self.baseline.cflags
             ));
         }
+        seed_caps_issues(&self.seed_caps, &mut issues);
         for (id, target) in &self.target {
             target_issues(id, target, &mut issues);
         }
@@ -648,6 +649,82 @@ fn target_issues(id: &str, target: &Target, issues: &mut Vec<String>) {
     }
     entry_issues(&f, &target.entry, issues);
     config_issues(&f, target, issues);
+    seed_source_issues(&f, target, issues);
+}
+
+fn seed_caps_issues(caps: &SeedCaps, issues: &mut Vec<String>) {
+    for (name, value) in [
+        ("max_seeds", caps.max_seeds),
+        ("max_total_bytes", caps.max_total_bytes),
+        ("max_seed_bytes", caps.max_seed_bytes),
+    ] {
+        if value == 0 {
+            issues.push(format!("seed_caps.{name}: must be above zero"));
+        }
+    }
+    if caps.max_seed_bytes > caps.max_total_bytes {
+        issues.push(format!(
+            "seed_caps.max_seed_bytes: {} is above max_total_bytes {}, so no seed of that size could fit",
+            caps.max_seed_bytes, caps.max_total_bytes
+        ));
+    }
+}
+
+/// A file extension a seed source may name: letters, digits, `_`, `-` and `+`,
+/// or the empty string for files without an extension.
+fn is_extension(text: &str) -> bool {
+    text.bytes()
+        .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'+'))
+}
+
+fn seed_source_issues(f: &str, target: &Target, issues: &mut Vec<String>) {
+    for (i, source) in target.seed_source.iter().enumerate() {
+        let g = format!("{f}.seed_source[{i}]");
+        check_path(issues, &format!("{g}.path"), &source.path);
+        // The whole tree is not an allow-list, and `.git` is not source (Pitfall 18).
+        if source.path.split('/').any(|part| part == ".git")
+            || source
+                .path
+                .split('/')
+                .all(|part| part.is_empty() || part == ".")
+        {
+            issues.push(format!(
+                "{g}.path: must name a part of the tree, not the whole tree or .git, found {:?}",
+                source.path
+            ));
+        }
+        if source.methods.is_empty() {
+            issues.push(format!("{g}.methods: must name at least one method"));
+        }
+        for method in &source.methods {
+            if !SEED_METHODS.contains(&method.as_str()) {
+                issues.push(format!(
+                    "{g}.methods: {method:?} is not one of {SEED_METHODS:?}"
+                ));
+            }
+        }
+        if let Some(extensions) = &source.extensions {
+            if extensions.is_empty() {
+                issues.push(format!(
+                    "{g}.extensions: leave it out to take every file, or list at least one"
+                ));
+            }
+            for extension in extensions {
+                if !is_extension(extension) {
+                    issues.push(format!(
+                        "{g}.extensions: {extension:?} must be letters, digits, `_`, `-` or `+` only (no dot, no slash); use \"\" for files without an extension"
+                    ));
+                }
+            }
+        }
+        for entry in &source.entries {
+            if !target.entry.iter().any(|e| &e.name == entry) {
+                issues.push(format!(
+                    "{g}.entries: {entry:?} is not an entry function of the target"
+                ));
+            }
+        }
+    }
 }
 
 fn source_issues(f: &str, source: &Source, issues: &mut Vec<String>) {
