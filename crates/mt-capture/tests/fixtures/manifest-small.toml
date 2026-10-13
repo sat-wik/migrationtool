@@ -1,0 +1,94 @@
+# A two-target manifest with made-up but well-formed values. It exercises both
+# build systems, both source kinds, a dual licence with an elected operand and
+# the direct, range and wrapped entry forms. It describes no real project.
+schema_version = 1
+
+[decisions]
+first_rtos = "deferred"
+first_rtos_reason = "parsers are RTOS-independent; revisit after the design-partner interviews"
+first_rtos_candidates = ["freertos", "zephyr"]
+project_decision = "D-18"
+
+[baseline]
+cflags = ["-mcpu=cortex-m4", "-mthumb", "-mfloat-abi=hard", "-mfpu=fpv4-sp-d16", "-Os"]
+
+[target.demo_make]
+category = ["cbor"]
+build = "make"
+
+[target.demo_make.source]
+kind = "git"
+url = "https://example.com/demo/make.git"
+ref = "v1.2.3"
+commit = "0123456789abcdef0123456789abcdef01234567"
+tree_sha256 = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+
+[target.demo_make.licence]
+spdx = "BSD-3-Clause"
+elected = "BSD-3-Clause"
+file = "LICENSE"
+
+[target.demo_make.build_args]
+dir = "."
+goals = ["libdemo.a"]
+make_vars = ["CC={cc} {cflags}"]
+
+[[target.demo_make.entry]]
+name = "demo_decode"
+header = "inc/demo.h"
+source = "src/demo.c"
+form = "direct"
+signature = "int (const uint8_t *, size_t)"
+
+[[target.demo_make.entry]]
+name = "demo_next"
+header = "inc/demo.h"
+source = "src/demo.c"
+form = "range"
+signature = "int (unsigned char **, const unsigned char *, size_t *)"
+
+[[target.demo_make.config]]
+name = "default"
+
+[[target.demo_make.config]]
+name = "no-float"
+defines = ["DEMO_NO_FLOAT"]
+
+[target.demo_cmake]
+category = ["json", "tlv"]
+build = "cmake"
+
+[target.demo_cmake.source]
+kind = "archive"
+url = "https://example.com/demo/demo-2.0.tar.bz2"
+sha256 = "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100"
+strip_components = 1
+ref = "demo-2.0"
+commit = "89abcdef0123456789abcdef0123456789abcdef"
+tree_sha256 = "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90"
+
+[target.demo_cmake.licence]
+spdx = "GPL-2.0-or-later OR BSD-2-Clause"
+elected = "BSD-2-Clause"
+file = "BSD-2-Clause"
+note = "only the library directory is dual-licensed"
+
+[target.demo_cmake.build_args]
+dir = "."
+cmake_target = "demo_json"
+cmake_options = ["-DDEMO_TESTS=OFF"]
+
+[[target.demo_cmake.entry]]
+name = "demo_parse_stream"
+header = "include/demo_json.h"
+source = "src/demo_json.c"
+form = "wrapped"
+signature = "int (demo_stream_t *, int)"
+accepted_wrapped = true
+
+[[target.demo_cmake.config]]
+name = "default"
+
+[[target.demo_cmake.config]]
+name = "depth-8"
+cmake_options = ["-DDEMO_MAX_DEPTH=8"]
