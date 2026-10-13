@@ -33,6 +33,14 @@ pub enum TreeHashError {
         /// The offending path.
         path: PathBuf,
     },
+    /// A symlink is absolute or resolves outside the tree being copied.
+    #[error("symlink {} points to {}, which is absolute or leaves the tree", path.display(), target.display())]
+    EscapingSymlink {
+        /// The link.
+        path: PathBuf,
+        /// Its target text.
+        target: PathBuf,
+    },
 }
 
 /// Lowercase hex sha256 of `bytes`.
@@ -156,4 +164,14 @@ fn is_executable(_metadata: &std::fs::Metadata) -> bool {
 pub fn tree_sha256(root: &Path) -> Result<String, TreeHashError> {
     let rows = tree_rows(root)?;
     Ok(sha256_hex(rows.concat().as_bytes()))
+}
+
+/// Copy the tree under `src` to `dst`.
+///
+/// Not implemented yet.
+///
+/// # Errors
+/// [`TreeHashError`].
+pub fn copy_tree(_src: &Path, _dst: &Path) -> Result<(), TreeHashError> {
+    Ok(())
 }

@@ -7,5 +7,8 @@
 //! Fetch, capture and replay are added by later plans of the phase and run
 //! their external tools only through the `mt-toolchain` runner.
 
+pub mod cc;
 pub mod manifest;
+pub mod replay;
+pub mod report;
 pub mod treehash;
