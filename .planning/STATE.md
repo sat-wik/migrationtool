@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 02
 current_phase_name: Test Bed and Build Capture
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-10-13T09:34:26.892Z"
+stopped_at: Completed 02-06-PLAN.md
+last_updated: "2026-10-13T10:05:41.281Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 02 execution started
-state_head: 6eae6e8804ce8ba0e4ee2866df7dbd994cc66402
+state_head: 749e9a25b6331ecd13972beb19ec2744d84ebe19
 progress:
   total_phases: 12
   completed_phases: 1
   total_plans: 19
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 02 (Test Bed and Build Capture) — EXECUTING
-Plan: 7 of 10
+Plan: 8 of 10
 Status: Ready to execute
 Last activity: 2026-10-13 — Phase 02 execution started
 
@@ -63,6 +63,7 @@ Progress: [█░░░░░░░░░] 8%
 | Phase 01 P09 | 35 min | 3 tasks | 6 files |
 | Phase 02 P01 | 34 min | 3 tasks | 12 files |
 | Phase 02 P02 | 10min | 3 tasks | 1 files |
+| Phase 02 P06 | 25min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,8 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 01]: Final verified image ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee (container run 38198934488, manifest sha256 d7002918…); GHCR publishes from main only from now on (WR-09); founder UAT passed on this digest
 - [Phase 02]: 02-01: D-17 image extension: git, cmake, curl, bzip2 added to the final stage and make gets an [apt] pin (bzip2 1.0.8-5+b1, cmake 3.25.1-1, curl 7.88.1-10+deb12u15, git 1:2.39.5-0+deb12u3, make 4.3-4.1 at snapshot 20261005T000000Z) — Needed by D-07 CMake builds, D-19 fetch by commit and the Mbed TLS archive source; proven green on the session branch (container run 38338543797); only a push to main publishes (WR-09), so plan 02-02 ships it through a PR
 - [Phase 02]: 02-02: Current image is sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9, published by container run 38342425433 (push to main, merge commit 69b5b7f4, PR #4); previous sha256:42c7fb0e... superseded
+- [Phase 02]: 02-06: the testbed determinism comparison excludes only the stdout digest and byte counts of the steps 'cmake configure' and 'clang ast <fn>' (CMake prints its elapsed time; clang's JSON AST holds node addresses); every other report field and every compile_commands file is compared byte for byte — Both fields change between identical runs and the runner records only digests; the entry results derived from the dump stay compared. Stated in the workflow and every testbed-determinism notice. Tracer green: run 38380382970, head 4195a6d, 4 pairs identical in the pinned image
+- [Phase 02]: 02-06: CMake's compiler-ABI probe output (CMakeFiles/<ver>/CMakeDetermineCompilerABI_*.bin) is not a configure-time input and is excluded from configure_files; notices longer than 9 annotation parts are published by several steps (GitHub keeps 10 annotations per level per step) — Found by the determinism step (Task 2 RT1) and the annotation listing (RT2); both fixed within the 3-round-trip cap
 
 ### Pending Todos
 
@@ -124,6 +127,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-13T04:31:34.855Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-10-13T10:05:31.560Z
+Stopped at: Completed 02-06-PLAN.md
 Resume file: None
