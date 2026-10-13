@@ -1,13 +1,25 @@
 //! Clean-copy replay of captured compile commands (BUILD-02, CONTEXT D-26).
+//!
+//! A replay deletes the source tree of a finished build, restores the pristine
+//! tree, removes every declared output and re-runs each captured compile as an
+//! argv vector through the runner, never through a shell. Each rebuilt object
+//! is then compared byte for byte with the original. The same code replays the
+//! real Arm builds in CI and the two-file host project in the offline tests.
 
-use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::collections::{BTreeMap, BTreeSet};
+use std::ffi::OsString;
+use std::fs;
+use std::io;
+use std::path::{Component, Path, PathBuf};
 
-use mt_toolchain::runner::{RunnerConfig, RunnerError};
+use mt_toolchain::runner::{RunRequest, RunnerConfig, RunnerError, run};
 
-use crate::cc::{CcEntry, CcError, CcPolicy};
-use crate::report::{NORMALISATION_RULE, REPORT_SCHEMA_VERSION, ReplayReport, Verdict};
-use crate::treehash::TreeHashError;
+use crate::cc::{CcEntry, CcError, CcPolicy, canonical_output, lexically_under, normalise_lexical};
+use crate::report::{
+    NORMALISATION_RULE, ObjectComparison, ObjectStatus, REPORT_SCHEMA_VERSION, ReplayReport, Step,
+    Verdict,
+};
+use crate::treehash::{TreeHashError, copy_tree, sha256_hex};
 
 /// Everything a replay needs, with no hidden state.
 #[derive(Debug, Clone)]
@@ -73,25 +85,290 @@ pub enum ReplayError {
         path: PathBuf,
         /// The underlying error.
         #[source]
-        source: std::io::Error,
+        source: io::Error,
     },
 }
 
-/// Replay `plan` and report.
-///
-/// # Errors
-/// [`ReplayError`] only for invalid inputs; see the type.
-pub fn replay(_cfg: &RunnerConfig, plan: &ReplayPlan) -> Result<ReplayReport, ReplayError> {
-    Ok(ReplayReport {
+fn io_error(action: &'static str, path: &Path, source: io::Error) -> ReplayError {
+    ReplayError::Io {
+        action,
+        path: path.to_path_buf(),
+        source,
+    }
+}
+
+fn invalid(message: impl Into<String>) -> ReplayError {
+    ReplayError::InvalidPlan(message.into())
+}
+
+/// The run-root-relative key of `path`, with `/` separators.
+fn relative_key(run_root: &Path, path: &Path) -> Option<String> {
+    let normal = normalise_lexical(path);
+    let relative = normal.strip_prefix(normalise_lexical(run_root)).ok()?;
+    let mut parts = Vec::new();
+    for component in relative.components() {
+        match component {
+            Component::Normal(part) => parts.push(part.to_str()?),
+            _ => return None,
+        }
+    }
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("/"))
+    }
+}
+
+/// Check the plan before anything is deleted, copied or spawned.
+fn validate(plan: &ReplayPlan) -> Result<(), ReplayError> {
+    if !plan.run_root.is_absolute() {
+        return Err(invalid("the run root must be an absolute path"));
+    }
+    if normalise_lexical(&plan.policy.run_root) != normalise_lexical(&plan.run_root) {
+        return Err(invalid(
+            "the policy run root differs from the plan run root",
+        ));
+    }
+    let mut src_parts = Path::new(&plan.src_dir_name).components();
+    match (src_parts.next(), src_parts.next()) {
+        (Some(Component::Normal(_)), None) => {}
+        _ => return Err(invalid("src_dir_name must be a single directory name")),
+    }
+    let src_dir = plan.run_root.join(&plan.src_dir_name);
+    for keep in &plan.keep_dirs {
+        if !lexically_under(&plan.run_root, keep) || lexically_under(&src_dir, keep) {
+            return Err(invalid(format!(
+                "keep directory {} must lie under the run root and outside the source directory",
+                keep.display()
+            )));
+        }
+    }
+    let mut seen: BTreeSet<&str> = BTreeSet::new();
+    for entry in &plan.entries {
+        plan.policy.check_entry(entry)?;
+        if canonical_output(entry)? != entry.output {
+            return Err(invalid(format!(
+                "the output of {} does not match its arguments",
+                entry.file
+            )));
+        }
+        if !seen.insert(entry.output.as_str()) {
+            return Err(invalid(format!("two entries write {}", entry.output)));
+        }
+        if relative_key(&plan.run_root, Path::new(&entry.output)).is_none() {
+            return Err(invalid(format!(
+                "output {} has no run-root-relative key",
+                entry.output
+            )));
+        }
+    }
+    for key in plan.original_objects.keys() {
+        let path = Path::new(key);
+        let clean = !key.is_empty()
+            && path
+                .components()
+                .all(|component| matches!(component, Component::Normal(_)));
+        if !clean {
+            return Err(invalid(format!(
+                "object key {key:?} is not a relative path"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn remove_file_if_present(path: &Path) -> Result<(), ReplayError> {
+    match fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(source) if source.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(source) => Err(io_error("remove", path, source)),
+    }
+}
+
+fn report_skeleton(plan: &ReplayPlan, verdict: Verdict, detail: Option<&str>) -> ReplayReport {
+    ReplayReport {
         schema_version: REPORT_SCHEMA_VERSION,
         kind: "replay".to_owned(),
         target: plan.target.clone(),
         config: plan.config.clone(),
-        verdict: Verdict::BuildFailed,
+        verdict,
         normalisation_rule: NORMALISATION_RULE.to_owned(),
         normalisation_applied: false,
         objects: BTreeMap::new(),
         steps: Vec::new(),
-        detail: Some("not implemented".to_owned()),
-    })
+        detail: detail.map(str::to_owned),
+    }
+}
+
+fn comparison(
+    original: Option<String>,
+    replayed: Option<String>,
+    status: ObjectStatus,
+) -> ObjectComparison {
+    ObjectComparison {
+        original,
+        replay: replayed,
+        status,
+        normalised_original: None,
+        normalised_replay: None,
+        differing_sections: Vec::new(),
+        detail: None,
+    }
+}
+
+/// Replay `plan` and report.
+///
+/// The steps are: refuse an invalid plan; delete the source directory; restore
+/// the pristine tree; remove every declared output; run each entry in the given
+/// order; hash every output and compare it with the original. A compile that
+/// times out or leaves an incomplete stream makes the verdict `not_proven`, a
+/// compile that exits non-zero makes it `build_failed`, and the remaining
+/// entries still run so the report lists every failure.
+///
+/// # Errors
+/// [`ReplayError`] only for invalid inputs, a refused compiler or path, or a
+/// subprocess that cannot be started. A target-configuration failure is data in
+/// the report.
+pub fn replay(cfg: &RunnerConfig, plan: &ReplayPlan) -> Result<ReplayReport, ReplayError> {
+    validate(plan)?;
+    if plan.entries.is_empty() {
+        return Ok(report_skeleton(
+            plan,
+            Verdict::BuildFailed,
+            Some("empty_capture"),
+        ));
+    }
+    let metadata = fs::metadata(&plan.pristine_src)
+        .map_err(|source| io_error("read the pristine tree", &plan.pristine_src, source))?;
+    if !metadata.is_dir() {
+        return Err(invalid("the pristine source is not a directory"));
+    }
+
+    // Clean copy: nothing of the original build's source directory survives.
+    let src_dir = plan.run_root.join(&plan.src_dir_name);
+    match fs::remove_dir_all(&src_dir) {
+        Ok(()) => {}
+        Err(source) if source.kind() == io::ErrorKind::NotFound => {}
+        Err(source) => return Err(io_error("remove", &src_dir, source)),
+    }
+    fs::create_dir_all(&plan.run_root)
+        .map_err(|source| io_error("create", &plan.run_root, source))?;
+    copy_tree(&plan.pristine_src, &src_dir)?;
+
+    // Every declared output goes, so a stale object can never pass.
+    for entry in &plan.entries {
+        remove_file_if_present(Path::new(&entry.output))?;
+    }
+    for entry in &plan.entries {
+        let directory = Path::new(&entry.directory);
+        fs::create_dir_all(directory).map_err(|source| io_error("create", directory, source))?;
+        if let Some(parent) = Path::new(&entry.output).parent() {
+            fs::create_dir_all(parent).map_err(|source| io_error("create", parent, source))?;
+        }
+    }
+
+    let mut report = report_skeleton(plan, Verdict::Identical, None);
+    let mut not_proven = false;
+    let mut build_failed = false;
+    for entry in &plan.entries {
+        let request = RunRequest {
+            tool_name: plan.compiler_tool_name.clone(),
+            argv: entry.arguments.iter().map(OsString::from).collect(),
+            cwd: PathBuf::from(&entry.directory),
+            extra_env: BTreeMap::new(),
+            tool_version: None,
+        };
+        let output = run(cfg, &request)?;
+        let record = output.record;
+        if record.exit.timed_out || !record.stdout.complete || !record.stderr.complete {
+            not_proven = true;
+        } else if record.exit.code != Some(0) {
+            build_failed = true;
+        }
+        report.steps.push(Step {
+            name: format!("compile {}", entry.file),
+            run: record,
+        });
+    }
+
+    // Hash what the entries produced.
+    let mut replayed: BTreeMap<String, PathBuf> = BTreeMap::new();
+    for entry in &plan.entries {
+        let path = PathBuf::from(&entry.output);
+        let is_file = fs::symlink_metadata(&path).is_ok_and(|meta| meta.is_file());
+        if is_file && let Some(key) = relative_key(&plan.run_root, &path) {
+            replayed.insert(key, path);
+        }
+    }
+    let keys: BTreeSet<&String> = plan
+        .original_objects
+        .keys()
+        .chain(replayed.keys())
+        .collect();
+    for key in keys {
+        let original = plan.original_objects.get(key).cloned();
+        let replay_path = replayed.get(key);
+        let replay_hash = match replay_path {
+            Some(path) => {
+                let bytes = fs::read(path).map_err(|source| io_error("read", path, source))?;
+                Some(sha256_hex(&bytes))
+            }
+            None => None,
+        };
+        let object = match (original, replay_hash) {
+            (Some(original), Some(replay_hash)) if original == replay_hash => {
+                comparison(Some(original), Some(replay_hash), ObjectStatus::Identical)
+            }
+            (Some(original), Some(replay_hash)) => {
+                comparison(Some(original), Some(replay_hash), ObjectStatus::Differs)
+            }
+            (Some(original), None) => {
+                comparison(Some(original), None, ObjectStatus::MissingInReplay)
+            }
+            (None, Some(replay_hash)) => {
+                comparison(None, Some(replay_hash), ObjectStatus::MissingInOriginal)
+            }
+            (None, None) => continue,
+        };
+        report.objects.insert(key.clone(), object);
+    }
+
+    report.verdict = verdict_of(&report, not_proven, build_failed);
+    report.detail = match report.verdict {
+        Verdict::NotProven => Some("compile_timeout_or_incomplete_stream".to_owned()),
+        Verdict::BuildFailed if report.objects.is_empty() => Some("empty_capture".to_owned()),
+        Verdict::BuildFailed => Some("compile_failed".to_owned()),
+        _ => None,
+    };
+    Ok(report)
+}
+
+/// Verdict precedence: not proven, build failed, differs, identical after
+/// normalisation, identical. A configuration with no objects at all is never
+/// identical.
+fn verdict_of(report: &ReplayReport, not_proven: bool, build_failed: bool) -> Verdict {
+    if not_proven {
+        return Verdict::NotProven;
+    }
+    if build_failed || report.objects.is_empty() {
+        return Verdict::BuildFailed;
+    }
+    let statuses = report.objects.values().map(|object| object.status);
+    let mut normalised = false;
+    for status in statuses {
+        match status {
+            ObjectStatus::Differs
+            | ObjectStatus::MissingInReplay
+            | ObjectStatus::MissingInOriginal => {
+                return Verdict::Differs;
+            }
+            ObjectStatus::IdenticalAfterNormalisation => normalised = true,
+            ObjectStatus::Identical => {}
+        }
+    }
+    if normalised {
+        Verdict::IdenticalAfterNormalisation
+    } else {
+        Verdict::Identical
+    }
 }
