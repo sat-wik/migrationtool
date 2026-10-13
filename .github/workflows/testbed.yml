@@ -102,10 +102,15 @@ jobs:
       - name: Write the annotation and docker helpers
         run: |
           cat > "$RUNNER_TEMP/ci-lib.sh" <<'LIB'
-          # annotate LEVEL TITLE FILE: FILE as annotations of at most 3800 bytes each (the
-          # API keeps 4096 characters of a message), titled "TITLE (i/n)" when split.
+          # annotate LEVEL TITLE FILE [FROM [TO]]: FILE as annotations of at most 3800 bytes
+          # each (the API keeps 4096 characters of a message), titled "TITLE (i/n)" when
+          # split. Parts are whole lines. GitHub keeps only the first 10 annotations of a
+          # level per step, so a file of more than 9 parts is published by several steps,
+          # each naming its part range FROM..TO (1-based, TO 0 or absent: to the end).
+          # A consumer joins the parts with a newline (each part's final newline is
+          # dropped) and the whole file loses its final newline.
           annotate() {
-            local level=$1 title=$2 file=$3 dir n i label text
+            local level=$1 title=$2 file=$3 from=${4:-1} to=${5:-0} dir n i label text
             if [ ! -s "$file" ]; then
               printf '::%s title=%s::(empty)\n' "$level" "$title"
               return 0
@@ -115,6 +120,8 @@ jobs:
             local -a parts=("$dir"/part.*)
             n=${#parts[@]}
             for i in "${!parts[@]}"; do
+              if [ $((i + 1)) -lt "$from" ]; then continue; fi
+              if [ "$to" -gt 0 ] && [ $((i + 1)) -gt "$to" ]; then break; fi
               label=$title
               if [ "$n" -gt 1 ]; then label="$title ($((i + 1))/$n)"; fi
               text=$(cat "${parts[$i]}")
@@ -489,8 +496,10 @@ jobs:
           annotate notice "fixture arm-small-comment.o" "$out/fixture-arm-small-comment.txt"
 
       # The AST dump of the QCBORDecode_Init probe, with the argv and working
-      # directory the entry check recorded in the capture report.
-      - name: Fixture qcbor entry ast
+      # directory the entry check recorded in the capture report. The dump is longer
+      # than 9 annotation parts, so three steps publish parts 1 to 9, 10 to 18 and 19 on.
+      - name: Fixture qcbor entry ast (parts 1 to 9)
+        id: ast
         if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
         shell: bash
         run: |
@@ -500,7 +509,21 @@ jobs:
           cwd=$(jq -r '.cwd' <<< "$step")
           mapfile -t argv < <(jq -r '.argv[]' <<< "$step")
           image_tool "$cwd" "${argv[@]}" > "$out/fixture-qcbor-ast.json"
-          annotate notice "fixture qcbor entry ast" "$out/fixture-qcbor-ast.json"
+          annotate notice "fixture qcbor entry ast" "$out/fixture-qcbor-ast.json" 1 9
+
+      - name: Fixture qcbor entry ast (parts 10 to 18)
+        if: ${{ !cancelled() && steps.ast.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture qcbor entry ast" "$RUNNER_TEMP/out/fixture-qcbor-ast.json" 10 18
+
+      - name: Fixture qcbor entry ast (parts 19 on)
+        if: ${{ !cancelled() && steps.ast.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture qcbor entry ast" "$RUNNER_TEMP/out/fixture-qcbor-ast.json" 19 27
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}
