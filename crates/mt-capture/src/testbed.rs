@@ -33,7 +33,7 @@ use crate::capture::{
     CaptureContext, CaptureError, RunLayout, ToolPaths, VariantDiff, capture, variant_code_diff,
 };
 use crate::cc::{CcEntry, CcPolicy};
-use crate::droplog::Dropped;
+use crate::droplog::{DropLog, DropLogError, Dropped};
 use crate::fetch::{FetchContext, FetchError, cache_paths, fetch, verify_cached};
 use crate::manifest::{BuildSystem, Config, Manifest, ManifestError, Target};
 use crate::replay::{Normaliser, ReplayError, ReplayPlan, replay};
@@ -89,6 +89,9 @@ pub enum TestbedError {
     /// The pins file could not be read or is invalid.
     #[error(transparent)]
     Pins(#[from] PinsError),
+    /// The drop log could not be read or does not fit the manifest.
+    #[error(transparent)]
+    DropLog(#[from] DropLogError),
     /// A selected id is not in the manifest.
     #[error("unknown target {0:?}: it is not in the manifest")]
     UnknownTarget(String),
@@ -172,9 +175,14 @@ impl StepSummary {
         Ok(text)
     }
 
-    /// Add the row of a dropped pair (D-11). The placeholder does not record it.
+    /// Add the row of a dropped pair, `dropped (<cause>)` (D-11). A dropped pair
+    /// is not run, so it neither passes nor fails the step: it is never counted
+    /// as a pass and it cannot hide a failure of a retained pair.
     pub fn add_dropped(&mut self, name: &str, dropped: &Dropped) {
-        let _ = (name, dropped);
+        self.rows.insert(
+            name.to_owned(),
+            format!("dropped ({})", dropped.cause.as_str()),
+        );
     }
 
     /// The table printed by `mt testbed`: the step, one aligned row per entry
@@ -207,6 +215,8 @@ pub(crate) struct Inputs {
     pub(crate) manifest: Manifest,
     pub(crate) pins: Pins,
     pub(crate) ids: Vec<String>,
+    /// `<testbed_dir>/dropped.toml`, validated against the manifest.
+    pub(crate) drops: DropLog,
 }
 
 pub(crate) fn target_of<'a>(manifest: &'a Manifest, id: &str) -> Result<&'a Target, TestbedError> {
@@ -242,6 +252,8 @@ pub(crate) fn load_inputs(
     manifest.validate()?;
     let pins = Pins::load(&opts.pins_path)?;
     pins.validate()?;
+    let drops = DropLog::load_from_testbed_dir(&opts.testbed_dir)?;
+    drops.validate(&manifest)?;
     let ids = resolve_ids(&manifest, &opts.selection)?;
     if need_recipe {
         for id in &ids {
@@ -254,6 +266,7 @@ pub(crate) fn load_inputs(
         manifest,
         pins,
         ids,
+        drops,
     })
 }
 
@@ -329,6 +342,10 @@ pub fn run_fetch(opts: &TestbedOptions) -> Result<StepSummary, TestbedError> {
     let ctx = FetchContext::from_pins(&inputs.pins, &opts.work_dir)?;
     let mut summary = StepSummary::new("fetch");
     for id in &inputs.ids {
+        if let Some(dropped) = inputs.drops.target_dropped(id) {
+            summary.add_dropped(id, dropped);
+            continue;
+        }
         let target = target_of(&inputs.manifest, id)?;
         match fetch(&cfg, &ctx, id, target) {
             Ok(report) => {
@@ -412,6 +429,10 @@ pub fn run_capture(opts: &TestbedOptions) -> Result<StepSummary, TestbedError> {
         let mut captured: Vec<(String, CaptureReport)> = Vec::new();
         for config in ordered_configs(target) {
             let row = format!("{id}/{}", config.name);
+            if let Some(dropped) = inputs.drops.is_dropped(id, &config.name) {
+                summary.add_dropped(&row, dropped);
+                continue;
+            }
             let mut report = match capture(&cfg, &ctx, id, target, config) {
                 Ok(report) => report,
                 Err(CaptureError::Fetch(error)) => {
@@ -443,6 +464,10 @@ pub fn run_capture(opts: &TestbedOptions) -> Result<StepSummary, TestbedError> {
         }
         if let Some(variant) = target.variant() {
             let row = format!("{id}/variant");
+            if let Some(dropped) = inputs.drops.is_dropped(id, &variant.name) {
+                summary.add_dropped(&row, dropped);
+                continue;
+            }
             let pair = (
                 captured.iter().find(|(name, _)| name == "default"),
                 captured.iter().find(|(name, _)| *name == variant.name),
@@ -595,6 +620,10 @@ pub fn run_replay(opts: &TestbedOptions) -> Result<StepSummary, TestbedError> {
         let target = target_of(&inputs.manifest, id)?;
         for config in ordered_configs(target) {
             let row = format!("{id}/{}", config.name);
+            if let Some(dropped) = inputs.drops.is_dropped(id, &config.name) {
+                summary.add_dropped(&row, dropped);
+                continue;
+            }
             let layout = RunLayout::new(&opts.work_dir, id, &config.name);
             let captured = match fs::read(layout.report_path())
                 .map_err(|error| error.to_string())

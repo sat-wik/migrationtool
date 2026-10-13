@@ -539,6 +539,10 @@ pub fn run_seeds_detailed(
     let mut summary = StepSummary::new("seeds");
     let mut drift: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for id in &inputs.ids {
+        if let Some(dropped) = inputs.drops.target_dropped(id) {
+            summary.add_dropped(id, dropped);
+            continue;
+        }
         let target = target_of(&inputs.manifest, id)?;
         match verify_cached(&cfg, &verify_ctx, id, target) {
             Ok(_) => {}

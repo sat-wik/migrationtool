@@ -13,6 +13,7 @@
 //! configuration always drops the target. A variant that changes no compiled
 //! code is dropped as a variant under either policy (D-05).
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -70,7 +71,16 @@ impl DropCause {
     /// The cause as written in `dropped.toml` and in summary rows.
     #[must_use]
     pub fn as_str(self) -> &'static str {
-        ""
+        match self {
+            Self::FetchFailed => "fetch_failed",
+            Self::BuildFailed => "build_failed",
+            Self::CaptureFailed => "capture_failed",
+            Self::Differs => "differs",
+            Self::NotProven => "not_proven",
+            Self::EntryMismatch => "entry_mismatch",
+            Self::VariantNoCodeChange => "variant_no_code_change",
+            Self::Licence => "licence",
+        }
     }
 }
 
@@ -104,7 +114,10 @@ impl Dropped {
     /// `<target>/<config>`.
     #[must_use]
     pub fn heading(&self) -> String {
-        String::new()
+        match &self.config {
+            None => self.target.clone(),
+            Some(config) => format!("{}/{config}", self.target),
+        }
     }
 }
 
@@ -172,8 +185,15 @@ impl DropLog {
     /// # Errors
     /// [`DropLogError::Parse`] on malformed TOML, unknown keys or wrong types,
     /// [`DropLogError::SchemaVersion`] on another schema version.
-    pub fn parse(_text: &str) -> Result<Self, DropLogError> {
-        Ok(Self::default())
+    pub fn parse(text: &str) -> Result<Self, DropLogError> {
+        let log: Self = toml::from_str(text)?;
+        if log.schema_version != DROP_LOG_SCHEMA_VERSION {
+            return Err(DropLogError::SchemaVersion {
+                found: log.schema_version,
+                expected: DROP_LOG_SCHEMA_VERSION,
+            });
+        }
+        Ok(log)
     }
 
     /// Read and parse a drop log file.
@@ -181,8 +201,12 @@ impl DropLog {
     /// # Errors
     /// [`DropLogError::Read`] if the file cannot be read, otherwise as
     /// [`DropLog::parse`].
-    pub fn load(_path: &Path) -> Result<Self, DropLogError> {
-        Ok(Self::default())
+    pub fn load(path: &Path) -> Result<Self, DropLogError> {
+        let text = std::fs::read_to_string(path).map_err(|source| DropLogError::Read {
+            path: path.to_path_buf(),
+            source,
+        })?;
+        Self::parse(&text)
     }
 
     /// The drop log of a testbed directory: `dropped.toml` there, or the empty
@@ -190,8 +214,13 @@ impl DropLog {
     ///
     /// # Errors
     /// As [`DropLog::load`] when the file exists.
-    pub fn load_from_testbed_dir(_testbed_dir: &Path) -> Result<Self, DropLogError> {
-        Ok(Self::default())
+    pub fn load_from_testbed_dir(testbed_dir: &Path) -> Result<Self, DropLogError> {
+        let path = testbed_dir.join("dropped.toml");
+        if path.is_file() {
+            Self::load(&path)
+        } else {
+            Ok(Self::default())
+        }
     }
 
     /// Check every entry against the manifest. Every issue is collected,
@@ -199,41 +228,176 @@ impl DropLog {
     ///
     /// # Errors
     /// [`DropLogError::Invalid`] listing every issue.
-    pub fn validate(&self, _manifest: &Manifest) -> Result<(), DropLogError> {
-        Ok(())
+    pub fn validate(&self, manifest: &Manifest) -> Result<(), DropLogError> {
+        let mut issues: Vec<String> = Vec::new();
+        let mut seen: BTreeSet<(String, Option<String>)> = BTreeSet::new();
+        for (index, entry) in self.dropped.iter().enumerate() {
+            let at = format!("dropped[{index}] ({})", entry.heading());
+            let Some(target) = manifest.target.get(&entry.target) else {
+                issues.push(format!(
+                    "{at}.target: {:?} is not a target of the manifest; a dropped target stays named in it",
+                    entry.target
+                ));
+                continue;
+            };
+            if !seen.insert((entry.target.clone(), entry.config.clone())) {
+                issues.push(format!(
+                    "{at}: duplicate entry for the same target and configuration"
+                ));
+            }
+            match entry.config.as_deref() {
+                Some("default") => issues.push(format!(
+                    "{at}.config: the default configuration cannot be dropped alone; drop the target (omit config)"
+                )),
+                Some(name) => {
+                    if target.config.iter().all(|c| c.name != name) {
+                        issues.push(format!(
+                            "{at}.config: {name:?} is not a configuration of target {:?}",
+                            entry.target
+                        ));
+                    } else if self.policy.variant_failure == VariantFailure::DropTarget
+                        && entry.cause != DropCause::VariantNoCodeChange
+                    {
+                        issues.push(format!(
+                            "{at}.config: the policy is drop_target, so a failing variant drops the whole target (only variant_no_code_change drops a variant)"
+                        ));
+                    }
+                }
+                None => {
+                    if entry.cause == DropCause::VariantNoCodeChange {
+                        issues.push(format!(
+                            "{at}.cause: variant_no_code_change drops a variant, so config must be named"
+                        ));
+                    }
+                }
+            }
+            if entry.fix_attempted.trim().is_empty() {
+                issues.push(format!(
+                    "{at}.fix_attempted: must not be empty; every drop follows one documented fix attempt (D-11)"
+                ));
+            }
+            if entry.detail.trim().is_empty() {
+                issues.push(format!("{at}.detail: must not be empty"));
+            }
+            if entry.ci_run == 0 {
+                issues.push(format!("{at}.ci_run: must be the numeric id of a CI run"));
+            }
+        }
+        // A variant entry next to an entry for its whole target says nothing new
+        // and hides which of the two is the cause.
+        for entry in &self.dropped {
+            if entry.config.is_some()
+                && self
+                    .dropped
+                    .iter()
+                    .any(|other| other.config.is_none() && other.target == entry.target)
+            {
+                issues.push(format!(
+                    "dropped ({}): the whole target {:?} is already dropped",
+                    entry.heading(),
+                    entry.target
+                ));
+            }
+        }
+        issues.sort();
+        issues.dedup();
+        if issues.is_empty() {
+            Ok(())
+        } else {
+            Err(DropLogError::Invalid { issues })
+        }
     }
 
-    /// Check that `DROPPED.md` has one `## <heading>` per entry and no other
-    /// `## ` heading that names a target or configuration (D-11).
+    /// Check that `DROPPED.md` has one `## <heading>` per entry under its
+    /// `# Entries` section and no other `## ` heading there (D-11). Headings
+    /// before `# Entries` explain the policy and are not checked.
     ///
     /// # Errors
-    /// [`DropLogError::Invalid`] naming every entry without a heading and every
-    /// heading without an entry.
-    pub fn check_markdown(&self, _markdown: &str) -> Result<(), DropLogError> {
-        Ok(())
+    /// [`DropLogError::Invalid`] naming every entry without a heading, every
+    /// heading without an entry, and a missing `# Entries` section.
+    pub fn check_markdown(&self, markdown: &str) -> Result<(), DropLogError> {
+        let mut issues: Vec<String> = Vec::new();
+        let mut in_entries = false;
+        let mut found_section = false;
+        let mut headings: Vec<String> = Vec::new();
+        for line in markdown.lines() {
+            let line = line.trim_end();
+            if line == "# Entries" {
+                in_entries = true;
+                found_section = true;
+            } else if in_entries && line.starts_with("# ") {
+                in_entries = false;
+            } else if in_entries && let Some(heading) = line.strip_prefix("## ") {
+                headings.push(heading.trim().to_owned());
+            }
+        }
+        if !found_section {
+            issues.push("DROPPED.md has no `# Entries` section".to_owned());
+        }
+        let expected: BTreeSet<String> = self.dropped.iter().map(Dropped::heading).collect();
+        let present: BTreeSet<String> = headings.iter().cloned().collect();
+        if present.len() != headings.len() {
+            issues.push("DROPPED.md repeats an entry heading".to_owned());
+        }
+        for heading in expected.difference(&present) {
+            issues.push(format!(
+                "DROPPED.md has no `## {heading}` heading for an entry of dropped.toml"
+            ));
+        }
+        for heading in present.difference(&expected) {
+            issues.push(format!(
+                "DROPPED.md heading `## {heading}` has no entry in dropped.toml"
+            ));
+        }
+        issues.sort();
+        issues.dedup();
+        if issues.is_empty() {
+            Ok(())
+        } else {
+            Err(DropLogError::Invalid { issues })
+        }
     }
 
     /// The entry that drops the whole target, if any.
     #[must_use]
-    pub fn target_dropped(&self, _target: &str) -> Option<&Dropped> {
-        None
+    pub fn target_dropped(&self, target: &str) -> Option<&Dropped> {
+        self.dropped
+            .iter()
+            .find(|entry| entry.target == target && entry.config.is_none())
     }
 
     /// The entry that drops this pair: the whole target, or this variant.
     #[must_use]
-    pub fn is_dropped(&self, _target: &str, _config: &str) -> Option<&Dropped> {
-        None
+    pub fn is_dropped(&self, target: &str, config: &str) -> Option<&Dropped> {
+        self.target_dropped(target).or_else(|| {
+            self.dropped
+                .iter()
+                .find(|entry| entry.target == target && entry.config.as_deref() == Some(config))
+        })
     }
 
     /// The manifest's targets that are not fully dropped, sorted.
     #[must_use]
-    pub fn retained_targets(&self, _manifest: &Manifest) -> Vec<String> {
-        Vec::new()
+    pub fn retained_targets(&self, manifest: &Manifest) -> Vec<String> {
+        manifest
+            .target
+            .keys()
+            .filter(|id| self.target_dropped(id).is_none())
+            .cloned()
+            .collect()
     }
 
     /// The ids of the fully dropped targets, sorted.
     #[must_use]
     pub fn dropped_targets(&self) -> Vec<String> {
-        Vec::new()
+        let mut ids: Vec<String> = self
+            .dropped
+            .iter()
+            .filter(|entry| entry.config.is_none())
+            .map(|entry| entry.target.clone())
+            .collect();
+        ids.sort();
+        ids.dedup();
+        ids
     }
 }
