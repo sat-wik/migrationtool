@@ -5,7 +5,7 @@
 //! text and never followed; only a `.git` entry directly under the root is
 //! skipped.
 
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use sha2::{Digest, Sha256};
 
@@ -32,6 +32,14 @@ pub enum TreeHashError {
     NonUtf8 {
         /// The offending path.
         path: PathBuf,
+    },
+    /// A symlink is absolute or resolves outside the tree being copied.
+    #[error("symlink {} points to {}, which is absolute or leaves the tree", path.display(), target.display())]
+    EscapingSymlink {
+        /// The link.
+        path: PathBuf,
+        /// Its target text.
+        target: PathBuf,
     },
 }
 
@@ -156,4 +164,110 @@ fn is_executable(_metadata: &std::fs::Metadata) -> bool {
 pub fn tree_sha256(root: &Path) -> Result<String, TreeHashError> {
     let rows = tree_rows(root)?;
     Ok(sha256_hex(rows.concat().as_bytes()))
+}
+
+/// Copy the tree under `src` to `dst`, for a replay's clean copy.
+///
+/// Directories are created, regular files are copied with their mode (so the
+/// execute bit survives), and symlinks are recreated as symlinks with the same
+/// link text, never followed. Only a `.git` entry directly under `src` is
+/// skipped, the same rule as [`tree_rows`]. A link whose target is absolute or
+/// whose lexical resolution leaves the tree is refused (RESEARCH Pitfall 16):
+/// after the copy every link that can be resolved is checked physically as
+/// well, because a chain of links can leave the tree where the text alone does
+/// not. `dst` should not exist or should be empty; an existing file is
+/// overwritten and an existing link is an error.
+///
+/// # Errors
+/// [`TreeHashError::Read`] for an i/o failure, [`TreeHashError::SpecialFile`]
+/// for a FIFO, socket or device, [`TreeHashError::EscapingSymlink`] for a link
+/// that leaves the tree.
+pub fn copy_tree(src: &Path, dst: &Path) -> Result<(), TreeHashError> {
+    std::fs::create_dir_all(dst).map_err(|source| read_error(dst, source))?;
+    let mut links: Vec<PathBuf> = Vec::new();
+    let mut stack = vec![PathBuf::new()];
+    while let Some(relative) = stack.pop() {
+        let listing = std::fs::read_dir(src.join(&relative))
+            .map_err(|source| read_error(&src.join(&relative), source))?;
+        for entry in listing {
+            let entry = entry.map_err(|source| read_error(&src.join(&relative), source))?;
+            let name = entry.file_name();
+            if relative.as_os_str().is_empty() && name == ".git" {
+                continue;
+            }
+            let child = relative.join(&name);
+            let from = src.join(&child);
+            let to = dst.join(&child);
+            let file_type = entry
+                .file_type()
+                .map_err(|source| read_error(&from, source))?;
+            if file_type.is_symlink() {
+                let target =
+                    std::fs::read_link(&from).map_err(|source| read_error(&from, source))?;
+                if !link_stays_in_tree(&relative, &target) {
+                    return Err(TreeHashError::EscapingSymlink { path: from, target });
+                }
+                make_symlink(&target, &to).map_err(|source| read_error(&to, source))?;
+                links.push(to);
+            } else if file_type.is_dir() {
+                std::fs::create_dir(&to).map_err(|source| read_error(&to, source))?;
+                stack.push(child);
+            } else if file_type.is_file() {
+                // `fs::copy` carries the permission bits across.
+                std::fs::copy(&from, &to).map_err(|source| read_error(&from, source))?;
+            } else {
+                return Err(TreeHashError::SpecialFile { path: from });
+            }
+        }
+    }
+    check_links_physically(dst, &links)
+}
+
+/// True when following `target` from a link inside the directory `parent`
+/// (relative to the tree root) never climbs above the root, by text alone.
+fn link_stays_in_tree(parent: &Path, target: &Path) -> bool {
+    let mut depth = parent.components().count();
+    for component in target.components() {
+        match component {
+            Component::Normal(_) => depth += 1,
+            Component::CurDir => {}
+            Component::ParentDir => match depth.checked_sub(1) {
+                Some(shallower) => depth = shallower,
+                None => return false,
+            },
+            Component::RootDir | Component::Prefix(_) => return false,
+        }
+    }
+    true
+}
+
+/// Refuse a copied link that physically resolves outside the copied tree. A
+/// dangling or looping link cannot be followed anywhere, so it is left alone.
+fn check_links_physically(dst: &Path, links: &[PathBuf]) -> Result<(), TreeHashError> {
+    let root = std::fs::canonicalize(dst).map_err(|source| read_error(dst, source))?;
+    for link in links {
+        if let Ok(resolved) = std::fs::canonicalize(link)
+            && !resolved.starts_with(&root)
+        {
+            let target = std::fs::read_link(link).unwrap_or_default();
+            return Err(TreeHashError::EscapingSymlink {
+                path: link.clone(),
+                target,
+            });
+        }
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+fn make_symlink(target: &Path, link: &Path) -> std::io::Result<()> {
+    std::os::unix::fs::symlink(target, link)
+}
+
+#[cfg(not(unix))]
+fn make_symlink(_target: &Path, _link: &Path) -> std::io::Result<()> {
+    Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "symbolic links are only supported on unix hosts",
+    ))
 }
