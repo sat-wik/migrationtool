@@ -151,6 +151,9 @@ For the open-source test bed the UB-decision approver is recorded as the founder
 - **D-15:** Phase 1 provisional pin: llvm=16 bitcode-rustc=1.72.1 for clang, KLEE, c2rust and the KLEE bitcode toolchain (phase 01 CONTEXT D-01, D-03); revisited at the Phase 6 R1 verdict; refines D-08 and supersedes nothing. Changing either value needs a new decision line with matching tokens (phase 01 CONTEXT D-21).
 - **D-16:** crates/mt-toolchain/src/runner.rs is the only module allowed to use std::process; every other external process goes through runner::run. Clarifies docs/guidelines/building-the-tool.md section 4; enforced by clippy disallowed-types and tool_01_command_only_in_runner_module.
 - **D-17:** The pinned image's final stage gains git, cmake, curl and bzip2 from the snapshot archive, and make (installed since Phase 1) gains an `[apt]` pin; each has a `[tool.*]` row checked by `mt toolchain check` (phase 02 CONTEXT D-30; needed by D-07 builds, D-19 fetch by commit and the Mbed TLS archive source). Only a push to main publishes the image (WR-09); supersedes nothing.
+- **D-18:** First RTOS ecosystem: deferred; parsers are RTOS-independent. Candidates are Zephyr (industrial IoT) and FreeRTOS (consumer IoT). Revisit after the design-partner interviews (weeks 4-10). No Phase 2 code depends on the choice; mirrored in `testbed/manifest.toml` `[decisions]` (phase 02 D-08).
+- **D-19:** Dual-licensed test-bed targets: an `OR` licence expression is admitted only when a permissive operand (MIT, BSD-2-Clause, BSD-3-Clause, Apache-2.0, Zlib or ISC) is recorded as `elected`; a target whose only option is copyleft stays excluded. Mbed TLS elects Apache-2.0, Paho BSD-3-Clause (EDL-1.0) and libfdt BSD-2-Clause (phase 02 D-27; refines D-02 of the phase 02 context, not a legal opinion).
+- **D-20:** Archive source kind: Mbed TLS is pinned by release-archive sha256 plus the tree sha256 of the extracted tree, with the commit of the tag recorded for provenance, because its git checkout needs a submodule and Python (phase 02 D-20; refines phase 02 D-17).
 </decisions>
 
 ## Key Decisions
@@ -169,7 +172,7 @@ For the open-source test bed the UB-decision approver is recorded as the founder
 | R1 required spike, R2 time-boxed (D-10) | Both are unproven; each decides how the evidence layer is built | Pending — Phase 6 |
 | MVP "full evidence" excludes Kani (D-14) | Kani is spec-v1 and R2 is unproven | Assumed — confirm (A-01) |
 | 12 phases, sized 1-2 weeks of part-time work each | Builder constraint outranks the default "standard" granularity (4-6 phases) | Assumed — see A-09 |
-| First RTOS ecosystem (Zephyr vs FreeRTOS) | Spec open question; parsers are RTOS-independent so it is not blocking | Pending — record in Phase 2 |
+| First RTOS ecosystem (Zephyr vs FreeRTOS) | Spec open question; parsers are RTOS-independent so it is not blocking | Deferred (D-18) |
 
 ## Assumptions to Confirm
 
