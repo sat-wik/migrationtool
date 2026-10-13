@@ -2,13 +2,13 @@
 #
 # Every table records where its text came from in `source`. All entries below
 # were captured by `mt toolchain check --capture-outputs` inside the CI image
-# (container workflow, job image-a, run 37969688167); the test
+# (container workflow, job image-a, run 38337265570); the test
 # tool_02_container_pins_regexes_parse_captured_outputs refuses any source that
-# says "representative". Regenerate by copying the `tool-outputs` annotations of
+# is not a CI capture. Regenerate by copying the `tool-outputs` annotations of
 # a green container run into this file (the header comment excepted).
 
 [arm_gcc]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 arm-none-eabi-gcc (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174)) 14.3.1 20250623
 Copyright (C) 2024 Free Software Foundation, Inc.
@@ -19,63 +19,88 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 stderr = ""
 
 [bear]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 bear 3.1.1
 """
 stderr = ""
 
 [bzip2]
-source = "representative, plan 02-01 Task 2; replaced by the CI capture in Task 3"
+source = "captured in CI image-a, run 38337265570"
 stdout = ""
 stderr = """
 bzip2, a block-sorting file compressor.  Version 1.0.8, 13-Jul-2019.
 
    usage: bzip2 [flags and input files in any order]
+
+   -h --help           print this message
+   -d --decompress     force decompression
+   -z --compress       force compression
+   -k --keep           keep (don't delete) input files
+   -f --force          overwrite existing output files
+   -t --test           test compressed file integrity
+   -c --stdout         output to standard out
+   -q --quiet          suppress noncritical error messages
+   -v --verbose        be verbose (a 2nd -v gives more)
+   -L --license        display software version & license
+   -V --version        display software version & license
+   -s --small          use less memory (at most 2500k)
+   -1 .. -9            set block size to 100k .. 900k
+   --fast              alias for -1
+   --best              alias for -9
+
+   If invoked as `bzip2', default action is to compress.
+              as `bunzip2',  default action is to decompress.
+              as `bzcat', default action is to decompress to stdout.
+
+   If no file names are given, bzip2 compresses or decompresses
+   from standard input to standard output.  You can combine
+   short flags, so `-v -4' means the same as -v4 or -4v, &c.
+
 """
 
 [c2rust]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 C2Rust 0.22.1
 """
 stderr = ""
 
 [c2rust_ldd]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
-\tlinux-vdso.so.1 (0x00007f6bc777f000)
-\tlibclang-cpp.so.16 => /lib/x86_64-linux-gnu/libclang-cpp.so.16 (0x00007f6bc32ff000)
-\tlibLLVM-16.so.1 => /lib/x86_64-linux-gnu/libLLVM-16.so.1 (0x00007f6bbbcd2000)
-\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f6bbbab8000)
-\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f6bbba98000)
-\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f6bbb8b6000)
-\t/lib64/ld-linux-x86-64.so.2 (0x00007f6bc7781000)
-\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f6bbb7d4000)
-\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007f6bbb7c8000)
-\tlibedit.so.2 => /lib/x86_64-linux-gnu/libedit.so.2 (0x00007f6bbb78e000)
-\tlibz3.so.4 => /lib/x86_64-linux-gnu/libz3.so.4 (0x00007f6bba159000)
-\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f6bba13a000)
-\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007f6bba07e000)
-\tlibtinfo.so.6 => /lib/x86_64-linux-gnu/libtinfo.so.6 (0x00007f6bba049000)
-\tlibxml2.so.2 => /lib/x86_64-linux-gnu/libxml2.so.2 (0x00007f6bb9e9d000)
-\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007f6bb9e87000)
-\tlibicuuc.so.72 => /lib/x86_64-linux-gnu/libicuuc.so.72 (0x00007f6bb9c89000)
-\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007f6bb9c5a000)
-\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007f6bb9c4b000)
-\tlibicudata.so.72 => /lib/x86_64-linux-gnu/libicudata.so.72 (0x00007f6bb7e79000)
+\tlinux-vdso.so.1 (0x00007f98c7931000)
+\tlibclang-cpp.so.16 => /lib/x86_64-linux-gnu/libclang-cpp.so.16 (0x00007f98c34b1000)
+\tlibLLVM-16.so.1 => /lib/x86_64-linux-gnu/libLLVM-16.so.1 (0x00007f98bbe84000)
+\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f98bbc6a000)
+\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f98bbc4a000)
+\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f98bba68000)
+\t/lib64/ld-linux-x86-64.so.2 (0x00007f98c7933000)
+\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f98bb986000)
+\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007f98bb97a000)
+\tlibedit.so.2 => /lib/x86_64-linux-gnu/libedit.so.2 (0x00007f98bb940000)
+\tlibz3.so.4 => /lib/x86_64-linux-gnu/libz3.so.4 (0x00007f98ba30b000)
+\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f98ba2ec000)
+\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007f98ba230000)
+\tlibtinfo.so.6 => /lib/x86_64-linux-gnu/libtinfo.so.6 (0x00007f98ba1fb000)
+\tlibxml2.so.2 => /lib/x86_64-linux-gnu/libxml2.so.2 (0x00007f98ba04f000)
+\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007f98ba039000)
+\tlibicuuc.so.72 => /lib/x86_64-linux-gnu/libicuuc.so.72 (0x00007f98b9e3b000)
+\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007f98b9e0c000)
+\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007f98b9dfd000)
+\tlibicudata.so.72 => /lib/x86_64-linux-gnu/libicudata.so.72 (0x00007f98b802b000)
 """
 stderr = ""
 
 [cargo_mutants]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 cargo-mutants 27.1.0
 """
 stderr = ""
 
 [clang]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 Debian clang version 16.0.6 (15~deb12u1)
 Target: x86_64-pc-linux-gnu
@@ -85,7 +110,7 @@ InstalledDir: /usr/lib/llvm-16/bin
 stderr = ""
 
 [cmake]
-source = "representative, plan 02-01 Task 2; replaced by the CI capture in Task 3"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 cmake version 3.25.1
 
@@ -94,14 +119,17 @@ CMake suite maintained and supported by Kitware (kitware.com/cmake).
 stderr = ""
 
 [curl]
-source = "representative, plan 02-01 Task 2; replaced by the CI capture in Task 3"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
-curl 7.88.1 (x86_64-pc-linux-gnu) libcurl/7.88.1 OpenSSL/3.0.22 zlib/1.2.13
+curl 7.88.1 (x86_64-pc-linux-gnu) libcurl/7.88.1 OpenSSL/3.0.22 zlib/1.2.13 brotli/1.0.9 zstd/1.5.4 libidn2/2.3.3 libpsl/0.21.2 (+libidn2/2.3.3) libssh2/1.10.0 nghttp2/1.52.0 librtmp/2.3 OpenLDAP/2.5.13
+Release-Date: 2023-02-20, security patched: 7.88.1-10+deb12u15
+Protocols: dict file ftp ftps gopher gophers http https imap imaps ldap ldaps mqtt pop3 pop3s rtmp rtsp scp sftp smb smbs smtp smtps telnet tftp
+Features: alt-svc AsynchDNS brotli GSS-API HSTS HTTP2 HTTPS-proxy IDN IPv6 Kerberos Largefile libz NTLM NTLM_WB PSL SPNEGO SSL threadsafe TLS-SRP UnixSockets zstd
 """
 stderr = ""
 
 [dpkg_query]
-source = "representative, plan 02-01 Task 2; replaced by the CI capture in Task 3"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 adduser\t3.134\tinstalled
 apt\t2.6.1\tinstalled
@@ -117,6 +145,7 @@ bzip2\t1.0.8-5+b1\tinstalled
 ca-certificates\t20250419~deb12u1\tinstalled
 clang-16\t1:16.0.6-15~deb12u1\tinstalled
 cmake\t3.25.1-1\tinstalled
+cmake-data\t3.25.1-1\tinstalled
 coreutils\t9.1-1\tinstalled
 curl\t7.88.1-10+deb12u15\tinstalled
 dash\t0.5.12-2\tinstalled
@@ -129,6 +158,7 @@ e2fsprogs\t1.47.0-2+b2\tinstalled
 findutils\t4.9.0-4\tinstalled
 gcc-12-base\t12.2.0-14+deb12u1\tinstalled
 git\t1:2.39.5-0+deb12u3\tinstalled
+git-man\t1:2.39.5-0+deb12u3\tinstalled
 gpgv\t2.2.40-1.1+deb12u2\tinstalled
 grep\t3.8-5\tinstalled
 gzip\t1.12-1\tinstalled
@@ -140,6 +170,7 @@ libabsl20220623\t20220623.1-1+deb12u2\tinstalled
 libacl1\t2.3.1-3\tinstalled
 libaio1\t0.3.113-4\tinstalled
 libapt-pkg6.0\t2.6.1\tinstalled
+libarchive13\t3.6.2-1+deb12u5\tinstalled
 libasan8\t12.2.0-14+deb12u1\tinstalled
 libasound2\t1.2.8-1+b1\tinstalled
 libasound2-data\t1.2.8-1\tinstalled
@@ -174,6 +205,7 @@ libcrypt-dev\t1:4.4.33-2\tinstalled
 libcrypt1\t1:4.4.33-2\tinstalled
 libctf-nobfd0\t2.40-2\tinstalled
 libctf0\t2.40-2\tinstalled
+libcurl3-gnutls\t7.88.1-10+deb12u15\tinstalled
 libcurl4\t7.88.1-10+deb12u15\tinstalled
 libdaxctl1\t76.1-1\tinstalled
 libdb5.3\t5.3.28+dfsg2-1\tinstalled
@@ -185,6 +217,7 @@ libear\t3.1.1-1\tinstalled
 libedit2\t3.1-20221030-2\tinstalled
 libelf1\t0.188-2.1\tinstalled
 libepoxy0\t1.5.10-1\tinstalled
+liberror-perl\t0.17029-2\tinstalled
 libexecs0\t1.3-2\tinstalled
 libexpat1\t2.5.0-1+deb12u4\tinstalled
 libext2fs2\t1.47.0-2+b2\tinstalled
@@ -198,6 +231,8 @@ libgc1\t1:8.2.2-3\tinstalled
 libgcc-12-dev\t12.2.0-14+deb12u1\tinstalled
 libgcc-s1\t12.2.0-14+deb12u1\tinstalled
 libgcrypt20\t1.10.1-3+deb12u1\tinstalled
+libgdbm-compat4\t1.23-3\tinstalled
+libgdbm6\t1.23-3\tinstalled
 libglib2.0-0\t2.74.6-2+deb12u9\tinstalled
 libgmp10\t2:6.2.1+dfsg1-1.1\tinstalled
 libgnutls30\t3.7.9-2+deb12u7\tinstalled
@@ -217,6 +252,7 @@ libidn2-0\t2.3.3-1+b1\tinstalled
 libitm1\t12.2.0-14+deb12u1\tinstalled
 libjansson4\t2.14-2\tinstalled
 libjpeg62-turbo\t1:2.1.5-2\tinstalled
+libjsoncpp25\t1.9.5-4\tinstalled
 libk5crypto3\t1.20.1-2+deb12u5\tinstalled
 libkeyutils1\t1.6.3-2\tinstalled
 libkmod2\t30+20221128-1\tinstalled
@@ -253,10 +289,12 @@ libpam-runtime\t1.5.2-6+deb12u2\tinstalled
 libpam0g\t1.5.2-6+deb12u2\tinstalled
 libpcre2-8-0\t10.42-1+deb12u2\tinstalled
 libpcsclite1\t1.9.9-2\tinstalled
+libperl5.36\t5.36.0-7+deb12u3\tinstalled
 libpfm4\t4.13.0-1\tinstalled
 libpixman-1-0\t0.42.2-1\tinstalled
 libpmem1\t1.12.1-2\tinstalled
 libpng16-16\t1.6.39-2+deb12u5\tinstalled
+libproc2-0\t2:4.0.2-3\tinstalled
 libprotobuf32\t3.21.12-3+deb12u1\tinstalled
 libprotoc32\t3.21.12-3+deb12u1\tinstalled
 libpsl5\t0.21.2-1\tinstalled
@@ -267,6 +305,7 @@ libquadmath0\t12.2.0-14+deb12u1\tinstalled
 librdmacm1\t44.0-2\tinstalled
 libre2-9\t20220601+dfsg-1+b1\tinstalled
 libreadline8\t8.2-1.3\tinstalled
+librhash0\t1.4.3-3\tinstalled
 librtmp1\t2.4+20151223.gitfa8646d.1-2+b2\tinstalled
 libsasl2-2\t2.1.28+dfsg-10\tinstalled
 libsasl2-modules-db\t2.1.28+dfsg-10\tinstalled
@@ -301,6 +340,7 @@ liburing2\t2.3-3\tinstalled
 libusb-1.0-0\t2:1.0.26-1\tinstalled
 libusbredirparser1\t0.13.0-2\tinstalled
 libuuid1\t2.38.1-5+deb12u3\tinstalled
+libuv1\t1.44.2-1+deb12u1\tinstalled
 libvdeplug2\t4.0.1-4\tinstalled
 libwayland-server0\t1.21.0-1\tinstalled
 libxml2\t2.9.14+dfsg-1.3~deb12u6\tinstalled
@@ -326,7 +366,10 @@ ncurses-base\t6.4-4\tinstalled
 ncurses-bin\t6.4-4\tinstalled
 openssl\t3.0.22-1~deb12u1\tinstalled
 passwd\t1:4.13+dfsg1-1+deb12u2\tinstalled
+perl\t5.36.0-7+deb12u3\tinstalled
 perl-base\t5.36.0-7+deb12u3\tinstalled
+perl-modules-5.36\t5.36.0-7+deb12u3\tinstalled
+procps\t2:4.0.2-3\tinstalled
 python3\t3.11.2-1+b1\tinstalled
 python3-minimal\t3.11.2-1+b1\tinstalled
 python3-pkg-resources\t66.1.1-1+deb12u2\tinstalled
@@ -353,14 +396,14 @@ zlib1g\t1:1.2.13.dfsg-1\tinstalled
 stderr = ""
 
 [git]
-source = "representative, plan 02-01 Task 2; replaced by the CI capture in Task 3"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 git version 2.39.5
 """
 stderr = ""
 
 [klee]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 KLEE 3.2 (https://klee-se.org/)
   Build mode: Release (Asserts: OFF)
@@ -372,22 +415,26 @@ Debian LLVM version 16.0.6
 stderr = ""
 
 [llvm_config]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 16.0.6
 """
 stderr = ""
 
 [make]
-source = "representative, plan 02-01 Task 2; replaced by the CI capture in Task 3"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 GNU Make 4.3
 Built for x86_64-pc-linux-gnu
+Copyright (C) 1988-2020 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
 """
 stderr = ""
 
 [qemu_arm]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 qemu-arm version 7.2.22 (Debian 1:7.2+dfsg-7+deb12u18+b3)
 Copyright (c) 2003-2022 Fabrice Bellard and the QEMU Project developers
@@ -395,7 +442,7 @@ Copyright (c) 2003-2022 Fabrice Bellard and the QEMU Project developers
 stderr = ""
 
 [qemu_system_arm]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 QEMU emulator version 7.2.22 (Debian 1:7.2+dfsg-7+deb12u18+b3)
 Copyright (c) 2003-2022 Fabrice Bellard and the QEMU Project developers
@@ -403,7 +450,7 @@ Copyright (c) 2003-2022 Fabrice Bellard and the QEMU Project developers
 stderr = ""
 
 [rustc_bitcode]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 rustc 1.72.1 (d5c2e9c34 2023-09-13)
 binary: rustc
@@ -416,7 +463,7 @@ LLVM version: 16.0.5
 stderr = ""
 
 [rustc_tool]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 rustc 1.99.0 (b940084d7 2026-09-28)
 binary: rustc
@@ -429,7 +476,7 @@ LLVM version: 23.1.1
 stderr = ""
 
 [rustup]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 rustup 1.29.1 (d95a37b6a 2026-08-13)
 """
@@ -439,21 +486,21 @@ info: the currently active `rustc` version is `rustc 1.99.0 (b940084d7 2026-09-2
 """
 
 [rustup_default]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 1.99.0-x86_64-unknown-linux-gnu (default)
 """
 stderr = ""
 
 [rustup_targets_bitcode]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 x86_64-unknown-linux-gnu
 """
 stderr = ""
 
 [rustup_targets_tool]
-source = "captured in CI image-a, run 37969688167"
+source = "captured in CI image-a, run 38337265570"
 stdout = """
 thumbv7em-none-eabihf
 x86_64-unknown-linux-gnu

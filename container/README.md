@@ -21,6 +21,7 @@ those values only as build arguments rendered by `mt toolchain build-args`, and
 | c2rust 0.22.1 | `[source.c2rust]` (crates.io checksum) |
 | cargo-mutants 27.1.0 | `[source.cargo_mutants]` |
 | Bear 3.1.1, QEMU (`qemu-user`, `qemu-system-arm`), libz3 | `[apt]` |
+| git, cmake, curl, bzip2 and make (Phase 2 test bed: fetch by commit, CMake builds, the Mbed TLS archive; make was installed since Phase 1 and is now pinned) | `[apt]` and the `[tool.git]`, `[tool.cmake]`, `[tool.curl]`, `[tool.bzip2]` and `[tool.make]` rows (PROJECT.md decision D-17) |
 | Arm GNU Toolchain 14.3.rel1 (`arm-none-eabi-gcc`) | `[source.arm_gnu]` (archive checksum) |
 | rustup 1.29.1 | `[source.rustup]` |
 | Rust 1.99.0 for the tool and the `no_std` crates, with the `thumbv7em-none-eabihf` and `x86_64-unknown-linux-musl` targets | `[rust.tool]` |
@@ -189,6 +190,18 @@ projects' own files, not recalled:
   session that wrote this file (the archive host is not reachable from it), so
   no per-component licence is named here; read the licence files that ship with
   the toolchain under `/opt/arm-gnu-toolchain/` in the image.
+
+The Phase 2 additions are subprocess-only tools as well and are never linked
+into `mt`. The licence names below are the ones the Debian packages declare; they
+were not read from the image in the session that wrote this file, so for each
+package the text at `/usr/share/doc/<package>/copyright` in the image is the
+authoritative one:
+
+- **git**: GPL-2.0-only.
+- **make**: GPL-3.0-or-later.
+- **cmake**: BSD-3-Clause.
+- **curl**: the curl licence.
+- **bzip2**: the bzip2-1.0.6 licence.
 
 The remaining tools (the Debian packages, KLEE, c2rust, cargo-mutants, Rust)
 keep their own licences. For a Debian package the copyright file is
