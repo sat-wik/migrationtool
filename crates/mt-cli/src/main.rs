@@ -6,7 +6,12 @@ use std::process::ExitCode;
 use std::time::Duration;
 
 use anyhow::Context;
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand, ValueEnum};
+use mt_capture::manifest::ManifestError;
+use mt_capture::testbed::{
+    Selection, StepSummary, TestbedError, TestbedOptions, run_capture, run_fetch, run_replay,
+    run_validate,
+};
 use mt_toolchain::build_args::{self, Scope};
 use mt_toolchain::check::{capture_toml, run_check, run_check_observed};
 use mt_toolchain::pins::{Pins, PinsError};
@@ -25,6 +30,11 @@ enum Group {
     Toolchain {
         #[command(subcommand)]
         action: ToolchainAction,
+    },
+    /// Fetch, capture and replay the open-source test bed.
+    Testbed {
+        #[command(subcommand)]
+        action: TestbedAction,
     },
 }
 
@@ -109,6 +119,62 @@ enum ToolchainAction {
         /// The second manifest.
         second: PathBuf,
     },
+}
+
+/// The arguments the fetch, capture and replay steps share.
+#[derive(Debug, Args)]
+struct TestbedArgs {
+    /// Path to the test-bed manifest (`testbed/manifest.toml`). The directory
+    /// holding it is the committed `testbed/` directory.
+    #[arg(long)]
+    manifest: PathBuf,
+    /// Path to the pins file.
+    #[arg(long)]
+    pins: PathBuf,
+    /// The work directory: fetched sources, run trees and capture artifacts.
+    /// Defaults to $MT_WORK_DIR, else `.mt-work`.
+    #[arg(long)]
+    work_dir: Option<PathBuf>,
+    /// Where reports and summaries are written. Defaults to `<work-dir>/reports`.
+    #[arg(long)]
+    out: Option<PathBuf>,
+    /// Run on every target of the manifest.
+    #[arg(long, conflicts_with = "ids", required_unless_present = "ids")]
+    all: bool,
+    /// Run on these target ids.
+    ids: Vec<String>,
+}
+
+#[derive(Debug, Subcommand)]
+enum TestbedAction {
+    /// Check the manifest. Exit 0 when it is valid, 2 when it cannot be read or
+    /// is invalid.
+    Validate {
+        /// Path to the test-bed manifest.
+        #[arg(long)]
+        manifest: PathBuf,
+    },
+    /// Fetch each source by its pinned commit (or archive) into the work
+    /// directory and verify its tree hash. The only step that needs the network.
+    /// Exit 0 when every source is fetched or reused, 1 when one failed, 2 for
+    /// invalid input.
+    Fetch(TestbedArgs),
+    /// Build each configuration of each target under capture and check the
+    /// compiler, the object architecture and every entry function. Exit 0 when
+    /// every configuration is captured, 1 when one failed or was not proven, 2
+    /// for invalid input (including a target with no build recipe).
+    Capture {
+        #[command(flatten)]
+        args: TestbedArgs,
+        /// The toolchain image reference to record in each capture report.
+        #[arg(long)]
+        image: Option<String>,
+    },
+    /// Replay each captured build in a clean copy of its source and compare the
+    /// objects. Exit 0 when every configuration replays identically (or
+    /// identically after the fixed normalisation), 1 when one differs, failed or
+    /// was not proven, 2 for invalid input.
+    Replay(TestbedArgs),
 }
 
 /// How much of the pins file must be present.
@@ -225,10 +291,91 @@ fn build_args_command(pins_path: &Path, scope: Scope) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// The options of a testbed step: the work directory is `--work-dir`, else
+/// `$MT_WORK_DIR`, else `.mt-work`.
+fn testbed_options(args: TestbedArgs, image: Option<String>) -> TestbedOptions {
+    let work_dir = args
+        .work_dir
+        .or_else(|| std::env::var_os("MT_WORK_DIR").map(PathBuf::from))
+        .unwrap_or_else(|| PathBuf::from(".mt-work"));
+    let testbed_dir = match args.manifest.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent.to_path_buf(),
+        _ => PathBuf::from("."),
+    };
+    TestbedOptions {
+        out_dir: args.out.unwrap_or_else(|| work_dir.join("reports")),
+        manifest_path: args.manifest,
+        pins_path: args.pins,
+        testbed_dir,
+        work_dir,
+        selection: if args.all {
+            Selection::All
+        } else {
+            Selection::Ids(args.ids)
+        },
+        image,
+    }
+}
+
+/// Print each validation issue on its own line.
+fn print_issues(error: &TestbedError) {
+    match error {
+        TestbedError::Manifest(ManifestError::Invalid { issues }) => {
+            for issue in issues {
+                eprintln!("error: invalid manifest: {issue}");
+            }
+        }
+        TestbedError::Pins(PinsError::Invalid { issues }) => {
+            for issue in issues {
+                eprintln!("error: invalid pins: {issue}");
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Print the table of a finished step; true when every row passed.
+fn finish_testbed(result: Result<StepSummary, TestbedError>) -> anyhow::Result<bool> {
+    match result {
+        Ok(summary) => {
+            print!("{}", summary.render_table());
+            Ok(summary.passed)
+        }
+        Err(error) => {
+            print_issues(&error);
+            Err(error.into())
+        }
+    }
+}
+
+fn testbed_command(action: TestbedAction) -> anyhow::Result<bool> {
+    match action {
+        TestbedAction::Validate { manifest } => finish_testbed(run_validate(&manifest)),
+        TestbedAction::Fetch(args) => finish_testbed(run_fetch(&testbed_options(args, None))),
+        TestbedAction::Capture { args, image } => {
+            finish_testbed(run_capture(&testbed_options(args, image)))
+        }
+        TestbedAction::Replay(args) => finish_testbed(run_replay(&testbed_options(args, None))),
+    }
+}
+
 fn main() -> ExitCode {
     let cli = Cli::parse();
-    let Group::Toolchain { action } = cli.group;
-    let result = match action {
+    let result = match cli.group {
+        Group::Toolchain { action } => toolchain_command(action),
+        Group::Testbed { action } => testbed_command(action).map(|passed| u8::from(!passed)),
+    };
+    match result {
+        Ok(code) => ExitCode::from(code),
+        Err(err) => {
+            eprintln!("error: {err:#}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+fn toolchain_command(action: ToolchainAction) -> anyhow::Result<u8> {
+    match action {
         ToolchainAction::Check {
             pins,
             capture_outputs,
@@ -248,13 +395,6 @@ fn main() -> ExitCode {
         } => hash_command(&url, expect.as_deref(), timeout_secs).map(|ok| u8::from(!ok)),
         ToolchainAction::ManifestDiff { first, second } => {
             manifest_diff_command(&first, &second).map(|identical| u8::from(!identical))
-        }
-    };
-    match result {
-        Ok(code) => ExitCode::from(code),
-        Err(err) => {
-            eprintln!("error: {err:#}");
-            ExitCode::from(2)
         }
     }
 }

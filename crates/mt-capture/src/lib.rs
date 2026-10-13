@@ -18,6 +18,9 @@
 //! [`fetch`] brings a pinned source into the git-ignored work directory and
 //! verifies it on every reuse. Every external tool runs only through the
 //! `mt-toolchain` runner.
+//!
+//! [`testbed`] wires fetch, capture and replay over the selected targets and
+//! returns the per-step summaries `mt testbed` prints.
 
 pub mod capture;
 pub mod cc;
@@ -27,4 +30,5 @@ pub mod fetch;
 pub mod manifest;
 pub mod replay;
 pub mod report;
+pub mod testbed;
 pub mod treehash;

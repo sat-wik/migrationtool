@@ -771,14 +771,28 @@ fn cause_of(error: &CcError) -> &'static str {
     }
 }
 
+/// The last bytes of a stream as one line of text (runs of whitespace become
+/// one space), for a failure message.
+fn tail_excerpt(bytes: &[u8]) -> String {
+    const KEEP: usize = 1500;
+    let tail = bytes
+        .get(bytes.len().saturating_sub(KEEP)..)
+        .unwrap_or_default();
+    String::from_utf8_lossy(tail)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// How a step ended.
 enum Outcome {
     /// Exit code 0 with complete streams; the stored standard output.
     Success(Vec<u8>),
     /// A timeout or an incomplete stream: nothing is proven.
     NotProven,
-    /// A non-zero exit (or a signal).
-    Failed(Option<i32>),
+    /// A non-zero exit (or a signal), with the tail of its standard error as
+    /// one line of text so a failure can be diagnosed from the report alone.
+    Failed(Option<i32>, String),
 }
 
 /// Whether the pipeline goes on after a phase.
@@ -842,7 +856,7 @@ impl Session<'_> {
         } else if exit.code == Some(0) {
             Ok(Outcome::Success(output.stdout))
         } else {
-            Ok(Outcome::Failed(exit.code))
+            Ok(Outcome::Failed(exit.code, tail_excerpt(&output.stderr)))
         }
     }
 
@@ -863,9 +877,14 @@ impl Session<'_> {
                     format!("{name} timed out or left an incomplete output stream"),
                 ))
             }
-            Outcome::Failed(code) => {
+            Outcome::Failed(code, excerpt) => {
                 self.build_failed = true;
-                Ok(self.halt("build_failed", format!("{name} exited with {code:?}")))
+                let detail = if excerpt.is_empty() {
+                    format!("{name} exited with {code:?}")
+                } else {
+                    format!("{name} exited with {code:?}: {excerpt}")
+                };
+                Ok(self.halt("build_failed", detail))
             }
         }
     }
@@ -1114,7 +1133,7 @@ impl Session<'_> {
                     attributes = Some(parse_readelf_a(&String::from_utf8_lossy(&stdout)));
                 }
                 Outcome::NotProven => self.not_proven = true,
-                Outcome::Failed(_) => {}
+                Outcome::Failed(..) => {}
             }
             let object_ok = header.is_ok()
                 && attributes

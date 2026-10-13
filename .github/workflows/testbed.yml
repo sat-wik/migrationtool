@@ -1,0 +1,310 @@
+# The test bed: fetch each open-source parser by its pinned commit, capture its
+# real build, and replay the captured compile commands in a clean copy, all in
+# the pinned toolchain image (BED-01, BED-02, BUILD-01, BUILD-02; CONTEXT D-10,
+# D-12, D-19, D-21, D-25). Docker exists only here, so this workflow is where
+# every container-level claim of the test bed is proven.
+#
+# Log and artifact hosts are not reachable from cloud sessions, so each step also
+# publishes its evidence as job annotations. Titles: testbed-image,
+# testbed-validate, testbed-fetch, testbed-capture, testbed-replay. A failing step
+# publishes the same title as an error, followed by the causes and details of
+# every failing report.
+#
+# Network policy (D-12): fetch is the only step with network access. Validate,
+# capture and replay go through run_offline, which adds `--network none`; a test
+# (build_02_workflow_runs_capture_and_replay_without_network) fails if any step
+# other than fetch goes through run_networked.
+#
+# Action commit SHAs are pinned here because GitHub resolves `uses:` before any
+# step can read container/pins.toml; every other pin comes from that file.
+name: testbed
+
+on:
+  push:
+    # A superset of the paths D-25 names (testbed/ and crates/mt-capture/):
+    # mt-cli, mt-toolchain, the pins and the image digest change what runs.
+    paths:
+      - testbed/**
+      - crates/**
+      - Cargo.toml
+      - Cargo.lock
+      - container/pins.toml
+      - container/README.md
+      - .github/workflows/testbed.yml
+  workflow_dispatch:
+  # Weekly, offset from the container workflow's schedule. It becomes active once
+  # this file reaches the default branch.
+  schedule:
+    - cron: "41 5 * * 2"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testbed-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The targets every step runs on, as space-separated ids. The steps leave it
+  # unquoted on purpose, so it splits into one argument per id (the ids are
+  # plain words from the manifest). Plan 02-09 changes it to `--all`.
+  TESTBED_SELECTION: "qcbor corejson"
+
+jobs:
+  # A static musl `mt` runs on the image's older glibc; it is mounted into the
+  # image at run time and never baked into it.
+  mt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # With no arguments rustup installs the toolchain named by rust-toolchain.toml.
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Build mt as a static binary
+        run: cargo build --release --locked -p mt-cli --target x86_64-unknown-linux-musl
+
+      - name: Assemble the bundle
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bundle"
+          cp target/x86_64-unknown-linux-musl/release/mt "$RUNNER_TEMP/bundle/mt"
+          ls -l "$RUNNER_TEMP/bundle"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mt-bundle
+          path: ${{ runner.temp }}/bundle
+          if-no-files-found: error
+          retention-days: 7
+
+  testbed:
+    needs: mt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mt-bundle
+          path: ${{ runner.temp }}/bundle
+
+      - name: Make mt executable (artifacts do not keep the mode)
+        run: chmod +x "$RUNNER_TEMP/bundle/mt"
+
+      - name: Write the annotation and docker helpers
+        run: |
+          cat > "$RUNNER_TEMP/ci-lib.sh" <<'LIB'
+          # annotate LEVEL TITLE FILE: FILE as annotations of at most 3800 bytes each (the
+          # API keeps 4096 characters of a message), titled "TITLE (i/n)" when split.
+          annotate() {
+            local level=$1 title=$2 file=$3 dir n i label text
+            if [ ! -s "$file" ]; then
+              printf '::%s title=%s::(empty)\n' "$level" "$title"
+              return 0
+            fi
+            dir=$(mktemp -d)
+            split -C 3800 -d -a 3 "$file" "$dir/part."
+            local -a parts=("$dir"/part.*)
+            n=${#parts[@]}
+            for i in "${!parts[@]}"; do
+              label=$title
+              if [ "$n" -gt 1 ]; then label="$title ($((i + 1))/$n)"; fi
+              text=$(cat "${parts[$i]}")
+              text=${text//'%'/'%25'}
+              text=${text//$'\r'/'%0D'}
+              text=${text//$'\n'/'%0A'}
+              printf '::%s title=%s::%s\n' "$level" "$label" "$text"
+            done
+            rm -rf "$dir"
+          }
+          # run_networked SUBCOMMAND ARGS...: `mt testbed` in the image WITH the default
+          # network. Only the fetch step may use it (D-12). The container is unprivileged,
+          # read-only and drops every capability; mt, the pins and the committed testbed
+          # directory are mounted read-only, and only /work and /out are writable.
+          run_networked() {
+            docker run --rm --platform linux/amd64 --user 65534:65534 --read-only --cap-drop ALL \
+              --security-opt no-new-privileges --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
+              -v "$GITHUB_WORKSPACE/container/pins.toml:/opt/mt/pins.toml:ro" \
+              -v "$GITHUB_WORKSPACE/testbed:/opt/mt/testbed:ro" \
+              -v "$RUNNER_TEMP/work:/work" -v "$RUNNER_TEMP/out:/out" \
+              "$IMAGE" mt testbed "$@"
+          }
+          # run_offline SUBCOMMAND ARGS...: the same container with NO network. Every
+          # `mt testbed` step except fetch goes through it, so a build that tries to
+          # download something fails here instead of passing quietly (D-12).
+          run_offline() {
+            docker run --rm --platform linux/amd64 --network none --user 65534:65534 --read-only --cap-drop ALL \
+              --security-opt no-new-privileges --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
+              -v "$GITHUB_WORKSPACE/container/pins.toml:/opt/mt/pins.toml:ro" \
+              -v "$GITHUB_WORKSPACE/testbed:/opt/mt/testbed:ro" \
+              -v "$RUNNER_TEMP/work:/work" -v "$RUNNER_TEMP/out:/out" \
+              "$IMAGE" mt testbed "$@"
+          }
+          # evidence STEP: lines read from the step's reports, appended to its notice.
+          evidence() {
+            local step=$1 out="$RUNNER_TEMP/out"
+            local -a reports
+            case "$step" in
+              fetch)
+                echo "--- fetched sources"
+                jq -r '"\(.target) \(.source_kind) commit \(.commit) tree_sha256 \(.tree_sha256) reused=\(.reused)"' "$out"/fetch/*.json
+                ;;
+              capture)
+                mapfile -t reports < <(find "$out/capture" -name '*.json' ! -name '*.compile_commands.json' ! -name variant.json | sort)
+                echo "--- gates and entries"
+                jq -r 'select(.kind == "capture") | "\(.target)/\(.config) compiler_allow_listed=\(.gates.compiler_allow_listed) arch_ok=\(.gates.arch_ok) undeclared=\(.gates.created_undeclared | length) timestamp_macro=\(.gates.timestamp_macro | length) objects=\(.objects | length) opt_goals=\([.objects[].opt_goal] | unique | join(",")) entries=" + ([.entries | to_entries[] | "\(.key)=found:\(.value.found),signature:\(.value.signature_matches),header:\(.value.header_included)"] | join(";"))' "${reports[@]}"
+                echo "--- variants"
+                jq -r '"\(.target) variant \(.variant): changes_code=\(.diff.changes_code) code_differs=\(.diff.code_differs | join(","))"' "$out"/capture/*/variant.json
+                ;;
+              replay)
+                mapfile -t reports < <(find "$out/replay" -name '*.json' | sort)
+                echo "--- objects"
+                jq -r '"\(.target)/\(.config) verdict=\(.verdict) objects=\(.objects | length) normalisation_applied=\(.normalisation_applied)"' "${reports[@]}"
+                ;;
+            esac
+          }
+          # failing_details: the causes and details of every capture or replay report
+          # that is not a pass.
+          failing_details() {
+            local out="$RUNNER_TEMP/out" file
+            while IFS= read -r file; do
+              jq -r '
+                (select(.kind == "capture" and .verdict != "captured")
+                  | "capture \(.target)/\(.config): \(.verdict) causes=\(.causes | join(",")) details=\(.cause_details | join(" | "))"),
+                (select(.kind == "replay" and (.verdict | startswith("identical") | not))
+                  | "replay \(.target)/\(.config): \(.verdict) detail=\(.detail // "-") objects=" + ([.objects | to_entries[] | select(.value.status != "identical" and .value.status != "identical_after_normalisation") | "\(.key):\(.value.status):sections=\(.value.differing_sections | join(","))"] | join(" ")))
+              ' "$file"
+            done < <(find "$out/capture" "$out/replay" -name '*.json' ! -name '*.compile_commands.json' ! -name variant.json 2>/dev/null | sort)
+          }
+          # finish_step STEP RC: publish the step's summary table (written by the caller
+          # to $RUNNER_TEMP/out/STEP.txt, with stderr in STEP.err) as notice
+          # testbed-STEP when RC is 0, otherwise as error testbed-STEP with the stderr
+          # and the failing reports, and fail the step.
+          finish_step() {
+            local step=$1 rc=$2 out="$RUNNER_TEMP/out"
+            local notice="$out/notice-$step.txt"
+            cat "$out/$step.txt"
+            if [ -s "$out/$step.err" ]; then cat "$out/$step.err" >&2; fi
+            {
+              cat "$out/$step.txt"
+              echo "exit code: $rc"
+              if [ "$rc" -eq 0 ]; then
+                evidence "$step" || echo "(evidence unavailable)"
+              else
+                if [ -s "$out/$step.err" ]; then echo "--- stderr"; tail -c 2500 "$out/$step.err"; fi
+                echo "--- failing reports"
+                failing_details || true
+              fi
+            } > "$notice"
+            if [ "$rc" -ne 0 ]; then
+              annotate error "testbed-$step" "$notice"
+              return 1
+            fi
+            annotate notice "testbed-$step" "$notice"
+          }
+          LIB
+          mkdir -p "$RUNNER_TEMP/work" "$RUNNER_TEMP/out"
+          # The container user is 65534:65534 (RESEARCH Pitfall 15).
+          chmod 0777 "$RUNNER_TEMP/work" "$RUNNER_TEMP/out"
+
+      # D-10, T-02-27: the image is named only by the digest under `## Current
+      # image` of container/README.md, and exactly one such digest may exist.
+      - name: Pull the image by digest
+        id: image
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          refs=$(grep -oE 'ghcr.io/sat-wik/migrationtool-toolchain@sha256:[0-9a-f]{64}' container/README.md | sort -u)
+          if [ "$(printf '%s\n' "$refs" | grep -c .)" -ne 1 ]; then
+            printf 'expected exactly one image reference in container/README.md, found:\n%s\n' "$refs" > "$RUNNER_TEMP/image.txt"
+            annotate error testbed-image "$RUNNER_TEMP/image.txt"
+            exit 1
+          fi
+          echo "IMAGE=$refs" >> "$GITHUB_ENV"
+          set +e
+          docker pull "$refs" > "$RUNNER_TEMP/pull.txt" 2>&1
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            { echo "docker pull $refs failed with exit code $rc"; tail -n 20 "$RUNNER_TEMP/pull.txt"; } > "$RUNNER_TEMP/image.txt"
+            annotate error testbed-image "$RUNNER_TEMP/image.txt"
+            exit 1
+          fi
+          { echo "image: $refs"; docker image inspect --format 'id: {{.Id}}' "$refs"; docker image inspect --format 'architecture: {{.Os}}/{{.Architecture}}' "$refs"; } > "$RUNNER_TEMP/image.txt"
+          cat "$RUNNER_TEMP/image.txt"
+          annotate notice testbed-image "$RUNNER_TEMP/image.txt"
+
+      - name: Validate the manifest
+        id: validate
+        if: ${{ !cancelled() && steps.image.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          run_offline validate --manifest /opt/mt/testbed/manifest.toml > "$out/validate.txt" 2> "$out/validate.err"
+          rc=$?
+          set -e
+          finish_step validate "$rc"
+
+      # The only step with network access: each source arrives by its pinned commit
+      # and is accepted only when its tree sha256 equals the manifest (D-17).
+      - name: Fetch the sources
+        id: fetch
+        if: ${{ !cancelled() && steps.validate.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          # shellcheck disable=SC2086
+          run_networked fetch --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out $TESTBED_SELECTION > "$out/fetch.txt" 2> "$out/fetch.err"
+          rc=$?
+          set -e
+          finish_step fetch "$rc"
+
+      - name: Capture the builds
+        id: capture
+        if: ${{ !cancelled() && steps.fetch.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          # shellcheck disable=SC2086
+          run_offline capture --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out --image "$IMAGE" $TESTBED_SELECTION > "$out/capture.txt" 2> "$out/capture.err"
+          rc=$?
+          set -e
+          finish_step capture "$rc"
+
+      - name: Replay the captured builds
+        id: replay
+        if: ${{ !cancelled() && steps.capture.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          # shellcheck disable=SC2086
+          run_offline replay --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out $TESTBED_SELECTION > "$out/replay.txt" 2> "$out/replay.err"
+          rc=$?
+          set -e
+          finish_step replay "$rc"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: testbed-reports
+          path: ${{ runner.temp }}/out
+          if-no-files-found: ignore
+          retention-days: 7
