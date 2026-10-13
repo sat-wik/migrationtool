@@ -60,6 +60,30 @@ const CONFIGURE_LOGS: [&str; 3] = [
     "CMakeFiles/CMakeError.log",
 ];
 
+/// Whether a file of the CMake build directory (`relative` to it) is something
+/// the build or CMake's own probes produced rather than an input of a compile
+/// command, so it is left out of the configure-time file hashes.
+///
+/// Objects, static archives and shared libraries are outputs, and archives embed
+/// member times. CMake's diagnostic logs hold scratch-directory names. The
+/// compiler-ABI probe (`CMakeFiles/<version>/CMakeDetermineCompilerABI_C.bin`) is
+/// the output of a test compile, and its bytes differ from run to run.
+#[must_use]
+pub fn is_cmake_product(relative: &str) -> bool {
+    if [".o", ".obj", ".a", ".so"]
+        .iter()
+        .any(|suffix| relative.ends_with(suffix))
+        || CONFIGURE_LOGS.contains(&relative)
+    {
+        return true;
+    }
+    let mut parts = relative.split('/');
+    let probe = parts.next_back().is_some_and(|name| {
+        name.starts_with("CMakeDetermineCompilerABI_") && name.ends_with(".bin")
+    });
+    probe && relative.starts_with("CMakeFiles/")
+}
+
 /// The macro that makes an object depend on a file's modification time.
 const TIMESTAMP_MACRO: &[u8] = b"__TIMESTAMP__";
 
@@ -1205,20 +1229,14 @@ impl Session<'_> {
     }
 
     /// Hash every file under the CMake build directory that is not a build
-    /// product: the generated headers and other configure-time inputs of the
-    /// compile commands (Pattern 7). Objects, static archives and shared
-    /// libraries are outputs, and archives embed member times, so they are left
-    /// out.
+    /// product ([`is_cmake_product`]): the generated headers and other
+    /// configure-time inputs of the compile commands (Pattern 7).
     fn configure_files(&mut self) -> Result<(), CaptureError> {
         let declared: BTreeSet<&String> = self.report.objects.keys().collect();
         let mut hashes = BTreeMap::new();
         for relative in list_files(&self.layout.build)? {
             let key = format!("build/{relative}");
-            let product = declared.contains(&key)
-                || [".o", ".obj", ".a", ".so"]
-                    .iter()
-                    .any(|suffix| relative.ends_with(suffix));
-            if product || CONFIGURE_LOGS.contains(&relative.as_str()) {
+            if declared.contains(&key) || is_cmake_product(&relative) {
                 continue;
             }
             let path = self.layout.build.join(&relative);

@@ -17,8 +17,8 @@ use std::path::{Path, PathBuf};
 
 use mt_capture::capture::{
     CaptureContext, CaptureError, Expansion, RunLayout, ToolPaths, capture, cmake_build_argv,
-    cmake_configure_argv, effective_cflags, expand, list_files, make_argv, timestamp_macro_sources,
-    toolchain_file, undeclared_objects, variant_code_diff,
+    cmake_configure_argv, effective_cflags, expand, is_cmake_product, list_files, make_argv,
+    timestamp_macro_sources, toolchain_file, undeclared_objects, variant_code_diff,
 };
 use mt_capture::cc::CcEntry;
 use mt_capture::elf::code_digest;
@@ -785,4 +785,35 @@ fn bed_02_variant_code_diff_detects_changed_code() {
     let mut unreadable = report_with(&[("src/v.o", &one)]);
     unreadable.objects.get_mut("src/v.o").unwrap().code_digest = None;
     assert!(variant_code_diff(&default, &unreadable).changes_code);
+}
+
+#[test]
+fn build_01_cmake_probe_outputs_are_not_configure_files() {
+    // Outputs of the build and of CMake's own probes: left out of the hashes.
+    for product in [
+        "CMakeFiles/tj.dir/t.c.obj",
+        "CMakeFiles/tj.dir/t.c.o",
+        "libtj.a",
+        "libtj.so",
+        "CMakeFiles/CMakeConfigureLog.yaml",
+        "CMakeFiles/CMakeOutput.log",
+        "CMakeFiles/CMakeError.log",
+        "CMakeFiles/3.25.1/CMakeDetermineCompilerABI_C.bin",
+        "CMakeFiles/3.28.3/CMakeDetermineCompilerABI_C.bin",
+    ] {
+        assert!(is_cmake_product(product), "{product} is an output");
+    }
+    // Inputs of a compile command, and files that merely look similar.
+    for input in [
+        "gen.h",
+        "config/version.h",
+        "CMakeFiles/3.25.1/CMakeCCompiler.cmake",
+        "CMakeFiles/3.25.1/CMakeSystem.cmake",
+        "CMakeFiles/tj.dir/t.c.obj.d",
+        "tables/CMakeDetermineCompilerABI_C.bin",
+        "CMakeFiles/3.25.1/data.bin",
+        "CMakeCache.txt",
+    ] {
+        assert!(!is_cmake_product(input), "{input} is a configure input");
+    }
 }
