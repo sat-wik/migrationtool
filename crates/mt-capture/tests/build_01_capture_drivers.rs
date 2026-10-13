@@ -598,7 +598,7 @@ fn build_01_timestamp_macro_in_sources_fails_capture() {
 
     assert_eq!(report.verdict, CaptureVerdict::CaptureFailed);
     assert_eq!(report.causes, ["timestamp_macro"]);
-    assert_eq!(report.gates.timestamp_macro, ["t.c"]);
+    assert_eq!(report.gates.timestamp_macro, ["src/t.c"]);
 }
 
 #[test]
@@ -657,8 +657,8 @@ fn build_01_capture_cmake_end_to_end() {
     assert_eq!(report.compile_commands.dropped_unbuilt.len(), 1);
     assert!(report.compile_commands.dropped_unbuilt[0].ends_with("u.c"));
     let keys: Vec<&String> = report.objects.keys().collect();
-    assert_eq!(keys, ["build/CMakeFiles/tj.dir/t.c.o"]);
-    assert!(report.objects["build/CMakeFiles/tj.dir/t.c.o"].arch_ok);
+    assert_eq!(keys, ["build/CMakeFiles/tj.dir/t.c.obj"]);
+    assert!(report.objects["build/CMakeFiles/tj.dir/t.c.obj"].arch_ok);
     // The configure-time header is an input of the compile, hashed in the report.
     assert!(
         report.configure_files.contains_key("build/gen.h"),
@@ -669,7 +669,7 @@ fn build_01_capture_cmake_end_to_end() {
         report
             .configure_files
             .keys()
-            .all(|key| !key.ends_with(".o") && !key.ends_with(".a")),
+            .all(|key| !key.ends_with(".obj") && !key.ends_with(".a")),
         "{:?}",
         report.configure_files
     );

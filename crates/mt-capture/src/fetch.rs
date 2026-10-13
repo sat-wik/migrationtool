@@ -163,7 +163,7 @@ fn invalid(message: impl Into<String>) -> FetchError {
     FetchError::InvalidInput(message.into())
 }
 
-fn pinned_tool(pins: &Pins, key: &str) -> Result<PathBuf, FetchError> {
+pub(crate) fn pinned_tool(pins: &Pins, key: &str) -> Result<PathBuf, FetchError> {
     match pins.tool.get(key) {
         Some(spec) if spec.status == ToolPinStatus::Installed && !spec.bin.is_empty() => {
             Ok(PathBuf::from(&spec.bin))
