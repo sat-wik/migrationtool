@@ -21,14 +21,19 @@ use crate::version::{self, VersionError};
 pub const PINS_SCHEMA_VERSION: u32 = 1;
 
 /// Tools the container must provide, each pinned as installed (CONTEXT D-11).
-pub const REQUIRED_TOOLS: [&str; 10] = [
+pub const REQUIRED_TOOLS: [&str; 15] = [
     "arm_gcc",
     "bear",
+    "bzip2",
     "c2rust",
     "cargo_mutants",
     "clang",
+    "cmake",
+    "curl",
+    "git",
     "klee",
     "llvm_config",
+    "make",
     "qemu_arm",
     "qemu_system_arm",
     "rustup",

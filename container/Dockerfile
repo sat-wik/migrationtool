@@ -115,6 +115,10 @@ RUN set -eux; \
       libsqlite3-0 \
       zlib1g \
       libc6-dev \
+      bzip2 \
+      cmake \
+      curl \
+      git \
       make \
       xz-utils; \
     rm -rf /var/lib/apt/lists/*

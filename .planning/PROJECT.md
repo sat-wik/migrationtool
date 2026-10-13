@@ -150,6 +150,7 @@ For the open-source test bed the UB-decision approver is recorded as the founder
 - **D-14:** For the MVP, "full evidence" means the five-term definition in the "MVP Definition of Full Evidence" section; bounded Kani proofs are excluded until milestone v2.0 (roadmapper proposal, assumption A-01 pending founder confirmation).
 - **D-15:** Phase 1 provisional pin: llvm=16 bitcode-rustc=1.72.1 for clang, KLEE, c2rust and the KLEE bitcode toolchain (phase 01 CONTEXT D-01, D-03); revisited at the Phase 6 R1 verdict; refines D-08 and supersedes nothing. Changing either value needs a new decision line with matching tokens (phase 01 CONTEXT D-21).
 - **D-16:** crates/mt-toolchain/src/runner.rs is the only module allowed to use std::process; every other external process goes through runner::run. Clarifies docs/guidelines/building-the-tool.md section 4; enforced by clippy disallowed-types and tool_01_command_only_in_runner_module.
+- **D-17:** The pinned image's final stage gains git, cmake, curl and bzip2 from the snapshot archive, and make (installed since Phase 1) gains an `[apt]` pin; each has a `[tool.*]` row checked by `mt toolchain check` (phase 02 CONTEXT D-30; needed by D-07 builds, D-19 fetch by commit and the Mbed TLS archive source). Only a push to main publishes the image (WR-09); supersedes nothing.
 </decisions>
 
 ## Key Decisions
