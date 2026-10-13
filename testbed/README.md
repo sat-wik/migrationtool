@@ -62,6 +62,34 @@ Run `fetch` the same way without `--network none`, and `replay` with the
 `capture` arguments (it needs no `--image`). `mt testbed validate --manifest
 <file>` checks the manifest alone and needs no image.
 
+## Seeds
+
+`mt testbed seeds` extracts each target's seed corpus (BUILD-03) from its verified
+cached tree into `testbed/seeds/<id>/`: one file per seed named by the sha256 of
+its bytes, an `index.json` (the commit, the licence, the caps and, for every seed,
+its entries, method, source path with line or zip member, and `proposed`) and a
+`NOTICE`. It reads only the paths a target declares as `[[target.<id>.seed_source]]`
+in `manifest.toml`, never follows a symlink, does not read a file above 8 MiB or
+open a zip archive above 2 MiB, and selects under `[seed_caps]` (200 seeds, 1 MiB
+in total, 64 KiB each) in a fixed order, so the same tree always gives the same
+corpus. It needs no network.
+
+Seeds taken from a target's own tests and fixtures have `proposed: false`. A target
+whose repository gives no usable input has hand-made seeds, reviewable `.hex` files
+under `testbed/targets/<id>/hand-made/`, each naming the specification it follows.
+Every one is recorded with method `hand_made` and `proposed: true`; none is upstream
+test data. Mixed-licence repositories (lz4 outside `lib/`, dtc outside `libfdt/`)
+give no upstream seed. The Python helpers that computed some of the hand-made bytes
+are in `research/testbed-seeds/` and are never run by the tool or the tests.
+
+`mt testbed seeds --check` changes nothing: it regenerates every selected corpus
+in memory, compares it file by file with the committed one and exits `1` on any
+drift. The `testbed` workflow runs it with `--network none` in the image, against
+the trees its own fetch step verified, which is the proof that the committed seeds
+come from the pinned sources. If it reports drift, find out why; do not
+regenerate the corpus from CI output. No seed is hidden from anything in this phase;
+a held-out split is a later design (GATE-05).
+
 ## Where it runs
 
 CI is the primary place it runs: the `testbed` workflow

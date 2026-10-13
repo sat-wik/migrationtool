@@ -177,6 +177,18 @@ jobs:
                 echo "--- fetched sources"
                 jq -r '"\(.target) \(.source_kind) commit \(.commit) tree_sha256 \(.tree_sha256) reused=\(.reused)"' "$out"/fetch/*.json
                 ;;
+              seeds)
+                # The committed corpora that were compared with the regenerated ones.
+                echo "--- committed seed corpora (compared offline with the container's regeneration)"
+                if [ "$TESTBED_SELECTION" = "--all" ]; then
+                  mapfile -t ids < <(ls "$GITHUB_WORKSPACE/testbed/seeds")
+                else
+                  read -r -a ids <<< "$TESTBED_SELECTION"
+                fi
+                for id in "${ids[@]}"; do
+                  jq -r '"\(.target) commit \(.commit) seeds=\(.seeds | length) hand_made=\([.seeds[] | select(.method == "hand_made")] | length) bytes=\([.seeds[].bytes] | add) skipped=\(.skipped | tojson)"' "$GITHUB_WORKSPACE/testbed/seeds/$id/index.json"
+                done
+                ;;
               capture)
                 mapfile -t reports < <(find "$out/capture" -name '*.json' ! -name '*.compile_commands.json' ! -name variant.json | sort)
                 echo "--- gates and entries"
@@ -290,6 +302,25 @@ jobs:
           rc=$?
           set -e
           finish_step fetch "$rc"
+
+      # BUILD-03 (D-19, D-21): the committed seeds must equal what this image
+      # regenerates, offline, from the trees the fetch step just verified. A drift
+      # means a host-fetched tree differed from the container's, or the extraction
+      # is not deterministic: investigate, never regenerate the corpus from CI output
+      # by hand. It does not gate the capture step, so one run reports both.
+      - name: Check the committed seeds
+        id: seeds
+        if: ${{ !cancelled() && steps.fetch.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          # shellcheck disable=SC2086
+          run_offline seeds --check --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out --seeds-dir /opt/mt/testbed/seeds $TESTBED_SELECTION > "$out/seeds.txt" 2> "$out/seeds.err"
+          rc=$?
+          set -e
+          finish_step seeds "$rc"
 
       - name: Capture the builds
         id: capture
