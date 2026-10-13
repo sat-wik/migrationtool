@@ -1,0 +1,19 @@
+[package]
+name = "mt-seeds"
+description = "Seed corpus extraction from test sources, fixtures and fuzz corpora"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+zip.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

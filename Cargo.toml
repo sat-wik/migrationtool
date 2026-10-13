@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/mt-toolchain", "crates/mt-capture", "crates/mt-cli"]
+members = ["crates/mt-toolchain", "crates/mt-capture", "crates/mt-cli", "crates/mt-seeds"]
 # The no_std smoke crate (plan 01-04) is its own workspace root and must never
 # become part of the tool workspace.
 exclude = ["container/smoke"]
@@ -30,6 +30,9 @@ shlex = "=2.0.1"
 tempfile = "3.27.0"
 thiserror = "2.0.21"
 toml = "=1.1.7"
+# Reads zip members (fuzz corpora) in memory (MIT). Pure-Rust deflate only: no
+# bzip2, zstd, lzma or encryption features, so no C code and no extra codecs.
+zip = { version = "=9.0.2", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [workspace.lints.clippy]
 # building-the-tool.md section 4: no unwrap/expect outside tests. A justified
