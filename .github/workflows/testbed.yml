@@ -45,10 +45,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # The targets every step runs on, as space-separated ids. The steps leave it
-  # unquoted on purpose, so it splits into one argument per id (the ids are
-  # plain words from the manifest). Plan 02-09 changes it to `--all`.
-  TESTBED_SELECTION: "qcbor corejson"
+  # The targets every step runs on (D-25): `--all` is the whole manifest, minus
+  # the pairs testbed/dropped.toml drops (reported as `dropped (<cause>)`, never
+  # as passing). The steps leave it unquoted on purpose, so a list of ids would
+  # split into one argument per id; the same value can name ids for a local run.
+  TESTBED_SELECTION: "--all"
 
 jobs:
   # A static musl `mt` runs on the image's older glibc; it is mounted into the

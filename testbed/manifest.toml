@@ -15,9 +15,10 @@
 # `elected` the permissive operand this project uses, `file` the licence file at
 # the pinned commit. Nothing here is a legal opinion.
 #
-# Recipes (D-03): only the two tracer targets, qcbor (Make) and corejson (CMake),
-# carry a build recipe table. The other recipes are written in plan 02-09
-# after the tracer is green.
+# Recipes (D-03, D-07): every target carries a build recipe table that drives the
+# project's own Make or CMake build. The tracer targets (qcbor, corejson) were
+# written first; plan 02-09 wrote the other 14 from RESEARCH Table 1 and Pitfall 11
+# after the tracer was green.
 #
 # Placeholders allowed in build strings (D-20): {cc} the pinned arm-none-eabi-gcc,
 # {cflags} baseline then the configuration's defines and cflags, {src} the source
@@ -67,6 +68,10 @@ spdx = "MIT"
 elected = "MIT"
 file = "LICENSE"
 
+[target.tinycbor.build_args]
+dir = "."
+cmake_target = "tinycbor"
+
 [[target.tinycbor.entry]]
 name = "cbor_parser_init"
 header = "src/cbor.h"
@@ -113,6 +118,12 @@ tree_sha256 = "131d840f381cd3ac9e5d118f7c59717f04deda4c92e546eeab12663528509f1f"
 spdx = "Apache-2.0"
 elected = "Apache-2.0"
 file = "LICENSE"
+
+# The library has no top-level build: samples/pet is plain CMake and the target
+# pet is the library (the app target needs the Python zcbor tool).
+[target.zcbor.build_args]
+dir = "samples/pet"
+cmake_target = "pet"
 
 [[target.zcbor.entry]]
 name = "cbor_decode_Pet"
@@ -213,6 +224,13 @@ spdx = "Zlib"
 elected = "Zlib"
 file = "LICENSE.txt"
 
+# CMake looks for protoc at configure time even with the generator off, so protoc
+# is pointed at /usr/bin/true (coreutils); only the static runtime library is built.
+[target.nanopb.build_args]
+dir = "."
+cmake_target = "protobuf-nanopb-static"
+cmake_options = ["-Dnanopb_PROTOC_PATH=/usr/bin/true", "-Dnanopb_BUILD_GENERATOR=OFF"]
+
 [[target.nanopb.entry]]
 name = "pb_istream_from_buffer"
 header = "pb_decode.h"
@@ -225,7 +243,7 @@ name = "pb_decode_ex"
 header = "pb_decode.h"
 source = "pb_decode.c"
 form = "wrapped"
-signature = "bool (pb_istream_t *, const pb_msgdesc_t *, void *, unsigned int)"
+signature = "_Bool (pb_istream_t *, const pb_msgdesc_t *, void *, unsigned int)"
 accepted_wrapped = true
 
 [[target.nanopb.config]]
@@ -272,6 +290,11 @@ tree_sha256 = "cb98da4236b68041e4be9a325bf3b41ce8a639bd0080faa0abe4a117afde0618"
 spdx = "MIT"
 elected = "MIT"
 file = "LICENSE"
+
+[target.cjson.build_args]
+dir = "."
+cmake_target = "cjson"
+cmake_options = ["-DBUILD_SHARED_LIBS=OFF", "-DENABLE_CJSON_TEST=OFF"]
 
 [[target.cjson.entry]]
 name = "cJSON_ParseWithLength"
@@ -371,6 +394,12 @@ spdx = "MIT"
 elected = "MIT"
 file = "LICENSE"
 
+# Without this switch coreMQTT needs a user core_mqtt_config.h.
+[target.coremqtt.build_args]
+dir = "."
+cmake_target = "core_mqtt"
+cmake_options = ["-DSTANDALONE_TEST_BUILD_UNIX=ON"]
+
 [[target.coremqtt.entry]]
 name = "MQTT_DeserializePublish"
 header = "source/include/core_mqtt_serializer.h"
@@ -421,16 +450,27 @@ elected = "BSD-3-Clause"
 file = "edl-v10"
 note = "EDL-1.0 is the BSD-3-Clause text, elected here; the repository also ships LICENSE and epl-v20"
 
+# The top-level CMake also enables C++ and exports the C++ client's compile
+# commands, which the compiler allow-list refuses, so the C-only MQTTPacket
+# project is the source directory (it is the project's own CMake build). Its
+# libraries are SHARED, which falls back to static on the Generic system.
+[target.paho.build_args]
+dir = "MQTTPacket"
+cmake_target = "MQTTPacketClient"
+
+# The declaring headers (MQTTPublish.h, MQTTConnect.h) use MQTTString without
+# including its definition, so they do not compile alone; MQTTPacket.h is the public
+# header that includes them and declares the types first.
 [[target.paho.entry]]
 name = "MQTTDeserialize_publish"
-header = "MQTTPacket/src/MQTTPublish.h"
+header = "MQTTPacket/src/MQTTPacket.h"
 source = "MQTTPacket/src/MQTTDeserializePublish.c"
 form = "direct"
 signature = "int (unsigned char *, int *, unsigned char *, unsigned short *, MQTTString *, unsigned char **, int *, unsigned char *, int)"
 
 [[target.paho.entry]]
 name = "MQTTDeserialize_connack"
-header = "MQTTPacket/src/MQTTConnect.h"
+header = "MQTTPacket/src/MQTTPacket.h"
 source = "MQTTPacket/src/MQTTConnectClient.c"
 form = "direct"
 signature = "int (unsigned char *, unsigned char *, unsigned char *, int)"
@@ -463,6 +503,12 @@ tree_sha256 = "8d331b8362cb16f499647c044f5d4b2033e5fc8ad5a3a33809d86582526cb415"
 spdx = "MIT"
 elected = "MIT"
 file = "LICENSE.txt"
+
+# Only the two library sources; main-posix.c is the demo program.
+[target.microcoap.build_args]
+dir = "."
+goals = ["coap.o", "endpoints.o"]
+make_vars = ["CC={cc} {cflags}"]
 
 [[target.microcoap.entry]]
 name = "coap_parse"
@@ -501,6 +547,13 @@ tree_sha256 = "00a636ffc99e447237abd6dee684a9ba0fe3727c1ea6d266cbe68989bb408248"
 spdx = "Apache-2.0 OR GPL-2.0-or-later"
 elected = "Apache-2.0"
 file = "LICENSE"
+
+# testbed/targets/mbedtls/user_config.h removes the operating-system modules; it is
+# part of every Mbed TLS configuration and hashed into each capture report.
+[target.mbedtls.build_args]
+dir = "library"
+goals = ["static"]
+make_vars = ["CC={cc} {cflags}", "CFLAGS=-Os -DMBEDTLS_USER_CONFIG_FILE='\"{inputs}/user_config.h\"'"]
 
 [[target.mbedtls.entry]]
 name = "mbedtls_x509_crt_parse_der"
@@ -548,6 +601,81 @@ tree_sha256 = "726eb68c8d5179d0c57aade2ecf44f4a653a11870e0585f8b340ee154e317700"
 spdx = "Apache-2.0"
 elected = "Apache-2.0"
 file = "LICENSE"
+
+# The dummy port's Makefile with CC, NIMBLE_CFG_MBEDTLS, NIMBLE_CFLAGS and
+# NIMBLE_LDFLAGS overridden, and its object list named explicitly: the NimBLE
+# sources and the dummy NPL, without ble_sm_alg.c (needs Mbed TLS or tinycrypt
+# headers), the socket transport, main.c and the timer ports. No link step.
+[target.nimble.build_args]
+dir = "porting/examples/dummy"
+make_vars = ["CC={cc}", "NIMBLE_CFG_MBEDTLS=", "NIMBLE_CFLAGS={cflags}", "NIMBLE_LDFLAGS="]
+goals = [
+  "../../../porting/npl/dummy/src/npl_os_dummy.o",
+  "../../../porting/nimble/src/endian.o",
+  "../../../porting/nimble/src/mem.o",
+  "../../../porting/nimble/src/nimble_port.o",
+  "../../../porting/nimble/src/os_mbuf.o",
+  "../../../porting/nimble/src/os_mempool.o",
+  "../../../porting/nimble/src/os_msys.o",
+  "../../../nimble/host/src/ble_att.o",
+  "../../../nimble/host/src/ble_att_clt.o",
+  "../../../nimble/host/src/ble_att_cmd.o",
+  "../../../nimble/host/src/ble_att_svr.o",
+  "../../../nimble/host/src/ble_cs.o",
+  "../../../nimble/host/src/ble_dtm.o",
+  "../../../nimble/host/src/ble_eatt.o",
+  "../../../nimble/host/src/ble_eddystone.o",
+  "../../../nimble/host/src/ble_gap.o",
+  "../../../nimble/host/src/ble_gattc.o",
+  "../../../nimble/host/src/ble_gatts.o",
+  "../../../nimble/host/src/ble_hs.o",
+  "../../../nimble/host/src/ble_hs_adv.o",
+  "../../../nimble/host/src/ble_hs_atomic.o",
+  "../../../nimble/host/src/ble_hs_cfg.o",
+  "../../../nimble/host/src/ble_hs_conn.o",
+  "../../../nimble/host/src/ble_hs_flow.o",
+  "../../../nimble/host/src/ble_hs_hci.o",
+  "../../../nimble/host/src/ble_hs_hci_cmd.o",
+  "../../../nimble/host/src/ble_hs_hci_evt.o",
+  "../../../nimble/host/src/ble_hs_hci_util.o",
+  "../../../nimble/host/src/ble_hs_id.o",
+  "../../../nimble/host/src/ble_hs_log.o",
+  "../../../nimble/host/src/ble_hs_mbuf.o",
+  "../../../nimble/host/src/ble_hs_misc.o",
+  "../../../nimble/host/src/ble_hs_mqueue.o",
+  "../../../nimble/host/src/ble_hs_periodic_sync.o",
+  "../../../nimble/host/src/ble_hs_pvcy.o",
+  "../../../nimble/host/src/ble_hs_shutdown.o",
+  "../../../nimble/host/src/ble_hs_startup.o",
+  "../../../nimble/host/src/ble_hs_stop.o",
+  "../../../nimble/host/src/ble_ibeacon.o",
+  "../../../nimble/host/src/ble_iso.o",
+  "../../../nimble/host/src/ble_l2cap.o",
+  "../../../nimble/host/src/ble_l2cap_coc.o",
+  "../../../nimble/host/src/ble_l2cap_sig.o",
+  "../../../nimble/host/src/ble_l2cap_sig_cmd.o",
+  "../../../nimble/host/src/ble_sm.o",
+  "../../../nimble/host/src/ble_sm_cmd.o",
+  "../../../nimble/host/src/ble_sm_lgcy.o",
+  "../../../nimble/host/src/ble_sm_sc.o",
+  "../../../nimble/host/src/ble_store.o",
+  "../../../nimble/host/src/ble_store_util.o",
+  "../../../nimble/host/src/ble_uuid.o",
+  "../../../nimble/host/util/src/addr.o",
+  "../../../nimble/host/services/ans/src/ble_svc_ans.o",
+  "../../../nimble/host/services/bas/src/ble_svc_bas.o",
+  "../../../nimble/host/services/gap/src/ble_svc_gap.o",
+  "../../../nimble/host/services/gatt/src/ble_svc_gatt.o",
+  "../../../nimble/host/services/dis/src/ble_svc_dis.o",
+  "../../../nimble/host/services/ias/src/ble_svc_ias.o",
+  "../../../nimble/host/services/lls/src/ble_svc_lls.o",
+  "../../../nimble/host/services/tps/src/ble_svc_tps.o",
+  "../../../nimble/host/store/config/src/ble_store_config.o",
+  "../../../nimble/host/store/config/src/ble_store_config_conf.o",
+  "../../../nimble/transport/src/monitor.o",
+  "../../../nimble/transport/src/rx_task.o",
+  "../../../nimble/transport/src/transport.o"
+]
 
 [[target.nimble.entry]]
 name = "ble_hs_adv_parse_fields"
@@ -598,6 +726,12 @@ elected = "BSD-2-Clause"
 file = "BSD-2-Clause"
 note = "only libfdt is dual-licensed; dtc itself and tests/ are GPL; see README.license"
 
+# libfdt/libfdt.a, not the libfdt goal (which links a shared library).
+[target.libfdt.build_args]
+dir = "."
+goals = ["libfdt/libfdt.a"]
+make_vars = ["CC={cc} {cflags}", "NO_PYTHON=1", "NO_YAML=1"]
+
 [[target.libfdt.entry]]
 name = "fdt_check_full"
 header = "libfdt/libfdt.h"
@@ -636,6 +770,13 @@ tree_sha256 = "03f91004dd3d60a8b7ada8106d16b3ec6976006f208b216a3f630434436a68a6"
 spdx = "MIT"
 elected = "MIT"
 file = "LICENSE-MIT"
+
+# The Makefile appends -O3 after the caller's flags: recorded by the optimisation
+# gate, not failed.
+[target.httpparser.build_args]
+dir = "."
+goals = ["libhttp_parser.o"]
+make_vars = ["CC={cc} {cflags}"]
 
 [[target.httpparser.entry]]
 name = "http_parser_execute"
@@ -684,6 +825,10 @@ spdx = "MIT"
 elected = "MIT"
 file = "LICENSE"
 
+[target.isotp.build_args]
+dir = "."
+cmake_target = "isotp"
+
 [[target.isotp.entry]]
 name = "isotp_on_can_message"
 header = "isotp.h"
@@ -716,6 +861,12 @@ spdx = "BSD-2-Clause"
 elected = "BSD-2-Clause"
 file = "lib/LICENSE"
 note = "only lib/ is BSD-2-Clause; the rest of the repository is GPL-2.0-or-later"
+
+# The Makefile has -O3 before the user's CFLAGS, so CFLAGS=-Os restores size.
+[target.lz4.build_args]
+dir = "lib"
+goals = ["liblz4.a"]
+make_vars = ["CC={cc} {cflags}", "CFLAGS=-Os"]
 
 [[target.lz4.entry]]
 name = "LZ4_decompress_safe"
@@ -759,6 +910,11 @@ tree_sha256 = "76b51f6bd05c3ad238b1a05c7c163f83f082b64d9d1d3f5df83912f2bd3b26f3"
 spdx = "Zlib"
 elected = "Zlib"
 file = "LICENSE"
+
+[target.zlib.build_args]
+dir = "."
+cmake_target = "zlibstatic"
+cmake_options = ["-DZLIB_BUILD_SHARED=OFF", "-DZLIB_BUILD_TESTING=OFF"]
 
 [[target.zlib.entry]]
 name = "uncompress"

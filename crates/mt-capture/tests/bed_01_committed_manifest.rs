@@ -327,15 +327,7 @@ fn bed_01_project_records_dual_licence_and_archive_decisions() {
 #[test]
 fn bed_01_tracer_targets_have_build_args() {
     let manifest = committed();
-    let with_recipe: Vec<&str> = manifest
-        .target
-        .iter()
-        .filter(|(_, t)| t.build_args.is_some())
-        .map(|(id, _)| id.as_str())
-        .collect();
-    // D-03: no recipe other than the tracer targets before the tracer is green.
-    assert_eq!(with_recipe, ["corejson", "qcbor"]);
-
+    // The two tracer recipes keep the shape the tracer proved in CI (plan 02-06).
     let qcbor = manifest.target["qcbor"]
         .build_args
         .as_ref()
@@ -350,13 +342,61 @@ fn bed_01_tracer_targets_have_build_args() {
         .expect("recipe");
     assert_eq!(corejson.dir, ".");
     assert_eq!(corejson.cmake_target.as_deref(), Some("core_json"));
+}
 
-    // Completeness is not yet required: the other 14 recipes come in plan 02-09.
-    let err = manifest
+/// Plan 02-09 (D-07): every approved target now carries its recipe, so the
+/// completeness rule that plan 02-03 left unenforced holds. (This replaces the
+/// 02-03 expectation that only the two tracer targets had a recipe.)
+#[test]
+fn bed_01_committed_manifest_is_complete() {
+    let manifest = committed();
+    manifest
         .validate_complete()
-        .expect_err("14 targets still lack a recipe");
-    let message = err.to_string();
-    assert!(message.contains("target.tinycbor.build_args: missing"));
-    assert!(!message.contains("target.qcbor.build_args"));
-    assert!(!message.contains("target.corejson.build_args"));
+        .expect("every target has a build recipe and the manifest is valid");
+    for (id, target) in &manifest.target {
+        let args = target.build_args.as_ref().expect("recipe");
+        let configured_target = args.cmake_target.is_some()
+            || target
+                .config
+                .iter()
+                .any(|config| config.cmake_target.is_some());
+        match target.build {
+            mt_capture::manifest::BuildSystem::Cmake => {
+                assert!(configured_target, "{id}: a CMake recipe names a target");
+            }
+            mt_capture::manifest::BuildSystem::Make => {
+                assert!(!args.goals.is_empty(), "{id}: a Make recipe names goals");
+            }
+        }
+    }
+    // Mbed TLS builds with the committed testbed user configuration.
+    let mbedtls = &manifest.target["mbedtls"];
+    let recipe = mbedtls.build_args.as_ref().expect("recipe");
+    assert!(
+        recipe
+            .make_vars
+            .iter()
+            .any(|v| v.contains("MBEDTLS_USER_CONFIG_FILE") && v.contains("{inputs}/user_config.h")),
+        "mbedtls must build with the testbed user config: {:?}",
+        recipe.make_vars
+    );
+    let config = std::fs::read_to_string(repo_file("testbed/targets/mbedtls/user_config.h"))
+        .expect("user_config.h exists");
+    for name in [
+        "MBEDTLS_NET_C",
+        "MBEDTLS_TIMING_C",
+        "MBEDTLS_FS_IO",
+        "MBEDTLS_HAVE_TIME_DATE",
+        "MBEDTLS_HAVE_TIME",
+        "MBEDTLS_PSA_ITS_FILE_C",
+        "MBEDTLS_PSA_CRYPTO_STORAGE_C",
+        "MBEDTLS_THREADING_C",
+        "MBEDTLS_THREADING_PTHREAD",
+    ] {
+        assert!(
+            config.lines().any(|l| l.trim() == format!("#undef {name}")),
+            "user_config.h must #undef {name}"
+        );
+    }
+    assert!(config.contains("#define MBEDTLS_NO_PLATFORM_ENTROPY"));
 }
