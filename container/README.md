@@ -213,16 +213,17 @@ is legal advice.
 ## Current image
 
 The verified image, published by the `publish` job of `container` workflow run
-38202499776 on a push to `main` (merge commit
-67467607c52acb52ff5bdebc11e81d9fb31ccfb1, pull request #3) and announced as
-verified by that job. It is the first image published from `main`. `publish`
-ran only after `image-a`, `image-b` and `compare` had all succeeded, so the two
-manifests had been found manifest-identical. It pushed the docker-save archive
-that `image-a` saved after its own gates (the pin-binding gate, check, off-pin
-check, manifest and smoke steps), not a rebuild: the archive sha256
-(`92bc6d0a2c24cd7d3189e2db620d2208bda1d8c7542fbba4107b43d2f150ef00`) was
+38342425433 on a push to `main` (merge commit
+69b5b7f4fae92d0c3ec99d4e798609c0606b4213, pull request #4) and announced as
+verified by that job. It adds git, cmake, curl and bzip2 to the image and pins
+make (Phase 2, D-30). `publish` ran only after `image-a`, `image-b` and
+`compare` had all succeeded, so the two manifests had been found
+manifest-identical. It pushed the docker-save archive that `image-a` saved after
+its own gates (the pin-binding gate, check, off-pin check, manifest and smoke
+steps), not a rebuild: the archive sha256
+(`d2b5c1fac92d6771d1d49b9409be4d864431c887fed783cb80e8fd34259814f9`) was
 checked before `docker load`, and the loaded image id
-(`sha256:8a1f04358e50f0b6b96715e20cedaa5b0cb763dbd30aa7c7c1dcce03971eb07d`)
+(`sha256:1267a6230e171d711a7d056cd7a129fbdf0753339c92af22dac69afc806eac44`)
 equalled the id `image-a` recorded. Both Rust toolchains are installed only from
 the sha256-checked channel manifests and the archives they list, and c2rust and
 cargo-mutants only from their sha256-checked `.crate` files; those installs, the
@@ -235,34 +236,40 @@ RUN that clones klee-uclibc, so a different tarball fails the build; it is not
 a line of the `pin-binding` record, which covers the Rust toolchains and crates:
 
 ```
-ghcr.io/sat-wik/migrationtool-toolchain@sha256:42c7fb0e00e90e946b5a21e598517fb7189a0de5492fa1d4d6f18e2e9c39e13d
+ghcr.io/sat-wik/migrationtool-toolchain@sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9
 ```
 
-- Run id: 38202499776, a `push` to `main` (jobs `mt`, `image-a`, `image-b`,
+- Run id: 38342425433, a `push` to `main` (jobs `mt`, `image-a`, `image-b`,
   `compare` and `publish` all concluded `success`)
-- Commit: 67467607c52acb52ff5bdebc11e81d9fb31ccfb1, pushed under the tag
-  `sha-67467607c52acb52ff5bdebc11e81d9fb31ccfb1` (a tag is never a reference to
-  use; see Reproducibility guarantee)
+- Commit: 69b5b7f4fae92d0c3ec99d4e798609c0606b4213, pull request #4, pushed
+  under the tag `sha-69b5b7f4fae92d0c3ec99d4e798609c0606b4213` (a tag is never a
+  reference to use; see Reproducibility guarantee)
 - Manifest sha256 (identical for both builds):
-  d70029186639d0030fc6cf22b284b3b849ce0680656fecfe06623f6ffdc44142. This is the
-  manifest of the previous image,
-  `sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee`,
-  built on the phase branch by run 38198934488 at commit
-  defbe68309b4e1fc3a517ca49a11fed0087a2fd8. No pin changed between the two; the
-  image digests differ because the image was built again, which
-  manifest-identical builds allow.
+  1a405da68aca4c97fba29acb57186403b022c6859ed22c45cb56e019bb59ae75
+- Superseded: the image before this one, published from `main` by run
+  38202499776 at merge commit 67467607c52acb52ff5bdebc11e81d9fb31ccfb1 (pull
+  request #3), was
+  `sha256:42c7fb0e00e90e946b5a21e598517fb7189a0de5492fa1d4d6f18e2e9c39e13d`. It
+  has the manifest sha256
+  d70029186639d0030fc6cf22b284b3b849ce0680656fecfe06623f6ffdc44142; the manifest
+  above differs from it because this image installs git, cmake, curl and bzip2
+  and pins make.
 
-The founder's Phase 1 check (UAT) was run on that branch-built
+The founder's Phase 1 check (UAT) was run on a branch-built image,
 `sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee`
-image, which has the same manifest; it has not been repeated on the image above.
+(run 38198934488, commit defbe68309b4e1fc3a517ca49a11fed0087a2fd8), which has
+the manifest of the superseded image above; it has not been repeated on the
+current image.
 
 Only a push to `main` publishes (WR-09). A run for a pull request, another
 branch, a manual dispatch or the weekly schedule still builds both images,
 gates them and compares the manifests, but its `publish` job is skipped, so it
-announces no `verified-image` and pushes nothing to GHCR. The previous image was
-published by a run on the phase branch (`claude/gsd-discuss-phase-1-mzdw5v`)
-while that branch still held publish rights; no branch other than `main` holds
-them now.
+announces no `verified-image` and pushes nothing to GHCR. The pull request
+checks of pull request #4 (container run 38339937976) showed this: `publish`
+was skipped there and the image above came only from the run on `main`. The
+earliest image was published by a run on the phase branch
+(`claude/gsd-discuss-phase-1-mzdw5v`) while that branch still held publish
+rights; no branch other than `main` holds them now.
 
 Later commits that do not touch the Dockerfile, `pins.toml`, the smoke crate,
 the Rust sources or the workflow do not rebuild the image, so this stays the
