@@ -537,3 +537,26 @@ fn bed_01_fetch_writes_only_under_the_work_directory() {
         1
     );
 }
+
+#[test]
+fn bed_01_fetch_context_comes_from_the_pins() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let pins = mt_toolchain::pins::Pins::load(&root.join("container/pins.toml")).unwrap();
+    let work = Path::new("/work");
+
+    let ctx = FetchContext::from_pins(&pins, work).unwrap();
+
+    assert_eq!(ctx.git, Path::new("/usr/bin/git"));
+    assert_eq!(ctx.curl, Path::new("/usr/bin/curl"));
+    assert_eq!(ctx.tar, Path::new("/usr/bin/tar"));
+    assert_eq!(ctx.work_dir, work);
+    assert_eq!(ctx.allowed_protocols, "https");
+    assert_eq!(ctx.timeout, Duration::from_secs(600));
+
+    let mut without_git = pins.clone();
+    without_git.tool.remove("git");
+    assert!(matches!(
+        FetchContext::from_pins(&without_git, work).unwrap_err(),
+        FetchError::ToolMissing(_)
+    ));
+}
