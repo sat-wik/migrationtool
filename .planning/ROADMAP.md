@@ -89,7 +89,7 @@ Plans:
   3. For every target and configuration the capture command writes a `compile_commands.json` covering every translation unit, and replaying it in the container reproduces the original build output (byte-identical objects, or identical after a documented normalisation); targets that cannot be reproduced are dropped with the cause logged, leaving at least 10.
   4. Each target has a seed corpus extracted from its own tests and fixtures, or at least 10 hand-made seeds (proposed) when it has none.
 
-**Plans:** 10/10 plans executed
+**Plans:** 10/19 plans executed (02-11 to 02-19 are gap closure)
 
 Plans:
 **Wave 1**
@@ -115,6 +115,25 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 - [x] 02-09-PLAN.md — Full bed: drop log, remaining recipes, `--all` round trips with one fix attempt per failure, at least 10 retained
+
+**Wave 8** *(gap closure; blocked on Wave 7 completion)*
+- [ ] 02-11-PLAN.md — G-02-1: entry probe reproduces the defining TU's include prefix; isotp reopened with its seed corpus (paho/server stays dropped)
+- [ ] 02-12-PLAN.md — G-02-2, WR-10: Makefile2 hashed after sorting prerequisite runs; exact is_cmake_product; exclusion constants
+- [ ] 02-13-PLAN.md — G-02-4, WR-07: zip on flate2 rust_backend (miniz_oxide) after a founder legitimacy check; per-archive decompressed budget (checkpoint)
+- [ ] 02-14-PLAN.md — WR-05: fail-closed `mt testbed compare` for the determinism step
+
+**Wave 9** *(gap closure; blocked on Wave 8 completion)*
+- [ ] 02-15-PLAN.md — G-02-3: seed sources of httpparser (`.raw` designator), qcbor (CBOR arrays) and nanopb (fixtures and fuzz corpora) narrowed; corpora regenerated
+- [ ] 02-16-PLAN.md — WR-02, WR-08: replay tied to the manifest pin and tools; 10-target floor enforced on `--all`; `differs` drops need their evidence
+
+**Wave 10** *(gap closure; blocked on Wave 9 completion)*
+- [ ] 02-17-PLAN.md — Workflow: compare step, container limits, complete exclusion comment, `--all` pin; full-bed CI run proving G-02-1 to G-02-4
+
+**Wave 11** *(gap closure; blocked on Wave 10 completion)*
+- [ ] 02-18-PLAN.md — WR-04 (tool): capture split into an untrusted build stage and a trusted record stage; `--stage`, `pairs`
+
+**Wave 12** *(gap closure; blocked on Wave 11 completion)*
+- [ ] 02-19-PLAN.md — WR-04 (CI): one build container per pair with only its run directory writable, isolated determinism rerun; final green full-bed run
 
 ### Phase 3: Equivalence Contract and Test-Vector Schema
 
@@ -260,7 +279,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Pinned Toolchain Container | 9/9 | Complete    | 2026-10-12 |
-| 2. Test Bed and Build Capture | 10/10 | In Progress | - |
+| 2. Test Bed and Build Capture | 10/19 | In Progress | - |
 | 3. Equivalence Contract and Test-Vector Schema | 0/0 | Not started | - |
 | 4. UB Detection and Decision Log | 0/0 | Not started | - |
 | 5. Target-Matched Differential Harness | 0/0 | Not started | - |
