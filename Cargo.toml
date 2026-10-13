@@ -15,6 +15,8 @@ publish = false
 [workspace.dependencies]
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
+# Read-only, bounds-checked ELF parsing for object section digests (Apache-2.0 OR MIT).
+object = { version = "=0.40.0", default-features = false, features = ["read_core", "elf", "std"] }
 regex = "1.13.1"
 # Already locked through tempfile; linux_raw backend on Linux (no libc), the
 # libc backend on other unix. Used only by runner.rs to signal the child's group

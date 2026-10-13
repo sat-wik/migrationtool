@@ -8,6 +8,7 @@
 //! their external tools only through the `mt-toolchain` runner.
 
 pub mod cc;
+pub mod elf;
 pub mod manifest;
 pub mod replay;
 pub mod report;
