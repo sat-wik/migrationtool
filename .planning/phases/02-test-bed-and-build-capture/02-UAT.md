@@ -52,7 +52,8 @@ blocked: 0
 
 ## Gaps
 
-- truth: "A target whose header is not self-contained in C still passes the entry check when its defining TU includes the header after its prerequisites; isotp is retained"
+- gap_id: G-02-1
+  truth: "A target whose header is not self-contained in C still passes the entry check when its defining TU includes the header after its prerequisites; isotp is retained"
   status: failed
   reason: "User reported: Reopen isotp by making the entry probe use the defining TU's include order, so that isotp.h need not be self-contained. Accept the paho/server drop as logged."
   severity: major
@@ -68,7 +69,8 @@ blocked: 0
     - "isotp is removed from dropped.toml and DROPPED.md, and its seed corpus is generated. The paho/server drop stays."
   debug_session: ""
 
-- truth: "CMakeFiles/Makefile2 is covered by the configure-time evidence in a normalised form (prerequisite lines sorted), and the determinism comment lists every exclusion"
+- gap_id: G-02-2
+  truth: "CMakeFiles/Makefile2 is covered by the configure-time evidence in a normalised form (prerequisite lines sorted), and the determinism comment lists every exclusion"
   status: failed
   reason: "User reported: Replace the Makefile2 exclusion with a normalised check that hashes the file with its prerequisite lines sorted. List the exclusion in the testbed.yml determinism comment."
   severity: major
@@ -83,7 +85,8 @@ blocked: 0
     - "The testbed.yml determinism comment lists every excluded field and file."
   debug_session: ""
 
-- truth: "Extracted c_string seeds for httpparser, nanopb and qcbor come only from declared test arrays or fixture files that hold parser inputs"
+- gap_id: G-02-3
+  truth: "Extracted c_string seeds for httpparser, nanopb and qcbor come only from declared test arrays or fixture files that hold parser inputs"
   status: failed
   reason: "User reported: Narrow the declared seed sources for httpparser, nanopb and qcbor to the test arrays and fixture files that hold parser inputs."
   severity: major
@@ -99,7 +102,8 @@ blocked: 0
     - "The corpora are regenerated in the image and seeds --check passes."
   debug_session: ""
 
-- truth: "Zip seed sources are decompressed with an all-safe-Rust backend under a total decompressed-size budget"
+- gap_id: G-02-4
+  truth: "Zip seed sources are decompressed with an all-safe-Rust backend under a total decompressed-size budget"
   status: failed
   reason: "User reported: Switch the zip backend to flate2 with miniz_oxide (all safe Rust) and add a total decompressed-size budget (review WR-07)."
   severity: major
