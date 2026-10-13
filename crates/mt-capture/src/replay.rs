@@ -103,7 +103,7 @@ fn invalid(message: impl Into<String>) -> ReplayError {
 }
 
 /// The run-root-relative key of `path`, with `/` separators.
-fn relative_key(run_root: &Path, path: &Path) -> Option<String> {
+pub(crate) fn relative_key(run_root: &Path, path: &Path) -> Option<String> {
     let normal = normalise_lexical(path);
     let relative = normal.strip_prefix(normalise_lexical(run_root)).ok()?;
     let mut parts = Vec::new();

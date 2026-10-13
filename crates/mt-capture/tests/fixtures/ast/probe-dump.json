@@ -1,0 +1,182 @@
+{
+  "id": "0x559c0ba4ef10",
+  "kind": "FunctionDecl",
+  "loc": {
+    "offset": 35,
+    "file": "./tb.h",
+    "line": 2,
+    "col": 5,
+    "tokLen": 8,
+    "includedFrom": {
+      "file": "entry_probe.c"
+    }
+  },
+  "range": {
+    "begin": {
+      "offset": 31,
+      "col": 1,
+      "tokLen": 3,
+      "includedFrom": {
+        "file": "entry_probe.c"
+      }
+    },
+    "end": {
+      "offset": 81,
+      "col": 51,
+      "tokLen": 1,
+      "includedFrom": {
+        "file": "entry_probe.c"
+      }
+    }
+  },
+  "name": "tb_parse",
+  "mangledName": "tb_parse",
+  "type": {
+    "qualType": "int (const unsigned char *, tb_size)"
+  },
+  "inner": [
+    {
+      "id": "0x559c0b9c4928",
+      "kind": "ParmVarDecl",
+      "loc": {
+        "offset": 65,
+        "col": 35,
+        "tokLen": 3,
+        "includedFrom": {
+          "file": "entry_probe.c"
+        }
+      },
+      "range": {
+        "begin": {
+          "offset": 44,
+          "col": 14,
+          "tokLen": 5,
+          "includedFrom": {
+            "file": "entry_probe.c"
+          }
+        },
+        "end": {
+          "offset": 65,
+          "col": 35,
+          "tokLen": 3,
+          "includedFrom": {
+            "file": "entry_probe.c"
+          }
+        }
+      },
+      "name": "buf",
+      "type": {
+        "qualType": "const unsigned char *"
+      }
+    },
+    {
+      "id": "0x559c0b9c4a00",
+      "kind": "ParmVarDecl",
+      "loc": {
+        "offset": 78,
+        "col": 48,
+        "tokLen": 3,
+        "includedFrom": {
+          "file": "entry_probe.c"
+        }
+      },
+      "range": {
+        "begin": {
+          "offset": 70,
+          "col": 40,
+          "tokLen": 7,
+          "includedFrom": {
+            "file": "entry_probe.c"
+          }
+        },
+        "end": {
+          "offset": 78,
+          "col": 48,
+          "tokLen": 3,
+          "includedFrom": {
+            "file": "entry_probe.c"
+          }
+        }
+      },
+      "name": "len",
+      "type": {
+        "desugaredQualType": "unsigned long",
+        "qualType": "tb_size",
+        "typeAliasDeclId": "0x559c0b9c4888"
+      }
+    }
+  ]
+}
+{
+  "id": "0x559c0ba4f0f8",
+  "kind": "FunctionDecl",
+  "loc": {
+    "offset": 88,
+    "file": "./tb.h",
+    "line": 3,
+    "col": 5,
+    "tokLen": 15,
+    "includedFrom": {
+      "file": "entry_probe.c"
+    }
+  },
+  "range": {
+    "begin": {
+      "offset": 84,
+      "col": 1,
+      "tokLen": 3,
+      "includedFrom": {
+        "file": "entry_probe.c"
+      }
+    },
+    "end": {
+      "offset": 111,
+      "col": 28,
+      "tokLen": 1,
+      "includedFrom": {
+        "file": "entry_probe.c"
+      }
+    }
+  },
+  "name": "tb_parse_reader",
+  "mangledName": "tb_parse_reader",
+  "type": {
+    "qualType": "int (void *)"
+  },
+  "inner": [
+    {
+      "id": "0x559c0ba4f028",
+      "kind": "ParmVarDecl",
+      "loc": {
+        "offset": 110,
+        "col": 27,
+        "tokLen": 1,
+        "includedFrom": {
+          "file": "entry_probe.c"
+        }
+      },
+      "range": {
+        "begin": {
+          "offset": 104,
+          "col": 21,
+          "tokLen": 4,
+          "includedFrom": {
+            "file": "entry_probe.c"
+          }
+        },
+        "end": {
+          "offset": 110,
+          "col": 27,
+          "tokLen": 1,
+          "includedFrom": {
+            "file": "entry_probe.c"
+          }
+        }
+      },
+      "name": "r",
+      "type": {
+        "qualType": "void *"
+      }
+    }
+  ]
+}

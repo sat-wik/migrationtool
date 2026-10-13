@@ -13,7 +13,11 @@ use std::path::{Path, PathBuf};
 const PYTHON_EXTENSIONS: &[&str] = &["py", "pyi", "pyw", "pyx"];
 
 /// Directories skipped, and only when they sit directly under the walk root.
-const ROOT_SKIPS: &[&str] = &[".git", "target", "research"];
+///
+/// `.mt-work` is the git-ignored test-bed work directory (CONTEXT D-18). It holds
+/// fetched third-party trees, which are not tool code and may ship Python (zcbor
+/// has `zcbor/zcbor.py`), so a local fetch must not fail the Python rule.
+const ROOT_SKIPS: &[&str] = &[".git", "target", "research", ".mt-work"];
 
 /// Crates whose presence in `Cargo.lock` would mean an analyser is linked as a library.
 const ANALYSER_BINDINGS: &[&str] = &["clang-sys", "llvm-sys", "inkwell", "z3", "z3-sys"];
@@ -59,6 +63,24 @@ fn find_python_files(root: &Path) -> Vec<PathBuf> {
     }
     found.sort();
     found
+}
+
+#[test]
+fn tool_01_python_walk_skips_the_work_directory() {
+    let dir = tempfile::tempdir().unwrap();
+    fs::create_dir_all(dir.path().join(".mt-work/x")).unwrap();
+    fs::create_dir_all(dir.path().join("a/.mt-work")).unwrap();
+    fs::write(dir.path().join(".mt-work/x/y.py"), "print('fetched')\n").unwrap();
+    fs::write(dir.path().join("a/b.py"), "print('x')\n").unwrap();
+    // Only a work directory directly under the root is skipped.
+    fs::write(dir.path().join("a/.mt-work/z.py"), "print('nested')\n").unwrap();
+
+    let found = find_python_files(dir.path());
+
+    assert_eq!(
+        found,
+        vec![PathBuf::from("a/.mt-work/z.py"), PathBuf::from("a/b.py")]
+    );
 }
 
 /// Every regular file under `dir` with the given extension, recursively, never

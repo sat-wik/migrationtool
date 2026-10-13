@@ -1,6 +1,10 @@
 /target/
 /container/smoke/target/
 
+# The test-bed work directory (CONTEXT D-18): fetched upstream trees, build trees
+# and reports. Never committed; $MT_WORK_DIR may point elsewhere.
+/.mt-work/
+
 # Local runtime state: Claude Code agent worktrees and the GSD session claim
 /.claude/worktrees/
 /.planning/milestone.lock
