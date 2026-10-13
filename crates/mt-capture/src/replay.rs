@@ -15,6 +15,7 @@ use std::path::{Component, Path, PathBuf};
 use mt_toolchain::runner::{RunRequest, RunnerConfig, RunnerError, run};
 
 use crate::cc::{CcEntry, CcError, CcPolicy, canonical_output, lexically_under, normalise_lexical};
+use crate::elf::{differing_sections, normalisable};
 use crate::report::{
     NORMALISATION_RULE, ObjectComparison, ObjectStatus, REPORT_SCHEMA_VERSION, ReplayReport, Step,
     Verdict,
@@ -320,7 +321,11 @@ pub fn replay(cfg: &RunnerConfig, plan: &ReplayPlan) -> Result<ReplayReport, Rep
                 comparison(Some(original), Some(replay_hash), ObjectStatus::Identical)
             }
             (Some(original), Some(replay_hash)) => {
-                comparison(Some(original), Some(replay_hash), ObjectStatus::Differs)
+                let outcome =
+                    compare_differing(cfg, plan, key, original, replay_hash, &mut report.steps)?;
+                not_proven |= outcome.not_proven;
+                report.normalisation_applied |= outcome.normalised;
+                outcome.object
             }
             (Some(original), None) => {
                 comparison(Some(original), None, ObjectStatus::MissingInReplay)
@@ -341,6 +346,174 @@ pub fn replay(cfg: &RunnerConfig, plan: &ReplayPlan) -> Result<ReplayReport, Rep
         _ => None,
     };
     Ok(report)
+}
+
+/// What came out of comparing one object whose bytes differ.
+struct Outcome {
+    object: ObjectComparison,
+    /// A normalisation step timed out or left an incomplete stream.
+    not_proven: bool,
+    /// objcopy ran on this object.
+    normalised: bool,
+}
+
+fn differs(
+    original: String,
+    replay_hash: String,
+    sections: Vec<String>,
+    detail: Option<String>,
+) -> ObjectComparison {
+    ObjectComparison {
+        differing_sections: sections,
+        detail,
+        ..comparison(Some(original), Some(replay_hash), ObjectStatus::Differs)
+    }
+}
+
+/// One objcopy run of the fixed normalisation: `--strip-debug` and removal of
+/// `.comment`, from `input` into `output`. Returns whether it ran to a clean
+/// exit, and whether it must be reported as not proven.
+fn run_objcopy(
+    cfg: &RunnerConfig,
+    normaliser: &Normaliser,
+    side: &str,
+    key: &str,
+    input: &Path,
+    steps: &mut Vec<Step>,
+) -> Result<(PathBuf, bool, bool), ReplayError> {
+    let output = normaliser.scratch.join(side).join(key);
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent).map_err(|source| io_error("create", parent, source))?;
+    }
+    let request = RunRequest {
+        tool_name: "objcopy".to_owned(),
+        argv: vec![
+            normaliser.objcopy.clone().into_os_string(),
+            OsString::from("--strip-debug"),
+            OsString::from("--remove-section=.comment"),
+            input.as_os_str().to_owned(),
+            output.as_os_str().to_owned(),
+        ],
+        cwd: normaliser.scratch.clone(),
+        extra_env: BTreeMap::new(),
+        tool_version: None,
+    };
+    let record = run(cfg, &request)?.record;
+    let incomplete = record.exit.timed_out || !record.stdout.complete || !record.stderr.complete;
+    let clean = !incomplete && record.exit.code == Some(0);
+    steps.push(Step {
+        name: format!("normalise {side} {key}"),
+        run: record,
+    });
+    Ok((output, clean, incomplete))
+}
+
+/// Compare an original and a replayed object whose hashes differ (CONTEXT D-09).
+///
+/// The sections are compared first. Only when every differing section is
+/// `.comment` or a debug section, and the plan carries a normaliser, are both
+/// objects passed through the fixed objcopy and compared again; anything else is
+/// `differs` with the section names recorded and no objcopy run. An object that
+/// cannot be read is `differs` with the reader error in `detail`.
+fn compare_differing(
+    cfg: &RunnerConfig,
+    plan: &ReplayPlan,
+    key: &str,
+    original: String,
+    replay_hash: String,
+    steps: &mut Vec<Step>,
+) -> Result<Outcome, ReplayError> {
+    let original_path = plan.original_objects_dir.join(key);
+    let replay_path = plan.run_root.join(key);
+    let unchanged = |object| Outcome {
+        object,
+        not_proven: false,
+        normalised: false,
+    };
+    let (original_bytes, replay_bytes) = match (fs::read(&original_path), fs::read(&replay_path)) {
+        (Ok(a), Ok(b)) => (a, b),
+        (Err(source), _) => {
+            let detail = format!(
+                "cannot read the original object {}: {source}",
+                original_path.display()
+            );
+            return Ok(unchanged(differs(
+                original,
+                replay_hash,
+                Vec::new(),
+                Some(detail),
+            )));
+        }
+        (_, Err(source)) => {
+            let detail = format!(
+                "cannot read the replayed object {}: {source}",
+                replay_path.display()
+            );
+            return Ok(unchanged(differs(
+                original,
+                replay_hash,
+                Vec::new(),
+                Some(detail),
+            )));
+        }
+    };
+    let sections = match differing_sections(&original_bytes, &replay_bytes) {
+        Ok(sections) => sections,
+        Err(error) => {
+            return Ok(unchanged(differs(
+                original,
+                replay_hash,
+                Vec::new(),
+                Some(error.to_string()),
+            )));
+        }
+    };
+    let Some(normaliser) = plan.normaliser.as_ref().filter(|_| normalisable(&sections)) else {
+        let detail = sections
+            .is_empty()
+            .then(|| "sections are equal but the file bytes differ".to_owned());
+        return Ok(unchanged(differs(original, replay_hash, sections, detail)));
+    };
+
+    let (stripped_original, original_clean, original_incomplete) =
+        run_objcopy(cfg, normaliser, "original", key, &original_path, steps)?;
+    let (stripped_replay, replay_clean, replay_incomplete) =
+        run_objcopy(cfg, normaliser, "replay", key, &replay_path, steps)?;
+    let not_proven = original_incomplete || replay_incomplete;
+    if !(original_clean && replay_clean) {
+        let detail = if not_proven {
+            "normalisation_not_proven"
+        } else {
+            "normalisation_failed"
+        };
+        return Ok(Outcome {
+            object: differs(original, replay_hash, sections, Some(detail.to_owned())),
+            not_proven,
+            normalised: true,
+        });
+    }
+    let read_normalised = |path: &Path| {
+        fs::read(path)
+            .map(|bytes| sha256_hex(&bytes))
+            .map_err(|source| io_error("read", path, source))
+    };
+    let normalised_original = read_normalised(&stripped_original)?;
+    let normalised_replay = read_normalised(&stripped_replay)?;
+    let status = if normalised_original == normalised_replay {
+        ObjectStatus::IdenticalAfterNormalisation
+    } else {
+        ObjectStatus::Differs
+    };
+    Ok(Outcome {
+        object: ObjectComparison {
+            normalised_original: Some(normalised_original),
+            normalised_replay: Some(normalised_replay),
+            differing_sections: sections,
+            ..comparison(Some(original), Some(replay_hash), status)
+        },
+        not_proven: false,
+        normalised: true,
+    })
 }
 
 /// Verdict precedence: not proven, build failed, differs, identical after
