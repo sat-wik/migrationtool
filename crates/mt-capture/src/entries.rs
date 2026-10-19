@@ -4,10 +4,15 @@
 //! confirmed against the build that was actually captured, with clang run
 //! through the `mt-toolchain` runner on a probe file:
 //!
-//! 1. The probe file holds one line, `#include "<absolute header path>"`, so the
-//!    AST dump covers one header and not a whole translation unit (a dump of
-//!    `http_parser.c` is 32 MB and would overrun the runner's stream cap;
-//!    RESEARCH Pitfall 12).
+//! 1. The probe file holds the defining translation unit's reproducible include
+//!    prefix (the `#include`, `#define` and `#undef` lines it has before the
+//!    line that includes the header, [`include_prefix`]) and then
+//!    `#include "<absolute header path>"`, so a header that relies on what its
+//!    unit includes first still parses, and the AST dump covers one header and
+//!    not a whole translation unit (a dump of `http_parser.c` is 32 MB and would
+//!    overrun the runner's stream cap; RESEARCH Pitfall 12). A prefix the
+//!    scanner cannot reproduce exactly is not guessed: the probe is the header
+//!    line alone (CONTEXT D-23, gap G-02-1).
 //! 2. clang runs with the defining translation unit's flags, reduced to the ones
 //!    clang accepts ([`filter_flags`]: it rejects GCC-only `-f` and `-W` options).
 //! 3. `-ast-dump-filter=<name>` matches substrings, so the function is selected
@@ -24,7 +29,7 @@
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fs;
-use std::io;
+use std::io::{self, Read};
 use std::path::{Component, Path, PathBuf};
 
 use mt_toolchain::runner::{RunRequest, RunnerConfig, RunnerError, run};
@@ -70,6 +75,12 @@ pub struct EntryResult {
     /// Why the entry failed, where the booleans are not enough. `not_proven:`
     /// leads the text when a timeout or an incomplete stream left it open.
     pub detail: Option<String>,
+    /// The include context of the probe: the lines of the defining translation
+    /// unit's prefix the probe held before the header. Empty (and absent from the
+    /// serialised report) when the probe was the header alone, so those results
+    /// read byte for byte as they did before the prefix existed (D-22).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub probe_prefix: Vec<String>,
 }
 
 impl EntryResult {
@@ -115,6 +126,18 @@ pub enum EntryError {
     },
 }
 
+/// The text of `path` for use inside an `#include` line, or `None` when the path
+/// is not absolute UTF-8 or holds a quote, backslash or control character that
+/// would change what the line includes.
+fn include_path_text(path: &Path) -> Option<&str> {
+    let text = path.to_str()?;
+    (path.is_absolute()
+        && !text
+            .chars()
+            .any(|c| c.is_control() || c == '"' || c == '\\'))
+    .then_some(text)
+}
+
 /// The probe file text: one line that includes the declaring header.
 ///
 /// # Errors
@@ -124,16 +147,374 @@ pub fn probe_source(header_abs: &Path) -> Result<String, EntryError> {
     let text = header_abs.to_str().ok_or_else(|| {
         EntryError::InvalidInput(format!("{} is not UTF-8", header_abs.display()))
     })?;
-    if !header_abs.is_absolute()
-        || text
-            .chars()
-            .any(|c| c.is_control() || c == '"' || c == '\\')
-    {
+    let Some(text) = include_path_text(header_abs) else {
         return Err(EntryError::InvalidInput(format!(
             "{text:?} is not an absolute header path that can be written in an #include"
         )));
-    }
+    };
     Ok(format!("#include \"{text}\"\n"))
+}
+
+/// The probe file text with the defining translation unit's include prefix: each
+/// prefix line and a newline, then exactly the line [`probe_source`] writes.
+///
+/// # Errors
+/// [`EntryError::InvalidInput`] for a prefix line that is not a single
+/// `#include`, `#define` or `#undef` line, and for any header path
+/// [`probe_source`] refuses.
+pub fn probe_source_with_prefix(
+    prefix: &[String],
+    header_abs: &Path,
+) -> Result<String, EntryError> {
+    let mut text = String::new();
+    for line in prefix {
+        let directive = line.strip_prefix('#').map(str::trim_start);
+        let known = ["include", "define", "undef"].iter().any(|name| {
+            directive.is_some_and(|rest| {
+                rest.strip_prefix(name)
+                    .is_some_and(|after| !after.starts_with(is_identifier_char))
+            })
+        });
+        if !known || line.chars().any(|c| c.is_control() && c != '\t') {
+            return Err(EntryError::InvalidInput(format!(
+                "{line:?} is not a single #include, #define or #undef line"
+            )));
+        }
+        text.push_str(line);
+        text.push('\n');
+    }
+    text.push_str(&probe_source(header_abs)?);
+    Ok(text)
+}
+
+/// What the defining translation unit has before the line that includes the
+/// entry header, as far as it can be reproduced exactly (gap G-02-1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IncludePrefix {
+    /// The `#include`, `#define` and `#undef` lines to write before the header.
+    Reproduced(Vec<String>),
+    /// The header's include is the unit's first directive: nothing to add.
+    HeaderFirst,
+    /// The prefix cannot be reproduced exactly (a conditional, any other
+    /// directive, code before the header, an unusable path or a header the unit
+    /// never includes directly); the reason names the 1-based line where there is
+    /// one. The probe is then the header alone.
+    NotReproducible(String),
+}
+
+/// The largest translation unit the prefix scan reads.
+const MAX_UNIT_BYTES: u64 = 8 * 1024 * 1024;
+
+fn is_identifier_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_'
+}
+
+/// The next physical newline at `at`: its length (`\n` or `\r\n`), if any.
+fn newline_len(bytes: &[u8], at: usize) -> Option<usize> {
+    match bytes.get(at) {
+        Some(b'\n') => Some(1),
+        Some(b'\r') if bytes.get(at + 1) == Some(&b'\n') => Some(2),
+        _ => None,
+    }
+}
+
+/// A single linear pass over C source that yields its logical lines: backslash
+/// newlines joined, comments outside string and character literals replaced by
+/// one space, blank lines skipped. Each line carries the 1-based physical line
+/// on which its first non-blank character stands.
+struct LogicalLines<'a> {
+    bytes: &'a [u8],
+    at: usize,
+    line: usize,
+}
+
+impl<'a> LogicalLines<'a> {
+    fn new(bytes: &'a [u8]) -> Self {
+        Self {
+            bytes,
+            at: 0,
+            line: 1,
+        }
+    }
+
+    fn next_line(&mut self) -> Option<(usize, Vec<u8>)> {
+        let bytes = self.bytes;
+        while self.at < bytes.len() {
+            let mut text: Vec<u8> = Vec::new();
+            let mut first: Option<usize> = None;
+            let mut quote: Option<u8> = None;
+            while let Some(&b) = bytes.get(self.at) {
+                if b == b'\\'
+                    && let Some(skip) = newline_len(bytes, self.at + 1)
+                {
+                    self.at += 1 + skip;
+                    self.line += 1;
+                    continue;
+                }
+                if let Some(skip) = newline_len(bytes, self.at) {
+                    self.at += skip;
+                    self.line += 1;
+                    break;
+                }
+                let next = bytes.get(self.at + 1).copied();
+                if quote.is_none() && b == b'/' && next == Some(b'*') {
+                    self.at += 2;
+                    while self.at < bytes.len() && !bytes[self.at..].starts_with(b"*/") {
+                        if bytes[self.at] == b'\n' {
+                            self.line += 1;
+                        }
+                        self.at += 1;
+                    }
+                    self.at = (self.at + 2).min(bytes.len());
+                    text.push(b' ');
+                    continue;
+                }
+                if quote.is_none() && b == b'/' && next == Some(b'/') {
+                    self.at += 2;
+                    while self.at < bytes.len() && newline_len(bytes, self.at).is_none() {
+                        match newline_len(bytes, self.at + 1) {
+                            Some(skip) if bytes[self.at] == b'\\' => {
+                                self.at += 1 + skip;
+                                self.line += 1;
+                            }
+                            _ => self.at += 1,
+                        }
+                    }
+                    text.push(b' ');
+                    continue;
+                }
+                if first.is_none() && !b.is_ascii_whitespace() {
+                    first = Some(self.line);
+                }
+                text.push(b);
+                self.at += 1;
+                match quote {
+                    None if b == b'"' || b == b'\'' => quote = Some(b),
+                    Some(_) if b == b'\\' => {
+                        if let Some(escaped) = next {
+                            text.push(escaped);
+                            self.at += 1;
+                        }
+                    }
+                    Some(open) if b == open => quote = None,
+                    _ => {}
+                }
+            }
+            if let Some(line) = first {
+                let end = text
+                    .iter()
+                    .rposition(|byte| !byte.is_ascii_whitespace())
+                    .map_or(0, |index| index + 1);
+                let start = text
+                    .iter()
+                    .position(|byte| !byte.is_ascii_whitespace())
+                    .unwrap_or(0);
+                return Some((line, text[start..end].to_vec()));
+            }
+        }
+        None
+    }
+}
+
+/// The directories an `#include` is searched in, from the unit's flags.
+#[derive(Default)]
+struct SearchDirs {
+    quote: Vec<PathBuf>,
+    include: Vec<PathBuf>,
+    system: Vec<PathBuf>,
+}
+
+impl SearchDirs {
+    /// Read `-iquote`, `-I` and `-isystem` (separate or attached operand) from
+    /// `flags`, relative operands taken against `unit_dir`. Options whose operand
+    /// is a separate argument are skipped as a pair so an operand is never read
+    /// as an option.
+    fn from_flags(flags: &[String], unit_dir: &Path) -> Self {
+        let mut dirs = Self::default();
+        let mut remaining = flags.iter();
+        while let Some(flag) = remaining.next() {
+            let (kind, operand) = if SEPARATE_OPERAND.contains(&flag.as_str()) {
+                (flag.as_str(), remaining.next().map(String::as_str))
+            } else if let Some(rest) = flag.strip_prefix("-isystem") {
+                ("-isystem", Some(rest))
+            } else if let Some(rest) = flag.strip_prefix("-iquote") {
+                ("-iquote", Some(rest))
+            } else if let Some(rest) = flag.strip_prefix("-I") {
+                ("-I", Some(rest))
+            } else {
+                continue;
+            };
+            let Some(operand) = operand.filter(|operand| !operand.is_empty()) else {
+                continue;
+            };
+            let dir = lexical(&unit_dir.join(operand));
+            match kind {
+                "-I" => dirs.include.push(dir),
+                "-isystem" => dirs.system.push(dir),
+                "-iquote" => dirs.quote.push(dir),
+                _ => {}
+            }
+        }
+        dirs
+    }
+}
+
+/// The first existing regular file `name` under `dirs`, as a lexical path.
+fn find_include<'a>(dirs: impl IntoIterator<Item = &'a PathBuf>, name: &str) -> Option<PathBuf> {
+    dirs.into_iter()
+        .map(|dir| lexical(&dir.join(name)))
+        .find(|candidate| candidate.is_file())
+}
+
+/// The operand of `#include`: `"name"` is quoted, `<name>` is not. `None` for a
+/// computed include or anything after the closing delimiter.
+fn include_operand(operand: &str) -> Option<(bool, &str)> {
+    let operand = operand.trim_start();
+    let (quoted, close) = match operand.chars().next()? {
+        '"' => (true, '"'),
+        '<' => (false, '>'),
+        _ => return None,
+    };
+    let inner = &operand[1..];
+    let end = inner.find(close)?;
+    inner[end + 1..]
+        .trim()
+        .is_empty()
+        .then_some((quoted, &inner[..end]))
+}
+
+/// Scan the defining translation unit for the lines it has before the line that
+/// includes `header_abs` (CONTEXT D-23, gap G-02-1).
+///
+/// The scan is linear and has no regular expression. Backslash newlines are
+/// joined and comments outside string and character literals are removed. Each
+/// logical line before the header's include must be:
+///
+/// - `#include <name>`, kept as written, unless `name` resolves through an `-I`
+///   or `-isystem` directory of `flags` to the header, which ends the scan;
+/// - `#include "name"`, searched in the compiler's order (the unit's own
+///   directory, each `-iquote`, each `-I`; the first existing regular file
+///   wins). The header ends the scan, another file is written as
+///   `#include "<absolute lexical path>"`, and a name found nowhere is written
+///   as `#include <name>`, because the compiler would continue in the system
+///   directories (isotp's `"assert.h"` is such a name);
+/// - `#define` or `#undef`, kept as written.
+///
+/// Anything else (a conditional, `#pragma`, `#error`, `#line`, `#include_next`,
+/// a computed include, any other directive, or any C token) cannot be
+/// reproduced and gives [`IncludePrefix::NotReproducible`] naming the line. A
+/// path that [`probe_source`] would refuse does too. Nothing is guessed.
+#[must_use]
+pub fn include_prefix(
+    tu_text: &[u8],
+    tu_path: &Path,
+    header_abs: &Path,
+    unit_dir: &Path,
+    flags: &[String],
+) -> IncludePrefix {
+    let dirs = SearchDirs::from_flags(flags, unit_dir);
+    let header = lexical(header_abs);
+    let own_dir = tu_path.parent().map(lexical);
+    let mut prefix: Vec<String> = Vec::new();
+    let mut lines = LogicalLines::new(tu_text);
+    while let Some((number, raw)) = lines.next_line() {
+        let refuse = |why: &str| IncludePrefix::NotReproducible(format!("line {number} {why}"));
+        let Ok(line) = String::from_utf8(raw) else {
+            return refuse("is not UTF-8");
+        };
+        if line.chars().any(|c| c.is_control() && c != '\t') {
+            return refuse("holds a control character");
+        }
+        let Some(directive) = line.strip_prefix('#').map(str::trim_start) else {
+            return refuse("holds code before the header");
+        };
+        let name_end = directive
+            .find(|c: char| !is_identifier_char(c))
+            .unwrap_or(directive.len());
+        let (name, operand) = directive.split_at(name_end);
+        match name {
+            "define" | "undef"
+                if operand.starts_with([' ', '\t']) && !operand.trim().is_empty() =>
+            {
+                prefix.push(line.clone());
+            }
+            "include" => {
+                let Some((quoted, target)) = include_operand(operand) else {
+                    return refuse("is an #include that is not a plain \"name\" or <name>");
+                };
+                if target.is_empty()
+                    || target
+                        .chars()
+                        .any(|c| c.is_control() || c == '"' || c == '\\')
+                {
+                    return refuse("is an #include whose name cannot be written in a probe");
+                }
+                let found = if quoted {
+                    find_include(
+                        own_dir.iter().chain(&dirs.quote).chain(&dirs.include),
+                        target,
+                    )
+                } else {
+                    find_include(dirs.include.iter().chain(&dirs.system), target)
+                };
+                match found {
+                    Some(path) if path == header => {
+                        return if prefix.is_empty() {
+                            IncludePrefix::HeaderFirst
+                        } else {
+                            IncludePrefix::Reproduced(prefix)
+                        };
+                    }
+                    Some(path) if quoted => {
+                        let Some(text) = include_path_text(&path) else {
+                            return refuse("includes a path that cannot be written in a probe");
+                        };
+                        prefix.push(format!("#include \"{text}\""));
+                    }
+                    _ => prefix.push(format!("#include <{target}>")),
+                }
+            }
+            "define" | "undef" => return refuse("is a #define or #undef without a name"),
+            other => {
+                return refuse(&format!(
+                    "is a #{other} directive, which cannot be reproduced"
+                ));
+            }
+        }
+    }
+    IncludePrefix::NotReproducible(
+        "the translation unit never includes the header directly".to_owned(),
+    )
+}
+
+/// [`include_prefix`] for a translation unit on disk. A unit that cannot be read,
+/// is not a regular file or is larger than 8 MiB is not reproducible.
+#[must_use]
+pub fn unit_include_prefix(
+    tu_path: &Path,
+    header_abs: &Path,
+    unit_dir: &Path,
+    flags: &[String],
+) -> IncludePrefix {
+    let read = || -> io::Result<Option<Vec<u8>>> {
+        let file = fs::File::open(tu_path)?;
+        let metadata = file.metadata()?;
+        if !metadata.is_file() || metadata.len() > MAX_UNIT_BYTES {
+            return Ok(None);
+        }
+        let mut text = Vec::new();
+        file.take(MAX_UNIT_BYTES + 1).read_to_end(&mut text)?;
+        Ok((text.len() as u64 <= MAX_UNIT_BYTES).then_some(text))
+    };
+    match read() {
+        Ok(Some(text)) => include_prefix(&text, tu_path, header_abs, unit_dir, flags),
+        Ok(None) => IncludePrefix::NotReproducible(
+            "the defining TU is not a regular file of at most 8 MiB".to_owned(),
+        ),
+        Err(error) => {
+            IncludePrefix::NotReproducible(format!("the defining TU cannot be read: {error}"))
+        }
+    }
 }
 
 /// Options that carry their operand as the next argument.
@@ -459,12 +840,27 @@ pub fn check_entry(
     };
     let header = lexical(&layout.src.join(&entry.header));
     let probe = layout.capture_dir.join(PROBE_FILE);
-    fs::write(&probe, probe_source(&header)?).map_err(|source| EntryError::Io {
+    let flags = filter_flags(unit.arguments.get(1..).unwrap_or_default());
+    let cwd = Path::new(&unit.directory);
+    // The probe holds the defining unit's include prefix where it can be
+    // reproduced exactly, and the header alone otherwise (D-23, G-02-1).
+    let mut unreproduced: Option<String> = None;
+    let probe_text = match unit_include_prefix(&defining, &header, cwd, &flags) {
+        IncludePrefix::Reproduced(lines) => {
+            let text = probe_source_with_prefix(&lines, &header)?;
+            check.result.probe_prefix = lines;
+            text
+        }
+        IncludePrefix::HeaderFirst => probe_source(&header)?,
+        IncludePrefix::NotReproducible(reason) => {
+            unreproduced = Some(reason);
+            probe_source(&header)?
+        }
+    };
+    fs::write(&probe, probe_text).map_err(|source| EntryError::Io {
         path: probe.clone(),
         source,
     })?;
-    let flags = filter_flags(unit.arguments.get(1..).unwrap_or_default());
-    let cwd = Path::new(&unit.directory);
     let mut notes: Vec<String> = Vec::new();
 
     let ast = clang_ast_argv(tools, &entry.name, &flags, &probe)?;
@@ -553,6 +949,13 @@ pub fn check_entry(
         }
     }
 
+    if let Some(reason) = unreproduced
+        && !check.result.passed()
+    {
+        notes.push(format!(
+            "the defining TU's include prefix could not be reproduced: {reason}"
+        ));
+    }
     if !notes.is_empty() {
         let prefix = if check.not_proven { "not_proven: " } else { "" };
         check.result.detail = Some(format!("{prefix}{}", notes.join("; ")));
