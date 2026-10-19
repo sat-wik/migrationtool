@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 02
 current_phase_name: Test Bed and Build Capture
 status: executing
-stopped_at: Completed 02-09-PLAN.md
-last_updated: "2026-10-19T20:51:01.355Z"
+stopped_at: Completed 02-11-PLAN.md
+last_updated: "2026-10-19T21:10:20.506Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: bff8e53c7b72dfaf0f294c49ee87654f3d250c24
+state_head: 0c38741d9a6857f211af9b5af702f90b5ef73ad9
 progress:
   total_phases: 12
   completed_phases: 1
   total_plans: 28
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Project State
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 02 (Test Bed and Build Capture) — EXECUTING
-Plan: 1 of 19
-Status: Executing Phase 02
+Plan: 2 of 19
+Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
 Progress: [█░░░░░░░░░] 8%
@@ -66,6 +66,7 @@ Progress: [█░░░░░░░░░] 8%
 | Phase 02 P06 | 25min | 2 tasks | 15 files |
 | Phase 02 P08 | 26 min | 3 tasks | 1759 files |
 | Phase 02 P09 | 45min (resumed session) | 3 tasks | 37 files |
+| Phase 02 P11 | 13 min | 2 tasks | 26 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,8 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 02]: 02-08: the mt testbed work directory is made absolute in mt-cli — git runs with the cache directory as cwd, so the relative default .mt-work broke verification of reused git sources
 - [Phase 02]: 02-09: CMakeFiles/Makefile2 is left out of the configure-time hashes by exact path (CMake pointer-order nondeterminism, measured; flags.make and every other generated file stay hashed)
 - [Phase 02]: 02-09: bed retained at 15 of 16 targets (29 pairs); isotp and paho/server dropped with cause entry_mismatch (testbed run 38387515333); final full-bed run 38430137113 green on f0a36b8, 3 of 3 round trips
+- [Phase 02]: 02-11: entry probe reproduces the defining TU's include/define/undef prefix exactly or falls back to the header alone; comparison untouched; EntryResult.probe_prefix skipped when empty — G-02-1: isotp.h needs the stdint.h its TU includes first; guessing a context would let a declaration pass that the TU never sees (T-02-41)
+- [Phase 02]: 02-11: isotp reopened (drop entry and DROPPED.md section removed, 19-seed corpus committed, README at 16 targets/30 pairs); paho/server drop kept — Founder decision G-02-1; proof is the plan 02-17 testbed run, and isotp is dropped again with cause and run id if it fails
 
 ### Pending Todos
 
@@ -134,6 +137,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-13T16:34:15.419Z
-Stopped at: Completed 02-09-PLAN.md
+Last session: 2026-10-19T21:10:20.389Z
+Stopped at: Completed 02-11-PLAN.md
 Resume file: None
