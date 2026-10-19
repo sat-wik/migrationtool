@@ -34,7 +34,7 @@ use crate::capture::{
     configure_evidence_changed, reported_tools, variant_code_diff,
 };
 use crate::cc::{CcEntry, CcPolicy};
-use crate::droplog::{DropLog, DropLogError, Dropped};
+use crate::droplog::{DropLog, DropLogError, Dropped, MIN_RETAINED};
 use crate::fetch::{
     FetchContext, FetchError, PinnedSource, cache_paths, fetch, pinned_source, verify_cached,
 };
@@ -101,6 +101,17 @@ pub enum TestbedError {
     /// No target was selected.
     #[error("no target selected: name at least one id or select all")]
     NothingSelected,
+    /// A run over the whole bed whose manifest, minus the fully dropped targets,
+    /// holds fewer than [`MIN_RETAINED`] targets (WR-08, D-11).
+    #[error(
+        "the bed retains {retained} targets, below the floor of {floor} (D-11): a run over the whole bed cannot pass"
+    )]
+    BelowFloor {
+        /// The targets the manifest keeps after the fully dropped ones.
+        retained: usize,
+        /// [`MIN_RETAINED`].
+        floor: usize,
+    },
     /// Capture and replay need a recipe.
     #[error("target {0:?} has no build_args recipe; it cannot be captured or replayed yet")]
     NoRecipe(String),
@@ -247,6 +258,27 @@ fn resolve_ids(manifest: &Manifest, selection: &Selection) -> Result<Vec<String>
     }
 }
 
+/// The number of targets a run over the whole bed has, or the refusal when it
+/// is below [`MIN_RETAINED`] (WR-08, D-11).
+///
+/// A target counts unless the drop log drops it whole; a dropped variant leaves
+/// its target retained. Every step of an `--all` run calls this before it writes
+/// or starts anything, so the step that produces the evidence cannot print a pass
+/// for a bed below the floor. There is no option to lower it.
+///
+/// # Errors
+/// [`TestbedError::BelowFloor`] naming the retained count and the floor.
+pub fn check_floor(manifest: &Manifest, drops: &DropLog) -> Result<usize, TestbedError> {
+    let retained = drops.retained_targets(manifest).len();
+    if retained < MIN_RETAINED {
+        return Err(TestbedError::BelowFloor {
+            retained,
+            floor: MIN_RETAINED,
+        });
+    }
+    Ok(retained)
+}
+
 pub(crate) fn load_inputs(
     opts: &TestbedOptions,
     need_recipe: bool,
@@ -257,6 +289,10 @@ pub(crate) fn load_inputs(
     pins.validate()?;
     let drops = DropLog::load_from_testbed_dir(&opts.testbed_dir)?;
     drops.validate(&manifest)?;
+    // Only the whole bed is evidence of the floor; named ids are partial runs.
+    if opts.selection == Selection::All {
+        check_floor(&manifest, &drops)?;
+    }
     let ids = resolve_ids(&manifest, &opts.selection)?;
     if need_recipe {
         for id in &ids {
