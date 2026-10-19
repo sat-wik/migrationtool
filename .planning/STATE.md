@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 02
 current_phase_name: Test Bed and Build Capture
 status: executing
-stopped_at: Completed 02-18-PLAN.md
-last_updated: "2026-10-19T22:22:02.265Z"
+stopped_at: Completed 02-19-PLAN.md
+last_updated: "2026-10-19T22:40:48.892Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: c6ded5b846caca49e8e0a7d69f3a0787d4b2b000
+state_head: a2228399d80a38cc947eddcf3e4292afbdc8fa2d
 progress:
   total_phases: 12
   completed_phases: 1
   total_plans: 28
-  completed_plans: 27
+  completed_plans: 28
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 02 (Test Bed and Build Capture) — EXECUTING
-Plan: 9 of 19
+Plan: 10 of 19
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -74,6 +74,7 @@ Progress: [█░░░░░░░░░] 8%
 | Phase 02 P16 | 6 min | 3 tasks | 8 files |
 | Phase 02 P17 | 14 min | 2 tasks | 2 files |
 | Phase 02 P18 | 12 min | 2 tasks | 6 files |
+| Phase 02 P19 | 17 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,8 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 02]: 02-17: the determinism step is decided by the exit codes of the rerun capture and of mt testbed compare (run_offline), the helpers carry --pids-limit 1024 --memory 6g --memory-swap 6g --cpus 2, and a static test ties the exclusion comment to DETERMINISM_EXCLUSIONS, CONFIGURE_HASH_EXCLUSIONS and NORMALISED_CONFIGURE_FILES — WR-05, WR-04 first half, G-02-2. Full-bed testbed run 39331139047 and ci run 39331138952 green on 687faf2 in the first round trip (1 of 3): isotp captured and replayed identical, 16 Makefile2 normalised lines, determinism identical over 74 files, seeds passed, 16 fetch tree hashes equal the manifest, 16 targets and 30 pairs retained
 - [Phase 02]: 02-18: the record stage writes toolchain.cmake into the capture directory from text recomputed from the pins, and a symlink at a declared object counts as present so it is refused (run_dir_symlink) instead of dropped as unbuilt
 - [Phase 02]: 02-18: read_run_file splits on '/' itself because Path::components drops an interior '.'; check-then-open has no O_NOFOLLOW (no unsafe), closed by running the record stage after the build and in 02-19's containers
+- [Phase 02]: Plan 02-19: run_build runs each retained pair's upstream build in its own no-network container whose only writable mounts are a discarded scratch /work and the pair's run directory; only the record step (no upstream code) writes the capture artifacts; the determinism rerun builds into its own work directory — WR-04 closed in CI; pinned by build_02_untrusted_builds_cannot_write_the_evidence; final full-bed run 39335185551 green on the first round trip (1 of 3 used), notices identical to plan 02-17's apart from the new testbed-build notice
+- [Phase 02]: Residual: replay's configure_evidence_changed and replay copy still read the run directory with plain fs::read (not covered by plan 02-19) — Bounded by the offline replay container; noted in the 02-18 and 02-19 summaries for a follow-up
 
 ### Pending Todos
 
@@ -155,6 +158,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T22:22:02.155Z
-Stopped at: Completed 02-18-PLAN.md
+Last session: 2026-10-19T22:40:41.911Z
+Stopped at: Completed 02-19-PLAN.md
 Resume file: None

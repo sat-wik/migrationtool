@@ -20,11 +20,11 @@ Milestone v1.0 MVP. Each maps to exactly one roadmap phase.
 
 ### Test Bed and Build Capture (BED, BUILD)
 
-- [ ] **BED-01**: A test bed of 10-20 open-source C parser or protocol targets (for example zcbor, tinycbor, nanopb, lwIP protocol parsers, Mbed TLS ASN.1) is pinned by commit, with licence recorded and at least one buffer-in entry function identified per target.
-- [ ] **BED-02**: Each test-bed target declares its shipped configurations (macro and flag sets) declaratively, and the first RTOS ecosystem (Zephyr or FreeRTOS) is recorded as a decision, even if recorded as "deferred; parsers are RTOS-independent".
-- [ ] **BUILD-01**: For each target and configuration, the tool captures every compile command (Bear for Make, exported compile commands for CMake) into a `compile_commands.json`.
-- [ ] **BUILD-02**: Replaying the captured commands in the container reproduces the target's original build output (byte-identical objects, or identical after a documented normalisation) for every retained target and configuration; targets that cannot be reproduced are dropped from the bed with the cause logged, keeping at least 10.
-- [ ] **BUILD-03**: Each target's existing tests, fixtures and sample inputs are extracted into a per-target seed corpus; targets with none get at least 10 hand-made seeds (proposed).
+- [x] **BED-01**: A test bed of 10-20 open-source C parser or protocol targets (for example zcbor, tinycbor, nanopb, lwIP protocol parsers, Mbed TLS ASN.1) is pinned by commit, with licence recorded and at least one buffer-in entry function identified per target.
+- [x] **BED-02**: Each test-bed target declares its shipped configurations (macro and flag sets) declaratively, and the first RTOS ecosystem (Zephyr or FreeRTOS) is recorded as a decision, even if recorded as "deferred; parsers are RTOS-independent".
+- [x] **BUILD-01**: For each target and configuration, the tool captures every compile command (Bear for Make, exported compile commands for CMake) into a `compile_commands.json`.
+- [x] **BUILD-02**: Replaying the captured commands in the container reproduces the target's original build output (byte-identical objects, or identical after a documented normalisation) for every retained target and configuration; targets that cannot be reproduced are dropped from the bed with the cause logged, keeping at least 10.
+- [x] **BUILD-03**: Each target's existing tests, fixtures and sample inputs are extracted into a per-target seed corpus; targets with none get at least 10 hand-made seeds (proposed).
 
 ### Equivalence Contract and Test Vectors (EQV)
 
@@ -169,11 +169,11 @@ Which phases cover which requirements.
 | TOOL-02 | Phase 1 | Complete |
 | TOOL-03 | Phase 1 | Complete |
 | TOOL-04 | Phase 1 | Complete |
-| BED-01 | Phase 2 | Pending |
-| BED-02 | Phase 2 | Pending |
-| BUILD-01 | Phase 2 | Pending |
-| BUILD-02 | Phase 2 | Pending |
-| BUILD-03 | Phase 2 | Pending |
+| BED-01 | Phase 2 | Complete |
+| BED-02 | Phase 2 | Complete |
+| BUILD-01 | Phase 2 | Complete |
+| BUILD-02 | Phase 2 | Complete |
+| BUILD-03 | Phase 2 | Complete |
 | EQV-01 | Phase 3 | Pending |
 | EQV-02 | Phase 3 | Pending |
 | EQV-03 | Phase 3 | Pending |
