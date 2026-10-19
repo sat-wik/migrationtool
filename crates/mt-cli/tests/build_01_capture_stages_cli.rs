@@ -266,3 +266,51 @@ fn build_01_capture_stage_record_without_build_records_fails() {
         outcome.stdout
     );
 }
+
+#[test]
+fn build_01_capture_stage_build_without_a_cache_exits_one() {
+    let bed = make_bed();
+
+    let outcome = testbed(
+        &bed,
+        &["capture"],
+        &["--stage", "build", "--config", "default", "demo_make"],
+    );
+
+    assert_eq!(
+        outcome.code,
+        Some(1),
+        "stdout {} stderr {}",
+        outcome.stdout,
+        outcome.stderr
+    );
+    assert!(
+        outcome.stderr.contains("cached tree is missing"),
+        "{}",
+        outcome.stderr
+    );
+    assert!(
+        !bed.work.join("run").exists(),
+        "an unverifiable cache must not start a build"
+    );
+}
+
+#[test]
+fn build_01_capture_stage_build_of_an_unknown_pair_exits_two() {
+    let bed = make_bed();
+
+    for (config, id) in [("absent", "demo_make"), ("default", "absent")] {
+        let outcome = testbed(
+            &bed,
+            &["capture"],
+            &["--stage", "build", "--config", config, id],
+        );
+
+        assert_eq!(outcome.code, Some(2), "{id}/{config}: {}", outcome.stdout);
+        assert!(
+            outcome.stderr.contains("absent"),
+            "{id}/{config}: {}",
+            outcome.stderr
+        );
+    }
+}
