@@ -185,3 +185,88 @@ fn build_03_zip_deflated_members_read_with_the_rust_backend() {
     assert_eq!(result.members[0].bytes, deflated);
     assert_eq!(result.members[1].bytes, stored);
 }
+
+/// An archive of Stored members named `m0`, `m1`, ..., member `i` being
+/// `sizes[i]` bytes of the byte `b'a' + i`.
+fn stored_archive(sizes: &[usize]) -> Vec<u8> {
+    let members: Vec<(String, Vec<u8>)> = sizes
+        .iter()
+        .enumerate()
+        .map(|(i, size)| {
+            (
+                format!("m{i}"),
+                vec![b'a' + u8::try_from(i).unwrap(); *size],
+            )
+        })
+        .collect();
+    let borrowed: Vec<(&str, &[u8], bool)> = members
+        .iter()
+        .map(|(name, bytes)| (name.as_str(), bytes.as_slice(), false))
+        .collect();
+    archive_of(&borrowed)
+}
+
+/// Flip the first stored byte of member `index` (a run of `size` copies of its
+/// fill byte), so that reading it to the end fails its CRC-32 check. A member
+/// that is refused for its declared size is never read, so it stays
+/// `too_large`; a member that is read comes back `unsupported`.
+fn poison_member(archive: &mut [u8], index: usize, size: usize) {
+    let run = vec![b'a' + u8::try_from(index).unwrap(); size];
+    let at = archive
+        .windows(size)
+        .position(|window| window == run.as_slice())
+        .expect("the member's bytes are stored verbatim in the archive");
+    archive[at] ^= 0xff;
+}
+
+#[test]
+fn build_03_zip_archive_has_a_total_decompressed_budget() {
+    let mut archive = stored_archive(&[1000; 10]);
+    for index in 4..10 {
+        poison_member(&mut archive, index, 1000);
+    }
+
+    let result = zip_members(&archive, 4096, 4500).unwrap();
+    let names: Vec<&str> = result.members.iter().map(|m| m.name.as_str()).collect();
+    assert_eq!(
+        names,
+        ["m0", "m1", "m2", "m3"],
+        "the budget is spent in order"
+    );
+    assert_eq!(result.members[3].bytes, vec![b'd'; 1000]);
+    assert_eq!(result.too_large, 6, "the other six are over the budget");
+    assert_eq!(
+        result.unsupported, 0,
+        "none of their bytes was read: a poisoned member that was read would be unsupported"
+    );
+    assert_eq!(
+        zip_members(&archive, 4096, 4500).unwrap(),
+        result,
+        "the result is deterministic"
+    );
+}
+
+#[test]
+fn build_03_zip_budget_boundary_is_exact() {
+    let archive = stored_archive(&[300, 200, 500, 100]);
+    let result = zip_members(&archive, 4096, 1000).unwrap();
+    let names: Vec<&str> = result.members.iter().map(|m| m.name.as_str()).collect();
+    assert_eq!(names, ["m0", "m1", "m2"], "an exact fit is allowed");
+    assert_eq!(result.too_large, 1, "the 100 bytes past the budget");
+    assert_eq!(result.unsupported, 0);
+}
+
+#[test]
+fn build_03_zip_budget_of_zero_reads_nothing() {
+    let mut archive = stored_archive(&[10, 20, 30]);
+    for (index, size) in [(0, 10), (1, 20), (2, 30)] {
+        poison_member(&mut archive, index, size);
+    }
+    let result = zip_members(&archive, 4096, 0).unwrap();
+    assert!(result.members.is_empty());
+    assert_eq!(
+        result.too_large, 3,
+        "every regular member is over the budget"
+    );
+    assert_eq!(result.unsupported, 0, "and none of them was read");
+}
