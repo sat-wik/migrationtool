@@ -199,10 +199,32 @@ name = "default"
 name = "no-hw-float"
 defines = ["QCBOR_DISABLE_FLOAT_HW_USE", "QCBOR_DISABLE_PREFERRED_FLOAT"]
 
-# Seeds (BUILD-03): not_well_formed_cbor.h and the arrays and \x strings of the tests.
+# Seeds (BUILD-03, G-02-3): the constant byte arrays of the test files whose arrays are
+# CBOR encodings: qcbor_decode_tests.c (inputs to decode), qcbor_encode_tests.c (the
+# expected encodings, which are valid CBOR; a few small payload blobs that the tests
+# encode into byte strings are swept in with them), not_well_formed_cbor.h (the
+# not-well-formed inputs) and float_tests.c (expected float encodings). No string
+# source remains: the strings of the tests are labels such as "another int" and
+# " tests failed". UsefulBuf_Tests.c (buffer utility tests, arrays of '+' and
+# "Boo") and run_tests.c (the runner) are left out because they hold no CBOR.
 [[target.qcbor.seed_source]]
-path = "test"
-methods = ["c_array", "c_string"]
+path = "test/qcbor_decode_tests.c"
+methods = ["c_array"]
+entries = ["QCBORDecode_Init"]
+
+[[target.qcbor.seed_source]]
+path = "test/qcbor_encode_tests.c"
+methods = ["c_array"]
+entries = ["QCBORDecode_Init"]
+
+[[target.qcbor.seed_source]]
+path = "test/not_well_formed_cbor.h"
+methods = ["c_array"]
+entries = ["QCBORDecode_Init"]
+
+[[target.qcbor.seed_source]]
+path = "test/float_tests.c"
+methods = ["c_array"]
 entries = ["QCBORDecode_Init"]
 
 # ---------------------------------------------------------------------------
@@ -253,8 +275,10 @@ name = "default"
 name = "buffer-only"
 defines = ["PB_BUFFER_ONLY=1", "PB_NO_ERRMSG=1"]
 
-# Seeds (BUILD-03): the fuzz test's sample messages and regression archives, and
-# the \x literals of the tests. An archive above 2 MiB is not opened.
+# Seeds (BUILD-03, G-02-3): the fuzz test's sample messages and its fuzz corpora
+# (corpus.zip, regressions.zip), which are the protobuf inputs of nanopb. There is
+# no string source: the strings under tests/ are test names, messages, malloc
+# wrappers and platform vectors. An archive above 2 MiB is not opened.
 [[target.nanopb.seed_source]]
 path = "tests/fuzztest/sample_data"
 methods = ["file_copy"]
@@ -265,11 +289,6 @@ entries = ["pb_decode_ex", "pb_istream_from_buffer"]
 path = "tests/fuzztest"
 methods = ["zip_member"]
 extensions = ["zip"]
-entries = ["pb_decode_ex", "pb_istream_from_buffer"]
-
-[[target.nanopb.seed_source]]
-path = "tests"
-methods = ["c_string"]
 entries = ["pb_decode_ex", "pb_istream_from_buffer"]
 
 # ---------------------------------------------------------------------------
@@ -799,10 +818,14 @@ name = "default"
 name = "strict"
 make_vars = ["CPPFLAGS_FAST=-I. -DHTTP_PARSER_STRICT=1"]
 
-# Seeds (BUILD-03): the raw requests and responses of test.c.
+# Seeds (BUILD-03, G-02-3): the `.raw` members of the requests[] and responses[]
+# arrays of test.c are the HTTP messages its tests feed to http_parser_execute. The
+# rest of the file's strings are message names, header fields, bodies, the URLs of
+# url_tests[] (http_parser_parse_url, not an entry) and printf messages.
 [[target.httpparser.seed_source]]
 path = "test.c"
 methods = ["c_string"]
+designators = ["raw"]
 entries = ["http_parser_execute"]
 
 # ---------------------------------------------------------------------------

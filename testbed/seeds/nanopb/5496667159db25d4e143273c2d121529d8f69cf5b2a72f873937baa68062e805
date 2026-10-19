@@ -1,2 +1,0 @@
-[poc] nanopb %s
-[poc] mode=POSITIVE-CONTROL (app registers a oneof callback)
