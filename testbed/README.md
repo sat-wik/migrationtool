@@ -102,7 +102,7 @@ corpus under `testbed/seeds/`.
 
 ## Current bed
 
-15 of the 16 approved targets are retained, with 29 target-configuration pairs
+All 16 approved targets are retained, with 30 target-configuration pairs
 (`default` first):
 
 | Target | Configurations |
@@ -111,6 +111,7 @@ corpus under `testbed/seeds/`.
 | corejson | default, depth-8 |
 | coremqtt | default, sub-vectors-2 |
 | httpparser | default, strict |
+| isotp | default |
 | libfdt | default, assume-valid |
 | lz4 | default, heap-small |
 | mbedtls | default, suite-b |
@@ -125,10 +126,15 @@ corpus under `testbed/seeds/`.
 
 Dropped, with the CI run that showed the failure (details in `DROPPED.md`):
 
-- `isotp` (whole target): the entry check cannot compile `isotp.h` alone; testbed
-  run 38387515333.
 - `paho/server` (variant only): the variant's CMake target does not build the
   defining translation unit of an approved entry; testbed run 38387515333.
+
+`isotp` was dropped by that same run (the entry check compiled `isotp.h` alone, and
+it needs the `<stdint.h>` that `isotp.c` includes first). It was reopened when the
+entry check began to reproduce the defining translation unit's include prefix
+(`DROPPED.md`, "Reopened"). That it captures and replays identical is proven by the
+next testbed run, not by this change; if that run fails it, `isotp` is dropped again
+with the cause and the run id.
 
 Each retained pair is captured and then replayed in a clean copy. The run passes
 only when every retained pair's replay verdict is `identical` or

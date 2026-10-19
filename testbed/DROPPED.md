@@ -31,29 +31,24 @@ One heading per entry under "Entries": `## <target>` for a dropped target or
 `## <target>/<config>` for a dropped variant. Under it: the cause, the differing
 objects and sections, the fix tried, and the CI run.
 
+## Reopened
+
+`isotp` was dropped by testbed run 38387515333 (`entry_mismatch`: the entry check's
+probe included `isotp.h` alone, and `isotp.h` includes `<stdint.h>` only under
+`__cplusplus`). Plan 02-11 reopened it on the founder's decision G-02-1, after the
+entry probe began reproducing the defining translation unit's include prefix (the
+`#include`, `#define` and `#undef` lines `isotp.c` has before it includes
+`isotp.h`), so it is no longer dropped and its seed corpus is committed again. The
+entry comparison did not change. Its proof is the plan 02-17 testbed run: until that
+run shows it captured and replayed identical, the reopening is unproven, and if the
+run fails it is dropped again with the cause and the run id.
+
 # Entries
 
-Both entries come from the first full-bed run (testbed run 38387515333, head
-564f256), where fetch verified all 16 tree hashes, the seeds check found no drift,
-and capture refused exactly these two pairs at the entry check. Neither can be
-fixed in the recipe data, so each was dropped without a further CI attempt.
-
-## isotp
-
-- Cause: `entry_mismatch`. `isotp_on_can_message`: the clang AST dump of the probe
-  fails with `isotp_defines.h:66:5: error: unknown type name 'uint8_t'`, because
-  `isotp.h` includes `<stdint.h>` only under `__cplusplus`.
-- Differing objects and sections: none; the build captured, the entry check refused
-  it.
-- Fix tried: none exists in data. Forcing `-include stdint.h` on the default
-  configuration is refused by the validator (the default must set nothing) and
-  CMake C flags belong to the capture driver. The entry check, the validator and the
-  driver were not changed.
-- CI run: 38387515333. The whole target is dropped because its only configuration
-  is `default`; its seed corpus was removed.
-- To reopen: a probe that includes `<stddef.h>` and `<stdint.h>` before the header
-  would admit it; that is a change to the entry check, which only the founder can
-  approve.
+The remaining entry comes from the first full-bed run (testbed run 38387515333,
+head 564f256), where fetch verified all 16 tree hashes, the seeds check found no
+drift, and capture refused exactly two pairs at the entry check. It cannot be
+fixed in the recipe data, so it was dropped without a further CI attempt.
 
 ## paho/server
 

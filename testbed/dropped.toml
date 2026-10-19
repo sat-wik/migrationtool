@@ -27,13 +27,6 @@ variant_failure = "drop_variant"
 # exactly two pairs, both at the entry check; the other 29 captured.
 
 [[dropped]]
-target = "isotp"
-cause = "entry_mismatch"
-detail = "capture isotp/default: entry_mismatch: isotp_on_can_message: clang ast dump exited with Some(1): /work/run/isotp/default/src/isotp_defines.h:66:5: error: unknown type name 'uint8_t'. The entry check includes isotp.h alone; isotp.h includes <stdint.h> only under __cplusplus, so it does not compile on its own in C (isotp.c includes <stdint.h> first)."
-fix_attempted = "No data-only fix exists, found on the host dry run before run A and confirmed by run A: forcing the include with cflags = [\"-include\", \"stdint.h\"] on the default configuration is refused by the manifest validator (the default configuration must set nothing, D-06), CMake C flags belong to the capture driver (cmake_options may not set CMAKE_C_FLAGS*), and no other header declares isotp_on_can_message. The entry check, the validator and the driver were left unchanged (D-11, T-02-38)."
-ci_run = 38387515333
-
-[[dropped]]
 target = "paho"
 config = "server"
 cause = "entry_mismatch"
