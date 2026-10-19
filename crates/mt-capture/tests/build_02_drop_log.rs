@@ -17,7 +17,8 @@ use mt_capture::droplog::{
 use mt_capture::manifest::Manifest;
 use mt_capture::seeding::run_seeds;
 use mt_capture::testbed::{
-    Selection, StepSummary, TestbedOptions, run_capture, run_fetch, run_replay,
+    Selection, StepSummary, TestbedError, TestbedOptions, check_floor, run_capture, run_fetch,
+    run_replay,
 };
 use tempfile::TempDir;
 
@@ -348,7 +349,9 @@ fn make_bed(dropped: &str) -> Bed {
         testbed_dir: testbed,
         work_dir: tmp.path().join("work"),
         out_dir: tmp.path().join("out"),
-        selection: Selection::All,
+        // Both targets named: the steps skip a dropped target exactly as `--all`
+        // does, but a partial run is not held to the 10-target floor (WR-08).
+        selection: Selection::Ids(vec!["demo_cmake".to_owned(), "demo_make".to_owned()]),
         image: None,
     };
     Bed { opts, _tmp: tmp }
@@ -389,8 +392,8 @@ fn build_02_dropped_pairs_are_never_reported_as_passing() {
     assert!(!summary.passed, "a retained failure still fails the step");
     assert!(summary.render_table().contains("dropped (differs)"));
 
-    // Every target dropped: every step reports every row as dropped, and none as
-    // a pass, without starting a tool or touching the network.
+    // Every target dropped and named: every step reports every row as dropped,
+    // and none as a pass, without starting a tool or touching the network.
     let bed = make_bed(&log_text(
         "drop_variant",
         &format!(
@@ -423,6 +426,28 @@ fn build_02_dropped_pairs_are_never_reported_as_passing() {
             assert_eq!(value, expected, "{} {row}", summary.step);
         }
         assert!(summary.passed, "{summary:?}");
+    }
+
+    // The same bed run as `--all` is the whole bed with no target retained: it
+    // cannot report a pass (WR-08), it is refused.
+    let mut whole = bed.opts.clone();
+    whole.selection = Selection::All;
+    for result in [
+        run_fetch(&whole),
+        run_capture(&whole),
+        run_replay(&whole),
+        run_seeds(&whole, &whole.testbed_dir.join("seeds"), true),
+    ] {
+        assert!(
+            matches!(
+                result,
+                Err(TestbedError::BelowFloor {
+                    retained: 0,
+                    floor: 10
+                })
+            ),
+            "{result:?}"
+        );
     }
 
     // Only a variant dropped: the default is still run (here it has no capture
@@ -469,4 +494,99 @@ fn build_03_seeds_check_skips_fully_dropped_targets() {
         !seeds_dir.exists(),
         "check mode must not create a corpus for a dropped target"
     );
+}
+
+#[test]
+fn build_02_an_all_run_below_the_floor_is_refused() {
+    // The two-target fixture retains 2 targets with an empty drop log and 0 with
+    // both dropped; neither bed reaches the floor of 10, so no `--all` step may
+    // start, write a summary or print a pass (WR-08).
+    let both = format!(
+        "{}\n{}",
+        whole_target("demo_make", "differs"),
+        whole_target("demo_cmake", "build_failed")
+    );
+    for (dropped, retained) in [
+        (log_text("drop_variant", ""), 2),
+        (log_text("drop_variant", &both), 0),
+    ] {
+        let mut bed = make_bed(&dropped);
+        bed.opts.selection = Selection::All;
+        let seeds_dir = bed.opts.testbed_dir.join("seeds");
+        let results = [
+            ("fetch", run_fetch(&bed.opts)),
+            ("capture", run_capture(&bed.opts)),
+            ("replay", run_replay(&bed.opts)),
+            ("seeds", run_seeds(&bed.opts, &seeds_dir, true)),
+        ];
+        for (step, result) in results {
+            match result {
+                Err(TestbedError::BelowFloor {
+                    retained: found,
+                    floor,
+                }) => {
+                    assert_eq!((found, floor), (retained, 10), "{step}");
+                    let message = TestbedError::BelowFloor { retained, floor }.to_string();
+                    assert!(
+                        message.contains(&format!("retains {retained} targets"))
+                            && message.contains("floor of 10"),
+                        "{message}"
+                    );
+                }
+                other => panic!("{step}: expected BelowFloor, got {other:?}"),
+            }
+            assert!(
+                !bed.opts
+                    .out_dir
+                    .join(format!("summary-{step}.json"))
+                    .exists(),
+                "{step} wrote a summary for a bed below the floor"
+            );
+        }
+    }
+}
+
+/// The two-target fixture grown to `count` targets named `t00`, `t01`, ...
+fn grown_manifest(count: usize) -> Manifest {
+    let mut manifest = small_manifest();
+    let template = manifest.target["demo_make"].clone();
+    manifest.target.clear();
+    for index in 0..count {
+        manifest
+            .target
+            .insert(format!("t{index:02}"), template.clone());
+    }
+    manifest
+}
+
+#[test]
+fn build_02_floor_counts_retained_targets() {
+    let ten = grown_manifest(MIN_RETAINED);
+    let empty = DropLog::parse(&log_text("drop_variant", "")).unwrap();
+    assert_eq!(check_floor(&ten, &empty).unwrap(), MIN_RETAINED);
+
+    // A variant dropped alone leaves its target retained.
+    let variant = DropLog::parse(&log_text(
+        "drop_variant",
+        &variant_entry(&[("target", "\"t00\"")]),
+    ))
+    .unwrap();
+    assert_eq!(check_floor(&ten, &variant).unwrap(), MIN_RETAINED);
+
+    // A fully dropped target does not count.
+    let one_gone = DropLog::parse(&log_text(
+        "drop_variant",
+        &whole_target("t00", "build_failed"),
+    ))
+    .unwrap();
+    match check_floor(&ten, &one_gone) {
+        Err(TestbedError::BelowFloor { retained, floor }) => {
+            assert_eq!((retained, floor), (MIN_RETAINED - 1, MIN_RETAINED));
+        }
+        other => panic!("expected BelowFloor, got {other:?}"),
+    }
+
+    // Eleven targets with one dropped stay at the floor.
+    let eleven = grown_manifest(MIN_RETAINED + 1);
+    assert_eq!(check_floor(&eleven, &one_gone).unwrap(), MIN_RETAINED);
 }

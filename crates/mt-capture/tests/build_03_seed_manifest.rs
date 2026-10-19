@@ -380,7 +380,9 @@ fn make_bed() -> Bed {
         testbed_dir: testbed.clone(),
         work_dir: work,
         out_dir: tmp.path().join("out"),
-        selection: Selection::All,
+        // Named, not `--all`: a one-target bed is a partial run (WR-08 floors
+        // only the whole bed).
+        selection: Selection::Ids(vec!["demo".to_owned()]),
         image: None,
     };
     Bed {

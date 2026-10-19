@@ -127,7 +127,9 @@ fn seeds_args(manifest: &Path, work: &Path, root: &Path, check: bool) -> Vec<OsS
     if check {
         args.push(os("--check"));
     }
-    args.push(os("--all"));
+    // The one target is named: a partial run, which the 10-target floor of an
+    // `--all` run (WR-08) does not apply to.
+    args.push(os("demo"));
     args
 }
 
@@ -175,6 +177,31 @@ fn build_03_seeds_cli_exits_one_on_drift_and_zero_when_equal() {
             .contains(&format!("drift: demo: changed {}", sha256_hex(&[1, 2, 3]))),
         "{}",
         outcome.stderr
+    );
+}
+
+#[test]
+fn build_02_cli_all_below_the_floor_exits_two() {
+    // `--all` is the whole bed, whose evidence needs 10 retained targets (D-11):
+    // this fixture holds one, so the run is refused before anything is read,
+    // checked or written (WR-08).
+    let tmp = tempfile::tempdir().unwrap();
+    let (manifest, work) = make_bed(tmp.path());
+    for check in [true, false] {
+        let mut args = seeds_args(&manifest, &work, tmp.path(), check);
+        args.pop();
+        args.push(os("--all"));
+        let outcome = run_mt(tmp.path(), &args);
+        assert_eq!(outcome.code, Some(2), "stdout: {}", outcome.stdout);
+        assert!(
+            outcome.stderr.contains("floor") && outcome.stderr.contains("retains 1 targets"),
+            "{}",
+            outcome.stderr
+        );
+    }
+    assert!(
+        !tmp.path().join("testbed/seeds").exists() && !tmp.path().join("out").exists(),
+        "a refused run writes nothing"
     );
 }
 
@@ -327,7 +354,7 @@ fn build_03_seeds_cli_accepts_a_relative_work_dir_for_a_git_source() {
         os("work"),
         os("--out"),
         os("out"),
-        os("--all"),
+        os("demo"),
     ];
     let outcome = run_mt(tmp.path(), &args);
     assert_eq!(
