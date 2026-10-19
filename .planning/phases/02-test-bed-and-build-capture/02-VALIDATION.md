@@ -71,6 +71,16 @@ created: "2026-10-12"
 | — | 02-08 | — | BUILD-03 | — | Provenance recorded; hand-made sets `proposed` and ≥10 | unit, offline | `cargo test -p mt-capture build_03_hand_made_seeds_marked_proposed_and_at_least_ten` and `build_03_seed_provenance_records_source_path_commit_and_method` | ✅ | ✅ green |
 | — | 02-06/02-09 | — | BUILD-03 | — | Committed seeds equal regenerated seeds | CI | testbed `seeds --check` | n/a | ✅ green (testbed run 38430137113) |
 | — | 02-05 | — | (guard) | — | `.mt-work` does not trip the Python check; manifest image digest equals README | unit, offline | `cargo test -p mt-toolchain tool_01_no_python_outside_research` and `cargo test -p mt-capture build_02_image_digest_matches_readme` | ✅ | ✅ green |
+| — | 02-11 | 8 | BED-01, BUILD-02 | — | Entry probe uses the defining TU's include prefix; unreproducible prefix falls back to header-alone; comparison unchanged (G-02-1) | integration + unit, offline | `cargo test -p mt-capture --test bed_01_entry_include_prefix` (incl. `bed_01_entry_probe_uses_the_defining_tu_include_prefix`) | ✅ | ✅ green |
+| — | 02-12 | 8 | BUILD-01, BUILD-02 | — | Makefile2 hashed after normalisation; exact CMake product list; pure skip decision (G-02-2, WR-10) | unit, offline (tool-free) | `cargo test -p mt-capture --test build_02_configure_evidence` (incl. `build_01_cmake_products_are_exactly_the_documented_paths`, `build_02_real_makefile2_variants_normalise_equal`) | ✅ | ✅ green |
+| — | 02-13 | 8 | BUILD-03 | — | Zip inflated by miniz_oxide only (no zlib-rs/C zlib in lock); per-archive decompressed budget (G-02-4, WR-07) | unit, offline | `cargo test -p mt-seeds --test build_03_zip_backend` (incl. `build_03_zip_inflates_with_miniz_oxide_only`, `build_03_zip_archive_has_a_total_decompressed_budget`) | ✅ | ✅ green |
+| — | 02-13 | 8 | BUILD-03 | — | Founder legitimacy approval of miniz_oxide 0.9.1, adler2 2.0.1, simd-adler32 0.3.10 | manual | checkpoint (approved 2026-10-19, recorded in 02-13-SUMMARY.md) | n/a | ✅ approved |
+| — | 02-14 | 8 | BUILD-02 | — | Determinism comparison fails closed (unparseable, empty, one-sided, non-regular, zero files); only the two documented exclusions (WR-05) | unit + CLI, offline | `cargo test -p mt-capture --test build_02_compare` and `cargo test -p mt-cli --test build_02_compare_cli` | ✅ | ✅ green |
+| — | 02-15 | 9 | BUILD-03 | — | Designated-string selector; narrowed httpparser/nanopb/qcbor corpora hold only input methods (G-02-3) | unit + committed data, offline | `cargo test -p mt-seeds --test build_03_seed_designators` and `cargo test -p mt-capture --test build_03_seed_narrowing` | ✅ | ✅ green |
+| — | 02-16 | 9 | BUILD-02 | — | Replay bound to manifest pin, pair and tool set; 10-target floor on every `--all`; `differs` drops name evidence (WR-02, WR-08) | integration + CLI, offline | `cargo test -p mt-capture --test build_02_replay_pin --test build_02_drop_log` and `cargo test -p mt-cli --test build_03_seeds_cli` | ✅ | ✅ green |
+| — | 02-17 | 10 | BED-01, BUILD-01..03 | — | Whole bed green in the pinned image with isotp retained, normalised Makefile2, `mt testbed compare` determinism | CI + static | testbed run 39331139047 (head 687faf2); `cargo test -p mt-capture --test build_02_workflow_static` | ✅ | ✅ green |
+| — | 02-18 | 11 | BUILD-01, BUILD-02 | — | Capture split into build and record stages; record stage refuses symlinks, changed inputs, foreign build records (WR-04) | integration + CLI, offline | `cargo test -p mt-capture --test build_01_capture_stages` and `cargo test -p mt-cli --test build_01_capture_stages_cli` | ✅ | ✅ green |
+| — | 02-19 | 12 | BED-01, BUILD-01..03 | — | Untrusted builds run one container per pair and cannot write the evidence; final full bed green (WR-04) | CI + static | testbed run 39335185551, ci run 39335185566 (head fb04867); `build_02_untrusted_builds_cannot_write_the_evidence` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -106,7 +116,7 @@ created: "2026-10-12"
 - [x] Feedback latency < 30s
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** validated 2026-10-13 (founder approval of the target list recorded in 02-03-SUMMARY.md)
+**Approval:** validated 2026-10-13; gap closure 02-11..02-19 audited 2026-10-19 (318 tests green, CI runs 39331139047 and 39335185551) (founder approval of the target list recorded in 02-03-SUMMARY.md)
 
 ## Validation Audit 2026-10-13
 
