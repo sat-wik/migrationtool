@@ -31,11 +31,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::capture::{
     CaptureContext, CaptureError, RunLayout, ToolPaths, VariantDiff, capture,
-    configure_evidence_changed, variant_code_diff,
+    configure_evidence_changed, reported_tools, variant_code_diff,
 };
 use crate::cc::{CcEntry, CcPolicy};
 use crate::droplog::{DropLog, DropLogError, Dropped};
-use crate::fetch::{FetchContext, FetchError, cache_paths, fetch, verify_cached};
+use crate::fetch::{
+    FetchContext, FetchError, PinnedSource, cache_paths, fetch, pinned_source, verify_cached,
+};
 use crate::manifest::{BuildSystem, Config, Manifest, ManifestError, Target};
 use crate::replay::{Normaliser, ReplayError, ReplayPlan, replay};
 use crate::report::{CaptureReport, CaptureVerdict, REPORT_SCHEMA_VERSION, Verdict};
@@ -529,6 +531,7 @@ fn plan_of(
     target: &Target,
     config: &str,
     captured: &CaptureReport,
+    pin: &PinnedSource,
 ) -> Result<ReplayPlan, String> {
     let layout = RunLayout::new(&opts.work_dir, id, config);
     let bytes = fs::read(layout.canonical_path())
@@ -557,7 +560,7 @@ fn plan_of(
         target: id.to_owned(),
         config: config.to_owned(),
         run_root: layout.run_root.clone(),
-        pristine_src: cache_paths(&opts.work_dir, id, &captured.source.commit).tree,
+        pristine_src: cache_paths(&opts.work_dir, id, &pin.commit).tree,
         src_dir_name: "src".to_owned(),
         keep_dirs,
         entries,
@@ -579,13 +582,59 @@ fn plan_of(
     })
 }
 
+/// Why a capture report is not the one the manifest and the pins file describe,
+/// or `None` when it is (WR-02). The report is read from the work directory, so
+/// nothing in it is trusted: its pair, its source pin and its tool versions must
+/// equal the current ones, and no value of it becomes a path.
+fn report_mismatch(
+    captured: &CaptureReport,
+    id: &str,
+    config: &str,
+    pin: &PinnedSource,
+    tools: &BTreeMap<String, String>,
+) -> Option<String> {
+    let different = |what: &str, field: &str| {
+        Some(format!(
+            "the capture report was made from a different {what}: {field}"
+        ))
+    };
+    if captured.target != id {
+        return different("pair", "target");
+    }
+    if captured.config != config {
+        return different("pair", "config");
+    }
+    if captured.source.commit != pin.commit {
+        return different("source pin", "source.commit");
+    }
+    if captured.source.tree_sha256 != pin.tree_sha256 {
+        return different("source pin", "source.tree_sha256");
+    }
+    if &captured.tools != tools {
+        let named: Vec<&str> = captured
+            .tools
+            .keys()
+            .chain(tools.keys())
+            .filter(|key| captured.tools.get(*key) != tools.get(*key))
+            .map(String::as_str)
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect();
+        return different("tool set", &format!("tools ({})", named.join(", ")));
+    }
+    None
+}
+
 /// Replay every captured configuration of every selected target in a clean copy
 /// of its verified source and compare each object byte for byte (BUILD-02).
 ///
 /// The captured build is read from the work directory, so `capture` must have
 /// run on the same work directory. A configuration that was not captured, whose
-/// artifacts changed, or whose source cache no longer matches its pin is
-/// `not_proven`. Run it with no network.
+/// report was made for another pair, source pin or tool set than the manifest
+/// and the pins file name now (WR-02), whose artifacts changed, or whose source
+/// cache no longer matches its pin is `not_proven`. The pristine source is the
+/// cache of the manifest's pinned commit, never a path read from the report. Run
+/// it with no network.
 ///
 /// # Errors
 /// [`TestbedError`] for unusable inputs (including a target with no recipe) or
@@ -640,11 +689,28 @@ pub fn run_replay(opts: &TestbedOptions) -> Result<StepSummary, TestbedError> {
                 );
                 continue;
             }
+            let pin = match pinned_source(id, target) {
+                Ok(pin) => pin,
+                Err(error) => {
+                    summary.add(&row, &unproven(error), false);
+                    continue;
+                }
+            };
+            if let Some(reason) = report_mismatch(
+                &captured,
+                id,
+                &config.name,
+                &pin,
+                &reported_tools(&tools, target.build),
+            ) {
+                summary.add(&row, &unproven(reason), false);
+                continue;
+            }
             if let Err(error) = verify_cached(&cfg, &verify_ctx, id, target) {
                 summary.add(&row, &unproven(error), false);
                 continue;
             }
-            let plan = match plan_of(opts, &tools, id, target, &config.name, &captured) {
+            let plan = match plan_of(opts, &tools, id, target, &config.name, &captured, &pin) {
                 Ok(plan) => plan,
                 Err(reason) => {
                     summary.add(&row, &unproven(reason), false);

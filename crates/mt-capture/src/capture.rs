@@ -372,6 +372,27 @@ fn path_str(path: &Path) -> Result<&str, CaptureError> {
         .ok_or_else(|| invalid(format!("{} is not valid UTF-8", path.display())))
 }
 
+/// The tool versions a capture of a `build` target records in its report: the
+/// pinned version of each reported tool, except the one the build system does not
+/// use (Bear serves Make targets, CMake serves CMake targets).
+///
+/// Capture records this map and replay compares a report with it, so the two
+/// cannot disagree about what a genuine report holds.
+#[must_use]
+pub fn reported_tools(tools: &ToolPaths, build: BuildSystem) -> BTreeMap<String, String> {
+    let mut reported = BTreeMap::new();
+    for key in REPORTED_TOOLS {
+        let unused = matches!(
+            (key, build),
+            ("bear", BuildSystem::Cmake) | ("cmake", BuildSystem::Make)
+        );
+        if !unused && let Some(version) = tools.versions.get(key) {
+            reported.insert(key.to_owned(), version.clone());
+        }
+    }
+    reported
+}
+
 impl ToolPaths {
     /// The tools of the pins. `readelf`, `objcopy` and the sysroot are derived
     /// from the install directory of the pinned Arm compiler.
@@ -1078,16 +1099,7 @@ impl Session<'_> {
             tree_sha256: verified.tree_sha256.clone(),
         };
         self.report.steps.extend(verified.steps);
-        for key in REPORTED_TOOLS {
-            // Bear serves Make targets and CMake serves CMake targets.
-            let unused = matches!(
-                (key, target.build),
-                ("bear", BuildSystem::Cmake) | ("cmake", BuildSystem::Make)
-            );
-            if !unused && let Some(version) = ctx.tools.versions.get(key) {
-                self.report.tools.insert(key.to_owned(), version.clone());
-            }
-        }
+        self.report.tools = reported_tools(&ctx.tools, target.build);
 
         for dir in [&self.layout.run_root, &self.layout.capture_dir] {
             if !dir.starts_with(&ctx.work_dir) || dir == &ctx.work_dir {

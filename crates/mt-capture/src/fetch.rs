@@ -236,6 +236,33 @@ struct Pin<'a> {
     archive: Option<(&'a str, u32)>,
 }
 
+/// What the manifest pins for a target's source: the commit that names its cache
+/// (the tag commit, for provenance, on an archive source) and the tree sha256.
+///
+/// Both are validated as 40 and 64 lowercase hex digits, so the commit is always
+/// a safe path component.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PinnedSource {
+    /// The pinned commit.
+    pub commit: String,
+    /// The pinned tree sha256.
+    pub tree_sha256: String,
+}
+
+/// The manifest's pin of a target's source, validated.
+///
+/// # Errors
+/// [`FetchError::InvalidInput`] when the id is not a safe path component, the
+/// url is not `https://` or `file://`, or a digest is not lowercase hex of the
+/// right length.
+pub fn pinned_source(id: &str, target: &Target) -> Result<PinnedSource, FetchError> {
+    let pin = pin_of(id, target)?;
+    Ok(PinnedSource {
+        commit: pin.commit.to_owned(),
+        tree_sha256: pin.tree_sha256.to_owned(),
+    })
+}
+
 fn pin_of<'a>(id: &str, target: &'a Target) -> Result<Pin<'a>, FetchError> {
     if !is_safe_component(id) {
         return Err(invalid(format!(
