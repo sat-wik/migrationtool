@@ -30,9 +30,17 @@ shlex = "=2.0.1"
 tempfile = "3.27.0"
 thiserror = "2.0.21"
 toml = "=1.1.7"
-# Reads zip members (fuzz corpora) in memory (MIT). Pure-Rust deflate only: no
-# bzip2, zstd, lzma or encryption features, so no C code and no extra codecs.
-zip = { version = "=9.0.2", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+# Reads zip members (fuzz corpora) in memory (MIT). Deflate only, inflated by
+# miniz_oxide, which forbids unsafe code (G-02-4). Not all of the stack is safe
+# Rust: zip's header parsing, flate2's buffer code and simd-adler32's SIMD
+# intrinsics contain unsafe code. No C code and no other codecs: no bzip2, zstd,
+# lzma or encryption features.
+zip = { version = "=9.0.2", default-features = false, features = ["deflate-flate2"] }
+# Named only to select flate2's rust_backend (miniz_oxide) for zip: zip's
+# deflate-flate2 feature leaves the backend open, and flate2 does not compile
+# without one. Features unify across the workspace, so mt-seeds naming it here
+# picks the safe-Rust inflater (G-02-4).
+flate2 = { version = "=1.1.10", default-features = false, features = ["rust_backend"] }
 
 [workspace.lints.clippy]
 # building-the-tool.md section 4: no unwrap/expect outside tests. A justified
