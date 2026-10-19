@@ -10,10 +10,13 @@
 //! `<seeds_dir>/<id>/` or, in check mode, compares it with what would be
 //! written and reports any difference as drift.
 //!
-//! Bounds (T-02-32): a source file above 8 MiB is counted unsupported and never
-//! read; a zip archive above 2 MiB is counted unsupported and never
+//! Bounds (T-02-32, T-02-47): a source file above 8 MiB is counted unsupported
+//! and never read; a zip archive above 2 MiB is counted unsupported and never
 //! opened, because the number of members of an archive is not bounded by the
-//! per-member limit. Symlinks are never followed.
+//! per-member limit; and no more than [`MAX_ZIP_DECOMPRESSED_BYTES`] are
+//! decompressed from one opened archive, because an archive's size bounds its
+//! member count but not the memory its members expand to. Symlinks are never
+//! followed.
 //!
 //! Nothing here starts a process; the cache is verified through
 //! [`crate::fetch::verify_cached`], which uses the runner.
@@ -39,8 +42,18 @@ pub const MAX_SOURCE_FILE_BYTES: u64 = 8 * 1024 * 1024;
 
 /// The largest zip archive that is opened; a bigger one is counted unsupported.
 /// The members of an archive are bounded one by one but not in number, so the
-/// archive size is what bounds the memory a pinned archive can take.
+/// archive size bounds the central directory and with it the member count, not
+/// the memory the members expand to: that is [`MAX_ZIP_DECOMPRESSED_BYTES`].
 pub const MAX_ZIP_ARCHIVE_BYTES: u64 = 2 * 1024 * 1024;
+
+/// The most decompressed bytes read from one zip archive; members past it are
+/// counted too large and not read (T-02-47, WR-07). Measured on the pinned
+/// archives: nanopb's `tests/fuzztest/corpus.zip` reads about 2.86 MB of
+/// members within the 64 KiB per-member limit, so the budget binds on none of
+/// them and no committed corpus changes. The reason for the budget: a deflate
+/// stream can expand by orders of magnitude, so an archive's size bounds its
+/// member count but not the memory and work its members take.
+pub const MAX_ZIP_DECOMPRESSED_BYTES: u64 = 8 * 1024 * 1024;
 
 /// Extensions of C and C++ sources the lexer runs on.
 const C_EXTENSIONS: [&str; 5] = ["c", "cc", "cpp", "h", "hpp"];
@@ -362,7 +375,7 @@ fn extract_file(
             // archive is not opened (T-02-32).
             gathered.unsupported += 1;
         } else {
-            match zipsrc::zip_members(&bytes, caps.max_seed_bytes) {
+            match zipsrc::zip_members(&bytes, caps.max_seed_bytes, MAX_ZIP_DECOMPRESSED_BYTES) {
                 Ok(zip) => {
                     gathered.unsupported += zip.unsupported;
                     gathered.too_large += zip.too_large;

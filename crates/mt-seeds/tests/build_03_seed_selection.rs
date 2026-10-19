@@ -397,7 +397,7 @@ fn build_03_zip_members_are_read_without_touching_disk() {
         &["somedir/"],
     );
 
-    let result = zip_members(&archive, 100).unwrap();
+    let result = zip_members(&archive, 100, u64::MAX).unwrap();
     let names: Vec<&str> = result.members.iter().map(|m| m.name.as_str()).collect();
     assert_eq!(names, ["a", "dir/b"], "archive order, directories skipped");
     assert_eq!(result.members[0].bytes, b"AAAA");
@@ -415,7 +415,7 @@ fn build_03_zip_members_are_read_without_touching_disk() {
         ],
         &[],
     );
-    let result = zip_members(&archive, 100).unwrap();
+    let result = zip_members(&archive, 100, u64::MAX).unwrap();
     assert_eq!(result.members.len(), 1);
     assert_eq!(result.members[0].name, "ok");
     assert_eq!(result.unsupported, 2);
@@ -430,13 +430,13 @@ fn build_03_zip_members_are_read_without_touching_disk() {
         &[("exact", &[7u8; 100], false), ("over", &[7u8; 101], false)],
         &[],
     );
-    let result = zip_members(&archive, 100).unwrap();
+    let result = zip_members(&archive, 100, u64::MAX).unwrap();
     assert_eq!(result.members.len(), 1);
     assert_eq!(result.members[0].name, "exact");
     assert_eq!(result.too_large, 1);
 
     // Not an archive at all.
-    let err = zip_members(b"this is not a zip file", 100).unwrap_err();
+    let err = zip_members(b"this is not a zip file", 100, u64::MAX).unwrap_err();
     assert!(matches!(err, SeedError::Zip(_)), "{err}");
 }
 

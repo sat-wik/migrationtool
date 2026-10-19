@@ -177,7 +177,7 @@ fn build_03_zip_deflated_members_read_with_the_rust_backend() {
         archive.len()
     );
 
-    let result = zip_members(&archive, 1 << 20).unwrap();
+    let result = zip_members(&archive, 1 << 20, u64::MAX).unwrap();
     assert_eq!(result.unsupported, 0);
     assert_eq!(result.too_large, 0);
     let names: Vec<&str> = result.members.iter().map(|m| m.name.as_str()).collect();
