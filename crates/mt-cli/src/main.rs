@@ -7,12 +7,13 @@ use std::time::Duration;
 
 use anyhow::Context;
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use mt_capture::capture::CaptureError;
 use mt_capture::compare::{DETERMINISM_EXCLUSIONS, compare_capture_dirs};
 use mt_capture::manifest::ManifestError;
 use mt_capture::seeding::run_seeds_detailed;
 use mt_capture::testbed::{
-    Selection, StepSummary, TestbedError, TestbedOptions, run_capture, run_fetch, run_replay,
-    run_validate,
+    Selection, StepSummary, TestbedError, TestbedOptions, run_capture, run_capture_build,
+    run_capture_record, run_fetch, run_pairs, run_replay, run_validate,
 };
 use mt_toolchain::build_args::{self, Scope};
 use mt_toolchain::check::{capture_toml, run_check, run_check_observed};
@@ -123,6 +124,15 @@ enum ToolchainAction {
     },
 }
 
+/// Which stage of a capture to run (WR-04).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum StageArg {
+    /// The untrusted upstream build of one pair, writing only its run directory.
+    Build,
+    /// The evidence from what the builds left, running no upstream code.
+    Record,
+}
+
 /// The arguments the fetch, capture and replay steps share.
 #[derive(Debug, Args)]
 struct TestbedArgs {
@@ -165,13 +175,37 @@ enum TestbedAction {
     /// compiler, the object architecture and every entry function. Exit 0 when
     /// every configuration is captured, 1 when one failed or was not proven, 2
     /// for invalid input (including a target with no build recipe).
+    ///
+    /// With --stage the capture runs in two parts, so the untrusted upstream
+    /// build can run where it may write only its own run directory. --stage
+    /// build --config <NAME> <ID> runs the build stage of that one pair and
+    /// prints `<id>/<config> built`, `build_failed` or `not_proven`, or `dropped
+    /// (<cause>)` for a pair of the drop log (nothing is run or written for it):
+    /// exit 0 when a build record was written whatever the build's outcome, 1
+    /// when the source cache is missing or does not verify, 2 for invalid input
+    /// (it needs exactly one id, --config, and not --all). --stage record runs
+    /// no upstream code and writes the capture artifacts, rows and reports over
+    /// the selection as the capture does, with the same exit codes; a pair
+    /// without a usable build record is a not_proven row. Without --stage both
+    /// parts run in one process.
     Capture {
         #[command(flatten)]
         args: TestbedArgs,
         /// The toolchain image reference to record in each capture report.
         #[arg(long)]
         image: Option<String>,
+        /// Run only the build stage or only the record stage of the capture.
+        #[arg(long, value_enum)]
+        stage: Option<StageArg>,
+        /// The configuration to build; only with --stage build.
+        #[arg(long)]
+        config: Option<String>,
     },
+    /// List the retained pairs of the selected targets, one `<id> <config>` per
+    /// line: targets by id, each target's default first, then its other
+    /// configurations by name, without the pairs of the drop log. Nothing is
+    /// written. Exit 0, or 2 for invalid input.
+    Pairs(TestbedArgs),
     /// Replay each captured build in a clean copy of its source and compare the
     /// objects. Exit 0 when every configuration replays identically (or
     /// identically after the fixed normalisation), 1 when one differs, failed or
@@ -403,13 +437,73 @@ fn finish_testbed(result: Result<StepSummary, TestbedError>) -> anyhow::Result<b
     }
 }
 
+/// The capture command: both stages in one process, or one stage (WR-04). Only
+/// the shape of the arguments is checked here.
+fn capture_command(
+    args: TestbedArgs,
+    image: Option<String>,
+    stage: Option<StageArg>,
+    config: Option<String>,
+) -> anyhow::Result<bool> {
+    match (stage, config) {
+        (Some(StageArg::Build), config) => {
+            let (Some(config), false, [id]) = (config, args.all, args.ids.as_slice()) else {
+                anyhow::bail!(
+                    "--stage build runs one pair: name exactly one target id and --config <NAME>, and do not use --all"
+                );
+            };
+            let id = id.clone();
+            match run_capture_build(&testbed_options(args, image), &id, &config) {
+                Ok(word) => {
+                    println!("{id}/{config} {word}");
+                    Ok(true)
+                }
+                // The cache does not verify: exit 1 with the reason, not 2.
+                Err(TestbedError::Capture(CaptureError::Fetch(error))) => {
+                    eprintln!("error: {error}");
+                    Ok(false)
+                }
+                Err(error) => {
+                    print_issues(&error);
+                    Err(error.into())
+                }
+            }
+        }
+        (_, Some(_)) => anyhow::bail!("--config is only valid with --stage build"),
+        (Some(StageArg::Record), None) => {
+            finish_testbed(run_capture_record(&testbed_options(args, image)))
+        }
+        (None, None) => finish_testbed(run_capture(&testbed_options(args, image))),
+    }
+}
+
+/// Print the retained pairs, one per line.
+fn pairs_command(args: TestbedArgs) -> anyhow::Result<bool> {
+    match run_pairs(&testbed_options(args, None)) {
+        Ok(pairs) => {
+            for (id, config) in pairs {
+                println!("{id} {config}");
+            }
+            Ok(true)
+        }
+        Err(error) => {
+            print_issues(&error);
+            Err(error.into())
+        }
+    }
+}
+
 fn testbed_command(action: TestbedAction) -> anyhow::Result<bool> {
     match action {
         TestbedAction::Validate { manifest } => finish_testbed(run_validate(&manifest)),
         TestbedAction::Fetch(args) => finish_testbed(run_fetch(&testbed_options(args, None))),
-        TestbedAction::Capture { args, image } => {
-            finish_testbed(run_capture(&testbed_options(args, image)))
-        }
+        TestbedAction::Capture {
+            args,
+            image,
+            stage,
+            config,
+        } => capture_command(args, image, stage, config),
+        TestbedAction::Pairs(args) => pairs_command(args),
         TestbedAction::Replay(args) => finish_testbed(run_replay(&testbed_options(args, None))),
         TestbedAction::Compare { first, second } => compare_command(&first, &second),
         TestbedAction::Seeds {

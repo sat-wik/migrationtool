@@ -16,6 +16,12 @@
 //! `<out>/summary-<step>.json`. The work directory keeps the sources, the run
 //! trees and the capture artifacts replay reads.
 //!
+//! The capture step also runs in two parts (WR-04): [`run_capture_build`] runs the
+//! untrusted upstream build of one pair and writes only that pair's run directory,
+//! [`run_capture_record`] writes the same reports and capture artifacts as
+//! [`run_capture`] from what the builds left, and [`run_pairs`] lists the retained
+//! pairs. [`run_capture`] and [`run_capture_record`] share one loop.
+//!
 //! Every external tool runs through the `mt-toolchain` runner; this module
 //! spawns nothing itself.
 
@@ -30,8 +36,8 @@ use mt_toolchain::runner::{RunnerConfig, RunnerError};
 use serde::{Deserialize, Serialize};
 
 use crate::capture::{
-    CaptureContext, CaptureError, RunLayout, ToolPaths, VariantDiff, capture,
-    configure_evidence_changed, reported_tools, variant_code_diff,
+    BuildRecord, CaptureContext, CaptureError, RunLayout, ToolPaths, VariantDiff, capture,
+    capture_build, capture_record, configure_evidence_changed, reported_tools, variant_code_diff,
 };
 use crate::cc::{CcEntry, CcPolicy};
 use crate::droplog::{DropLog, DropLogError, Dropped, MIN_RETAINED};
@@ -98,6 +104,14 @@ pub enum TestbedError {
     /// A selected id is not in the manifest.
     #[error("unknown target {0:?}: it is not in the manifest")]
     UnknownTarget(String),
+    /// A named configuration is not one of the target's.
+    #[error("target {target:?} has no configuration {config:?}")]
+    UnknownConfig {
+        /// The target id.
+        target: String,
+        /// The configuration name that is not in the manifest.
+        config: String,
+    },
     /// No target was selected.
     #[error("no target selected: name at least one id or select all")]
     NothingSelected,
@@ -443,6 +457,102 @@ fn capture_row(report: &CaptureReport) -> String {
     )
 }
 
+/// A capture of one pair: the whole capture ([`capture`]) or its record stage
+/// ([`capture_record`]); both have this shape.
+type CapturePair = fn(
+    &RunnerConfig,
+    &CaptureContext,
+    &str,
+    &Target,
+    &Config,
+) -> Result<CaptureReport, CaptureError>;
+
+/// The capture context of a step over `opts`.
+fn capture_context_of(
+    opts: &TestbedOptions,
+    inputs: &Inputs,
+) -> Result<CaptureContext, TestbedError> {
+    let tools = ToolPaths::from_pins(&inputs.pins)?;
+    Ok(CaptureContext::new(
+        &opts.work_dir,
+        &opts.testbed_dir,
+        tools,
+        inputs.manifest.baseline.cflags.clone(),
+    ))
+}
+
+/// The retained pairs of the selected targets, `<id> <config>`, in the order the
+/// capture runs them: targets sorted by id, each target's `default` first and
+/// then its other configurations by name. Pairs of the drop log are left out.
+/// Nothing is written, so the work directory is not created.
+///
+/// # Errors
+/// [`TestbedError`] for unusable inputs (including a target with no recipe, and
+/// an `--all` selection below the 10-target floor).
+pub fn run_pairs(opts: &TestbedOptions) -> Result<Vec<(String, String)>, TestbedError> {
+    let inputs = load_inputs(opts, true)?;
+    let mut pairs = Vec::new();
+    for id in &inputs.ids {
+        let target = target_of(&inputs.manifest, id)?;
+        for config in ordered_configs(target) {
+            if inputs.drops.is_dropped(id, &config.name).is_none() {
+                pairs.push((id.clone(), config.name.clone()));
+            }
+        }
+    }
+    Ok(pairs)
+}
+
+/// The word a build record is reported as.
+fn build_word(record: &BuildRecord) -> &'static str {
+    if record.not_proven {
+        "not_proven"
+    } else if record.build_failed {
+        "build_failed"
+    } else {
+        "built"
+    }
+}
+
+/// Run the build stage of one pair ([`capture_build`]): the untrusted upstream
+/// build, writing only `<work>/run/<id>/<config>` (WR-04). Returns `built`,
+/// `build_failed` or `not_proven` from the build record, or `dropped (<cause>)`
+/// for a pair of the drop log, which is not run and writes nothing. It writes no
+/// report and no output file. Only the pair is selected, whatever `opts.selection`
+/// holds, so the 10-target floor does not apply.
+///
+/// # Errors
+/// [`TestbedError`] for unusable inputs (an unknown target or configuration, no
+/// recipe), a tool that cannot start, and [`CaptureError::Fetch`] (as
+/// [`TestbedError::Capture`]) when the source cache is missing or does not verify.
+pub fn run_capture_build(
+    opts: &TestbedOptions,
+    id: &str,
+    config: &str,
+) -> Result<String, TestbedError> {
+    let mut one = opts.clone();
+    one.selection = Selection::Ids(vec![id.to_owned()]);
+    let inputs = load_inputs(&one, true)?;
+    let target = target_of(&inputs.manifest, id)?;
+    let Some(found) = ordered_configs(target)
+        .into_iter()
+        .find(|candidate| candidate.name == config)
+    else {
+        return Err(TestbedError::UnknownConfig {
+            target: id.to_owned(),
+            config: config.to_owned(),
+        });
+    };
+    if let Some(dropped) = inputs.drops.is_dropped(id, config) {
+        return Ok(format!("dropped ({})", dropped.cause.as_str()));
+    }
+    let cfg = runner_config(&inputs.pins, BUILD_TIMEOUT);
+    make_work_dir(&one)?;
+    let ctx = capture_context_of(&one, &inputs)?;
+    let record = capture_build(&cfg, &ctx, id, target, found)?;
+    Ok(build_word(&record).to_owned())
+}
+
 /// Capture every configuration of every selected target, build and entry check
 /// included, and compare each variant with its default (BUILD-01, BED-02).
 ///
@@ -452,16 +562,32 @@ fn capture_row(report: &CaptureReport) -> String {
 /// [`TestbedError`] for unusable inputs (including a target with no recipe) or
 /// a tool that cannot start.
 pub fn run_capture(opts: &TestbedOptions) -> Result<StepSummary, TestbedError> {
+    capture_pairs(opts, capture)
+}
+
+/// The record stage over every selected target ([`capture_record`], WR-04): no
+/// upstream code runs. It reads what [`run_capture_build`] left in the work
+/// directory and writes the same rows, reports, compile-commands copies, variant
+/// comparison and `summary-capture.json` as [`run_capture`]; a pair with no
+/// usable build record is a `not_proven` row. Run it with no network.
+///
+/// # Errors
+/// [`TestbedError`] for unusable inputs (including a target with no recipe) or
+/// a tool that cannot start.
+pub fn run_capture_record(opts: &TestbedOptions) -> Result<StepSummary, TestbedError> {
+    capture_pairs(opts, capture_record)
+}
+
+/// The loop [`run_capture`] and [`run_capture_record`] share, so the two cannot
+/// drift apart: `capture_pair` is the only difference.
+fn capture_pairs(
+    opts: &TestbedOptions,
+    capture_pair: CapturePair,
+) -> Result<StepSummary, TestbedError> {
     let inputs = load_inputs(opts, true)?;
     let cfg = runner_config(&inputs.pins, BUILD_TIMEOUT);
     make_work_dir(opts)?;
-    let tools = ToolPaths::from_pins(&inputs.pins)?;
-    let ctx = CaptureContext::new(
-        &opts.work_dir,
-        &opts.testbed_dir,
-        tools,
-        inputs.manifest.baseline.cflags.clone(),
-    );
+    let ctx = capture_context_of(opts, &inputs)?;
     let mut summary = StepSummary::new("capture");
     for id in &inputs.ids {
         let target = target_of(&inputs.manifest, id)?;
@@ -472,7 +598,7 @@ pub fn run_capture(opts: &TestbedOptions) -> Result<StepSummary, TestbedError> {
                 summary.add_dropped(&row, dropped);
                 continue;
             }
-            let mut report = match capture(&cfg, &ctx, id, target, config) {
+            let mut report = match capture_pair(&cfg, &ctx, id, target, config) {
                 Ok(report) => report,
                 Err(CaptureError::Fetch(error)) => {
                     summary.add(&row, &format!("not_proven: {error}"), false);
