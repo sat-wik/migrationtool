@@ -1364,7 +1364,7 @@ impl Session<'_> {
         Ok(())
     }
 
-    /// Record stage: a fresh capture directory, and the home and tmp directories.
+    /// Record stage: a fresh capture directory.
     fn prepare_record(&mut self) -> Result<(), CaptureError> {
         let dir = self.layout.capture_dir.clone();
         self.inside_work(&dir)?;
@@ -1373,8 +1373,7 @@ impl Session<'_> {
             Err(source) if source.kind() == io::ErrorKind::NotFound => {}
             Err(source) => return Err(io_error("remove", &dir, source)),
         }
-        fs::create_dir_all(&dir).map_err(|source| io_error("create", &dir, source))?;
-        self.ensure_home_and_tmp()
+        fs::create_dir_all(&dir).map_err(|source| io_error("create", &dir, source))
     }
 
     /// Note a read of the run directory the record stage refused (a symlink or a
@@ -1998,8 +1997,10 @@ pub fn capture_record(
 ) -> Result<CaptureReport, CaptureError> {
     pair_args(id, target, config)?;
     let mut session = new_session(cfg, ctx, id, config)?;
-    session.prepare_record()?;
+    // This stage may run in a work directory the build stage never wrote.
+    session.ensure_home_and_tmp()?;
     let verified = session.verify(id, target)?;
+    session.prepare_record()?;
     let source = SourceRef {
         commit: verified.commit.clone(),
         tree_sha256: verified.tree_sha256.clone(),
