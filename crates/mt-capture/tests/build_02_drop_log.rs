@@ -439,9 +439,15 @@ fn make_bed(dropped: &str) -> Bed {
 }
 
 fn whole_target(target: &str, cause: &str) -> String {
+    // A `differs` drop names what differed (WR-08, D-11).
+    let evidence = if cause == "differs" {
+        "differing_objects = [\"src/a.o\"]\ndiffering_sections = [\".text\"]\n"
+    } else {
+        ""
+    };
     format!(
         "[[dropped]]\ntarget = \"{target}\"\ncause = \"{cause}\"\ndetail = \"test\"\n\
-         fix_attempted = \"a documented fix\"\nci_run = 42\n"
+         {evidence}fix_attempted = \"a documented fix\"\nci_run = 42\n"
     )
 }
 

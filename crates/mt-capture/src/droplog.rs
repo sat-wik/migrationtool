@@ -97,10 +97,14 @@ pub struct Dropped {
     pub cause: DropCause,
     /// The cause as the report stated it.
     pub detail: String,
-    /// The objects that differed, when the cause is `differs`.
+    /// The objects that differed, as the replay report lists them. Required
+    /// (at least one) when the cause is `differs`.
     #[serde(default)]
     pub differing_objects: Vec<String>,
-    /// The ELF sections that differed.
+    /// The sections that differed: ELF section names, or, for an object that is
+    /// missing on one side, its replay status word (`missing_in_replay` or
+    /// `missing_in_original`). Required (at least one) when the cause is
+    /// `differs`.
     #[serde(default)]
     pub differing_sections: Vec<String>,
     /// The one fix that was tried (CONTEXT D-11), never empty.
@@ -267,6 +271,27 @@ impl DropLog {
                     if entry.cause == DropCause::VariantNoCodeChange {
                         issues.push(format!(
                             "{at}.cause: variant_no_code_change drops a variant, so config must be named"
+                        ));
+                    }
+                }
+            }
+            if entry.cause == DropCause::Differs {
+                // D-11: a differs drop records what differed.
+                for (field, empty, what) in [
+                    (
+                        "differing_objects",
+                        entry.differing_objects.is_empty(),
+                        "object",
+                    ),
+                    (
+                        "differing_sections",
+                        entry.differing_sections.is_empty(),
+                        "section",
+                    ),
+                ] {
+                    if empty {
+                        issues.push(format!(
+                            "{at}.{field}: cause differs needs at least one differing {what}, as the replay report lists them"
                         ));
                     }
                 }
