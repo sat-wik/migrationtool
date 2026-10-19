@@ -285,6 +285,87 @@ fn build_02_drop_log_rejects_bad_entries() {
 }
 
 #[test]
+fn build_02_drop_log_requires_evidence_for_differs() {
+    // A `differs` drop records what differed (D-11): at least one object and at
+    // least one section, as the replay report lists them (WR-08).
+    checked(&log_text("drop_variant", &variant_entry(&[])))
+        .expect("one object and one section are accepted");
+
+    let error = checked(&log_text(
+        "drop_variant",
+        &variant_entry(&[("differing_objects", "[]")]),
+    ))
+    .expect_err("a differs entry with no differing object is refused");
+    let text = error.to_string();
+    assert!(
+        text.contains("demo_make/no-float") && text.contains("differing_objects"),
+        "{text}"
+    );
+    assert!(
+        !text.contains("differing_sections"),
+        "only the empty field is named: {text}"
+    );
+
+    let error = checked(&log_text(
+        "drop_variant",
+        &variant_entry(&[("differing_sections", "[]")]),
+    ))
+    .expect_err("a differs entry with no differing section is refused");
+    let text = error.to_string();
+    assert!(
+        text.contains("demo_make/no-float") && text.contains("differing_sections"),
+        "{text}"
+    );
+    assert!(
+        !text.contains("differing_objects"),
+        "only the empty field is named: {text}"
+    );
+
+    // Neither listed: both fields are named.
+    let error = checked(&log_text(
+        "drop_variant",
+        &variant_entry(&[("differing_objects", "[]"), ("differing_sections", "[]")]),
+    ))
+    .expect_err("a differs entry with no evidence is refused");
+    let text = error.to_string();
+    assert!(
+        text.contains("differing_objects") && text.contains("differing_sections"),
+        "{text}"
+    );
+
+    // An object missing on one side has no sections to compare: the replay
+    // status word stands for its section.
+    for status in ["missing_in_replay", "missing_in_original"] {
+        checked(&log_text(
+            "drop_variant",
+            &variant_entry(&[("differing_sections", &format!("[\"{status}\"]"))]),
+        ))
+        .unwrap_or_else(|error| panic!("{status} is accepted as a section: {error}"));
+    }
+
+    // Other causes need no differing objects or sections.
+    for cause in [
+        "build_failed",
+        "capture_failed",
+        "not_proven",
+        "entry_mismatch",
+        "variant_no_code_change",
+        "fetch_failed",
+        "licence",
+    ] {
+        checked(&log_text(
+            "drop_variant",
+            &variant_entry(&[
+                ("cause", &format!("\"{cause}\"")),
+                ("differing_objects", "[]"),
+                ("differing_sections", "[]"),
+            ]),
+        ))
+        .unwrap_or_else(|error| panic!("cause {cause} needs no evidence fields: {error}"));
+    }
+}
+
+#[test]
 fn build_02_dropped_md_matches_drop_log() {
     let log = committed_log();
     let markdown = fs::read_to_string(repo_file("testbed/DROPPED.md")).expect("DROPPED.md exists");
