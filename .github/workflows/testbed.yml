@@ -6,14 +6,24 @@
 #
 # Log and artifact hosts are not reachable from cloud sessions, so each step also
 # publishes its evidence as job annotations. Titles: testbed-image,
-# testbed-validate, testbed-fetch, testbed-seeds, testbed-capture, testbed-replay,
-# testbed-determinism. A failing step publishes the same title as an error,
-# followed by the causes and details of every failing report.
+# testbed-validate, testbed-fetch, testbed-seeds, testbed-build, testbed-capture,
+# testbed-replay, testbed-determinism. A failing step publishes the same title as
+# an error, followed by the causes and details of every failing report.
 #
 # Network policy (D-12): fetch is the only step with network access. Validate,
-# capture and replay go through run_offline, which adds `--network none`; a test
-# (build_02_workflow_runs_capture_and_replay_without_network) fails if any step
-# other than fetch goes through run_networked.
+# seeds, pairs, record, replay and compare go through run_offline, which adds
+# `--network none`; a test (build_02_workflow_runs_capture_and_replay_without_network)
+# fails if any step other than fetch goes through run_networked.
+#
+# Trust split (WR-04): only fetch is networked, and only run_build runs upstream
+# build code. run_build starts one container per retained pair; the only places it
+# can write are a fresh scratch /work that is discarded and that pair's own run
+# directory. The source cache is mounted read-only, and /out, the capture artifacts
+# and every other pair's directories are not mounted at all. Every other step runs
+# no upstream code: the record step alone writes the capture artifacts that replay
+# and the determinism comparison read, and the determinism rerun builds into a work
+# directory of its own. A test (build_02_untrusted_builds_cannot_write_the_evidence)
+# pins this layout.
 #
 # Action commit SHAs are pinned here because GitHub resolves `uses:` before any
 # step can read container/pins.toml; every other pin comes from that file.
@@ -137,10 +147,13 @@ jobs:
           # network. Only the fetch step may use it (D-12). The container is unprivileged,
           # read-only and drops every capability; mt, the pins and the committed testbed
           # directory are mounted read-only, and only /work and /out are writable.
-          # All three helpers bound the container's resources (WR-04, T-02-57):
+          # All four helpers bound the container's resources (WR-04, T-02-57):
           # --pids-limit caps processes (a fork loop), --memory and --memory-swap cap RAM
           # and swap together (a runaway build), --cpus caps CPU time. Until now only the
           # 45-minute job timeout stopped such a build.
+          # The host directories behind /work and /out are WORK_HOST and OUT_HOST
+          # (default $RUNNER_TEMP/work and $RUNNER_TEMP/out); the determinism rerun
+          # points WORK_HOST at a work directory of its own.
           run_networked() {
             docker run --rm --platform linux/amd64 --user 65534:65534 --read-only --cap-drop ALL \
               --pids-limit 1024 --memory 6g --memory-swap 6g --cpus 2 \
@@ -148,20 +161,24 @@ jobs:
               -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
               -v "$GITHUB_WORKSPACE/container/pins.toml:/opt/mt/pins.toml:ro" \
               -v "$GITHUB_WORKSPACE/testbed:/opt/mt/testbed:ro" \
-              -v "$RUNNER_TEMP/work:/work" -v "$RUNNER_TEMP/out:/out" \
+              -v "${WORK_HOST:-$RUNNER_TEMP/work}:/work" -v "${OUT_HOST:-$RUNNER_TEMP/out}:/out" \
               "$IMAGE" mt testbed "$@"
           }
           # run_offline SUBCOMMAND ARGS...: the same container with NO network. Every
           # `mt testbed` step except fetch goes through it, so a build that tries to
-          # download something fails here instead of passing quietly (D-12).
+          # download something fails here instead of passing quietly (D-12). It runs no
+          # upstream build code (that is run_build). When CACHE_HOST is set it is mounted
+          # read-only at /work/cache, for a work directory that holds no cache of its own.
           run_offline() {
+            local -a cache=()
+            if [ -n "${CACHE_HOST:-}" ]; then cache=(-v "$CACHE_HOST:/work/cache:ro"); fi
             docker run --rm --platform linux/amd64 --network none --user 65534:65534 --read-only --cap-drop ALL \
               --pids-limit 1024 --memory 6g --memory-swap 6g --cpus 2 \
               --security-opt no-new-privileges --tmpfs /tmp:rw,exec,nosuid,size=2g \
               -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
               -v "$GITHUB_WORKSPACE/container/pins.toml:/opt/mt/pins.toml:ro" \
               -v "$GITHUB_WORKSPACE/testbed:/opt/mt/testbed:ro" \
-              -v "$RUNNER_TEMP/work:/work" -v "$RUNNER_TEMP/out:/out" \
+              -v "${WORK_HOST:-$RUNNER_TEMP/work}:/work" ${cache[@]+"${cache[@]}"} -v "${OUT_HOST:-$RUNNER_TEMP/out}:/out" \
               "$IMAGE" mt testbed "$@"
           }
           # image_tool WORKDIR PROGRAM ARGS...: run one tool of the image (not mt) with NO
@@ -173,8 +190,41 @@ jobs:
             docker run --rm --platform linux/amd64 --network none --user 65534:65534 --read-only --cap-drop ALL \
               --pids-limit 1024 --memory 6g --memory-swap 6g --cpus 2 \
               --security-opt no-new-privileges --tmpfs /tmp:rw,exec,nosuid,size=2g \
-              -v "$RUNNER_TEMP/work:/work:ro" -v "$RUNNER_TEMP/out:/out" \
+              -v "${WORK_HOST:-$RUNNER_TEMP/work}:/work:ro" -v "${OUT_HOST:-$RUNNER_TEMP/out}:/out" \
               -w "$workdir" "$IMAGE" "$@"
+          }
+          # run_build ID CONFIG: the build stage of one retained pair, the only place
+          # upstream build code runs (WR-04). It is its own container with NO network, and
+          # it may write exactly two places: a fresh scratch directory mounted as /work
+          # (HOME and temporary files of the build; discarded, never read again) and this
+          # pair's run directory, mounted below it. The source cache is read-only. /out, the
+          # capture artifacts and the other pairs' run directories are not mounted, so a
+          # build cannot rewrite the evidence that replay and the determinism comparison
+          # trust. RUNNER_TEMP is fresh per job, so a run directory that exists already is
+          # an error, never deleted. Returns the exit code of the build stage of `mt testbed
+          # capture` (0 when the build record was written, 1 when the cache does not verify,
+          # 2 for invalid input), or 2 here when the run directory already exists.
+          run_build() {
+            local id=$1 cfg=$2 work scratch
+            work="${WORK_HOST:-$RUNNER_TEMP/work}"
+            scratch="$RUNNER_TEMP/scratch/$(basename "$work")/$id/$cfg"
+            if [ -e "$work/run/$id/$cfg" ]; then
+              echo "run_build: $work/run/$id/$cfg already exists; a run directory is never reused" >&2
+              return 2
+            fi
+            # The container user is 65534:65534 (RESEARCH Pitfall 15).
+            mkdir -p "$scratch/work" "$work/run/$id/$cfg"
+            chmod 0777 "$scratch/work" "$work/run/$id/$cfg"
+            docker run --rm --platform linux/amd64 --network none --user 65534:65534 --read-only --cap-drop ALL \
+              --pids-limit 1024 --memory 6g --memory-swap 6g --cpus 2 \
+              --security-opt no-new-privileges --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
+              -v "$GITHUB_WORKSPACE/container/pins.toml:/opt/mt/pins.toml:ro" \
+              -v "$GITHUB_WORKSPACE/testbed:/opt/mt/testbed:ro" \
+              -v "$scratch/work:/work" \
+              -v "${CACHE_HOST:-$work/cache}:/work/cache:ro" \
+              -v "$work/run/$id/$cfg:/work/run/$id/$cfg" \
+              "$IMAGE" mt testbed capture --stage build --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --config "$cfg" "$id"
           }
           # evidence STEP: lines read from the step's reports, appended to its notice.
           evidence() {
@@ -332,7 +382,50 @@ jobs:
           set -e
           finish_step seeds "$rc"
 
-      - name: Capture the builds
+      # WR-04: every retained pair builds in its own container (run_build), which can
+      # write only that pair's run directory and a discarded scratch /work. The list of
+      # pairs comes from `mt testbed pairs`, in the same container as every offline
+      # step. The step goes on after a failed build so that one run reports every pair;
+      # its exit code is non-zero if the list or any build exited non-zero. A build
+      # that failed or was not proven still wrote its build record, and the record step
+      # reports it.
+      - name: Build each pair in its own container
+        id: build
+        if: ${{ !cancelled() && steps.fetch.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          : > "$out/build.txt"
+          : > "$out/build.err"
+          rc=0
+          set +e
+          # shellcheck disable=SC2086
+          run_offline pairs --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work $TESTBED_SELECTION > "$out/pairs.txt" 2>> "$out/build.err"
+          pairs_rc=$?
+          if [ "$pairs_rc" -ne 0 ]; then
+            echo "mt testbed pairs exit code: $pairs_rc" >> "$out/build.txt"
+            rc=1
+          fi
+          # stdin is /dev/null so that docker cannot consume the list of pairs.
+          while read -r id cfg; do
+            run_build "$id" "$cfg" < /dev/null > "$out/build-one.txt" 2> "$out/build-one.err"
+            one_rc=$?
+            if [ "$one_rc" -eq 0 ]; then
+              echo "$id/$cfg $(cat "$out/build-one.txt")" >> "$out/build.txt"
+            else
+              echo "$id/$cfg exit $one_rc: $(tail -c 300 "$out/build-one.err" | tr '\n' ' ')" >> "$out/build.txt"
+              rc=1
+            fi
+            cat "$out/build-one.err" >> "$out/build.err"
+          done < "$out/pairs.txt"
+          set -e
+          finish_step build "$rc"
+
+      # The record stage runs no upstream code: it reads what the builds left, with
+      # symlinks refused, and alone writes the capture artifacts and reports that
+      # replay and the determinism comparison trust.
+      - name: Record the captures
         id: capture
         if: ${{ !cancelled() && steps.fetch.outcome == 'success' }}
         shell: bash
@@ -341,7 +434,7 @@ jobs:
           out="$RUNNER_TEMP/out"
           set +e
           # shellcheck disable=SC2086
-          run_offline capture --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out --image "$IMAGE" $TESTBED_SELECTION > "$out/capture.txt" 2> "$out/capture.err"
+          run_offline capture --stage record --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out --image "$IMAGE" $TESTBED_SELECTION > "$out/capture.txt" 2> "$out/capture.err"
           rc=$?
           set -e
           finish_step capture "$rc"
@@ -381,6 +474,10 @@ jobs:
       # hashed with each run of prerequisite lines of one target sorted (the rule is
       # recorded in the report as normalised_configure_files). Everything else is
       # compared: every other field of every report and every compile_commands file.
+      # The rerun is isolated (WR-04): its builds run in run_build with a work directory
+      # of their own, work-rerun, and the first run's verified cache read-only, and its
+      # record stage writes only work-rerun and /out/capture-rerun, so nothing it runs can
+      # write the first capture's artifacts or reports before they are compared.
       - name: Capture again and compare the reports (determinism)
         id: determinism
         if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
@@ -388,10 +485,19 @@ jobs:
         run: |
           source "$RUNNER_TEMP/ci-lib.sh"
           out="$RUNNER_TEMP/out"
+          export WORK_HOST="$RUNNER_TEMP/work-rerun" CACHE_HOST="$RUNNER_TEMP/work/cache"
+          mkdir -p "$WORK_HOST"
+          chmod 0777 "$WORK_HOST"
+          : > "$out/rerun.txt"
+          : > "$out/rerun.err"
+          rerun_rc=0
           set +e
+          # stdin is /dev/null so that docker cannot consume the list of pairs.
+          while read -r id cfg; do
+            run_build "$id" "$cfg" < /dev/null >> "$out/rerun.txt" 2>> "$out/rerun.err" || rerun_rc=1
+          done < "$out/pairs.txt"
           # shellcheck disable=SC2086
-          run_offline capture --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out/capture-rerun --image "$IMAGE" $TESTBED_SELECTION > "$out/rerun.txt" 2> "$out/rerun.err"
-          rerun_rc=$?
+          run_offline capture --stage record --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out/capture-rerun --image "$IMAGE" $TESTBED_SELECTION >> "$out/rerun.txt" 2>> "$out/rerun.err" || rerun_rc=1
           run_offline compare --first /out/capture --second /out/capture-rerun/capture > "$out/compare.txt" 2> "$out/compare.err"
           compare_rc=$?
           set -e

@@ -32,7 +32,8 @@ and `/out` are writable. The container runs as user `65534:65534` with
 
 1. **fetch** has network access. It brings each source in by its pinned commit
    and accepts it only when the commit and the tree sha256 equal the manifest.
-2. **capture** runs with `--network none`. It builds each configuration under
+2. **capture** runs with `--network none` (the build stage and the record stage run
+   in separate containers in CI, see "Container kinds in CI"). It builds each configuration under
    Bear or CMake, then checks that the compiler is the pinned Arm compiler, that
    every object is an ELF32 Cortex-M4 hard-float object, that no object was
    created that no compile command declares, and that every entry function exists
@@ -61,6 +62,31 @@ docker run --rm --platform linux/amd64 --network none --user 65534:65534 \
 Run `fetch` the same way without `--network none`, and `replay` with the
 `capture` arguments (it needs no `--image`). `mt testbed validate --manifest
 <file>` checks the manifest alone and needs no image.
+
+## Container kinds in CI
+
+`capture` has two stages (`--stage build` and `--stage record`) so that upstream
+build code never runs where it could write the evidence. The `testbed` workflow
+uses four kinds of container, all with the limits `--pids-limit 1024 --memory 6g
+--memory-swap 6g --cpus 2`, a read-only root, user `65534:65534`, no capabilities and
+`no-new-privileges`. `mt`, the pins and this directory are always read-only.
+
+| Kind | Network | Runs | May write |
+|------|---------|------|-----------|
+| fetch (the workflow's `run_networked`) | yes | `mt testbed fetch` | `/work`, `/out` |
+| build (`run_build`, one container per retained pair) | `--network none` | `mt testbed capture --stage build`: the upstream build, the only place upstream code runs | a fresh scratch `/work` that is discarded, and that pair's run directory `/work/run/<id>/<config>` |
+| offline (`run_offline`) | `--network none` | `validate`, `seeds --check`, `pairs`, `capture --stage record`, `replay`, `compare`: no upstream build code | `/work`, `/out` |
+| tool (`image_tool`) | `--network none` | one tool of the image, for the fixture notices | `/out` (`/work` is read-only) |
+
+A build container mounts the source cache read-only. It does not mount `/out`, the
+capture artifacts or any other pair's run directory, so a build cannot rewrite the
+evidence that replay and the determinism comparison read. The record stage reads
+each run directory without following symlinks and alone writes the capture
+artifacts and reports. The determinism rerun builds each pair again in its own
+`run_build` container with a separate work directory, records it into
+`/out/capture-rerun`, and `mt testbed compare` then compares the two captures.
+`mt testbed pairs` prints the retained pairs, one `<id> <config>` per line, for the
+workflow's loop.
 
 ## Seeds
 
