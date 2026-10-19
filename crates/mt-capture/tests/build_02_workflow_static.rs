@@ -335,11 +335,11 @@ fn step_text(text: &str, name: &str) -> String {
 
 #[test]
 fn build_02_workflow_fixture_object_pick_reads_the_whole_listing() {
-    // With `--all` the listing of every captured object is longer than a pipe
-    // buffer. `... | sort | head -n 1` under `pipefail` then fails when the runner
-    // ignores SIGPIPE: `sort` reports "write failed: Broken pipe" and exits 2
-    // (testbed run B, step "Make the two Arm fixture objects"). The pick must
-    // read the whole listing.
+    // `... | sort | head -n 1` under `pipefail` is a race: `head` exits after its
+    // first line, and when the runner ignores SIGPIPE `sort` fails its remaining
+    // writes with "write failed: Broken pipe" and exits 2 (testbed run B, step "Make
+    // the two Arm fixture objects"). A one-write listing cannot race; the `--all`
+    // listing of about 490 paths can. The pick must read the whole listing.
     let text = read_repo_file(WORKFLOW);
     let step = step_text(&text, "Make the two Arm fixture objects");
     let code: Vec<&str> = step
