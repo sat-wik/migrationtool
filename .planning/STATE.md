@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 02
 current_phase_name: Test Bed and Build Capture
 status: executing
-stopped_at: Completed 02-11-PLAN.md
-last_updated: "2026-10-19T21:10:20.506Z"
+stopped_at: Completed 02-13-PLAN.md
+last_updated: "2026-10-19T21:16:46.083Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: 0c38741d9a6857f211af9b5af702f90b5ef73ad9
+state_head: 83b81365e606290bbe86ab7e8bb7ed9825a442e5
 progress:
   total_phases: 12
   completed_phases: 1
   total_plans: 28
-  completed_plans: 20
+  completed_plans: 21
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 02 (Test Bed and Build Capture) — EXECUTING
-Plan: 2 of 19
+Plan: 3 of 19
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -67,6 +67,7 @@ Progress: [█░░░░░░░░░] 8%
 | Phase 02 P08 | 26 min | 3 tasks | 1759 files |
 | Phase 02 P09 | 45min (resumed session) | 3 tasks | 37 files |
 | Phase 02 P11 | 13 min | 2 tasks | 26 files |
+| Phase 02 P13 | 4 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,7 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 02]: 02-09: bed retained at 15 of 16 targets (29 pairs); isotp and paho/server dropped with cause entry_mismatch (testbed run 38387515333); final full-bed run 38430137113 green on f0a36b8, 3 of 3 round trips
 - [Phase 02]: 02-11: entry probe reproduces the defining TU's include/define/undef prefix exactly or falls back to the header alone; comparison untouched; EntryResult.probe_prefix skipped when empty — G-02-1: isotp.h needs the stdint.h its TU includes first; guessing a context would let a declaration pass that the TU never sees (T-02-41)
 - [Phase 02]: 02-11: isotp reopened (drop entry and DROPPED.md section removed, 19-seed corpus committed, README at 16 targets/30 pairs); paho/server drop kept — Founder decision G-02-1; proof is the plan 02-17 testbed run, and isotp is dropped again with cause and run id if it fails
+- [Phase 02]: 02-13: zip seed archives are inflated by flate2 rust_backend (miniz_oxide) with zlib-rs gone from Cargo.lock; each archive has an 8 MiB decompressed budget — G-02-4 and WR-07. Founder approved miniz_oxide 0.9.1, adler2 2.0.1 and simd-adler32 0.3.10 at the legitimacy gate. Safe-Rust wording: the inflater and adler2 forbid unsafe code; simd-adler32, zip header parsing and flate2 buffer code contain unsafe code; no C code. Member-count cap stays deferred to a founder decision. Image proof is plan 02-17.
 
 ### Pending Todos
 
@@ -137,6 +139,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T21:10:20.389Z
-Stopped at: Completed 02-11-PLAN.md
+Last session: 2026-10-19T21:16:45.966Z
+Stopped at: Completed 02-13-PLAN.md
 Resume file: None
