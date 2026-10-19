@@ -7,13 +7,18 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use mt_capture::capture::{CONFIGURE_HASH_EXCLUSIONS, NORMALISED_CONFIGURE_FILES};
+use mt_capture::compare::DETERMINISM_EXCLUSIONS;
 use mt_capture::manifest::Manifest;
 use regex::Regex;
 
 const WORKFLOW: &str = ".github/workflows/testbed.yml";
 
 /// The subcommands of `mt testbed` a workflow step may name.
-const SUBCOMMANDS: [&str; 5] = ["validate", "fetch", "capture", "replay", "seeds"];
+const SUBCOMMANDS: [&str; 6] = ["validate", "fetch", "capture", "replay", "seeds", "compare"];
+
+/// The resource limits every container helper carries (WR-04, T-02-57).
+const RESOURCE_LIMITS: [&str; 4] = ["--pids-limit", "--memory", "--memory-swap", "--cpus"];
 
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -144,11 +149,23 @@ fn build_02_workflow_runs_capture_and_replay_without_network() {
             );
         }
     }
-    for subcommand in ["validate", "fetch", "capture", "replay"] {
+    for subcommand in ["validate", "fetch", "capture", "replay", "compare"] {
         assert!(
             calls.iter().any(|(_, name)| name == subcommand),
             "the workflow never runs {subcommand}"
         );
+    }
+
+    // A runaway build or fork loop is bounded by the container, not only by the
+    // 45-minute job timeout (WR-04, T-02-57).
+    for (name, body) in [
+        ("run_offline", &offline),
+        ("run_networked", &networked),
+        ("image_tool", &tool),
+    ] {
+        for needle in RESOURCE_LIMITS {
+            assert!(body.contains(needle), "{name} lacks {needle}");
+        }
     }
 
     assert!(
@@ -339,4 +356,131 @@ fn build_02_workflow_fixture_object_pick_reads_the_whole_listing() {
             "a pipeline closes its pipe early under pipefail: {line}"
         );
     }
+}
+
+const DETERMINISM_STEP: &str = "Capture again and compare the reports (determinism)";
+
+/// The code lines (comments dropped) of the step `name`.
+fn step_code(text: &str, name: &str) -> Vec<String> {
+    step_text(text, name)
+        .lines()
+        .filter(|line| !line.trim_start().starts_with('#'))
+        .map(str::to_owned)
+        .collect()
+}
+
+#[test]
+fn build_02_workflow_determinism_step_uses_the_fail_closed_comparison() {
+    // WR-05: `jq | cmp -s` reported "identical" when jq failed on both files. The
+    // verdict is now the exit code of `mt testbed compare` (plan 02-14), which
+    // treats unparseable, empty, one-sided and absent files as differences.
+    let text = read_repo_file(WORKFLOW);
+    let code = step_code(&text, DETERMINISM_STEP);
+    let joined = code.join("\n");
+
+    assert!(
+        joined.contains(
+            "run_offline compare --first /out/capture --second /out/capture-rerun/capture"
+        ),
+        "the determinism step does not compare through run_offline compare:\n{joined}"
+    );
+    assert!(
+        joined.contains("run_offline capture ") && joined.contains("--out /out/capture-rerun"),
+        "the determinism step no longer reruns the capture"
+    );
+    assert!(
+        joined.contains("annotate error testbed-determinism")
+            && joined.contains("annotate notice testbed-determinism"),
+        "the step must publish testbed-determinism as an error or a notice"
+    );
+    assert!(joined.contains("exit 1"), "the step never fails");
+    assert!(
+        code.iter().any(|line| {
+            let line = line.trim_start();
+            line.starts_with("if ")
+                && line.contains("\"$rerun_rc\"")
+                && line.contains("\"$compare_rc\"")
+        }),
+        "the verdict does not depend on both the rerun's and the comparison's exit code:\n{joined}"
+    );
+    for forbidden in ["jq", "<(", "cmp -s", "norm()"] {
+        assert!(
+            !joined.contains(forbidden),
+            "the determinism step still holds {forbidden:?}"
+        );
+    }
+}
+
+/// The comment block directly above the step `name`, each line without its
+/// `#`, joined with single spaces.
+fn comment_above(text: &str, name: &str) -> String {
+    let header = format!("- name: {name}");
+    let lines: Vec<&str> = text.lines().collect();
+    let at = lines
+        .iter()
+        .position(|line| line.trim() == header)
+        .unwrap_or_else(|| panic!("{WORKFLOW} has no step {name:?}"));
+    let mut block: Vec<&str> = Vec::new();
+    for line in lines[..at].iter().rev() {
+        let trimmed = line.trim_start();
+        if !trimmed.starts_with('#') {
+            break;
+        }
+        block.push(trimmed.trim_start_matches('#').trim());
+    }
+    block.reverse();
+    block.join(" ")
+}
+
+#[test]
+fn build_02_determinism_comment_lists_every_exclusion() {
+    // G-02-2: the comment said "the only exclusions" while the code left more out.
+    // It must name every string the code constants hold.
+    let text = read_repo_file(WORKFLOW);
+    let comment = comment_above(&text, DETERMINISM_STEP);
+    let wanted = DETERMINISM_EXCLUSIONS
+        .iter()
+        .chain(CONFIGURE_HASH_EXCLUSIONS.iter())
+        .chain(NORMALISED_CONFIGURE_FILES.iter());
+    for exclusion in wanted {
+        assert!(
+            comment.contains(exclusion),
+            "the comment above the determinism step omits {exclusion:?}:\n{comment}"
+        );
+    }
+}
+
+#[test]
+fn build_02_capture_notice_shows_the_normalised_configure_evidence() {
+    // G-02-2: the testbed-capture notice carries the Makefile2 hash and its rule.
+    let text = read_repo_file(WORKFLOW);
+    let evidence = function_body(&text, "evidence");
+    assert!(
+        evidence.contains("normalised_configure_files"),
+        "evidence() never reads normalised_configure_files"
+    );
+    assert!(
+        evidence.contains(" normalised ") && evidence.contains("rule="),
+        "evidence() does not print a `<target>/<config> normalised <key> rule=<rule> sha256=<sha256>` line"
+    );
+}
+
+#[test]
+fn build_02_workflow_runs_the_whole_bed() {
+    // WR-08: the floor of plan 02-16 applies to every `--all` step, so the
+    // evidence run must be one.
+    let text = read_repo_file(WORKFLOW);
+    let env: Vec<&str> = text
+        .lines()
+        .skip_while(|line| *line != "env:")
+        .skip(1)
+        .take_while(|line| line.starts_with(' '))
+        .map(str::trim)
+        .filter(|line| !line.starts_with('#'))
+        .collect();
+    assert_eq!(
+        env,
+        ["TESTBED_SELECTION: \"--all\""],
+        "the top-level env must hold exactly TESTBED_SELECTION: \"--all\""
+    );
 }
