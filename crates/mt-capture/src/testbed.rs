@@ -30,7 +30,8 @@ use mt_toolchain::runner::{RunnerConfig, RunnerError};
 use serde::{Deserialize, Serialize};
 
 use crate::capture::{
-    CaptureContext, CaptureError, RunLayout, ToolPaths, VariantDiff, capture, variant_code_diff,
+    CaptureContext, CaptureError, RunLayout, ToolPaths, VariantDiff, capture,
+    configure_evidence_changed, variant_code_diff,
 };
 use crate::cc::{CcEntry, CcPolicy};
 use crate::droplog::{DropLog, DropLogError, Dropped};
@@ -504,19 +505,6 @@ pub fn run_capture(opts: &TestbedOptions) -> Result<StepSummary, TestbedError> {
     Ok(summary)
 }
 
-/// Re-check the configure-time files of a CMake capture; the first one that
-/// changed since the capture, as text.
-fn changed_configure_file(run_root: &Path, report: &CaptureReport) -> Option<String> {
-    for (key, expected) in &report.configure_files {
-        match fs::read(run_root.join(key)) {
-            Ok(bytes) if sha256_hex(&bytes) == *expected => {}
-            Ok(_) => return Some(format!("{key} has changed since the capture")),
-            Err(error) => return Some(format!("{key} cannot be read: {error}")),
-        }
-    }
-    None
-}
-
 /// Why a configuration cannot be replayed, as a `not_proven` row value.
 fn unproven(reason: impl std::fmt::Display) -> String {
     format!("not_proven: {reason}")
@@ -551,7 +539,7 @@ fn plan_of(
     let entries: Vec<CcEntry> = serde_json::from_slice(&bytes)
         .map_err(|error| format!("the canonical compile commands are not valid: {error}"))?;
     let keep_dirs = if target.build == BuildSystem::Cmake {
-        if let Some(changed) = changed_configure_file(&layout.run_root, captured) {
+        if let Some(changed) = configure_evidence_changed(&layout.run_root, captured) {
             return Err(format!(
                 "a configure-time file is not as captured: {changed}"
             ));

@@ -41,7 +41,8 @@ use crate::fetch::{
 use crate::manifest::{BuildArgs, BuildSystem, Config, PLACEHOLDERS, Target};
 use crate::replay::relative_key;
 use crate::report::{
-    CaptureReport, CaptureVerdict, CapturedObject, CompileCommandsInfo, SourceRef, Step,
+    CaptureReport, CaptureVerdict, CapturedObject, CompileCommandsInfo, NormalisedFile, SourceRef,
+    Step,
 };
 use crate::treehash::{TreeHashError, copy_tree, sha256_hex};
 
@@ -60,9 +61,88 @@ const CONFIGURE_LOGS: [&str; 3] = [
     "CMakeFiles/CMakeError.log",
 ];
 
-/// The make driver CMake generates at the top of the build directory: not an
-/// input of any compile command, and not byte-stable ([`is_cmake_product`]).
+/// The make driver CMake generates at the top of the build directory. Its bytes
+/// are not stable, so it is hashed after [`normalise_make_driver`] instead of
+/// byte for byte (gap G-02-2).
 const MAKE_DRIVER: &str = "CMakeFiles/Makefile2";
+
+/// The rule [`normalise_make_driver`] applies, recorded next to the hash in the
+/// capture report.
+pub const MAKE_DRIVER_RULE: &str = "each run of consecutive prerequisite lines of one target (<target>: <prerequisite>) sorted bytewise; every other line in place";
+
+/// The prerequisite target of a make driver line, or `None` when the line is not
+/// a prerequisite line: it starts with a tab, a space or `#`, or has no `": "`
+/// with a non-empty target (no whitespace, no earlier colon) before it and a
+/// non-empty prerequisite after it. `.PHONY : x` is not one (a space before the
+/// colon).
+fn prerequisite_target(line: &[u8]) -> Option<&[u8]> {
+    if matches!(line.first(), None | Some(b'\t' | b' ' | b'#')) {
+        return None;
+    }
+    let colon = line.iter().position(|byte| *byte == b':')?;
+    let (target, rest) = line.split_at(colon);
+    let prerequisite = rest.strip_prefix(b": ")?;
+    if target.is_empty() || target.iter().any(u8::is_ascii_whitespace) || prerequisite.is_empty() {
+        return None;
+    }
+    Some(target)
+}
+
+/// The bytes of `CMakeFiles/Makefile2` with each maximal run of consecutive
+/// prerequisite lines of one target sorted bytewise, every other line (and the
+/// trailing newline) where it was ([`MAKE_DRIVER_RULE`]).
+///
+/// CMake emits the prerequisite lines of equal-rank targets in pointer order, so
+/// two configures of one tree can differ only in the order of two lines. Sorting
+/// within a run removes exactly that: a changed prerequisite, a line moved into
+/// another target's run and reordered runs of different targets still change the
+/// result.
+///
+/// This is configure-time evidence only. It is applied to that one file, never to
+/// an object: the object comparison and the object normalisation of D-09 are
+/// untouched.
+#[must_use]
+pub fn normalise_make_driver(bytes: &[u8]) -> Vec<u8> {
+    let mut lines: Vec<&[u8]> = bytes.split(|byte| *byte == b'\n').collect();
+    let mut start = 0;
+    while start < lines.len() {
+        let Some(target) = prerequisite_target(lines[start]) else {
+            start += 1;
+            continue;
+        };
+        let mut end = start + 1;
+        while end < lines.len() && prerequisite_target(lines[end]) == Some(target) {
+            end += 1;
+        }
+        lines[start..end].sort_unstable();
+        start = end;
+    }
+    lines.join(&b'\n')
+}
+
+/// Re-check the configure-time evidence of a CMake capture against the files in
+/// `run_root`: the first raw `configure_files` entry whose bytes no longer hash to
+/// the recorded value, else the first `normalised_configure_files` entry whose
+/// normalised bytes no longer do, as text naming the key. A file that cannot be
+/// read is a change.
+#[must_use]
+pub fn configure_evidence_changed(run_root: &Path, report: &CaptureReport) -> Option<String> {
+    for (key, expected) in &report.configure_files {
+        match fs::read(run_root.join(key)) {
+            Ok(bytes) if sha256_hex(&bytes) == *expected => {}
+            Ok(_) => return Some(format!("{key} has changed since the capture")),
+            Err(error) => return Some(format!("{key} cannot be read: {error}")),
+        }
+    }
+    for (key, expected) in &report.normalised_configure_files {
+        match fs::read(run_root.join(key)) {
+            Ok(bytes) if sha256_hex(&normalise_make_driver(&bytes)) == expected.sha256 => {}
+            Ok(_) => return Some(format!("{key} has changed since the capture")),
+            Err(error) => return Some(format!("{key} cannot be read: {error}")),
+        }
+    }
+    None
+}
 
 /// Whether a file of the CMake build directory (`relative` to it) is something
 /// the build or CMake's own probes produced rather than an input of a compile
@@ -73,22 +153,16 @@ const MAKE_DRIVER: &str = "CMakeFiles/Makefile2";
 /// compiler-ABI probe (`CMakeFiles/<version>/CMakeDetermineCompilerABI_C.bin`) is
 /// the output of a test compile, and its bytes differ from run to run.
 ///
-/// `CMakeFiles/Makefile2` is the make driver of the Unix Makefiles generator: it
-/// schedules the targets and holds their prerequisite lists and progress counters.
-/// No compile command reads it (a replay runs the captured argv, and the flags and
-/// definitions of each object live in `flags.make`, which stays hashed), and its
-/// bytes are not stable: CMake emits the prerequisite lines of equal-rank targets
-/// in pointer order, so two configures of the same tree can differ only in the
-/// order of two lines (zcbor's `app.dir/all` prerequisites, measured with plain
-/// `cmake` runs and seen in testbed run B). That one path is left out; every other
-/// generated file stays in the hashes, so a real change still shows.
+/// `CMakeFiles/Makefile2`, the make driver of the Unix Makefiles generator, is not
+/// a product: it is hashed after [`normalise_make_driver`], which removes the one
+/// measured nondeterminism (the order of equal-target prerequisite lines) and
+/// nothing else, so a real change still shows.
 #[must_use]
 pub fn is_cmake_product(relative: &str) -> bool {
     if [".o", ".obj", ".a", ".so"]
         .iter()
         .any(|suffix| relative.ends_with(suffix))
         || CONFIGURE_LOGS.contains(&relative)
-        || relative == MAKE_DRIVER
     {
         return true;
     }
@@ -1245,10 +1319,13 @@ impl Session<'_> {
 
     /// Hash every file under the CMake build directory that is not a build
     /// product ([`is_cmake_product`]): the generated headers and other
-    /// configure-time inputs of the compile commands (Pattern 7).
+    /// configure-time inputs of the compile commands (Pattern 7). The make driver
+    /// is hashed after [`normalise_make_driver`] and recorded with its rule; every
+    /// other file is hashed byte for byte.
     fn configure_files(&mut self) -> Result<(), CaptureError> {
         let declared: BTreeSet<&String> = self.report.objects.keys().collect();
         let mut hashes = BTreeMap::new();
+        let mut normalised = BTreeMap::new();
         for relative in list_files(&self.layout.build)? {
             let key = format!("build/{relative}");
             if declared.contains(&key) || is_cmake_product(&relative) {
@@ -1256,9 +1333,20 @@ impl Session<'_> {
             }
             let path = self.layout.build.join(&relative);
             let bytes = fs::read(&path).map_err(|source| io_error("read", &path, source))?;
-            hashes.insert(key, sha256_hex(&bytes));
+            if relative == MAKE_DRIVER {
+                normalised.insert(
+                    key,
+                    NormalisedFile {
+                        rule: MAKE_DRIVER_RULE.to_owned(),
+                        sha256: sha256_hex(&normalise_make_driver(&bytes)),
+                    },
+                );
+            } else {
+                hashes.insert(key, sha256_hex(&bytes));
+            }
         }
         self.report.configure_files = hashes;
+        self.report.normalised_configure_files = normalised;
         Ok(())
     }
 }

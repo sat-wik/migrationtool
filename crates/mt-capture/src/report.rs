@@ -219,6 +219,15 @@ pub struct CapturedObject {
     pub code_digest: Option<String>,
 }
 
+/// A configure-time file hashed after a fixed normalisation (gap G-02-2).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NormalisedFile {
+    /// The normalisation, as text, so the hash can be reproduced from the report.
+    pub rule: String,
+    /// sha256 of the file's bytes after the normalisation.
+    pub sha256: String,
+}
+
 /// The report of one capture (CONTEXT D-22).
 ///
 /// Everything in it is deterministic: maps are `BTreeMap`, there is a
@@ -259,6 +268,10 @@ pub struct CaptureReport {
     /// sha256 of the configure-time files of a CMake build, keyed by
     /// run-root-relative path.
     pub configure_files: BTreeMap<String, String>,
+    /// The configure-time files hashed after a fixed normalisation instead of
+    /// byte for byte (`CMakeFiles/Makefile2`), keyed like `configure_files`.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub normalised_configure_files: BTreeMap<String, NormalisedFile>,
     /// The entry-function check of each manifest entry, keyed by function name
     /// (CONTEXT D-23).
     #[serde(default)]
@@ -291,6 +304,7 @@ impl CaptureReport {
             gates: Gates::default(),
             objects: BTreeMap::new(),
             configure_files: BTreeMap::new(),
+            normalised_configure_files: BTreeMap::new(),
             entries: BTreeMap::new(),
             steps: Vec::new(),
         }
