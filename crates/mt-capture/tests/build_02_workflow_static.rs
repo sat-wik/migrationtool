@@ -15,7 +15,9 @@ use regex::Regex;
 const WORKFLOW: &str = ".github/workflows/testbed.yml";
 
 /// The subcommands of `mt testbed` a workflow step may name.
-const SUBCOMMANDS: [&str; 6] = ["validate", "fetch", "capture", "replay", "seeds", "compare"];
+const SUBCOMMANDS: [&str; 7] = [
+    "validate", "fetch", "capture", "replay", "seeds", "compare", "pairs",
+];
 
 /// The resource limits every container helper carries (WR-04, T-02-57).
 const RESOURCE_LIMITS: [&str; 4] = ["--pids-limit", "--memory", "--memory-swap", "--cpus"];
@@ -88,6 +90,7 @@ fn build_02_workflow_runs_capture_and_replay_without_network() {
     let offline = function_body(&text, "run_offline");
     let networked = function_body(&text, "run_networked");
     let tool = function_body(&text, "image_tool");
+    let build = function_body(&text, "run_build");
 
     assert!(
         offline.contains("--network none"),
@@ -101,8 +104,16 @@ fn build_02_workflow_runs_capture_and_replay_without_network() {
         tool.contains("--network none"),
         "image_tool runs build tools and must have no network"
     );
+    assert!(
+        build.contains("--network none"),
+        "run_build runs upstream build code and must have no network"
+    );
 
-    for (name, body) in [("run_offline", &offline), ("run_networked", &networked)] {
+    for (name, body) in [
+        ("run_offline", &offline),
+        ("run_networked", &networked),
+        ("run_build", &build),
+    ] {
         for needle in [
             "--user 65534:65534",
             "--read-only",
@@ -123,15 +134,22 @@ fn build_02_workflow_runs_capture_and_replay_without_network() {
     ] {
         assert!(tool.contains(needle), "image_tool lacks {needle}");
     }
+    assert!(
+        build.contains("/work/cache:ro"),
+        "run_build must mount the source cache read-only"
+    );
 
-    // Every `docker run` lives in one of the three helpers: a step cannot start a
+    // Every `docker run` lives in one of the four helpers: a step cannot start a
     // container with network access by writing its own command.
-    let outside = without_functions(&text, &["run_offline", "run_networked", "image_tool"]);
+    let outside = without_functions(
+        &text,
+        &["run_offline", "run_networked", "image_tool", "run_build"],
+    );
     assert!(
         !outside
             .lines()
             .any(|line| { !line.trim_start().starts_with('#') && line.contains("docker run") }),
-        "docker run outside the three helpers"
+        "docker run outside the four helpers"
     );
 
     let calls = invocations(&text);
@@ -149,7 +167,7 @@ fn build_02_workflow_runs_capture_and_replay_without_network() {
             );
         }
     }
-    for subcommand in ["validate", "fetch", "capture", "replay", "compare"] {
+    for subcommand in ["validate", "fetch", "capture", "replay", "compare", "pairs"] {
         assert!(
             calls.iter().any(|(_, name)| name == subcommand),
             "the workflow never runs {subcommand}"
@@ -162,6 +180,7 @@ fn build_02_workflow_runs_capture_and_replay_without_network() {
         ("run_offline", &offline),
         ("run_networked", &networked),
         ("image_tool", &tool),
+        ("run_build", &build),
     ] {
         for needle in RESOURCE_LIMITS {
             assert!(body.contains(needle), "{name} lacks {needle}");
@@ -483,4 +502,225 @@ fn build_02_workflow_runs_the_whole_bed() {
         ["TESTBED_SELECTION: \"--all\""],
         "the top-level env must hold exactly TESTBED_SELECTION: \"--all\""
     );
+}
+
+/// The code lines (no comment lines) of a text.
+fn code_lines(text: &str) -> Vec<String> {
+    text.lines()
+        .filter(|line| !line.trim_start().starts_with('#'))
+        .map(str::to_owned)
+        .collect()
+}
+
+/// The `-v` arguments of the code lines of a shell function, unquoted.
+fn volume_mounts(body: &str) -> Vec<String> {
+    let pattern = Regex::new(r#"-v\s+("[^"]+"|\S+)"#).unwrap();
+    code_lines(body)
+        .iter()
+        .flat_map(|line| {
+            pattern
+                .captures_iter(line)
+                .map(|c| c[1].trim_matches('"').to_owned())
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+/// The index of the first line of `lines` that contains `needle`.
+fn first_line_with(lines: &[String], needle: &str) -> Option<usize> {
+    lines.iter().position(|line| line.contains(needle))
+}
+
+#[test]
+fn build_02_untrusted_builds_cannot_write_the_evidence() {
+    // WR-04: an upstream build runs only in run_build, one container per pair,
+    // and can write nothing but a discarded scratch /work and its own run
+    // directory. The capture artifacts, the reports and every other pair's
+    // directories are not mounted into it at all.
+    let text = read_repo_file(WORKFLOW);
+    let build = function_body(&text, "run_build");
+    let outside = without_functions(&text, &["run_build"]);
+
+    // The build stage is started in run_build and nowhere else, comments included.
+    assert!(
+        build.contains("--stage build"),
+        "run_build never runs `mt testbed capture --stage build`"
+    );
+    assert!(
+        !outside.contains("--stage build"),
+        "`--stage build` appears outside run_build"
+    );
+
+    // Every other capture invocation is the record stage, which runs no upstream
+    // code; none may lack --stage.
+    let capture_call = Regex::new(r"\b(run_offline|run_networked|mt testbed)\s+capture\b").unwrap();
+    let outside_code = code_lines(&outside);
+    let captures: Vec<&String> = outside_code
+        .iter()
+        .filter(|line| capture_call.is_match(line))
+        .collect();
+    assert!(
+        captures.len() >= 2,
+        "expected the record step and the determinism record, found {captures:?}"
+    );
+    for line in captures {
+        assert!(
+            line.contains("run_offline capture") && line.contains("--stage record"),
+            "a capture invocation outside run_build is not `run_offline capture --stage record`: {line}"
+        );
+    }
+    for line in code_lines(&build) {
+        if capture_call.is_match(&line) {
+            assert!(
+                line.contains("--stage build"),
+                "run_build runs a capture without --stage build: {line}"
+            );
+        }
+    }
+
+    // The only writable mounts of run_build: the fresh scratch /work and the
+    // pair's run directory, which is mounted below it.
+    let mounts = volume_mounts(&build);
+    let writable: Vec<&String> = mounts.iter().filter(|m| !m.ends_with(":ro")).collect();
+    assert_eq!(
+        writable.len(),
+        2,
+        "run_build must have exactly two writable mounts: {writable:?}"
+    );
+    assert_eq!(writable[0], "$scratch/work:/work", "{writable:?}");
+    assert!(
+        writable[1].ends_with(":/work/run/$id/$cfg"),
+        "the second writable mount is not the pair's run directory: {writable:?}"
+    );
+    for readonly in [
+        "/usr/local/bin/mt:ro",
+        "/opt/mt/pins.toml:ro",
+        "/opt/mt/testbed:ro",
+        ":/work/cache:ro",
+    ] {
+        assert!(
+            mounts.iter().any(|m| m.ends_with(readonly)),
+            "run_build has no read-only mount ending {readonly}: {mounts:?}"
+        );
+    }
+    let code = code_lines(&build);
+    assert!(
+        code.iter().any(|line| line
+            .trim_start()
+            .starts_with("scratch=\"$RUNNER_TEMP/scratch/")),
+        "scratch is not assigned a path under $RUNNER_TEMP/scratch/:\n{build}"
+    );
+    for line in &code {
+        assert!(
+            !line.contains("/out") && !line.contains("OUT_HOST"),
+            "run_build mounts or names /out: {line}"
+        );
+    }
+    assert!(
+        code.iter().any(|line| line.contains("already exists")),
+        "run_build must refuse a run directory that already exists"
+    );
+
+    // The helpers that run no upstream code take their directories from the
+    // variables the determinism rerun redirects.
+    for name in ["run_offline", "run_networked", "image_tool"] {
+        let body = function_body(&text, name);
+        for variable in ["WORK_HOST", "OUT_HOST"] {
+            assert!(body.contains(variable), "{name} ignores {variable}");
+        }
+    }
+    assert!(
+        function_body(&text, "run_offline").contains("CACHE_HOST"),
+        "run_offline cannot mount a separate read-only cache"
+    );
+
+    // Step order: seeds, build, record, replay.
+    let header = |name: &str| {
+        text.find(&format!("- name: {name}"))
+            .unwrap_or_else(|| panic!("{WORKFLOW} has no step {name:?}"))
+    };
+    assert!(
+        header("Check the committed seeds") < header("Build each pair in its own container")
+            && header("Build each pair in its own container") < header("Record the captures")
+            && header("Record the captures") < header("Replay the captured builds"),
+        "the steps are not in the order seeds, build, record, replay"
+    );
+    let build_step = step_code(&text, "Build each pair in its own container").join("\n");
+    for needle in [
+        "run_offline pairs",
+        "run_build",
+        "< /dev/null",
+        "finish_step build",
+    ] {
+        assert!(
+            build_step.contains(needle),
+            "the build step lacks {needle:?}:\n{build_step}"
+        );
+    }
+    assert!(
+        step_code(&text, "Record the captures")
+            .join("\n")
+            .contains("finish_step capture"),
+        "the record step no longer publishes testbed-capture"
+    );
+
+    // The determinism rerun: its own work directory, builds in run_build, the
+    // record stage, and a comparison with the first capture.
+    let rerun = step_code(&text, DETERMINISM_STEP);
+    let work = first_line_with(&rerun, "WORK_HOST=")
+        .unwrap_or_else(|| panic!("the determinism step never sets WORK_HOST:\n{rerun:?}"));
+    assert!(
+        rerun[work].contains("work-rerun"),
+        "WORK_HOST is not the rerun work directory: {}",
+        rerun[work]
+    );
+    assert!(
+        rerun
+            .iter()
+            .any(|line| line.contains("CACHE_HOST=") && line.contains("/work/cache")),
+        "the rerun does not read the first run's verified cache"
+    );
+    let first_build = first_line_with(&rerun, "run_build")
+        .unwrap_or_else(|| panic!("the determinism step never runs run_build:\n{rerun:?}"));
+    let record = first_line_with(&rerun, "run_offline capture")
+        .unwrap_or_else(|| panic!("the determinism step has no record:\n{rerun:?}"));
+    assert!(
+        work < first_build && first_build < record,
+        "the rerun must set WORK_HOST, then build, then record: {rerun:?}"
+    );
+    assert!(
+        rerun[record].contains("--stage record")
+            && rerun[record].contains("--out /out/capture-rerun"),
+        "the rerun record is not `--stage record --out /out/capture-rerun`: {}",
+        rerun[record]
+    );
+    assert!(
+        rerun.iter().any(|line| line.contains(
+            "run_offline compare --first /out/capture --second /out/capture-rerun/capture"
+        )),
+        "the rerun is not compared with /out/capture"
+    );
+
+    // The header comment states the trust split and the new title.
+    assert!(text.contains("Trust split"), "no `Trust split` paragraph");
+    assert!(
+        text.contains("testbed-build"),
+        "testbed-build is not listed"
+    );
+}
+
+#[test]
+fn build_02_readme_names_the_container_kinds() {
+    let readme = read_repo_file("testbed/README.md");
+    for needle in [
+        "run_build",
+        "--stage build",
+        "--stage record",
+        "--pids-limit",
+    ] {
+        assert!(
+            readme.contains(needle),
+            "testbed/README.md does not describe {needle:?}"
+        );
+    }
 }
