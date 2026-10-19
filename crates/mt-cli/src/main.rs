@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use anyhow::Context;
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use mt_capture::compare::{DETERMINISM_EXCLUSIONS, compare_capture_dirs};
 use mt_capture::manifest::ManifestError;
 use mt_capture::seeding::run_seeds_detailed;
 use mt_capture::testbed::{
@@ -192,6 +193,17 @@ enum TestbedAction {
         #[arg(long)]
         check: bool,
     },
+    /// Compare two capture output trees, as the determinism step does. Exit 0
+    /// when identical, 1 when any file differs, is missing on one side, is empty
+    /// or cannot be parsed, or no file was compared; 2 when a tree cannot be read.
+    Compare {
+        /// The first capture output tree.
+        #[arg(long)]
+        first: PathBuf,
+        /// The second capture output tree.
+        #[arg(long)]
+        second: PathBuf,
+    },
 }
 
 /// How much of the pins file must be present.
@@ -339,6 +351,27 @@ fn testbed_options(args: TestbedArgs, image: Option<String>) -> TestbedOptions {
     }
 }
 
+/// True when the two capture output trees are identical (WR-05).
+fn compare_command(first: &Path, second: &Path) -> anyhow::Result<bool> {
+    let comparison = compare_capture_dirs(first, second).context("comparing the capture trees")?;
+    println!("compared {} files", comparison.compared);
+    for exclusion in DETERMINISM_EXCLUSIONS {
+        println!("excluded: {exclusion}");
+    }
+    if comparison.passed() {
+        println!("result: identical");
+    } else {
+        println!("result: differences found");
+        for problem in &comparison.problems {
+            println!("{problem}");
+        }
+        if comparison.compared == 0 {
+            println!("no file was compared");
+        }
+    }
+    Ok(comparison.passed())
+}
+
 /// Print each validation issue on its own line.
 fn print_issues(error: &TestbedError) {
     match error {
@@ -378,6 +411,7 @@ fn testbed_command(action: TestbedAction) -> anyhow::Result<bool> {
             finish_testbed(run_capture(&testbed_options(args, image)))
         }
         TestbedAction::Replay(args) => finish_testbed(run_replay(&testbed_options(args, None))),
+        TestbedAction::Compare { first, second } => compare_command(&first, &second),
         TestbedAction::Seeds {
             args,
             seeds_dir,

@@ -22,11 +22,15 @@
 //! [`droplog`] is the validated drop log (`testbed/dropped.toml`, D-11): what
 //! was dropped, why, and which targets are retained.
 //!
+//! [`compare`] is the fail-closed determinism comparison of two capture output
+//! trees (WR-05); it reads files only.
+//!
 //! [`testbed`] wires fetch, capture and replay over the selected targets and
 //! returns the per-step summaries `mt testbed` prints.
 
 pub mod capture;
 pub mod cc;
+pub mod compare;
 pub mod droplog;
 pub mod elf;
 pub mod entries;
