@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 02
 current_phase_name: Test Bed and Build Capture
 status: executing
-stopped_at: Completed 02-15-PLAN.md
-last_updated: "2026-10-19T21:41:42.914Z"
+stopped_at: Completed 02-16-PLAN.md
+last_updated: "2026-10-19T21:49:53.723Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: 84e51655d27a9dc68a7c65ad0f121e40c7262de9
+state_head: 953b3efa12fe194c8bbf9dc06e1833c1f54fc3f5
 progress:
   total_phases: 12
   completed_phases: 1
   total_plans: 28
-  completed_plans: 24
+  completed_plans: 25
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 02 (Test Bed and Build Capture) — EXECUTING
-Plan: 6 of 19
+Plan: 7 of 19
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -71,6 +71,7 @@ Progress: [█░░░░░░░░░] 8%
 | Phase 02 P12 | 10 min | 2 tasks | 7 files |
 | Phase 02 P14 | 5 min | 2 tasks | 5 files |
 | Phase 02 P15 | 7 min | 2 tasks | 7 files |
+| Phase 02 P16 | 6 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,9 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 02]: 02-14: mt testbed compare compares two capture trees in Rust and fails closed: unparseable, empty, one-sided, non-regular or zero files are differences; only DETERMINISM_EXCLUSIONS (stdout sha256, bytes_total, bytes_stored of cmake configure and clang ast steps in capture reports) are excluded — WR-05: jq | cmp -s reported identical when jq failed on both files; plan 02-17 switches the workflow step to the command
 - [Phase 02]: 02-15: SeedSource.designators is Option<Vec<String>> so an explicit empty list is rejected like extensions
 - [Phase 02]: 02-15: httpparser, qcbor and nanopb seeds narrowed to .raw messages, CBOR test arrays, and fixture files plus fuzz corpora (G-02-3)
+- [Phase 02]: 02-16: replay compares a capture report's pair, source pin and tool set (reported_tools) with the manifest and pins before the cache; pristine path from the pinned commit only
+- [Phase 02]: 02-16: the 10-target floor applies to every Selection::All step via load_inputs/check_floor (BelowFloor), with no override; named ids are partial runs
+- [Phase 02]: 02-16: a differs drop requires at least one differing object and one section (missing object records its status word)
 
 ### Pending Todos
 
@@ -146,6 +150,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T21:41:42.807Z
-Stopped at: Completed 02-15-PLAN.md
+Last session: 2026-10-19T21:49:53.607Z
+Stopped at: Completed 02-16-PLAN.md
 Resume file: None
