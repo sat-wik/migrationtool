@@ -296,6 +296,7 @@ fn entry_names(target: &Target) -> Vec<String> {
 fn extract_file(
     found: &Found,
     methods: &[Method],
+    designators: Option<&[String]>,
     entries: &[String],
     caps: &Caps,
     gathered: &mut Gathered,
@@ -356,7 +357,13 @@ fn extract_file(
             ),
             (
                 Method::CString,
-                wants(Method::CString).then(|| lexer::c_string_literals(&bytes)),
+                wants(Method::CString).then(|| match designators {
+                    Some(names) => {
+                        let names: Vec<&str> = names.iter().map(String::as_str).collect();
+                        lexer::c_designated_string_literals(&bytes, &names)
+                    }
+                    None => lexer::c_string_literals(&bytes),
+                }),
             ),
         ] {
             if let Some(result) = result {
@@ -504,7 +511,14 @@ pub fn seed_target(
                     .is_some_and(|ext| list.iter().any(|l| l == ext)),
             };
             if wanted {
-                extract_file(found, &methods, &entries, &caps, &mut gathered)?;
+                extract_file(
+                    found,
+                    &methods,
+                    source.designators.as_deref(),
+                    &entries,
+                    &caps,
+                    &mut gathered,
+                )?;
             }
         }
     }

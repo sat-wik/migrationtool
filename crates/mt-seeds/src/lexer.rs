@@ -17,6 +17,9 @@
 //!   `uint8_t`, `unsigned char`, `char` or `int8_t`. A group that contains a
 //!   `;` is a statement block, not an initialiser, and is not counted.
 //! - String literals follow the C escape rules exactly (see [`c_string_literals`]).
+//! - [`c_designated_string_literals`] keeps only the strings that are the value
+//!   of a designated initialiser (`{ .raw = "..." }`) with a given member name,
+//!   for sources whose inputs are named members of test tables.
 
 /// One extracted value and the 1-based line where it starts.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -611,7 +614,53 @@ pub fn c_byte_arrays<S: AsRef<[u8]> + ?Sized>(src: &S) -> LexResult {
 /// run containing one is counted once in `unsupported`, as is a run with a
 /// rejected literal. `extern "C"` linkage strings are ignored.
 pub fn c_string_literals<S: AsRef<[u8]> + ?Sized>(src: &S) -> LexResult {
-    let toks = tokenize(src.as_ref());
+    string_runs(&tokenize(src.as_ref()), |_, _| true)
+}
+
+/// Extract the string literals that are the value of a designated initialiser
+/// `.name = "..."` with `name` one of `designators`, and only those.
+///
+/// A run qualifies when the four tokens before it are `{` or `,`, then `.`,
+/// then an identifier in `designators`, then `=`. So `{ .raw = "a" "b", .n = 1 }`
+/// yields `ab` for `raw`, while `m->raw = "x"`, `s.raw = "y"`, `.rawx = "z"`,
+/// a printf message and a run behind any other member are not seeds. Runs are
+/// concatenated and decoded exactly as in [`c_string_literals`]; a qualifying
+/// run that cannot be decoded is counted once in `unsupported`, and a run that
+/// does not qualify is not counted at all. An empty `designators` yields nothing.
+pub fn c_designated_string_literals<S: AsRef<[u8]> + ?Sized>(
+    src: &S,
+    designators: &[&str],
+) -> LexResult {
+    string_runs(&tokenize(src.as_ref()), |toks, start| {
+        matches!(
+            &toks[..start],
+            [
+                ..,
+                Tok {
+                    kind: Kind::Open | Kind::Comma,
+                    ..
+                },
+                Tok {
+                    kind: Kind::Punct(b'.'),
+                    ..
+                },
+                Tok {
+                    kind: Kind::Ident(name),
+                    ..
+                },
+                Tok {
+                    kind: Kind::Punct(b'='),
+                    ..
+                },
+            ] if designators.iter().any(|d| d.as_bytes() == *name)
+        )
+    })
+}
+
+/// Collect the runs of adjacent string literals of `toks` that `keep` accepts
+/// (it gets the token stream and the index of the run's first token). Linkage
+/// strings of `extern "C"` are never kept.
+fn string_runs(toks: &[Tok<'_>], keep: impl Fn(&[Tok<'_>], usize) -> bool) -> LexResult {
     let mut result = LexResult::default();
     let mut i = 0;
     while i < toks.len() {
@@ -624,7 +673,7 @@ pub fn c_string_literals<S: AsRef<[u8]> + ?Sized>(src: &S) -> LexResult {
             i += 1;
         }
         let linkage = start > 0 && matches!(toks[start - 1].kind, Kind::Ident(b"extern"));
-        if linkage {
+        if linkage || !keep(toks, start) {
             continue;
         }
         let mut bytes = Vec::new();

@@ -153,6 +153,13 @@ pub struct SeedSource {
     /// The entry functions the inputs exercise; empty means every entry of the target.
     #[serde(default)]
     pub entries: Vec<String>,
+    /// Designated-initialiser member names (without the dot), for a source whose
+    /// methods are exactly `["c_string"]`: only string literals that are the value
+    /// of `.name = "..."` for one of these names are seeds (G-02-3, httpparser's
+    /// `.raw` messages). Absent: every string literal. An explicit empty list is
+    /// rejected as meaningless, which is why this is an `Option` like `extensions`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub designators: Option<Vec<String>>,
 }
 
 /// What kind of build system drives a target.
@@ -722,6 +729,26 @@ fn seed_source_issues(f: &str, target: &Target, issues: &mut Vec<String>) {
                 issues.push(format!(
                     "{g}.entries: {entry:?} is not an entry function of the target"
                 ));
+            }
+        }
+        if let Some(designators) = &source.designators {
+            if designators.is_empty() {
+                issues.push(format!(
+                    "{g}.designators: leave it out to take every string, or list at least one member name"
+                ));
+            }
+            if source.methods != ["c_string"] {
+                issues.push(format!(
+                    "{g}.designators: only valid with methods exactly [\"c_string\"], found {:?}",
+                    source.methods
+                ));
+            }
+            for name in designators {
+                if !is_c_identifier(name) {
+                    issues.push(format!(
+                        "{g}.designators: {name:?} is not a C identifier (letters, digits and `_`, not starting with a digit)"
+                    ));
+                }
             }
         }
     }
