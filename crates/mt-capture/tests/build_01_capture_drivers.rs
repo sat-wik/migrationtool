@@ -831,6 +831,66 @@ fn build_02_replay_rechecks_the_normalised_makefile2() {
     assert!(text.contains("build/gen.h"), "{text}");
 }
 
+/// A configure-time `gen/table.a` next to a static library the build creates.
+const ARCHIVE_PROJECT: [(&str, &str); 2] = [
+    (
+        "CMakeLists.txt",
+        "cmake_minimum_required(VERSION 3.10)\nproject(demo C)\n\
+         file(WRITE ${CMAKE_BINARY_DIR}/gen/table.a \"configure-time table\\n\")\n\
+         add_library(tj STATIC t.c)\n",
+    ),
+    ("t.c", "int t(void) { return 1; }\n"),
+];
+
+#[test]
+fn build_01_configure_files_skip_only_build_created_archives() {
+    let Some(bed) = bed(&ARCHIVE_PROJECT) else {
+        return;
+    };
+    let target = cmake_target_of(&bed, "tj");
+
+    let report = run_capture(&bed, &target, &default_config());
+
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::Captured,
+        "{:#?}",
+        report.causes
+    );
+    // The archive written at configure time is an input and is hashed.
+    assert!(
+        report.configure_files.contains_key("build/gen/table.a"),
+        "{:?}",
+        report.configure_files
+    );
+    // The library the build step created, the declared object and CMake's
+    // compiler probes are left out.
+    let layout = RunLayout::new(&bed.ctx.work_dir, "demo", "default");
+    assert!(
+        layout.build.join("libtj.a").is_file(),
+        "the build made no archive"
+    );
+    for key in report.configure_files.keys() {
+        assert!(
+            key != "build/libtj.a"
+                && !key.ends_with(".obj")
+                && !key.contains("CompilerId")
+                && !key.contains("CMakeDetermineCompilerABI"),
+            "{key} must not be a configure-time file: {:?}",
+            report.configure_files
+        );
+    }
+    assert!(
+        report
+            .configure_files
+            .keys()
+            .filter(|key| key.ends_with(".a") || key.ends_with(".so"))
+            .eq(["build/gen/table.a"].iter()),
+        "{:?}",
+        report.configure_files
+    );
+}
+
 /// The report as JSON, with the standard output digest of every `cmake
 /// configure` step removed.
 fn without_configure_output(report: &CaptureReport) -> serde_json::Value {
@@ -925,12 +985,13 @@ fn bed_02_variant_code_diff_detects_changed_code() {
 
 #[test]
 fn build_01_cmake_probe_outputs_are_not_configure_files() {
-    // Outputs of the build and of CMake's own probes: left out of the hashes.
+    // Outputs of CMake's own probes: left out of the hashes. Objects and
+    // archives the build produced are left out by declaration or by provenance
+    // instead (WR-10, G-02-2): `excluded_from_configure_hashes`, asserted without
+    // tools in build_02_configure_evidence.rs
+    // (build_01_configure_hash_skip_decision_matches_the_documented_set) and end
+    // to end by build_01_configure_files_skip_only_build_created_archives.
     for product in [
-        "CMakeFiles/tj.dir/t.c.obj",
-        "CMakeFiles/tj.dir/t.c.o",
-        "libtj.a",
-        "libtj.so",
         "CMakeFiles/CMakeConfigureLog.yaml",
         "CMakeFiles/CMakeOutput.log",
         "CMakeFiles/CMakeError.log",
