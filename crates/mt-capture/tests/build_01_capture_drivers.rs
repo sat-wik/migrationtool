@@ -874,7 +874,7 @@ fn build_01_configure_files_skip_only_build_created_archives() {
         assert!(
             key != "build/libtj.a"
                 && !key.ends_with(".obj")
-                && !key.contains("CompilerId")
+                && !key.ends_with("CompilerId.o")
                 && !key.contains("CMakeDetermineCompilerABI"),
             "{key} must not be a configure-time file: {:?}",
             report.configure_files

@@ -144,33 +144,89 @@ pub fn configure_evidence_changed(run_root: &Path, report: &CaptureReport) -> Op
     None
 }
 
-/// Whether a file of the CMake build directory (`relative` to it) is something
-/// the build or CMake's own probes produced rather than an input of a compile
-/// command, so it is left out of the configure-time file hashes.
+/// What the configure-time file hashes leave out, one line each. These lines are
+/// the complete set: [`excluded_from_configure_hashes`] implements exactly them,
+/// and the determinism comment of `testbed.yml` is held to them (plan 02-17).
+pub const CONFIGURE_HASH_EXCLUSIONS: [&str; 5] = [
+    "objects named in the capture report",
+    "CMakeFiles/CMakeConfigureLog.yaml, CMakeFiles/CMakeOutput.log and CMakeFiles/CMakeError.log",
+    "CMakeFiles/<version>/CMakeDetermineCompilerABI_<C or CXX>.bin",
+    "CMakeFiles/<version>/CompilerId<C or CXX>/CMake<C or CXX>CompilerId.o",
+    "static archives and shared libraries (.a, .so) created by the cmake build step",
+];
+
+/// The configure-time files that are hashed after a normalisation instead of byte
+/// for byte, in words (plan 02-17 ties the `testbed.yml` determinism comment to
+/// this).
+pub const NORMALISED_CONFIGURE_FILES: [&str; 1] =
+    ["CMakeFiles/Makefile2, hashed with each run of prerequisite lines of one target sorted"];
+
+/// Whether `relative` (to the CMake build directory) is one of the files CMake's
+/// own probes write, which hold scratch-directory names or the bytes of a test
+/// compile and so differ from run to run, and are not an input of any compile
+/// command.
 ///
-/// Objects, static archives and shared libraries are outputs, and archives embed
-/// member times. CMake's diagnostic logs hold scratch-directory names. The
-/// compiler-ABI probe (`CMakeFiles/<version>/CMakeDetermineCompilerABI_C.bin`) is
-/// the output of a test compile, and its bytes differ from run to run.
+/// Exactly these paths, with no suffix test at any depth:
+/// - `CMakeFiles/CMakeConfigureLog.yaml`, `CMakeFiles/CMakeOutput.log` and
+///   `CMakeFiles/CMakeError.log`;
+/// - `CMakeFiles/<version>/CMakeDetermineCompilerABI_<LANG>.bin`;
+/// - `CMakeFiles/<version>/CompilerId<LANG>/CMake<LANG>CompilerId.o`;
 ///
-/// `CMakeFiles/Makefile2`, the make driver of the Unix Makefiles generator, is not
-/// a product: it is hashed after [`normalise_make_driver`], which removes the one
-/// measured nondeterminism (the order of equal-target prerequisite lines) and
-/// nothing else, so a real change still shows.
+/// where `<version>` is non-empty and made only of ASCII digits and dots and
+/// `<LANG>` is `C` or `CXX` (the same in both places of the compiler-id path).
+///
+/// Objects named in the capture report and archives or shared libraries the build
+/// step created are left out by [`excluded_from_configure_hashes`], by declaration
+/// and by provenance. `CMakeFiles/Makefile2` is hashed after
+/// [`normalise_make_driver`], not left out.
 #[must_use]
 pub fn is_cmake_product(relative: &str) -> bool {
-    if [".o", ".obj", ".a", ".so"]
-        .iter()
-        .any(|suffix| relative.ends_with(suffix))
-        || CONFIGURE_LOGS.contains(&relative)
-    {
+    if CONFIGURE_LOGS.contains(&relative) {
         return true;
     }
-    let mut parts = relative.split('/');
-    let probe = parts.next_back().is_some_and(|name| {
-        name.starts_with("CMakeDetermineCompilerABI_") && name.ends_with(".bin")
-    });
-    probe && relative.starts_with("CMakeFiles/")
+    let version_ok = |version: &str| {
+        !version.is_empty() && version.bytes().all(|b| b.is_ascii_digit() || b == b'.')
+    };
+    match relative.split('/').collect::<Vec<_>>().as_slice() {
+        ["CMakeFiles", version, name] => {
+            version_ok(version)
+                && matches!(
+                    *name,
+                    "CMakeDetermineCompilerABI_C.bin" | "CMakeDetermineCompilerABI_CXX.bin"
+                )
+        }
+        ["CMakeFiles", version, dir, name] => {
+            version_ok(version)
+                && matches!(
+                    (*dir, *name),
+                    ("CompilerIdC", "CMakeCCompilerId.o")
+                        | ("CompilerIdCXX", "CMakeCXXCompilerId.o")
+                )
+        }
+        _ => false,
+    }
+}
+
+/// Whether a file of the CMake build directory is left out of the configure-time
+/// hashes. Pure: no file system access and no tool.
+///
+/// `relative` is relative to the build directory. `declared` holds the run-root
+/// keys (`build/...`) of the objects named in the capture report, and `before` the
+/// run-root listing taken after `cmake configure` and before `cmake build`. True
+/// exactly when `build/<relative>` is declared, or [`is_cmake_product`], or
+/// `relative` ends in `.a` or `.so` and `build/<relative>` is not in `before`,
+/// that is, the build step created it. [`CONFIGURE_HASH_EXCLUSIONS`] is the same
+/// set in words.
+#[must_use]
+pub fn excluded_from_configure_hashes(
+    relative: &str,
+    declared: &BTreeSet<String>,
+    before: &BTreeSet<String>,
+) -> bool {
+    let key = format!("build/{relative}");
+    declared.contains(&key)
+        || is_cmake_product(relative)
+        || ((relative.ends_with(".a") || relative.ends_with(".so")) && !before.contains(&key))
 }
 
 /// The macro that makes an object depend on a file's modification time.
@@ -1317,20 +1373,20 @@ impl Session<'_> {
         Ok(())
     }
 
-    /// Hash every file under the CMake build directory that is not a build
-    /// product ([`is_cmake_product`]): the generated headers and other
+    /// Hash every file under the CMake build directory that is not left out by
+    /// [`excluded_from_configure_hashes`]: the generated headers and other
     /// configure-time inputs of the compile commands (Pattern 7). The make driver
     /// is hashed after [`normalise_make_driver`] and recorded with its rule; every
     /// other file is hashed byte for byte.
     fn configure_files(&mut self) -> Result<(), CaptureError> {
-        let declared: BTreeSet<&String> = self.report.objects.keys().collect();
+        let declared: BTreeSet<String> = self.report.objects.keys().cloned().collect();
         let mut hashes = BTreeMap::new();
         let mut normalised = BTreeMap::new();
         for relative in list_files(&self.layout.build)? {
-            let key = format!("build/{relative}");
-            if declared.contains(&key) || is_cmake_product(&relative) {
+            if excluded_from_configure_hashes(&relative, &declared, &self.before) {
                 continue;
             }
+            let key = format!("build/{relative}");
             let path = self.layout.build.join(&relative);
             let bytes = fs::read(&path).map_err(|source| io_error("read", &path, source))?;
             if relative == MAKE_DRIVER {
