@@ -7,11 +7,12 @@
 //! no external process. Targets are always named explicitly, never `--all`.
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use mt_capture::manifest::{Manifest, ManifestError, Target};
 use mt_capture::seeding::seed_target;
 use mt_seeds::Method;
+use mt_seeds::index::SeedIndex;
 use mt_seeds::select::Caps;
 use tempfile::TempDir;
 
@@ -169,4 +170,115 @@ fn build_03_seeding_takes_only_designated_strings() {
             (b"POST / HTTP/1.0\r\n\r\n".to_vec(), 4),
         ]
     );
+}
+
+fn repo_file(relative: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(relative)
+}
+
+fn committed_manifest() -> Manifest {
+    let manifest = Manifest::load(&repo_file("testbed/manifest.toml")).expect("manifest parses");
+    manifest.validate().expect("manifest is valid");
+    manifest
+}
+
+fn committed_index(id: &str) -> SeedIndex {
+    let path = repo_file("testbed/seeds").join(id).join("index.json");
+    let text = fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("{} cannot be read: {error}", path.display()));
+    serde_json::from_str(&text).unwrap_or_else(|error| panic!("{}: {error}", path.display()))
+}
+
+/// The paths of the declared sources that name a method.
+fn source_paths_with(target: &Target, method: &str) -> Vec<String> {
+    target
+        .seed_source
+        .iter()
+        .filter(|source| source.methods.iter().any(|m| m == method))
+        .map(|source| source.path.clone())
+        .collect()
+}
+
+#[test]
+fn build_03_narrowed_corpora_hold_only_input_methods() {
+    let manifest = committed_manifest();
+
+    // qcbor: byte arrays of the CBOR test files only; no string source, and
+    // neither the buffer utility tests nor the runner (labels and messages).
+    let qcbor = &manifest.target["qcbor"];
+    assert_eq!(
+        source_paths_with(qcbor, "c_string"),
+        Vec::<String>::new(),
+        "qcbor must declare no c_string source"
+    );
+    let mut declared: Vec<&str> = qcbor.seed_source.iter().map(|s| s.path.as_str()).collect();
+    declared.sort_unstable();
+    assert_eq!(
+        declared,
+        vec![
+            "test/float_tests.c",
+            "test/not_well_formed_cbor.h",
+            "test/qcbor_decode_tests.c",
+            "test/qcbor_encode_tests.c",
+        ]
+    );
+    let index = committed_index("qcbor");
+    assert!(!index.seeds.is_empty());
+    for seed in &index.seeds {
+        assert_eq!(
+            seed.method,
+            Method::CArray,
+            "qcbor seed {} from {} is not a byte array",
+            seed.sha256,
+            seed.source.path
+        );
+        assert!(
+            !seed.source.path.ends_with("UsefulBuf_Tests.c")
+                && !seed.source.path.ends_with("run_tests.c"),
+            "qcbor seed {} comes from {}",
+            seed.sha256,
+            seed.source.path
+        );
+    }
+
+    // nanopb: fixture files and fuzz corpora only; the strings under tests/ are
+    // names and messages.
+    let nanopb = &manifest.target["nanopb"];
+    assert_eq!(
+        source_paths_with(nanopb, "c_string"),
+        Vec::<String>::new(),
+        "nanopb must declare no c_string source"
+    );
+    let index = committed_index("nanopb");
+    assert!(!index.seeds.is_empty());
+    for seed in &index.seeds {
+        assert!(
+            matches!(seed.method, Method::FileCopy | Method::ZipMember),
+            "nanopb seed {} from {} has method {:?}",
+            seed.sha256,
+            seed.source.path,
+            seed.method
+        );
+    }
+
+    // httpparser: the `.raw` messages of test.c and nothing else of it.
+    let http = &manifest.target["httpparser"];
+    assert_eq!(http.seed_source.len(), 1);
+    let source = &http.seed_source[0];
+    assert_eq!(source.path, "test.c");
+    assert_eq!(source.methods, vec!["c_string".to_owned()]);
+    assert_eq!(source.designators, Some(vec!["raw".to_owned()]));
+    let index = committed_index("httpparser");
+    assert!(!index.seeds.is_empty());
+    assert!(
+        index.seeds.len() <= 77,
+        "test.c holds 77 `.raw` members, the corpus holds {}",
+        index.seeds.len()
+    );
+    for seed in &index.seeds {
+        assert_eq!(seed.method, Method::CString);
+        assert_eq!(seed.source.path, "test.c");
+    }
 }
