@@ -16,15 +16,17 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use mt_capture::capture::{
-    CaptureContext, CaptureError, Expansion, RunLayout, ToolPaths, capture, cmake_build_argv,
-    cmake_configure_argv, effective_cflags, expand, is_cmake_product, list_files, make_argv,
-    timestamp_macro_sources, toolchain_file, undeclared_objects, variant_code_diff,
+    CaptureContext, CaptureError, Expansion, MAKE_DRIVER_RULE, RunLayout, ToolPaths, capture,
+    cmake_build_argv, cmake_configure_argv, configure_evidence_changed, effective_cflags, expand,
+    is_cmake_product, list_files, make_argv, normalise_make_driver, timestamp_macro_sources,
+    toolchain_file, undeclared_objects, variant_code_diff,
 };
 use mt_capture::cc::CcEntry;
 use mt_capture::elf::code_digest;
 use mt_capture::fetch::fetch;
 use mt_capture::manifest::{BASELINE_CFLAGS, BuildArgs, BuildSystem, Config, Manifest, Target};
 use mt_capture::report::{CaptureReport, CaptureVerdict, CapturedObject};
+use mt_capture::treehash::sha256_hex;
 use mt_toolchain::pins::Pins;
 use support::{
     capture_context, fetch_context, git_target, local_arm_tools, make_upstream, runner_config, tool,
@@ -695,6 +697,140 @@ fn build_01_capture_cmake_end_to_end() {
     );
 }
 
+/// A CMake target of the local upstream that builds `cmake_target`.
+fn cmake_target_of(bed: &Bed, cmake_target: &str) -> Target {
+    let mut target = git_target(&bed.upstream, BuildSystem::Cmake);
+    target.build_args = Some(BuildArgs {
+        dir: ".".to_owned(),
+        goals: Vec::new(),
+        make_vars: Vec::new(),
+        cmake_target: Some(cmake_target.to_owned()),
+        cmake_options: Vec::new(),
+    });
+    target
+}
+
+#[test]
+fn build_02_cmake_capture_hashes_makefile2_normalised() {
+    let Some(bed) = bed(&CMAKE_PROJECT) else {
+        return;
+    };
+    let target = cmake_target_of(&bed, "tj");
+
+    let report = run_capture(&bed, &target, &default_config());
+
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::Captured,
+        "{:#?}",
+        report.causes
+    );
+    let layout = RunLayout::new(&bed.ctx.work_dir, "demo", "default");
+    let driver = fs::read(layout.build.join("CMakeFiles/Makefile2")).unwrap();
+    let recorded = report
+        .normalised_configure_files
+        .get("build/CMakeFiles/Makefile2")
+        .unwrap_or_else(|| panic!("{:?}", report.normalised_configure_files));
+    assert_eq!(recorded.rule, MAKE_DRIVER_RULE);
+    assert_eq!(recorded.sha256, sha256_hex(&normalise_make_driver(&driver)));
+    assert_eq!(report.normalised_configure_files.len(), 1);
+    // Hashed once, in the normalised map only; every other file stays raw.
+    assert!(
+        !report
+            .configure_files
+            .contains_key("build/CMakeFiles/Makefile2"),
+        "{:?}",
+        report.configure_files
+    );
+    assert!(report.configure_files.contains_key("build/gen.h"));
+}
+
+/// Two static libraries in `all`, so `Makefile2` has two consecutive `all:`
+/// prerequisite lines, and a configure-time header.
+const TWO_LIB_PROJECT: [(&str, &str); 5] = [
+    (
+        "CMakeLists.txt",
+        "cmake_minimum_required(VERSION 3.10)\nproject(demo C)\n\
+         configure_file(gen.h.in gen.h)\n\
+         add_library(ta STATIC a.c)\n\
+         add_library(tb STATIC b.c)\n\
+         target_include_directories(ta PRIVATE ${CMAKE_CURRENT_BINARY_DIR})\n\
+         target_include_directories(tb PRIVATE ${CMAKE_CURRENT_BINARY_DIR})\n",
+    ),
+    ("gen.h.in", "#define GEN 7\n"),
+    ("a.c", "#include \"gen.h\"\nint a(void) { return GEN; }\n"),
+    (
+        "b.c",
+        "#include \"gen.h\"\nint b(void) { return GEN + 1; }\n",
+    ),
+    ("README", "x\n"),
+];
+
+/// `text` with its two consecutive `all:` prerequisite lines swapped.
+fn with_all_lines_swapped(text: &str) -> String {
+    let mut lines: Vec<&str> = text.split('\n').collect();
+    let at: Vec<usize> = lines
+        .iter()
+        .enumerate()
+        .filter(|(_, line)| line.starts_with("all: "))
+        .map(|(index, _)| index)
+        .collect();
+    assert!(
+        at.len() == 2 && at[1] == at[0] + 1,
+        "expected two consecutive `all:` lines in {text}"
+    );
+    lines.swap(at[0], at[1]);
+    lines.join("\n")
+}
+
+#[test]
+fn build_02_replay_rechecks_the_normalised_makefile2() {
+    let Some(bed) = bed(&TWO_LIB_PROJECT) else {
+        return;
+    };
+    let target = cmake_target_of(&bed, "all");
+    let report = run_capture(&bed, &target, &default_config());
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::Captured,
+        "{:#?}",
+        report.causes
+    );
+    let layout = RunLayout::new(&bed.ctx.work_dir, "demo", "default");
+    let makefile2 = layout.build.join("CMakeFiles/Makefile2");
+    let original = fs::read_to_string(&makefile2).unwrap();
+
+    assert_eq!(configure_evidence_changed(&layout.run_root, &report), None);
+
+    // Two equal-target prerequisite lines in the other order: still the same.
+    fs::write(&makefile2, with_all_lines_swapped(&original)).unwrap();
+    assert_eq!(configure_evidence_changed(&layout.run_root, &report), None);
+
+    // A changed prerequisite is a change, and the text names the file.
+    let changed = original.replacen(
+        "all: CMakeFiles/ta.dir/all",
+        "all: CMakeFiles/tz.dir/all",
+        1,
+    );
+    assert_ne!(changed, original);
+    fs::write(&makefile2, changed).unwrap();
+    let text = configure_evidence_changed(&layout.run_root, &report).expect("a changed Makefile2");
+    assert!(text.contains("build/CMakeFiles/Makefile2"), "{text}");
+
+    // Restored, it is clean again; any raw-hashed file that changes is named.
+    fs::write(&makefile2, &original).unwrap();
+    assert_eq!(configure_evidence_changed(&layout.run_root, &report), None);
+    let header = layout.build.join("gen.h");
+    fs::write(&header, "#define GEN 8\n").unwrap();
+    let text = configure_evidence_changed(&layout.run_root, &report).expect("a changed header");
+    assert!(text.contains("build/gen.h"), "{text}");
+
+    // An unreadable file is a change as well.
+    fs::remove_file(&header).unwrap();
+    let text = configure_evidence_changed(&layout.run_root, &report).expect("a missing header");
+    assert!(text.contains("build/gen.h"), "{text}");
+}
+
 /// The report as JSON, with the standard output digest of every `cmake
 /// configure` step removed.
 fn without_configure_output(report: &CaptureReport) -> serde_json::Value {
@@ -800,10 +936,6 @@ fn build_01_cmake_probe_outputs_are_not_configure_files() {
         "CMakeFiles/CMakeError.log",
         "CMakeFiles/3.25.1/CMakeDetermineCompilerABI_C.bin",
         "CMakeFiles/3.28.3/CMakeDetermineCompilerABI_C.bin",
-        // The make driver of the Unix Makefiles generator: the order of equal-rank
-        // prerequisite lines follows CMake's pointer order and changes between runs
-        // (zcbor: two orders of the `app.dir/all` prerequisites in testbed run B).
-        "CMakeFiles/Makefile2",
     ] {
         assert!(is_cmake_product(product), "{product} is an output");
     }
@@ -817,8 +949,12 @@ fn build_01_cmake_probe_outputs_are_not_configure_files() {
         "tables/CMakeDetermineCompilerABI_C.bin",
         "CMakeFiles/3.25.1/data.bin",
         "CMakeCache.txt",
-        // Only the one driver file is a product. The files that carry the compile
-        // flags and definitions stay hashed, and so do look-alike paths.
+        // The make driver of the Unix Makefiles generator is hashed, normalised
+        // (founder decision G-02-2): the order of equal-rank prerequisite lines
+        // follows CMake's pointer order and changes between runs (zcbor: two orders
+        // of the `app.dir/all` prerequisites in testbed run B). The files that carry
+        // the compile flags and definitions stay hashed, and so do look-alike paths.
+        "CMakeFiles/Makefile2",
         "CMakeFiles/tj.dir/flags.make",
         "CMakeFiles/tj.dir/build.make",
         "CMakeFiles/tj.dir/depend.make",
