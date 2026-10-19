@@ -178,7 +178,7 @@ fn build_01_cmake_configure_never_sets_cmake_c_flags() {
             "/work/run/corejson/depth-8/build",
             "-G",
             "Unix Makefiles",
-            "-DCMAKE_TOOLCHAIN_FILE=/work/capture/corejson/depth-8/toolchain.cmake",
+            "-DCMAKE_TOOLCHAIN_FILE=/work/run/corejson/depth-8/stage/toolchain.cmake",
         ]
     );
     assert!(argv.contains(&"-DCMAKE_EXPORT_COMPILE_COMMANDS=ON".to_owned()));
@@ -273,7 +273,7 @@ fn build_01_make_argv_injects_flags_through_cc_and_runs_j1() {
         [
             "/usr/bin/bear",
             "--output",
-            "/work/capture/qcbor/no-hw-float/compile_commands.raw.json",
+            "/work/run/qcbor/no-hw-float/stage/compile_commands.raw.json",
             "--",
             "/usr/bin/make",
             "-j1",

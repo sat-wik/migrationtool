@@ -20,11 +20,52 @@
 //! `__TIMESTAMP__`, which depends on a file's modification time and so cannot be
 //! reproduced. A failed gate is a verdict and a cause in the report, never a
 //! pass. Every subprocess runs through the `mt-toolchain` runner.
+//!
+//! # Two stages and the trust model (review warning WR-04)
+//!
+//! A capture is a build stage followed by a record stage, and [`capture`] is
+//! exactly the two in one process.
+//!
+//! - [`capture_build`] runs the untrusted upstream build (Makefiles and CMake
+//!   scripts). It writes only inside its pair's run directory
+//!   (`<work>/run/<id>/<config>`): the source copy, the committed inputs, the
+//!   build tree, and under `stage/` the exporter's raw file, the CMake toolchain
+//!   file and the build record ([`BuildRecord`]). It never creates, reads or
+//!   writes `<work>/capture`, the reports or the output directory.
+//! - [`capture_record`] runs no upstream code and alone writes the artifacts that
+//!   replay and the determinism step trust (`<work>/capture/<id>/<config>`:
+//!   `capture.json`, the canonical compile commands, the object copies).
+//!
+//! The record stage trusts nothing the build could have changed except the
+//! build's own outputs, which it reads as untrusted data and checks exactly as a
+//! single-process capture always did. It verifies the source cache again, takes
+//! the tools from the pins, hashes the committed inputs from `testbed/` and
+//! refuses a run directory whose inputs copy differs (`inputs_changed`), and
+//! recomputes the toolchain file from the pins and the configuration. It reads the
+//! run directory only through [`read_run_file`], which never follows a symlink:
+//! the build record, the raw export, every object, every configure-time file and
+//! every file of the inputs copy. A refused build record is `not_proven` with the
+//! cause `no_build_record`; any other refused read is `capture_failed` with the
+//! cause `run_dir_symlink`.
+//!
+//! Not covered by that rule, as before: the compiler's own reads during the entry
+//! check, the defining-TU read of the include prefix (entries.rs), the
+//! `__TIMESTAMP__` scan of the sources (it reads, never copies, and a source tree
+//! may legitimately hold symlinks), and the readelf runs on objects the record
+//! stage has already opened as regular files.
+//!
+//! The record stage takes from the build record only what describes the build
+//! itself: the build steps' run records, the `not_proven` and `build_failed`
+//! flags, and the `before` listing. Those can be falsified only by the same
+//! pair's own build, which could equally have built different objects, so they
+//! cannot alter another pair's evidence, the source verification, the tools, the
+//! inputs check or the replay comparison. A forged record can therefore make its
+//! own pair read as built, failed or not proven, and nothing else.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::fs;
-use std::io;
+use std::io::{self, Read};
 use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
 
@@ -41,13 +82,25 @@ use crate::fetch::{
 use crate::manifest::{BuildArgs, BuildSystem, Config, PLACEHOLDERS, Target};
 use crate::replay::relative_key;
 use crate::report::{
-    CaptureReport, CaptureVerdict, CapturedObject, CompileCommandsInfo, NormalisedFile, SourceRef,
-    Step,
+    CaptureReport, CaptureVerdict, CapturedObject, CompileCommandsInfo, FetchReport,
+    NormalisedFile, SourceRef, Step,
 };
 use crate::treehash::{TreeHashError, copy_tree, sha256_hex};
 
 /// The most a single step may run before the capture reports `not_proven`.
 const STEP_TIMEOUT: Duration = Duration::from_secs(900);
+
+/// The directory of the run root that holds the build stage's own files.
+const STAGE_DIR: &str = "stage";
+/// The build record inside [`STAGE_DIR`].
+const BUILD_RECORD_FILE: &str = "build-record.json";
+/// The exporter's file, in the stage directory and again in the capture directory.
+const RAW_EXPORT_FILE: &str = "compile_commands.raw.json";
+/// The CMake toolchain file, in the stage directory and again in the capture directory.
+const TOOLCHAIN_FILE: &str = "toolchain.cmake";
+
+/// Version of the serialised [`BuildRecord`].
+pub const BUILD_RECORD_SCHEMA_VERSION: u32 = 1;
 
 /// The tool keys whose pinned versions a capture report records.
 const REPORTED_TOOLS: [&str; 5] = ["arm_gcc", "bear", "clang", "cmake", "make"];
@@ -317,6 +370,149 @@ pub struct VariantDiff {
     pub changes_code: bool,
 }
 
+/// What the build stage leaves for the record stage
+/// (`<run_root>/stage/build-record.json`, WR-04).
+///
+/// It describes the build itself and nothing the record stage relies on for
+/// evidence: the run records of the build steps, the cause lines the build stage
+/// raised, the `not_proven` and `build_failed` flags, and the listing of the run
+/// root just before the build. `target`, `config` and `source` let the record
+/// stage refuse a record made for another pair or another source. The file is
+/// written by code that runs after the upstream build and is read as untrusted
+/// data (see the module documentation for what a forged record can and cannot
+/// change).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BuildRecord {
+    /// [`BUILD_RECORD_SCHEMA_VERSION`].
+    pub schema_version: u32,
+    /// Test-bed target id.
+    pub target: String,
+    /// Configuration name.
+    pub config: String,
+    /// The verified source the build stage copied.
+    pub source: SourceRef,
+    /// The build steps, in the order they ran.
+    pub steps: Vec<Step>,
+    /// The machine tokens the build stage raised (`build_failed`, `not_proven`).
+    pub causes: Vec<String>,
+    /// One line per cause.
+    pub cause_details: Vec<String>,
+    /// The run-root listing taken just before the build (after `cmake configure`
+    /// for CMake), the base of the undeclared-object gate.
+    pub before: BTreeSet<String>,
+    /// A build step timed out or left an incomplete output stream.
+    pub not_proven: bool,
+    /// A build step exited non-zero.
+    pub build_failed: bool,
+    /// Every build step succeeded, so the exporter's file is expected.
+    pub built: bool,
+}
+
+/// Why [`read_run_file`] did not return a file's bytes.
+#[derive(Debug, thiserror::Error)]
+pub enum RunReadError {
+    /// The path is not a regular file reached without a symbolic link: it is
+    /// absolute, holds a `.`, `..` or empty component, or a component from the
+    /// run root down (the root included) is a symlink, or a directory component
+    /// is not a directory, or the last component is not a regular file (a
+    /// symlink, directory, socket, FIFO or device). `path` is the first
+    /// offending path.
+    #[error(
+        "{} is not a regular file reached without a symbolic link under the run directory",
+        path.display()
+    )]
+    NotRegular {
+        /// The path that was refused.
+        path: PathBuf,
+    },
+    /// The file system failed, or a component is missing.
+    #[error("cannot read {}: {source}", path.display())]
+    Io {
+        /// The path involved.
+        path: PathBuf,
+        /// The underlying error.
+        #[source]
+        source: io::Error,
+    },
+}
+
+/// Read `relative` (`/`-separated, relative to `run_root`) without ever following
+/// a symlink (WR-04).
+///
+/// The run root and every component below it are inspected with
+/// `fs::symlink_metadata`: each directory component must be a real directory and
+/// the last component a regular file, so a symlink anywhere on the way, a
+/// directory, a socket, a FIFO or a device is refused. An absolute `relative`, an
+/// empty one, or one with a `.`, `..` or empty component is refused too. The
+/// record stage reads every file of the untrusted run directory through this
+/// function.
+///
+/// # Errors
+/// [`RunReadError::NotRegular`] for a refused path, [`RunReadError::Io`] for a
+/// missing component or a failing read.
+pub fn read_run_file(run_root: &Path, relative: &str) -> Result<Vec<u8>, RunReadError> {
+    let refused = |path: PathBuf| RunReadError::NotRegular { path };
+    let io_failure = |path: &Path, source: io::Error| RunReadError::Io {
+        path: path.to_path_buf(),
+        source,
+    };
+    if relative.starts_with('/') {
+        return Err(refused(PathBuf::from(relative)));
+    }
+    let parts: Vec<&str> = relative.split('/').collect();
+    if parts
+        .iter()
+        .any(|part| part.is_empty() || *part == "." || *part == "..")
+    {
+        return Err(refused(run_root.join(relative)));
+    }
+    let root = fs::symlink_metadata(run_root).map_err(|source| io_failure(run_root, source))?;
+    if !root.is_dir() {
+        return Err(refused(run_root.to_path_buf()));
+    }
+    let mut current = run_root.to_path_buf();
+    for (index, part) in parts.iter().enumerate() {
+        current.push(part);
+        let meta = fs::symlink_metadata(&current).map_err(|source| io_failure(&current, source))?;
+        let acceptable = if index + 1 == parts.len() {
+            meta.is_file()
+        } else {
+            meta.is_dir()
+        };
+        if !acceptable {
+            return Err(refused(current));
+        }
+    }
+    let mut file = fs::File::open(&current).map_err(|source| io_failure(&current, source))?;
+    let opened = file
+        .metadata()
+        .map_err(|source| io_failure(&current, source))?;
+    if !opened.is_file() {
+        return Err(refused(current));
+    }
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)
+        .map_err(|source| io_failure(&current, source))?;
+    Ok(bytes)
+}
+
+/// Whether `path` is a real directory (`Ok(true)`), absent (`Ok(false)`), or
+/// something a walk must not start from: a symlink or a non-directory.
+fn walk_root(path: &Path) -> Result<bool, RunReadError> {
+    match fs::symlink_metadata(path) {
+        Ok(meta) if meta.is_dir() => Ok(true),
+        Ok(_) => Err(RunReadError::NotRegular {
+            path: path.to_path_buf(),
+        }),
+        Err(source) if source.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(source) => Err(RunReadError::Io {
+            path: path.to_path_buf(),
+            source,
+        }),
+    }
+}
+
 /// Why a capture could not be attempted. A target-configuration failure is
 /// data in the report, never an error.
 #[derive(Debug, thiserror::Error)]
@@ -448,11 +644,32 @@ impl RunLayout {
         }
     }
 
-    /// The exporter's file exactly as written: Bear's output or a copy of
-    /// CMake's `compile_commands.json`.
+    /// `<run_root>/stage`: the only directory the build stage writes outside the
+    /// source, build and inputs trees (WR-04).
+    #[must_use]
+    pub fn stage_dir(&self) -> PathBuf {
+        self.run_root.join(STAGE_DIR)
+    }
+
+    /// The build record the build stage leaves for the record stage.
+    #[must_use]
+    pub fn build_record_path(&self) -> PathBuf {
+        self.stage_dir().join(BUILD_RECORD_FILE)
+    }
+
+    /// The exporter's file exactly as the build wrote it: Bear's output or a copy
+    /// of CMake's `compile_commands.json`. It lies in the run directory, which an
+    /// untrusted build can change; the record stage copies it to
+    /// [`RunLayout::raw_copy_path`] and canonicalises that copy.
     #[must_use]
     pub fn raw_path(&self) -> PathBuf {
-        self.capture_dir.join("compile_commands.raw.json")
+        self.stage_dir().join(RAW_EXPORT_FILE)
+    }
+
+    /// The evidence copy of the exporter's file, written by the record stage.
+    #[must_use]
+    pub fn raw_copy_path(&self) -> PathBuf {
+        self.capture_dir.join(RAW_EXPORT_FILE)
     }
 
     /// The canonical compile commands replay executes.
@@ -461,10 +678,17 @@ impl RunLayout {
         self.capture_dir.join("compile_commands.json")
     }
 
-    /// The generated CMake toolchain file.
+    /// The generated CMake toolchain file the build stage configures with.
     #[must_use]
     pub fn toolchain_path(&self) -> PathBuf {
-        self.capture_dir.join("toolchain.cmake")
+        self.stage_dir().join(TOOLCHAIN_FILE)
+    }
+
+    /// The evidence copy of the toolchain file: the record stage writes the text
+    /// it recomputes from the pins and the configuration, not the build's file.
+    #[must_use]
+    pub fn toolchain_copy_path(&self) -> PathBuf {
+        self.capture_dir.join(TOOLCHAIN_FILE)
     }
 
     /// The capture report.
@@ -1079,12 +1303,10 @@ impl Session<'_> {
         }
     }
 
-    /// Verify the cache, lay out a clean run and capture directory, copy the
-    /// source and the committed inputs.
-    fn prepare(&mut self, id: &str, target: &Target) -> Result<(), CaptureError> {
+    /// Verify the cached source again (no curl, tar or protocol: it touches only
+    /// the files and git's own object store).
+    fn verify(&self, id: &str, target: &Target) -> Result<FetchReport, CaptureError> {
         let ctx = self.ctx;
-        // No curl, tar or protocol: verifying a cache touches only the files and
-        // git's own object store.
         let fetch_ctx = FetchContext {
             work_dir: ctx.work_dir.clone(),
             git: ctx.tools.git.clone(),
@@ -1093,42 +1315,48 @@ impl Session<'_> {
             allowed_protocols: String::new(),
             timeout: ctx.timeout,
         };
-        let verified = verify_cached(&self.cfg, &fetch_ctx, id, target)?;
-        self.report.source = SourceRef {
-            commit: verified.commit.clone(),
-            tree_sha256: verified.tree_sha256.clone(),
-        };
-        self.report.steps.extend(verified.steps);
-        self.report.tools = reported_tools(&ctx.tools, target.build);
+        Ok(verify_cached(&self.cfg, &fetch_ctx, id, target)?)
+    }
 
-        for dir in [&self.layout.run_root, &self.layout.capture_dir] {
-            if !dir.starts_with(&ctx.work_dir) || dir == &ctx.work_dir {
-                return Err(invalid(format!(
-                    "{} is not inside the work directory",
-                    dir.display()
-                )));
-            }
-            match fs::remove_dir_all(dir) {
-                Ok(()) => {}
-                Err(source) if source.kind() == io::ErrorKind::NotFound => {}
-                Err(source) => return Err(io_error("remove", dir, source)),
-            }
-            fs::create_dir_all(dir).map_err(|source| io_error("create", dir, source))?;
+    /// Refuse a directory that is not strictly inside the work directory.
+    fn inside_work(&self, dir: &Path) -> Result<(), CaptureError> {
+        if !dir.starts_with(&self.ctx.work_dir) || dir == self.ctx.work_dir {
+            return Err(invalid(format!(
+                "{} is not inside the work directory",
+                dir.display()
+            )));
         }
-        for dir in [ctx.work_dir.join("home"), ctx.work_dir.join("tmp")] {
+        Ok(())
+    }
+
+    /// Create `<work>/home` and `<work>/tmp` when they are missing: a stage may
+    /// run in a work directory the other stage never wrote.
+    fn ensure_home_and_tmp(&self) -> Result<(), CaptureError> {
+        for dir in [
+            self.ctx.work_dir.join("home"),
+            self.ctx.work_dir.join("tmp"),
+        ] {
             fs::create_dir_all(&dir).map_err(|source| io_error("create", &dir, source))?;
         }
+        Ok(())
+    }
+
+    /// Build stage: empty the run directory in place (it may be a bind mount),
+    /// make its stage directory, copy the verified source and the committed
+    /// inputs. The capture directory is not touched.
+    fn prepare_run(&mut self, id: &str, verified: &FetchReport) -> Result<(), CaptureError> {
+        let ctx = self.ctx;
+        self.inside_work(&self.layout.run_root)?;
+        empty_directory(&self.layout.run_root)?;
+        let stage = self.layout.stage_dir();
+        fs::create_dir_all(&stage).map_err(|source| io_error("create", &stage, source))?;
+        self.ensure_home_and_tmp()?;
 
         let cache = cache_paths(&ctx.work_dir, id, &verified.commit);
         copy_tree(&cache.tree, &self.layout.src)?;
         let committed = ctx.testbed_dir.join("targets").join(id);
         if committed.is_dir() {
             copy_tree(&committed, &self.layout.inputs)?;
-            for key in list_files(&self.layout.inputs)? {
-                let path = self.layout.inputs.join(&key);
-                let bytes = fs::read(&path).map_err(|source| io_error("read", &path, source))?;
-                self.report.inputs.insert(key, sha256_hex(&bytes));
-            }
         } else {
             fs::create_dir_all(&self.layout.inputs)
                 .map_err(|source| io_error("create", &self.layout.inputs, source))?;
@@ -1136,8 +1364,45 @@ impl Session<'_> {
         Ok(())
     }
 
-    /// Run the build and leave the exporter's file at the raw path (if there is
-    /// one).
+    /// Record stage: a fresh capture directory, and the home and tmp directories.
+    fn prepare_record(&mut self) -> Result<(), CaptureError> {
+        let dir = self.layout.capture_dir.clone();
+        self.inside_work(&dir)?;
+        match fs::remove_dir_all(&dir) {
+            Ok(()) => {}
+            Err(source) if source.kind() == io::ErrorKind::NotFound => {}
+            Err(source) => return Err(io_error("remove", &dir, source)),
+        }
+        fs::create_dir_all(&dir).map_err(|source| io_error("create", &dir, source))?;
+        self.ensure_home_and_tmp()
+    }
+
+    /// Note a read of the run directory the record stage refused (a symlink or a
+    /// file that is not regular): the cause `run_dir_symlink`, naming `key`.
+    fn refused(&mut self, key: &str, error: &RunReadError) {
+        self.cause(
+            "run_dir_symlink",
+            format!(
+                "{key}: the build left a symbolic link or a file that is not regular where the record stage reads ({error})"
+            ),
+        );
+    }
+
+    /// Read `key` of the run directory without following a symlink. A refused
+    /// read is a cause and `None`; a missing file or an I/O failure is an error.
+    fn read_or_refuse(&mut self, key: &str) -> Result<Option<Vec<u8>>, CaptureError> {
+        match read_run_file(&self.layout.run_root, key) {
+            Ok(bytes) => Ok(Some(bytes)),
+            Err(error @ RunReadError::NotRegular { .. }) => {
+                self.refused(key, &error);
+                Ok(None)
+            }
+            Err(RunReadError::Io { path, source }) => Err(io_error("read", &path, source)),
+        }
+    }
+
+    /// Run the build and leave the exporter's file at the raw path in the stage
+    /// directory (if there is one). Build stage only.
     fn build(
         &mut self,
         args: &BuildArgs,
@@ -1164,7 +1429,6 @@ impl Session<'_> {
                 let text = toolchain_file(tools, &flags)?;
                 let path = self.layout.toolchain_path();
                 fs::write(&path, &text).map_err(|source| io_error("write", &path, source))?;
-                self.report.toolchain_file_sha256 = Some(sha256_hex(text.as_bytes()));
                 let configure = cmake_configure_argv(tools, &self.layout, &flags, args, config)?;
                 let run_root = self.layout.run_root.clone();
                 if matches!(
@@ -1193,9 +1457,32 @@ impl Session<'_> {
         }
     }
 
-    /// Canonicalise the export and write the canonical file.
+    /// Copy the exporter's file from the stage directory to the capture
+    /// directory, reading it without following a symlink. A missing file copies
+    /// nothing (canonicalising then reports `empty_capture`); a refused one is a
+    /// cause and halts.
+    fn copy_raw_export(&mut self) -> Result<Flow, CaptureError> {
+        let key = format!("{STAGE_DIR}/{RAW_EXPORT_FILE}");
+        match read_run_file(&self.layout.run_root, &key) {
+            Ok(bytes) => {
+                let path = self.layout.raw_copy_path();
+                fs::write(&path, bytes).map_err(|source| io_error("write", &path, source))?;
+                Ok(Flow::Continue)
+            }
+            Err(RunReadError::Io { source, .. }) if source.kind() == io::ErrorKind::NotFound => {
+                Ok(Flow::Continue)
+            }
+            Err(error @ RunReadError::NotRegular { .. }) => {
+                self.refused(&key, &error);
+                Ok(Flow::Halt)
+            }
+            Err(RunReadError::Io { path, source }) => Err(io_error("read", &path, source)),
+        }
+    }
+
+    /// Canonicalise the evidence copy of the export and write the canonical file.
     fn canonicalise(&mut self) -> Result<Option<Vec<CcEntry>>, CaptureError> {
-        let raw_path = self.layout.raw_path();
+        let raw_path = self.layout.raw_copy_path();
         let bytes = match fs::read(&raw_path) {
             Ok(bytes) => bytes,
             Err(source) if source.kind() == io::ErrorKind::NotFound => {
@@ -1221,7 +1508,13 @@ impl Session<'_> {
             allowed_compilers: vec![path_str(&self.ctx.tools.arm_gcc)?.to_owned()],
             run_root: self.layout.run_root.clone(),
         };
-        let exists = |path: &Path| fs::symlink_metadata(path).is_ok_and(|meta| meta.is_file());
+        // A symlink where an object should be counts as present, so that the
+        // record stage refuses it loudly (run_dir_symlink) instead of dropping
+        // the entry as unbuilt.
+        let exists = |path: &Path| {
+            fs::symlink_metadata(path)
+                .is_ok_and(|meta| meta.is_file() || meta.file_type().is_symlink())
+        };
         let canonical = match canonicalise(&raw, &policy, &exists) {
             Ok(canonical) => canonical,
             Err(error) => {
@@ -1289,7 +1582,10 @@ impl Session<'_> {
         for entry in entries {
             let output = PathBuf::from(&entry.output);
             let key = self.key_or_text(&output);
-            let bytes = fs::read(&output).map_err(|source| io_error("read", &output, source))?;
+            let Some(bytes) = self.read_or_refuse(&key)? else {
+                arch_ok = false;
+                continue;
+            };
             let copy = self.layout.objects_dir.join(&key);
             if let Some(parent) = copy.parent() {
                 fs::create_dir_all(parent).map_err(|source| io_error("create", parent, source))?;
@@ -1394,13 +1690,27 @@ impl Session<'_> {
         let declared: BTreeSet<String> = self.report.objects.keys().cloned().collect();
         let mut hashes = BTreeMap::new();
         let mut normalised = BTreeMap::new();
-        for relative in list_files(&self.layout.build)? {
+        // `list_files` never descends into a symlinked directory, but it would
+        // start in one: check the walk root first.
+        let listing = match walk_root(&self.layout.build) {
+            Ok(true) => list_files(&self.layout.build)?,
+            Ok(false) => BTreeSet::new(),
+            Err(error @ RunReadError::NotRegular { .. }) => {
+                self.refused("build", &error);
+                BTreeSet::new()
+            }
+            Err(RunReadError::Io { path, source }) => {
+                return Err(io_error("inspect", &path, source));
+            }
+        };
+        for relative in listing {
             if excluded_from_configure_hashes(&relative, &declared, &self.before) {
                 continue;
             }
             let key = format!("build/{relative}");
-            let path = self.layout.build.join(&relative);
-            let bytes = fs::read(&path).map_err(|source| io_error("read", &path, source))?;
+            let Some(bytes) = self.read_or_refuse(&key)? else {
+                continue;
+            };
             if relative == MAKE_DRIVER {
                 normalised.insert(
                     key,
@@ -1417,9 +1727,343 @@ impl Session<'_> {
         self.report.normalised_configure_files = normalised;
         Ok(())
     }
+
+    /// Hash the committed inputs of the target from `testbed/targets/<id>/` and
+    /// compare them, file set and bytes, with the run directory's copy, which the
+    /// build could have changed: any difference is the cause `inputs_changed`
+    /// naming the files. The copy is read without following a symlink.
+    fn check_inputs(&mut self, id: &str) -> Result<(), CaptureError> {
+        let committed = self.ctx.testbed_dir.join("targets").join(id);
+        let mut expected = BTreeMap::new();
+        if committed.is_dir() {
+            for key in list_files(&committed)? {
+                let path = committed.join(&key);
+                let bytes = fs::read(&path).map_err(|source| io_error("read", &path, source))?;
+                expected.insert(key, sha256_hex(&bytes));
+            }
+        }
+        let found = match walk_root(&self.layout.inputs) {
+            Ok(true) => list_files(&self.layout.inputs)?,
+            Ok(false) => BTreeSet::new(),
+            Err(error @ RunReadError::NotRegular { .. }) => {
+                self.refused("inputs", &error);
+                self.report.inputs = expected;
+                return Ok(());
+            }
+            Err(RunReadError::Io { path, source }) => {
+                return Err(io_error("inspect", &path, source));
+            }
+        };
+        let mut changed: Vec<String> = Vec::new();
+        for (key, hash) in &expected {
+            let run_key = format!("inputs/{key}");
+            match read_run_file(&self.layout.run_root, &run_key) {
+                Ok(bytes) if sha256_hex(&bytes) == *hash => {}
+                Ok(_) => changed.push(format!("{key} differs")),
+                Err(RunReadError::Io { source, .. })
+                    if source.kind() == io::ErrorKind::NotFound =>
+                {
+                    changed.push(format!("{key} is missing"));
+                }
+                Err(error @ RunReadError::NotRegular { .. }) => self.refused(&run_key, &error),
+                Err(RunReadError::Io { path, source }) => {
+                    return Err(io_error("read", &path, source));
+                }
+            }
+        }
+        for key in found.difference(&expected.keys().cloned().collect()) {
+            changed.push(format!("{key} was added"));
+        }
+        if !changed.is_empty() {
+            self.cause(
+                "inputs_changed",
+                format!(
+                    "the run copy of the committed inputs of {id} differs from testbed/targets/{id}: {}",
+                    changed.join(", ")
+                ),
+            );
+        }
+        self.report.inputs = expected;
+        Ok(())
+    }
+
+    /// The build record of the build stage, read without following a symlink and
+    /// checked against this pair and the verified source.
+    fn load_build_record(&self, id: &str, config: &str, source: &SourceRef) -> RecordState {
+        let bytes = match read_run_file(&self.layout.run_root, &build_record_key()) {
+            Ok(bytes) => bytes,
+            Err(error) => return RecordState::Missing(error.to_string()),
+        };
+        let record: BuildRecord = match serde_json::from_slice(&bytes) {
+            Ok(record) => record,
+            Err(error) => {
+                return RecordState::Missing(format!("the build record cannot be parsed: {error}"));
+            }
+        };
+        if record.schema_version != BUILD_RECORD_SCHEMA_VERSION {
+            return RecordState::Missing(format!(
+                "the build record has schema_version {}, this tool reads {BUILD_RECORD_SCHEMA_VERSION}",
+                record.schema_version
+            ));
+        }
+        let different = |what: &str| {
+            RecordState::Mismatch(format!(
+                "the build record was made for a different {what} than this record stage"
+            ))
+        };
+        if record.target != id {
+            return different("target");
+        }
+        if record.config != config {
+            return different("configuration");
+        }
+        if record.source != *source {
+            return different("source");
+        }
+        RecordState::Accepted(Box::new(record))
+    }
 }
 
-/// Capture one configuration of one target (BUILD-01).
+/// The run-root-relative key of the build record.
+fn build_record_key() -> String {
+    format!("{STAGE_DIR}/{BUILD_RECORD_FILE}")
+}
+
+/// What the record stage found where the build record should be.
+enum RecordState {
+    /// Missing, unreadable, refused (a symlink) or not a build record; the text
+    /// says which.
+    Missing(String),
+    /// A build record of another pair or another source.
+    Mismatch(String),
+    /// A record for this pair and this verified source.
+    Accepted(Box<BuildRecord>),
+}
+
+/// Empty `dir` in place, keeping the directory itself (it may be a bind mount):
+/// create it when absent, replace a non-directory by one, remove every entry of
+/// a directory (a symlink is removed, never followed).
+fn empty_directory(dir: &Path) -> Result<(), CaptureError> {
+    match fs::symlink_metadata(dir) {
+        Err(source) if source.kind() == io::ErrorKind::NotFound => {
+            return fs::create_dir_all(dir).map_err(|source| io_error("create", dir, source));
+        }
+        Err(source) => return Err(io_error("inspect", dir, source)),
+        Ok(meta) if meta.is_dir() => {}
+        Ok(_) => {
+            fs::remove_file(dir).map_err(|source| io_error("remove", dir, source))?;
+            return fs::create_dir_all(dir).map_err(|source| io_error("create", dir, source));
+        }
+    }
+    let listing = fs::read_dir(dir).map_err(|source| io_error("read", dir, source))?;
+    for entry in listing {
+        let entry = entry.map_err(|source| io_error("read", dir, source))?;
+        let path = entry.path();
+        let file_type = entry
+            .file_type()
+            .map_err(|source| io_error("inspect", &path, source))?;
+        if file_type.is_dir() {
+            fs::remove_dir_all(&path).map_err(|source| io_error("remove", &path, source))?;
+        } else {
+            fs::remove_file(&path).map_err(|source| io_error("remove", &path, source))?;
+        }
+    }
+    Ok(())
+}
+
+/// The checks every stage makes before it does anything: safe path components,
+/// and a recipe. Returns the recipe.
+fn pair_args<'a>(
+    id: &str,
+    target: &'a Target,
+    config: &Config,
+) -> Result<&'a BuildArgs, CaptureError> {
+    if !is_safe_component(id) || !is_safe_component(&config.name) {
+        return Err(invalid(format!(
+            "target id {id:?} and configuration {:?} must be safe path components",
+            config.name
+        )));
+    }
+    target
+        .build_args
+        .as_ref()
+        .ok_or_else(|| invalid(format!("target {id} has no build_args recipe")))
+}
+
+fn new_session<'a>(
+    cfg: &RunnerConfig,
+    ctx: &'a CaptureContext,
+    id: &str,
+    config: &Config,
+) -> Result<Session<'a>, CaptureError> {
+    let layout = RunLayout::new(&ctx.work_dir, id, &config.name);
+    let home = ctx.work_dir.join("home");
+    let tmp = ctx.work_dir.join("tmp");
+    let env = BTreeMap::from([
+        ("HOME".to_owned(), path_str(&home)?.to_owned()),
+        ("TMPDIR".to_owned(), path_str(&tmp)?.to_owned()),
+    ]);
+    Ok(Session {
+        cfg: RunnerConfig {
+            timeout: ctx.timeout,
+            ..cfg.clone()
+        },
+        ctx,
+        layout,
+        env,
+        report: CaptureReport::new(id, &config.name),
+        not_proven: false,
+        build_failed: false,
+        before: BTreeSet::new(),
+    })
+}
+
+/// The build stage of a capture (BUILD-01, WR-04): run the untrusted upstream
+/// build of one configuration of one target and leave its outputs, and a
+/// [`BuildRecord`], in `<work>/run/<id>/<config>`.
+///
+/// The cached source is verified again first ([`verify_cached`], no network). An
+/// existing run directory is kept and emptied (it may be a bind mount), the
+/// verified source and the committed inputs are copied into it, and the build runs
+/// there; the exporter's raw file and the CMake toolchain file are written under
+/// `stage/`. Nothing is created, read or written under `<work>/capture`,
+/// `<work>/reports` or an output directory. A failing build is data in the record
+/// (`build_failed`, `not_proven`), not an error, and the record is written in every
+/// such case.
+///
+/// # Errors
+/// [`CaptureError`] for invalid inputs (an unsafe id or configuration name, a
+/// target without a recipe), a cache that is missing or no longer matches its
+/// pin, or a tool that cannot be started.
+pub fn capture_build(
+    cfg: &RunnerConfig,
+    ctx: &CaptureContext,
+    id: &str,
+    target: &Target,
+    config: &Config,
+) -> Result<BuildRecord, CaptureError> {
+    let args = pair_args(id, target, config)?;
+    let mut session = new_session(cfg, ctx, id, config)?;
+    let verified = session.verify(id, target)?;
+    session.prepare_run(id, &verified)?;
+    let flow = session.build(args, config, target.build)?;
+    let record = BuildRecord {
+        schema_version: BUILD_RECORD_SCHEMA_VERSION,
+        target: id.to_owned(),
+        config: config.name.clone(),
+        source: SourceRef {
+            commit: verified.commit,
+            tree_sha256: verified.tree_sha256,
+        },
+        steps: session.report.steps,
+        causes: session.report.causes,
+        cause_details: session.report.cause_details,
+        before: session.before,
+        not_proven: session.not_proven,
+        build_failed: session.build_failed,
+        built: matches!(flow, Flow::Continue),
+    };
+    let path = session.layout.build_record_path();
+    let mut text = serde_json::to_string_pretty(&record)?;
+    text.push('\n');
+    fs::write(&path, text).map_err(|source| io_error("write", &path, source))?;
+    Ok(record)
+}
+
+/// The record stage of a capture (BUILD-01, WR-04): run no upstream code, read
+/// what the build stage left in `<work>/run/<id>/<config>` as untrusted data and
+/// write the capture artifacts to `<work>/capture/<id>/<config>`.
+///
+/// It creates `<work>/home` and `<work>/tmp` when they are missing, verifies the
+/// source cache again, takes the tools from the pins, reads the build record
+/// (missing, unreadable, refused or unparseable: `not_proven`, cause
+/// `no_build_record`; for another pair or source: `not_proven`, cause
+/// `build_record_mismatch`), compares the run directory's copy of the committed
+/// inputs with `testbed/` (`inputs_changed`), recomputes the toolchain file, and
+/// then canonicalises and gates the build's outputs, checks the manifest entries
+/// and hashes the configure-time files exactly as a single-process capture does.
+/// A run-directory read that is refused is the cause `run_dir_symlink`.
+/// `capture.json` is written in every case.
+///
+/// # Errors
+/// [`CaptureError`] for invalid inputs (an unsafe id or configuration name, a
+/// target without a recipe), a cache that is missing or no longer matches its
+/// pin, or a tool that cannot be started.
+pub fn capture_record(
+    cfg: &RunnerConfig,
+    ctx: &CaptureContext,
+    id: &str,
+    target: &Target,
+    config: &Config,
+) -> Result<CaptureReport, CaptureError> {
+    pair_args(id, target, config)?;
+    let mut session = new_session(cfg, ctx, id, config)?;
+    session.prepare_record()?;
+    let verified = session.verify(id, target)?;
+    let source = SourceRef {
+        commit: verified.commit.clone(),
+        tree_sha256: verified.tree_sha256.clone(),
+    };
+    session.report.source = source.clone();
+    session.report.tools = reported_tools(&ctx.tools, target.build);
+    match session.load_build_record(id, &config.name, &source) {
+        RecordState::Missing(detail) => {
+            session.not_proven = true;
+            session.cause("no_build_record", detail);
+        }
+        RecordState::Mismatch(detail) => {
+            session.not_proven = true;
+            session.cause("build_record_mismatch", detail);
+        }
+        RecordState::Accepted(record) => {
+            session.report.steps.extend(record.steps);
+            session.report.causes = record.causes;
+            session.report.cause_details = record.cause_details;
+            session.before = record.before;
+            session.not_proven = record.not_proven;
+            session.build_failed = record.build_failed;
+            session.check_inputs(id)?;
+            if target.build == BuildSystem::Cmake {
+                let flags = expand_flags(
+                    &effective_cflags(&ctx.baseline, config),
+                    &ctx.tools,
+                    &session.layout,
+                )?;
+                let text = toolchain_file(&ctx.tools, &flags)?;
+                session.report.toolchain_file_sha256 = Some(sha256_hex(text.as_bytes()));
+                let path = session.layout.toolchain_copy_path();
+                fs::write(&path, text).map_err(|source| io_error("write", &path, source))?;
+            }
+            if record.built
+                && matches!(session.copy_raw_export()?, Flow::Continue)
+                && let Some(entries) = session.canonicalise()?
+            {
+                session.gates(&entries)?;
+                session.check_entries(target, &entries)?;
+                if target.build == BuildSystem::Cmake {
+                    session.configure_files()?;
+                }
+            }
+        }
+    }
+    session.report.steps.extend(verified.steps);
+    let mut report = session.report;
+    report.verdict = if session.not_proven {
+        CaptureVerdict::NotProven
+    } else if session.build_failed {
+        CaptureVerdict::BuildFailed
+    } else if report.causes.is_empty() {
+        CaptureVerdict::Captured
+    } else {
+        CaptureVerdict::CaptureFailed
+    };
+    let path = session.layout.report_path();
+    fs::write(&path, report.to_json()?).map_err(|source| io_error("write", &path, source))?;
+    Ok(report)
+}
+
+/// Capture one configuration of one target (BUILD-01): [`capture_build`] followed
+/// by [`capture_record`] in one process.
 ///
 /// The cached source is verified again first ([`verify_cached`], no network);
 /// the configuration is built in a fresh copy under `<work>/run/<id>/<config>`
@@ -1438,57 +2082,6 @@ pub fn capture(
     target: &Target,
     config: &Config,
 ) -> Result<CaptureReport, CaptureError> {
-    if !is_safe_component(id) || !is_safe_component(&config.name) {
-        return Err(invalid(format!(
-            "target id {id:?} and configuration {:?} must be safe path components",
-            config.name
-        )));
-    }
-    let args = target
-        .build_args
-        .as_ref()
-        .ok_or_else(|| invalid(format!("target {id} has no build_args recipe")))?;
-    let layout = RunLayout::new(&ctx.work_dir, id, &config.name);
-    let home = ctx.work_dir.join("home");
-    let tmp = ctx.work_dir.join("tmp");
-    let env = BTreeMap::from([
-        ("HOME".to_owned(), path_str(&home)?.to_owned()),
-        ("TMPDIR".to_owned(), path_str(&tmp)?.to_owned()),
-    ]);
-    let mut session = Session {
-        cfg: RunnerConfig {
-            timeout: ctx.timeout,
-            ..cfg.clone()
-        },
-        ctx,
-        layout,
-        env,
-        report: CaptureReport::new(id, &config.name),
-        not_proven: false,
-        build_failed: false,
-        before: BTreeSet::new(),
-    };
-    session.prepare(id, target)?;
-    if matches!(session.build(args, config, target.build)?, Flow::Continue)
-        && let Some(entries) = session.canonicalise()?
-    {
-        session.gates(&entries)?;
-        session.check_entries(target, &entries)?;
-        if target.build == BuildSystem::Cmake {
-            session.configure_files()?;
-        }
-    }
-    let mut report = session.report;
-    report.verdict = if session.not_proven {
-        CaptureVerdict::NotProven
-    } else if session.build_failed {
-        CaptureVerdict::BuildFailed
-    } else if report.causes.is_empty() {
-        CaptureVerdict::Captured
-    } else {
-        CaptureVerdict::CaptureFailed
-    };
-    let path = session.layout.report_path();
-    fs::write(&path, report.to_json()?).map_err(|source| io_error("write", &path, source))?;
-    Ok(report)
+    capture_build(cfg, ctx, id, target, config)?;
+    capture_record(cfg, ctx, id, target, config)
 }
