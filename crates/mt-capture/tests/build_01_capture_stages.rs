@@ -558,8 +558,9 @@ fn build_01_record_stage_does_not_follow_symlinks() {
 }
 
 // ---------------------------------------------------------------------------
-// Plan 02-20, gap G-02-6 (threats T-02-67 and T-02-70): the record stage
-// canonicalises the build's export, so a planted driver option or write path in
+// Plans 02-20 and 02-21, gaps G-02-6 and G-02-8 (threats T-02-67, T-02-70 and
+// T-02-73): the record stage canonicalises the build's export through the
+// allow-list walk, so a planted driver option, write path or operand `-c` in
 // it is refused before anything runs.
 // ---------------------------------------------------------------------------
 
@@ -604,7 +605,7 @@ fn build_01_record_stage_refuses_a_helper_option_in_the_export() {
         "{:#?}",
         report.causes
     );
-    assert_eq!(report.causes, ["helper_option"]);
+    assert_eq!(report.causes, ["option_not_allowed"]);
     assert!(
         report
             .cause_details
@@ -621,6 +622,92 @@ fn build_01_record_stage_refuses_a_helper_option_in_the_export() {
         !probes.path().join("marker").exists(),
         "the planted wrapper ran"
     );
+}
+
+/// Insert `inserted` immediately before the first entry's `-c` in the build's
+/// raw export.
+fn plant_before_compile_flag(layout: &RunLayout, inserted: &[&str]) {
+    let path = layout.raw_path();
+    let mut export: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    let arguments = export[0]["arguments"]
+        .as_array_mut()
+        .expect("Bear writes an arguments array");
+    let at = arguments
+        .iter()
+        .position(|argument| argument == "-c")
+        .expect("the genuine export compiles with -c");
+    for (offset, text) in inserted.iter().enumerate() {
+        arguments.insert(at + offset, serde_json::Value::String((*text).to_owned()));
+    }
+    fs::write(&path, serde_json::to_vec_pretty(&export).unwrap()).unwrap();
+}
+
+#[test]
+fn build_01_record_stage_refuses_an_operand_compile_flag_in_the_export() {
+    // CR-03 at capture: `-MD -MT -c` makes `-c` the dependency target, so the
+    // driver would link.
+    let Some(bed) = bed(&MAKE_PROJECT) else {
+        return;
+    };
+    let target = make_target(&bed.upstream);
+    fetched(&bed, &target);
+    let layout = layout_of(&bed);
+    build_stage(&bed, &target);
+    plant_before_compile_flag(&layout, &["-MD", "-MT"]);
+
+    let report = record_stage(&bed, &target);
+
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::CaptureFailed,
+        "{:#?}",
+        report.causes
+    );
+    assert_eq!(report.causes, ["not_compile_only"]);
+    assert!(
+        !layout.canonical_path().exists(),
+        "a refused export must leave no canonical compile commands"
+    );
+}
+
+#[test]
+fn build_01_record_stage_refuses_an_object_built_for_another_abi() {
+    // The architecture gate end to end, now that `-mfloat-abi=soft` cannot
+    // pass the allow-list: the genuine export passes the gate, and the object
+    // in the run directory is a soft-float one.
+    let Some(bed) = bed(&MAKE_PROJECT) else {
+        return;
+    };
+    let target = make_target(&bed.upstream);
+    fetched(&bed, &target);
+    let layout = layout_of(&bed);
+    build_stage(&bed, &target);
+    let gcc = bed.ctx.tools.arm_gcc.to_str().unwrap().to_owned();
+    support::tool(
+        &[
+            &gcc,
+            "-mcpu=cortex-m4",
+            "-mthumb",
+            "-mfloat-abi=soft",
+            "-c",
+            "t.c",
+            "-o",
+            "t.o",
+        ],
+        &layout.src,
+        &[],
+    );
+
+    let report = record_stage(&bed, &target);
+
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::CaptureFailed,
+        "{:#?}",
+        report.causes
+    );
+    assert_eq!(report.causes, ["arch_gate"]);
+    assert!(!report.gates.arch_ok);
 }
 
 #[test]

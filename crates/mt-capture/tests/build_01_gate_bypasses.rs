@@ -169,12 +169,14 @@ fn build_01_gate_decides_compile_only_from_the_walk() {
 
 #[test]
 fn build_01_gate_refuses_response_files_in_operand_position() {
-    // T-02-72, a guard. Measured at planning time with the host
-    // arm-none-eabi-gcc 13.2.1 and `-###` (which runs nothing): with x.rsp
-    // holding `-wrapper /bin/echo,viarsp`, each of `-I @x.rsp`, `-MT @x.rsp`
-    // and `-o @x.rsp` made every subcommand run under /bin/echo. The driver
-    // expands every argv element that starts with `@` before it parses
-    // options, operands included.
+    // T-02-72, a guard. The driver expands every argv element that starts
+    // with `@` before it parses options, operands included: it splices the
+    // file's words in place of the argument, so the first word becomes the
+    // operand and the rest are parsed as options. Measured at execution with
+    // the host arm-none-eabi-gcc 13.2.1 (`-###`, which runs nothing) and the
+    // host cc 13.3.0 (a real compile): with x.rsp holding
+    // `-I. -wrapper <script>`, each of `-I @x.rsp`, `-MT @x.rsp`, `-MF @x.rsp`
+    // and `-o @x.rsp` ran every subcommand under the script.
     let cases: Vec<Vec<String>> = [
         ["-I", "@x.rsp"],
         ["-MT", "@x.rsp"],

@@ -402,9 +402,12 @@ fn bed_01_tree_copy_preserves_symlinks_and_refuses_escapes() {
 }
 
 // ---------------------------------------------------------------------------
-// Plan 02-20, gap G-02-6 (threats T-02-67 and T-02-70): replay refuses a
-// recorded driver option that would run or load another program, and a write
-// path outside the run root, before it deletes, copies or spawns anything.
+// Plans 02-20 and 02-21, gaps G-02-6 and G-02-8 (threats T-02-67, T-02-70 and
+// T-02-72): replay refuses a recorded driver option that would run or load
+// another program, and a write path outside the run root, before it deletes,
+// copies or spawns anything. The allow-list decides: a response file or an
+// unshipped spec file is HelperOption, anything else not on the list is
+// OptionNotAllowed.
 // ---------------------------------------------------------------------------
 
 /// Programs a hostile compile command could make the driver run. Each one
@@ -415,7 +418,7 @@ struct Probes {
     wrapper: PathBuf,
     /// A `-B` directory (with a trailing slash) holding a `cc1` that leaves the marker.
     prefix: String,
-    /// A response file that holds `-wrapper <wrapper>`.
+    /// A response file that holds `-I. -wrapper <wrapper>`.
     response: PathBuf,
 }
 
@@ -438,8 +441,12 @@ fn probes() -> Probes {
         &bin.join("cc1"),
         "#!/bin/sh\n: > \"$(dirname \"$0\")/../marker\"\nexit 1\n",
     );
+    // The driver splices the file's words in place of the `@` argument, so in
+    // operand position (`-I @opts.rsp`) the first word becomes the operand.
+    // `-I.` is a harmless first word in both positions, and `-wrapper` then
+    // runs in both.
     let response = root.join("opts.rsp");
-    fs::write(&response, format!("-wrapper {}\n", wrapper.display())).unwrap();
+    fs::write(&response, format!("-I. -wrapper {}\n", wrapper.display())).unwrap();
     Probes {
         marker: root.join("marker"),
         prefix: format!("{}/", bin.display()),
@@ -500,12 +507,22 @@ fn build_02_replay_refuses_helper_executing_driver_options() {
     let prefix = probes.prefix.clone();
     let response = format!("@{}", probes.response.display());
 
-    // The probes are live: the same argv, unguarded, runs the program.
+    // The probes are live: the same argv, unguarded, runs the program. The
+    // response file runs it too, also as the operand of -I (IN-15, T-02-72).
     assert_probe_is_live(&probes, &fixture, &["-wrapper", &wrapper]);
     assert_probe_is_live(&probes, &fixture, &[&format!("-B{prefix}")]);
+    assert_probe_is_live(&probes, &fixture, &[&response]);
+    assert_probe_is_live(&probes, &fixture, &["-I", &response]);
 
-    // (options, the argument the error must name)
-    let cases: Vec<(Vec<String>, String)> = vec![
+    // A response file or a spec file the toolchain does not ship:
+    // (options, the argument the error must name).
+    let helper: Vec<(Vec<String>, String)> = vec![
+        (vec!["-specs=x.specs".into()], "-specs=x.specs".into()),
+        (vec![response.clone()], response.clone()),
+        (vec!["-I".into(), response.clone()], response.clone()),
+    ];
+    // Everything else is simply not on the allow-list.
+    let not_allowed: Vec<(Vec<String>, String)> = vec![
         (vec!["-wrapper".into(), wrapper.clone()], "-wrapper".into()),
         (vec![format!("-B{prefix}")], format!("-B{prefix}")),
         (vec!["-B".into(), prefix.clone()], "-B".into()),
@@ -513,7 +530,6 @@ fn build_02_replay_refuses_helper_executing_driver_options() {
             vec![format!("--prefix={prefix}")],
             format!("--prefix={prefix}"),
         ),
-        (vec!["-specs=x.specs".into()], "-specs=x.specs".into()),
         (vec!["--specs".into(), "x.specs".into()], "--specs".into()),
         (
             vec!["-fplugin=/nonexistent/p.so".into()],
@@ -531,22 +547,34 @@ fn build_02_replay_refuses_helper_executing_driver_options() {
             vec![format!("-fcompare-debug=-B{prefix}")],
             format!("-fcompare-debug=-B{prefix}"),
         ),
-        (vec![response.clone()], response.clone()),
         (vec![format!("-Wp,{response}")], format!("-Wp,{response}")),
         (
             vec!["-Xpreprocessor".into(), "-fplugin=/nonexistent/p.so".into()],
-            "-fplugin=/nonexistent/p.so".into(),
+            "-Xpreprocessor".into(),
         ),
     ];
-    for (options, expected) in cases {
+    let cases = helper
+        .into_iter()
+        .map(|case| (case, true))
+        .chain(not_allowed.into_iter().map(|case| (case, false)));
+    for ((options, expected), is_helper) in cases {
         let plan = plan_with_options(&fixture, &options);
         let error = replay(&config(), &plan).unwrap_err();
+        let named = match &error {
+            ReplayError::Entry(CcError::HelperOption { flag }) if is_helper => *flag == expected,
+            ReplayError::Entry(CcError::OptionNotAllowed { flag }) if !is_helper => {
+                *flag == expected
+            }
+            _ => false,
+        };
+        let variant = if is_helper {
+            "HelperOption"
+        } else {
+            "OptionNotAllowed"
+        };
         assert!(
-            matches!(
-                &error,
-                ReplayError::Entry(CcError::HelperOption { flag }) if *flag == expected
-            ),
-            "{options:?}: expected HelperOption {{ {expected} }}, got {error:?}"
+            named,
+            "{options:?}: expected {variant} {{ {expected} }}, got {error:?}"
         );
         assert!(
             !probes.marker.exists(),
@@ -609,36 +637,40 @@ fn build_02_replay_refuses_writes_outside_the_run_root() {
         strings(&[CC, "-MD", "-MF", &depfile, "-c", "-o", "out/a.o", "a.c"]),
         directory.join("out/a.o").to_str().unwrap().to_owned(),
     );
-    // `-Wp,-MD,<outside>/wp.d`: a write the gate cannot bound.
+    // `-Wp,-MD,<outside>/wp.d`: a carrier, never on the allow-list.
     let carried = format!("-Wp,-MD,{outside_dir}/wp.d");
     let by_carrier = entry(
         strings(&[CC, &carried, "-c", "-o", "out/a.o", "a.c"]),
         directory.join("out/a.o").to_str().unwrap().to_owned(),
     );
 
-    for (what, offending) in [("output", by_output), ("depfile", by_depfile)] {
-        let mut plan = fixture.plan();
-        plan.entries = vec![offending];
-        let error = replay(&config(), &plan).unwrap_err();
-        let expected = if what == "output" { &target } else { &depfile };
-        assert!(
-            matches!(
-                &error,
-                ReplayError::Entry(CcError::OutsideRunRoot { path }) if path == expected
-            ),
-            "{what}: {error:?}"
-        );
-    }
+    // `--output=` and the `-Wp,` carrier are not on the allow-list; the
+    // depfile is a listed option whose path is outside the run root.
     let mut plan = fixture.plan();
-    plan.entries = vec![by_carrier];
+    plan.entries = vec![by_depfile];
     let error = replay(&config(), &plan).unwrap_err();
     assert!(
         matches!(
             &error,
-            ReplayError::Entry(CcError::WriteRedirect { flag }) if *flag == carried
+            ReplayError::Entry(CcError::OutsideRunRoot { path }) if *path == depfile
         ),
-        "{error:?}"
+        "depfile: {error:?}"
     );
+    for (what, offending, flag) in [
+        ("output", by_output, format!("--output={target}")),
+        ("carrier", by_carrier, carried.clone()),
+    ] {
+        let mut plan = fixture.plan();
+        plan.entries = vec![offending];
+        let error = replay(&config(), &plan).unwrap_err();
+        assert!(
+            matches!(
+                &error,
+                ReplayError::Entry(CcError::OptionNotAllowed { flag: found }) if *found == flag
+            ),
+            "{what}: {error:?}"
+        );
+    }
 
     assert_eq!(
         fs::read_dir(outside.path()).unwrap().count(),

@@ -513,15 +513,24 @@ fn build_01_capture_drivers_fail_closed() {
     assert_eq!(report.verdict, CaptureVerdict::CaptureFailed);
     assert_eq!(report.causes, ["compiler_not_allowed"]);
 
-    // An object built for another float ABI fails the architecture gate.
+    // A flag the retained pairs never use is refused by the allow-list gate
+    // before any object is examined (plan 02-21, G-02-8). The architecture
+    // gate keeps its end-to-end test through a planted object
+    // (build_01_record_stage_refuses_an_object_built_for_another_abi).
     let target = make_target(&bed.upstream, &["libt.a"], &["CC={cc} {cflags}"]);
     let mut soft = default_config();
     soft.cflags = vec!["-mfloat-abi=soft".to_owned()];
     let report = run_capture(&bed, &target, &soft);
     assert_eq!(report.verdict, CaptureVerdict::CaptureFailed);
-    assert_eq!(report.causes, ["arch_gate"]);
-    assert!(!report.gates.arch_ok);
-    assert!(!report.objects["src/t.o"].arch_ok);
+    assert_eq!(report.causes, ["option_not_allowed"]);
+    assert!(
+        report
+            .cause_details
+            .iter()
+            .any(|detail| detail.contains("-mfloat-abi=soft")),
+        "{:?}",
+        report.cause_details
+    );
 }
 
 #[test]
