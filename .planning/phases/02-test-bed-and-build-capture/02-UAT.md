@@ -191,3 +191,26 @@ blocked: 0
   missing:
     - "After G-02-5, AR-02-03's rationale (and the capture.rs module doc) states what a forged record can still do and what it can no longer do, citing the tests."
   debug_session: ""
+
+- gap_id: G-02-8
+  truth: "The compile-command gate accepts only measured-good options through one operand-aware argument walk, so no spelling, carrier or operand trick reaches the compiler, assembler or linker at capture or replay; the toolchain evidence covers what configure read"
+  status: failed
+  reason: "Founder decision 2026-10-20 after the post-02-20 code re-review: replace the deny-list gate with an allow-list gate (one operand-aware walk shared by the -c test, derive_output and the write-path check); fold in WR-12 (configure-time toolchain check), WR-13 (-specs allowed only for names the pinned toolchain ships) and WR-14 (an unreadable toolchain file is a named cause on the pair, not an aborted step)."
+  severity: blocker
+  test: review
+  root_cause: "02-20's gate is a deny-list of option prefixes. Review CR-01: the GCC driver rewrites long --<name> spellings to -f<name> (--plugin=, --compare-debug=, --opt-info-all=, --dump-*=, --profile-use=, --profile-dir=), which the prefixes miss. CR-02: ASSEMBLER_WRITE_PREFIXES misses GNU as single-dash and abbreviated forms (-Wa,-MD,<path>, -Wa,--M,<path>). CR-03: the compile-only test accepts a -c that is the operand of -MT, so the linker runs and -Wl, (e.g. -Map=, -plugin) is never examined. All three were reproduced with arm-none-eabi-gcc 13.2.1. WR-12: check_toolchain_file sees only the end state of stage/toolchain.cmake. WR-13: -specs is refused for every name. WR-14: a non-NotFound I/O error on the toolchain file aborts the step."
+  artifacts:
+    - crates/mt-capture/src/cc.rs
+    - crates/mt-capture/src/capture.rs
+    - crates/mt-capture/src/replay.rs
+    - crates/mt-capture/tests/build_01_compile_commands.rs
+    - crates/mt-capture/tests/build_02_replay.rs
+    - crates/mt-capture/tests/build_01_capture_stages.rs
+    - .planning/phases/02-test-bed-and-build-capture/02-SECURITY.md
+  missing:
+    - "One operand-aware argument walk (an option table with operand arity) is the single source for the -c test, derive_output and the write-path check, at capture and at replay before any spawn."
+    - "An allow-list of options measured from the 30 retained pairs (plus depfile flags under the run root and -specs= names shipped by the pinned toolchain); any other option, including every long --<name> spelling, any -Wa,/-Xassembler/-Wl,/-Xlinker/-Wp,/-Xpreprocessor carrier piece not allow-listed, and @files, is refused with a named cause. Tests reproduce CR-01, CR-02 and CR-03 RED first."
+    - "WR-12: the record stage proves the toolchain file configure read equals the pinned text (not only the end state). WR-14: an I/O error reading it is a named cause on that pair."
+    - "No retained pair's real commands are refused: the 29 local captures, both CI fixtures and one full-bed CI run whose notices equal 02-20's line for line."
+    - "T-02-67 and T-02-70 are re-verified and closed in 02-SECURITY.md."
+  debug_session: ""
