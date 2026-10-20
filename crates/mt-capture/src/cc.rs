@@ -265,8 +265,9 @@ const fn joined_only(spelling: &'static str, kind: OperandKind) -> AllowedOption
 /// entries), 1038 entries in all, with
 /// `jq -r '.[].arguments[1:][]' <files> | grep '^-' | sed -E 's/^(-D|-I).+$/\1<joined>/' | sort | uniq -c`
 /// (the CMake `command` strings of the raw files and run exports are covered by
-/// `build_01_local_captures_pass_the_compile_command_gate`). The result is the
-/// 45 exact spellings below, `-D<macro>` (joined only), `-I<dir>` and
+/// `build_01_local_captures_pass_the_compile_command_gate`). The result is 45
+/// of the exact spellings below (all but the CI-only addition named after the
+/// founder additions), `-D<macro>` (joined only), `-I<dir>` and
 /// `-I <dir>`, and `-o <path>`. No `--` spelling, `@` argument, carrier,
 /// `-specs`, depfile flag, `-x`, `-include` or `-isystem` occurs.
 ///
@@ -275,9 +276,18 @@ const fn joined_only(spelling: &'static str, kind: OperandKind) -> AllowedOption
 /// (joined, names of [`SHIPPED_SPECS`] only). Joined `-o<path>` is the same
 /// GCC option as `-o <path>`.
 ///
+/// CI-only addition (plan 02-21 round trip 1): `-Wmissing-variable-declarations`.
+/// Testbed run 39453293771 (job 118733983780, head 4818d97) refused
+/// cjson/default and cjson/no-locale with `option_not_allowed` on it, at the
+/// first refused entry of their CMake export. cjson's `CMakeLists.txt` lists it
+/// among its custom compiler flags and adds it only when
+/// `check_c_compiler_flag` accepts it: the pinned GCC 14 does, the host GCC
+/// 13.2.1 of the local measurement does not (checked offline with GCC 14.2.1;
+/// it is the only flag of that list whose support differs).
+///
 /// A spelling is added only test first (`build_01_allow_list_is_the_measured_set`),
 /// with the evidence of the recorded command that needs it.
-pub const ALLOWED_OPTIONS: [AllowedOption; 55] = [
+pub const ALLOWED_OPTIONS: [AllowedOption; 56] = [
     exact("-c"),
     exact("-g"),
     exact("-O3"),
@@ -308,6 +318,7 @@ pub const ALLOWED_OPTIONS: [AllowedOption; 55] = [
     exact("-Wformat=2"),
     exact("-Winit-self"),
     exact("-Wmissing-prototypes"),
+    exact("-Wmissing-variable-declarations"),
     exact("-Wnested-externs"),
     exact("-Wno-format-nonliteral"),
     exact("-Wparentheses"),
