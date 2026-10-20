@@ -21,6 +21,7 @@ use mt_capture::capture::{
     BuildRecord, CaptureContext, RunLayout, RunReadError, capture, capture_build, capture_record,
     list_files, read_run_file,
 };
+use mt_capture::cc::SHIPPED_SPECS;
 use mt_capture::compare::compare_capture_dirs;
 use mt_capture::fetch::fetch;
 use mt_capture::manifest::{BuildArgs, BuildSystem, Config, Target};
@@ -708,6 +709,70 @@ fn build_01_record_stage_refuses_an_object_built_for_another_abi() {
     );
     assert_eq!(report.causes, ["arch_gate"]);
     assert!(!report.gates.arch_ok);
+}
+
+/// The path of the `Reading specs from` line of a `-###` run.
+fn specs_read(stderr: &[u8]) -> Option<String> {
+    String::from_utf8_lossy(stderr)
+        .lines()
+        .find_map(|line| line.strip_prefix("Reading specs from "))
+        .map(str::to_owned)
+}
+
+#[test]
+fn build_01_shipped_spec_names_are_read_from_the_toolchain() {
+    // WR-13 on the host toolchain: for every name of SHIPPED_SPECS that the
+    // host Arm GCC also ships, a planted file of the same name in the working
+    // directory is not the one the driver reads. The control name, which no
+    // toolchain ships, reads the planted file.
+    let Some(tools) = local_arm_tools() else {
+        return;
+    };
+    let gcc = tools.arm_gcc.to_str().unwrap().to_owned();
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(dir.path().join("t.c"), "int t(void) { return 0; }\n").unwrap();
+    let flags = support::baseline();
+    let probe = |name: &str| -> Option<String> {
+        fs::write(dir.path().join(name), "").unwrap();
+        let specs = format!("-specs={name}");
+        let mut argv: Vec<&str> = vec![&gcc, "-###"];
+        argv.extend(flags.iter().map(String::as_str));
+        argv.extend([specs.as_str(), "-c", "t.c", "-o", "t.o"]);
+        let output = support::tool(&argv, dir.path(), &[]);
+        specs_read(&output.stderr)
+    };
+    let mut checked = 0;
+    for name in SHIPPED_SPECS {
+        let printed = support::tool(
+            &[&gcc, &format!("-print-file-name={name}")],
+            dir.path(),
+            &[],
+        );
+        let location = String::from_utf8_lossy(&printed.stdout).trim().to_owned();
+        if !Path::new(&location).is_absolute() {
+            // The host toolchain does not ship this name.
+            continue;
+        }
+        let read = probe(name)
+            .unwrap_or_else(|| panic!("{name}: the driver printed no Reading specs line"));
+        assert!(
+            Path::new(&read).is_absolute() && !Path::new(&read).starts_with(dir.path()),
+            "{name}: the driver read {read}, not the toolchain's file"
+        );
+        checked += 1;
+    }
+    assert!(
+        checked >= 1,
+        "no name of SHIPPED_SPECS ({}) is shipped by the host toolchain",
+        SHIPPED_SPECS.len()
+    );
+    // Negative control: a name no toolchain ships reads the planted file.
+    let read = probe("evil.specs").expect("a Reading specs line");
+    assert_eq!(
+        dir.path().join(&read),
+        dir.path().join("evil.specs"),
+        "the planted evil.specs was not the file read"
+    );
 }
 
 #[test]

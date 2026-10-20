@@ -479,7 +479,83 @@ fn build_01_allow_list_is_the_measured_set() {
             "-specs=",
         ]
     );
-    assert_eq!(SHIPPED_SPECS.to_vec(), Vec::<&str>::new());
+    assert_eq!(SHIPPED_SPECS.to_vec(), MEASURED_SPECS);
+}
+
+/// The spec names the pinned image's driver reads from inside the toolchain,
+/// in byte order: the `arm-specs` notice of container run 39453293834 (job
+/// 118734041778, head 4818d97, Arm GNU Toolchain 14.3.Rel1).
+const MEASURED_SPECS: [&str; 13] = [
+    "aprofile-validation-v2m.specs",
+    "aprofile-validation.specs",
+    "aprofile-ve-v2m.specs",
+    "aprofile-ve.specs",
+    "iq80310.specs",
+    "linux.specs",
+    "nano.specs",
+    "nosys.specs",
+    "pid.specs",
+    "rdimon-v2m.specs",
+    "rdimon.specs",
+    "rdpmon.specs",
+    "redboot.specs",
+];
+
+#[test]
+fn build_01_shipped_specs_are_measured() {
+    // WR-13: an empty set would refuse every -specs=, which is safe but means
+    // the measurement never reached the constant.
+    assert!(
+        !SHIPPED_SPECS.is_empty(),
+        "SHIPPED_SPECS is empty: the names measured from the pinned image are missing"
+    );
+    for name in SHIPPED_SPECS {
+        let stem = name.strip_suffix(".specs").unwrap_or("");
+        assert!(
+            !stem.is_empty() && !name.contains('/'),
+            "{name} is not a bare <name>.specs"
+        );
+    }
+    let mut sorted = SHIPPED_SPECS.to_vec();
+    sorted.sort_unstable();
+    assert_eq!(
+        SHIPPED_SPECS.to_vec(),
+        sorted,
+        "SHIPPED_SPECS is in byte order"
+    );
+}
+
+#[test]
+fn build_01_specs_allowed_only_for_shipped_names() {
+    // Each shipped name passes both ends.
+    for name in MEASURED_SPECS {
+        let flag = format!("-specs={name}");
+        let arguments = with_inserted(&[&flag]);
+        let result = canon(&[raw_of(&arguments)])
+            .unwrap_or_else(|error| panic!("{flag} is refused at capture: {error:?}"));
+        policy().check_entry(&result.entries[0]).unwrap();
+        policy()
+            .check_entry(&entry_of(&arguments))
+            .unwrap_or_else(|error| panic!("{flag} is refused at replay: {error:?}"));
+    }
+    // A name the toolchain does not ship is read from the working directory.
+    let refused: [(&[&str], &str); 6] = [
+        (&["-specs=evil.specs"], "-specs=evil.specs"),
+        (&["-specs=../nano.specs"], "-specs=../nano.specs"),
+        (&["-specs=sub/nano.specs"], "-specs=sub/nano.specs"),
+        (&["-specs=/opt/x/nano.specs"], "-specs=/opt/x/nano.specs"),
+        (&["-specs="], "-specs="),
+        (&["-specs", "nano.specs"], "-specs"),
+    ];
+    for (inserted, expected) in refused {
+        assert_helper(&with_inserted(inserted), expected, &format!("{inserted:?}"));
+    }
+    assert_not_allowed(
+        &with_inserted(&["--specs=nano.specs"]),
+        "--specs=nano.specs",
+        "--specs=",
+    );
+    assert_eq!(SHIPPED_SPECS.to_vec(), MEASURED_SPECS);
 }
 
 #[test]
