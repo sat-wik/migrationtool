@@ -83,10 +83,16 @@
 //! - `captured` needs no cause, both gates passed and a non-empty object set,
 //!   otherwise `gates_not_passed` ([`settle_verdict`],
 //!   `build_01_captured_verdict_needs_passed_gates_and_objects`);
-//! - the compile commands must pass the driver-option gate (`helper_option`,
-//!   `build_01_record_stage_refuses_a_helper_option_in_the_export`) and the
-//!   write-path gate (`outside_run_root`, `write_redirect`,
-//!   `build_01_record_stage_refuses_a_write_outside_the_run_root_in_the_export`);
+//! - the compile commands must pass the allow-list walk of the record stage
+//!   itself ([`crate::cc::CcPolicy::check_command`]): an unlisted argument is
+//!   `option_not_allowed`
+//!   (`build_01_record_stage_refuses_a_helper_option_in_the_export`), a
+//!   response file or an unshipped spec file `helper_option`, a depfile option
+//!   without an operand `write_redirect`, a write path outside the run root
+//!   `outside_run_root`
+//!   (`build_01_record_stage_refuses_a_write_outside_the_run_root_in_the_export`),
+//!   and a `-c` that is only an operand `not_compile_only`
+//!   (`build_01_record_stage_refuses_an_operand_compile_flag_in_the_export`);
 //! - it cannot change the toolchain file unnoticed (`toolchain_changed`,
 //!   `build_01_record_stage_refuses_a_changed_toolchain_file`), nor the source
 //!   verification, the tools, the inputs check, another pair's evidence
