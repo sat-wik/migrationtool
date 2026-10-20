@@ -12,8 +12,9 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use mt_capture::cc::{
-    Canonical, CcEntry, CcError, CcPolicy, HELPER_OPTION_PREFIXES, RawEntry, canonical_output,
-    canonicalise, check_write_paths, find_helper_option, parse_raw, to_json,
+    ALLOWED_OPTIONS, Canonical, CcEntry, CcError, CcPolicy, CommandWalk, Operand, OperandKind,
+    RawEntry, SHIPPED_SPECS, canonical_output, canonicalise, check_write_paths, parse_raw, to_json,
+    walk_arguments,
 };
 use mt_capture::manifest::BASELINE_CFLAGS;
 
@@ -298,10 +299,12 @@ fn build_01_duplicate_output_is_rejected() {
 }
 
 // ---------------------------------------------------------------------------
-// Plan 02-20, gap G-02-6 (threats T-02-67 and T-02-70): the gate refuses GCC
-// driver options that run or load another program, and bounds every path the
-// compiler writes. The same entry must be refused by `canonicalise` (capture)
-// and by `CcPolicy::check_entry` (replay, before any spawn).
+// Plans 02-20 and 02-21 (gaps G-02-6 and G-02-8; threats T-02-67, T-02-70,
+// T-02-72, T-02-73): the gate is an allow-list walk. Only the spellings of
+// `ALLOWED_OPTIONS` pass, one operand-aware walk decides compile-only, the
+// output and the write paths, and the same entry must be refused by
+// `canonicalise` (capture) and by `CcPolicy::check_entry` (replay, before any
+// spawn).
 // ---------------------------------------------------------------------------
 
 fn strings(parts: &[&str]) -> Vec<String> {
@@ -334,6 +337,9 @@ fn raw_of(arguments: &[String]) -> RawEntry {
 }
 
 /// The canonical entry the arguments would produce, built without any gate.
+/// When the walk refuses the arguments, the output is the one the record
+/// stage would have written for `-o out/a.o`, so that replay's own gate is
+/// what is tested.
 fn entry_of(arguments: &[String]) -> CcEntry {
     let mut entry = CcEntry {
         directory: ROOT.to_owned(),
@@ -341,7 +347,7 @@ fn entry_of(arguments: &[String]) -> CcEntry {
         arguments: arguments.to_vec(),
         output: String::new(),
     };
-    entry.output = canonical_output(&entry).unwrap();
+    entry.output = canonical_output(&entry).unwrap_or_else(|_| format!("{ROOT}/out/a.o"));
     entry
 }
 
@@ -358,6 +364,16 @@ fn assert_helper(arguments: &[String], expected: &str, label: &str) {
         assert!(
             matches!(&error, CcError::HelperOption { flag } if flag == expected),
             "{label}: expected HelperOption {{ {expected} }}, got {error:?}"
+        );
+    }
+}
+
+fn assert_not_allowed(arguments: &[String], expected: &str, label: &str) {
+    let (capture, replay) = both_errors(arguments);
+    for error in [capture, replay] {
+        assert!(
+            matches!(&error, CcError::OptionNotAllowed { flag } if flag == expected),
+            "{label}: expected OptionNotAllowed {{ {expected} }}, got {error:?}"
         );
     }
 }
@@ -382,57 +398,307 @@ fn assert_redirect(arguments: &[String], expected: &str, label: &str) {
     }
 }
 
+fn assert_not_compile_only(arguments: &[String], label: &str) {
+    let (capture, replay) = both_errors(arguments);
+    for error in [capture, replay] {
+        assert!(
+            matches!(&error, CcError::NotCompileOnly),
+            "{label}: expected NotCompileOnly, got {error:?}"
+        );
+    }
+}
+
 #[test]
-fn build_01_rejects_helper_executing_driver_options() {
-    // The set cannot shrink silently.
+fn build_01_allow_list_is_the_measured_set() {
+    // Measured from the 30 retained pairs' recorded compile commands, plus the
+    // founder's depfile flags and `-specs=`. Either list changes only here.
+    let spellings: Vec<&str> = ALLOWED_OPTIONS
+        .iter()
+        .map(|option| option.spelling)
+        .collect();
     assert_eq!(
-        HELPER_OPTION_PREFIXES,
+        spellings,
         [
-            "-wrapper",
-            "-B",
-            "--prefix",
-            "-specs",
-            "--specs",
-            "-fplugin",
-            "-iplugindir",
-            "-fcompare-debug=",
-            "@",
+            "-c",
+            "-g",
+            "-O3",
+            "-Os",
+            "-fPIC",
+            "-fstack-protector-strong",
+            "-fvisibility=hidden",
+            "-mcpu=cortex-m4",
+            "-mfloat-abi=hard",
+            "-mfpu=fpv4-sp-d16",
+            "-mthumb",
+            "-pedantic",
+            "-std=c89",
+            "-std=c99",
+            "-Wall",
+            "-Wc++-compat",
+            "-Wcast-align",
+            "-Wcast-qual",
+            "-Wconversion",
+            "-Wdouble-promotion",
+            "-Werror",
+            "-Werror=format-security",
+            "-Werror=implicit-function-declaration",
+            "-Werror=incompatible-pointer-types",
+            "-Werror=int-conversion",
+            "-Wextra",
+            "-Wformat-overflow",
+            "-Wformat=2",
+            "-Winit-self",
+            "-Wmissing-prototypes",
+            "-Wnested-externs",
+            "-Wno-format-nonliteral",
+            "-Wparentheses",
+            "-Wpointer-arith",
+            "-Wredundant-decls",
+            "-Wshadow",
+            "-Wsign-compare",
+            "-Wstrict-overflow=2",
+            "-Wstrict-prototypes",
+            "-Wsuggest-attribute=format",
+            "-Wswitch-default",
+            "-Wswitch-enum",
+            "-Wundef",
+            "-Wunused-macros",
+            "-Wwrite-strings",
+            "-MD",
+            "-MMD",
+            "-MP",
+            "-o",
+            "-I",
+            "-D",
+            "-MF",
+            "-MT",
+            "-MQ",
+            "-specs=",
         ]
     );
-    // (inserted arguments, the argument the error must name)
-    let cases: [(&[&str], &str); 17] = [
+    assert_eq!(SHIPPED_SPECS.to_vec(), Vec::<&str>::new());
+}
+
+#[test]
+fn build_01_allow_list_refuses_everything_else() {
+    // CR-01 and CR-02, each as OptionNotAllowed with the whole argument.
+    for flag in [
+        "--plugin=/work/run/fixture/default/evil.so",
+        "--compare-debug=-wrapper,/work/run/fixture/default/w.sh",
+        "--opt-info-all=/out/leak.txt",
+        "--dump-tree-all=/out/leak",
+        "--dump-final-insns=/out/f",
+        "--profile-use=/out/p",
+        "--profile-dir=/out/pd",
+        "-Wa,-MD,/out/e.d",
+        "-Wa,-MD=/out/e.d",
+        "-Wa,--M,/out/e.d",
+        "-Wa,-M,/out/e.d",
+        "--for-assembler=-MD,/out/e.d",
+    ] {
+        assert_not_allowed(&with_inserted(&[flag]), flag, flag);
+    }
+    assert_not_allowed(
+        &with_inserted(&["-Xassembler", "-MD", "-Xassembler", "/out/e.d"]),
+        "-Xassembler",
+        "-Xassembler -MD",
+    );
+    // CR-03: the review's vector stops at the first unlisted option; the
+    // minimal one is not a compile-only command.
+    let review = strings(&[
+        GCC,
+        "-MD",
+        "-MT",
+        "-c",
+        "a.c",
+        "-o",
+        "out/a.o",
+        "-nostdlib",
+        "-nostartfiles",
+        "-Wl,-Map=/out/m.map",
+        "-Wl,-e,0",
+    ]);
+    assert_not_allowed(&review, "-nostdlib", "CR-03");
+    assert_not_compile_only(
+        &strings(&[GCC, "-MD", "-MT", "-c", "a.c", "-o", "out/a.o"]),
+        "minimal CR-03",
+    );
+    // What 02-20's keeps-ordinary-flags test accepted and the allow-list now
+    // refuses: (inserted arguments, the argument the error must name).
+    let refused: [(&[&str], &str); 17] = [
+        (
+            &["--sysroot=/usr/lib/arm-none-eabi"],
+            "--sysroot=/usr/lib/arm-none-eabi",
+        ),
+        (&["-isysroot", "/x"], "-isysroot"),
+        (&["-Wa,-mthumb"], "-Wa,-mthumb"),
+        (&["-Xassembler", "-mthumb"], "-Xassembler"),
+        (&["-fcompare-debug"], "-fcompare-debug"),
+        (&["-include", "x.h"], "-include"),
+        (&["-iquote", "inc"], "-iquote"),
+        (&["--write-dependencies"], "--write-dependencies"),
+        (&["-dumpdir", "out/"], "-dumpdir"),
+        (&["-dumpbase", "a.c"], "-dumpbase"),
+        (&["-dumpbase-ext", ".c"], "-dumpbase-ext"),
+        (&["-save-temps=obj"], "-save-temps=obj"),
+        (&["-fstack-usage"], "-fstack-usage"),
+        (&["-fdump-tree-all"], "-fdump-tree-all"),
+        (&["-fopt-info-vec=stderr"], "-fopt-info-vec=stderr"),
+        (&["-aux-info=out/aux.txt"], "-aux-info=out/aux.txt"),
+        (&["--output=out/a.o"], "--output=out/a.o"),
+    ];
+    for (inserted, expected) in refused {
+        assert_not_allowed(&with_inserted(inserted), expected, &format!("{inserted:?}"));
+    }
+    // Never measured: other modes, carriers, unmeasured values and bare dashes.
+    let unmeasured: [(&[&str], &str); 18] = [
+        (&["-x", "c"], "-x"),
+        (&["-isystem", "/x"], "-isystem"),
+        (&["-E"], "-E"),
+        (&["-S"], "-S"),
+        (&["-M"], "-M"),
+        (&["-MM"], "-MM"),
+        (&["-MG"], "-MG"),
+        (&["-D"], "-D"),
+        (&["-mfloat-abi=soft"], "-mfloat-abi=soft"),
+        (&["-O2"], "-O2"),
+        (&["-Wl,-Map=x"], "-Wl,-Map=x"),
+        (&["-Xlinker", "-Map"], "-Xlinker"),
+        (&["--for-linker=x"], "--for-linker=x"),
+        (&["-Wp,-DX"], "-Wp,-DX"),
+        (&["-Xpreprocessor", "-DX"], "-Xpreprocessor"),
+        (&["-"], "-"),
+        (&["--"], "--"),
+        (&["-wrapper", "/bin/echo"], "-wrapper"),
+    ];
+    for (inserted, expected) in unmeasured {
+        assert_not_allowed(&with_inserted(inserted), expected, &format!("{inserted:?}"));
+    }
+    // A trailing -I has no directory.
+    assert_not_allowed(&with_tail(&["-o", "out/a.o", "-I"]), "-I", "trailing -I");
+}
+
+#[test]
+fn build_01_one_walk_serves_compile_only_output_and_write_paths() {
+    // IN-14: one table, one walk. Every operand-taking spelling consumes its
+    // separate operand exactly once, and its joined form consumes nothing.
+    let mut checked = 0;
+    for option in &ALLOWED_OPTIONS {
+        let spelling = option.spelling;
+        match option.operand {
+            Operand::None => {}
+            Operand::JoinedOrSeparate(kind) => {
+                checked += 1;
+                // The separate operand is `-c`, so nothing compiles.
+                let separate = strings(&[GCC, spelling, "-c", "a.c"]);
+                let walk: CommandWalk = walk_arguments(&separate).unwrap();
+                assert!(!walk.compile_only, "{spelling}: -c read as an option");
+                assert_not_compile_only(&separate, spelling);
+                // The joined form leaves the next argument alone.
+                let joined = strings(&[GCC, &format!("{spelling}out/j"), "-c", "a.c"]);
+                let walk = walk_arguments(&joined).unwrap();
+                assert!(walk.compile_only, "{spelling}: the joined form consumed -c");
+                // The path operands are collected as written, in order.
+                let tail = strings(&[GCC, "-c", "a.c", spelling, "out/s"]);
+                let walk = walk_arguments(&tail).unwrap();
+                match kind {
+                    OperandKind::OutputPath => {
+                        assert_eq!(walk.outputs, ["out/s"], "{spelling}");
+                        assert!(walk.dep_files.is_empty(), "{spelling}");
+                    }
+                    OperandKind::DepfilePath => {
+                        assert_eq!(walk.dep_files, ["out/s"], "{spelling}");
+                        assert!(walk.outputs.is_empty(), "{spelling}");
+                    }
+                    _ => {
+                        assert!(walk.outputs.is_empty(), "{spelling}");
+                        assert!(walk.dep_files.is_empty(), "{spelling}");
+                    }
+                }
+                // canonical_output, check_write_paths and check_command agree.
+                let expected = if kind == OperandKind::OutputPath {
+                    format!("{ROOT}/out/s")
+                } else {
+                    format!("{ROOT}/a.o")
+                };
+                assert_eq!(canonical_output(&entry_of(&tail)).unwrap(), expected);
+                check_write_paths(ROOT, &tail, &policy().run_root).unwrap();
+                assert_eq!(
+                    policy().check_command(ROOT, "a.c", &tail).unwrap(),
+                    expected,
+                    "{spelling}"
+                );
+                policy().check_entry(&entry_of(&tail)).unwrap();
+                // A path operand outside the run root is refused by all three.
+                if matches!(kind, OperandKind::OutputPath | OperandKind::DepfilePath) {
+                    let outside = strings(&[GCC, "-c", "a.c", spelling, "/out/s"]);
+                    let walk = walk_arguments(&outside).unwrap();
+                    assert!(walk.compile_only, "{spelling}");
+                    for error in [
+                        check_write_paths(ROOT, &outside, &policy().run_root).unwrap_err(),
+                        policy().check_command(ROOT, "a.c", &outside).unwrap_err(),
+                    ] {
+                        assert!(
+                            matches!(&error, CcError::OutsideRunRoot { path } if path == "/out/s"),
+                            "{spelling}: {error:?}"
+                        );
+                    }
+                    assert_outside(&outside, "/out/s", spelling);
+                }
+            }
+            Operand::JoinedOnly(kind) => {
+                checked += 1;
+                let value = match kind {
+                    OperandKind::SpecName => match SHIPPED_SPECS.first() {
+                        Some(name) => *name,
+                        None => continue,
+                    },
+                    _ => "X",
+                };
+                let joined = strings(&[GCC, &format!("{spelling}{value}"), "-c", "a.c"]);
+                let walk = walk_arguments(&joined).unwrap();
+                assert!(walk.compile_only, "{spelling}: the joined form consumed -c");
+                assert!(walk.outputs.is_empty() && walk.dep_files.is_empty());
+            }
+        }
+    }
+    assert_eq!(checked, 7, "-o, -I, -D, -MF, -MT, -MQ and -specs=");
+}
+
+#[test]
+fn build_01_rejects_helper_executing_driver_options() {
+    // (inserted arguments, the argument the error must name). A spec file and
+    // a response file make the driver read commands or options from a file
+    // (HelperOption); everything else is simply not on the allow-list.
+    let helper: [(&[&str], &str); 3] = [
+        (&["-specs=x.specs"], "-specs=x.specs"),
+        (&["-specs", "x.specs"], "-specs"),
+        (
+            &["@/work/run/fixture/default/opts.rsp"],
+            "@/work/run/fixture/default/opts.rsp",
+        ),
+    ];
+    for (inserted, expected) in helper {
+        assert_helper(&with_inserted(inserted), expected, &format!("{inserted:?}"));
+    }
+    let not_allowed: [(&[&str], &str); 14] = [
         (&["-wrapper", "/tmp/w.sh"], "-wrapper"),
         (&["-B/tmp/b/"], "-B/tmp/b/"),
         (&["-B", "/tmp/b/"], "-B"),
         (&["--prefix=/tmp/b/"], "--prefix=/tmp/b/"),
         (&["--prefix", "/tmp/b/"], "--prefix"),
-        (&["-specs=x.specs"], "-specs=x.specs"),
-        (&["-specs", "x.specs"], "-specs"),
         (&["--specs=nano.specs"], "--specs=nano.specs"),
         (&["--specs", "x.specs"], "--specs"),
         (&["-fplugin=/tmp/p.so"], "-fplugin=/tmp/p.so"),
         (&["-fplugin-arg-p-key=v"], "-fplugin-arg-p-key=v"),
         (&["-iplugindir=/tmp/p"], "-iplugindir=/tmp/p"),
         (&["-fcompare-debug=-B/tmp/b/"], "-fcompare-debug=-B/tmp/b/"),
-        (
-            &["@/work/run/fixture/default/opts.rsp"],
-            "@/work/run/fixture/default/opts.rsp",
-        ),
         (&["-Wp,-fplugin=/tmp/p.so"], "-Wp,-fplugin=/tmp/p.so"),
         (&["-Wp,-MMD,dep.d,@opts.rsp"], "-Wp,-MMD,dep.d,@opts.rsp"),
-        (
-            &["-Xpreprocessor", "-fplugin=/tmp/p.so"],
-            "-fplugin=/tmp/p.so",
-        ),
+        (&["-Xpreprocessor", "-fplugin=/tmp/p.so"], "-Xpreprocessor"),
     ];
-    for (inserted, expected) in cases {
-        let arguments = with_inserted(inserted);
-        assert_eq!(
-            find_helper_option(&arguments).map(String::as_str),
-            Some(expected),
-            "{inserted:?}"
-        );
-        assert_helper(&arguments, expected, &format!("{inserted:?}"));
+    for (inserted, expected) in not_allowed {
+        assert_not_allowed(&with_inserted(inserted), expected, &format!("{inserted:?}"));
     }
     // A CMake `command` string takes the same road.
     let mut cmake = raw(ROOT, "a.c", &[]);
@@ -440,30 +706,26 @@ fn build_01_rejects_helper_executing_driver_options() {
     cmake.command = Some(format!("{GCC} -wrapper /tmp/w.sh -c a.c"));
     let error = canon(&[cmake]).unwrap_err();
     assert!(
-        matches!(&error, CcError::HelperOption { flag } if flag == "-wrapper"),
+        matches!(&error, CcError::OptionNotAllowed { flag } if flag == "-wrapper"),
         "{error:?}"
     );
 }
 
 #[test]
 fn build_01_driver_option_gate_keeps_ordinary_flags() {
-    let mut inserted: Vec<&str> = BASELINE_CFLAGS.to_vec();
+    // Every exact measured spelling, then the operand forms the bed uses.
+    let mut inserted: Vec<&str> = ALLOWED_OPTIONS
+        .iter()
+        .filter(|option| matches!(option.operand, Operand::None))
+        .map(|option| option.spelling)
+        .collect();
+    inserted.extend(BASELINE_CFLAGS);
     inserted.extend([
-        "--sysroot=/usr/lib/arm-none-eabi",
-        "-isysroot",
-        "/x",
-        "-Wa,-mthumb",
-        "-Xassembler",
-        "-mthumb",
-        "-fcompare-debug",
-        "-fPIC",
-        "-fstack-protector-strong",
-        "-fvisibility=hidden",
-        "-include",
-        "x.h",
-        "-iquote",
-        "inc",
         "-DAT=@",
+        "-DNAME=1",
+        "-Iinc",
+        "-I",
+        "inc",
         // The CMake depfile shape.
         "-MD",
         "-MT",
@@ -471,27 +733,17 @@ fn build_01_driver_option_gate_keeps_ordinary_flags() {
         "-MF",
         "CMakeFiles/x.dir/a.c.o.d",
         "-MMD",
+        "-MP",
         "-MQ",
         "/anything",
         "-MTtgt",
-        "--write-dependencies",
-        "-dumpdir",
-        "out/",
-        "-dumpbase",
-        "a.c",
-        "-dumpbase-ext",
-        ".c",
-        "-save-temps=obj",
-        "-fstack-usage",
-        "-fdump-tree-all",
-        "-fopt-info-vec=stderr",
-        "-aux-info=out/aux.txt",
-        "--output=out/a.o",
+        "-MFout/a.d",
+        "-o",
+        "out/a.o",
     ]);
     let mut arguments = vec![GCC.to_owned()];
     arguments.extend(strings(&inserted));
     arguments.extend(strings(&["-c", "a.c"]));
-    assert_eq!(find_helper_option(&arguments), None);
     let result = canon(&[raw_of(&arguments)]).unwrap();
     assert_eq!(result.entries[0].output, format!("{ROOT}/out/a.o"));
     policy().check_entry(&result.entries[0]).unwrap();
@@ -516,7 +768,6 @@ fn build_01_driver_option_gate_keeps_ordinary_flags() {
             ci_policy.check_entry(entry).unwrap_or_else(|error| {
                 panic!("{name}: {} is refused: {error:?}", entry.file);
             });
-            assert_eq!(find_helper_option(&entry.arguments), None, "{name}");
             assert_eq!(canonical_output(entry).unwrap(), entry.output, "{name}");
         }
     }
@@ -524,19 +775,11 @@ fn build_01_driver_option_gate_keeps_ordinary_flags() {
 
 #[test]
 fn build_01_handles_write_path_options() {
-    // Output resolution: `--output` is `-o`, and the last output wins.
+    // Output resolution: the last output wins, joined or separate.
     let output_of = |arguments: &[String]| canonical_output(&entry_of(arguments)).unwrap();
     assert_eq!(
-        output_of(&strings(&[GCC, "-c", "a.c", "-o", "a.o", "--output=b.o"])),
+        output_of(&strings(&[GCC, "-c", "a.c", "-o", "a.o", "-o", "b.o"])),
         format!("{ROOT}/b.o")
-    );
-    assert_eq!(
-        output_of(&strings(&[GCC, "-c", "a.c", "--output", "out/c.o"])),
-        format!("{ROOT}/out/c.o")
-    );
-    assert_eq!(
-        output_of(&strings(&[GCC, "-c", "a.c", "--output=b.o", "-o", "c.o"])),
-        format!("{ROOT}/c.o")
     );
     assert_eq!(
         output_of(&strings(&[GCC, "-c", "a.c", "-o/abs/x.o"])),
@@ -544,23 +787,12 @@ fn build_01_handles_write_path_options() {
     );
 
     // A write path that leaves the run root: the lexically resolved path.
-    let outside: [(Vec<String>, &str); 18] = [
-        (with_tail(&["--output=/out/x"]), "/out/x"),
-        (with_tail(&["--output", "/out/x"]), "/out/x"),
+    let outside: [(Vec<String>, &str); 7] = [
         (with_tail(&["-o/out/x.o"]), "/out/x.o"),
+        (with_tail(&["-o", "/out/x.o"]), "/out/x.o"),
         (with_inserted(&["-MF", "/out/x.d"]), "/out/x.d"),
         (with_inserted(&["-MF/out/x.d"]), "/out/x.d"),
         (with_inserted(&["-MF", "../../../../out/x.d"]), "/out/x.d"),
-        (with_inserted(&["-dumpdir", "/out/dd/"]), "/out/dd"),
-        (with_inserted(&["--dumpdir", "/out/dd/"]), "/out/dd"),
-        (with_inserted(&["-dumpbase", "/out/b.c"]), "/out/b.c"),
-        (with_inserted(&["--dumpbase", "/out/b.c"]), "/out/b.c"),
-        (with_inserted(&["-aux-info", "/out/a.txt"]), "/out/a.txt"),
-        (with_inserted(&["-aux-info=/out/a.txt"]), "/out/a.txt"),
-        (with_inserted(&["-fdump-tree-all=/out/d"]), "/out/d"),
-        (with_inserted(&["-fopt-info-vec=/out/o"]), "/out/o"),
-        (with_inserted(&["-fdump-final-insns=/out/f"]), "/out/f"),
-        (with_inserted(&["-fdeps-file=/out/d.json"]), "/out/d.json"),
         // The decoy: a name operand that looks like -o must not hide the real one.
         (
             with_tail(&["-o", "/out/x.o", "-MT", "-oinside.o"]),
@@ -576,44 +808,38 @@ fn build_01_handles_write_path_options() {
         assert_outside(arguments, expected, &format!("{arguments:?}"));
     }
 
-    // Write options that cannot be bounded are refused outright.
-    let redirects: [(Vec<String>, &str); 13] = [
+    // A depfile option without an operand cannot be bounded.
+    for flag in ["-MF", "-MT", "-MQ"] {
+        assert_redirect(&with_tail(&["-o", "out/a.o", flag]), flag, flag);
+    }
+
+    // Every other write option is simply not on the allow-list.
+    let not_allowed: [(Vec<String>, &str); 8] = [
+        (with_tail(&["--output=/out/x"]), "--output=/out/x"),
+        (with_tail(&["--output", "/out/x"]), "--output"),
+        (with_inserted(&["-dumpdir", "/out/dd/"]), "-dumpdir"),
+        (with_inserted(&["-aux-info", "/out/a.txt"]), "-aux-info"),
+        (
+            with_inserted(&["-fdump-tree-all=/out/d"]),
+            "-fdump-tree-all=/out/d",
+        ),
+        (
+            with_inserted(&["-fdeps-file=/out/d.json"]),
+            "-fdeps-file=/out/d.json",
+        ),
         (with_inserted(&["-Wp,-MD,/out/wp.d"]), "-Wp,-MD,/out/wp.d"),
-        (with_inserted(&["-Wp,-MMD,dep.d"]), "-Wp,-MMD,dep.d"),
-        (with_inserted(&["-Wp,-MF", "-Wp,/out/split.d"]), "-Wp,-MF"),
         (
             with_inserted(&["-Xpreprocessor", "-MF", "-Xpreprocessor", "/out/xp.d"]),
-            "-MF",
+            "-Xpreprocessor",
         ),
-        (
-            with_inserted(&["-Wa,-alh=/out/l.txt"]),
-            "-Wa,-alh=/out/l.txt",
-        ),
-        (with_inserted(&["-Wa,--MD,/out/as.d"]), "-Wa,--MD,/out/as.d"),
-        (with_inserted(&["-Wa,@/tmp/as.rsp"]), "-Wa,@/tmp/as.rsp"),
-        (
-            with_inserted(&["-Xassembler", "-o", "-Xassembler", "/out/a.o"]),
-            "-o",
-        ),
-        (
-            with_inserted(&["--for-assembler=-alh=/out/l"]),
-            "--for-assembler=-alh=/out/l",
-        ),
-        (
-            with_inserted(&["--for-assembler", "-alh=/out/l"]),
-            "-alh=/out/l",
-        ),
-        (with_inserted(&["-dumpdir=/out/dd/"]), "-dumpdir=/out/dd/"),
-        (with_tail(&["-MF"]), "-MF"),
-        (with_tail(&["-dumpbase"]), "-dumpbase"),
     ];
-    for (arguments, expected) in &redirects {
-        assert_redirect(arguments, expected, &format!("{arguments:?}"));
+    for (arguments, expected) in &not_allowed {
+        assert_not_allowed(arguments, expected, &format!("{arguments:?}"));
     }
 }
 
-/// Every `<id>/<cfg>/compile_commands.json` under `captures`.
-fn local_capture_files(captures: &Path) -> Vec<PathBuf> {
+/// Every `<id>/<cfg>` directory under `captures`.
+fn local_capture_dirs(captures: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
     for id in std::fs::read_dir(captures).unwrap() {
         let id = id.unwrap().path();
@@ -621,14 +847,43 @@ fn local_capture_files(captures: &Path) -> Vec<PathBuf> {
             continue;
         }
         for cfg in std::fs::read_dir(&id).unwrap() {
-            let file = cfg.unwrap().path().join("compile_commands.json");
-            if file.is_file() {
-                found.push(file);
+            let cfg = cfg.unwrap().path();
+            if cfg.is_dir() {
+                found.push(cfg);
             }
         }
     }
     found.sort();
     found
+}
+
+/// A policy that allows exactly the compilers the file names, under `run_root`.
+fn policy_for(compilers: impl Iterator<Item = String>, run_root: PathBuf) -> CcPolicy {
+    CcPolicy {
+        allowed_compilers: compilers.collect::<BTreeSet<_>>().into_iter().collect(),
+        run_root,
+    }
+}
+
+/// Every per-entry gate runs before the duplicate-output check, so a
+/// DuplicateOutput result means that no entry was refused by a gate.
+fn raw_passes(raw: &[RawEntry], policy: &CcPolicy, label: &Path) -> bool {
+    match canonicalise(raw, policy, &all_exist) {
+        Ok(_) | Err(CcError::DuplicateOutput { .. }) => true,
+        Err(error) => {
+            eprintln!("RAW REFUSED {}: {error:?}", label.display());
+            false
+        }
+    }
+}
+
+/// The argv[0] of a raw entry, from its arguments or its command string.
+fn raw_compiler(raw: &RawEntry) -> String {
+    match (&raw.arguments, &raw.command) {
+        (Some(arguments), _) => arguments[0].clone(),
+        (None, Some(command)) => shlex::split(command).unwrap()[0].clone(),
+        (None, None) => String::new(),
+    }
 }
 
 /// Explicit run only: `MT_LOCAL_CAPTURES=<dir> cargo test ... -- --ignored`.
@@ -639,57 +894,67 @@ fn local_capture_files(captures: &Path) -> Vec<PathBuf> {
 fn build_01_local_captures_pass_the_compile_command_gate() {
     let captures = std::env::var("MT_LOCAL_CAPTURES")
         .expect("MT_LOCAL_CAPTURES must name the directory of the local captures");
+    assert!(!captures.is_empty(), "MT_LOCAL_CAPTURES is empty");
     let captures = PathBuf::from(captures);
-    let files = local_capture_files(&captures);
-    assert!(
-        !files.is_empty(),
-        "no compile_commands.json under {}",
-        captures.display()
-    );
-    let (mut raw_entries, mut canonical_entries, mut refused) = (0_usize, 0_usize, 0_usize);
-    for file in &files {
-        let cfg_dir = file.parent().unwrap();
+    let runs = captures.parent().unwrap().join("run");
+    let (mut files, mut raw_entries, mut canonical_entries, mut refused) =
+        (0_usize, 0_usize, 0_usize, 0_usize);
+    let (mut run_exports, mut run_export_entries) = (0_usize, 0_usize);
+    for cfg_dir in local_capture_dirs(&captures) {
         let id = cfg_dir.parent().unwrap().file_name().unwrap();
         let cfg = cfg_dir.file_name().unwrap();
-        let run_root = captures.parent().unwrap().join("run").join(id).join(cfg);
-        let entries: Vec<CcEntry> = serde_json::from_slice(&std::fs::read(file).unwrap()).unwrap();
-        let compilers: Vec<String> = entries
-            .iter()
-            .map(|entry| entry.arguments[0].clone())
-            .collect::<BTreeSet<_>>()
-            .into_iter()
-            .collect();
-        let local_policy = CcPolicy {
-            allowed_compilers: compilers,
-            run_root,
-        };
-        for entry in &entries {
-            canonical_entries += 1;
-            if let Err(error) = local_policy.check_entry(entry) {
-                refused += 1;
-                eprintln!("REFUSED {}: {} {error:?}", file.display(), entry.file);
-            }
-            if canonical_output(entry).unwrap() != entry.output {
-                refused += 1;
-                eprintln!("OUTPUT {}: {}", file.display(), entry.file);
+        let run_root = runs.join(id).join(cfg);
+        let file = cfg_dir.join("compile_commands.json");
+        let raw_path = cfg_dir.join("compile_commands.raw.json");
+        if file.is_file() {
+            files += 1;
+            let entries: Vec<CcEntry> =
+                serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+            let local_policy = policy_for(
+                entries.iter().map(|entry| entry.arguments[0].clone()),
+                run_root.clone(),
+            );
+            for entry in &entries {
+                canonical_entries += 1;
+                if let Err(error) = local_policy.check_entry(entry) {
+                    refused += 1;
+                    eprintln!("REFUSED {}: {} {error:?}", file.display(), entry.file);
+                }
+                if canonical_output(entry).ok().as_deref() != Some(entry.output.as_str()) {
+                    refused += 1;
+                    eprintln!("OUTPUT {}: {}", file.display(), entry.file);
+                }
             }
         }
-        let raw_path = cfg_dir.join("compile_commands.raw.json");
-        let raw = parse_raw(&std::fs::read(&raw_path).unwrap()).unwrap();
-        raw_entries += raw.len();
-        // Every per-entry gate runs before the duplicate-output check, so a
-        // DuplicateOutput result means that no entry was refused by a gate.
-        match canonicalise(&raw, &local_policy, &all_exist) {
-            Ok(_) | Err(CcError::DuplicateOutput { .. }) => {}
-            Err(error) => {
+        if raw_path.is_file() {
+            let raw = parse_raw(&std::fs::read(&raw_path).unwrap()).unwrap();
+            raw_entries += raw.len();
+            let raw_policy = policy_for(raw.iter().map(raw_compiler), run_root);
+            if !raw_passes(&raw, &raw_policy, &raw_path) {
                 refused += 1;
-                eprintln!("RAW REFUSED {}: {error:?}", raw_path.display());
+            }
+        } else {
+            // No raw file (tinycbor's local build failed on the host newlib):
+            // the run export, every output treated as existing.
+            let export = run_root.join("build/compile_commands.json");
+            if export.is_file() {
+                run_exports += 1;
+                let raw = parse_raw(&std::fs::read(&export).unwrap()).unwrap();
+                run_export_entries += raw.len();
+                let export_policy = policy_for(raw.iter().map(raw_compiler), run_root);
+                if !raw_passes(&raw, &export_policy, &export) {
+                    refused += 1;
+                }
             }
         }
     }
+    assert!(
+        files > 0,
+        "no compile_commands.json under {}",
+        captures.display()
+    );
     println!(
-        "files={} raw_entries={raw_entries} canonical_entries={canonical_entries} refused={refused}",
-        files.len()
+        "files={files} raw_entries={raw_entries} canonical_entries={canonical_entries} run_exports={run_exports} run_export_entries={run_export_entries} refused={refused}"
     );
     assert_eq!(refused, 0);
 }
