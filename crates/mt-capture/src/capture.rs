@@ -1178,6 +1178,8 @@ fn cause_of(error: &CcError) -> &'static str {
         CcError::NotCompileOnly => "not_compile_only",
         CcError::CompilerNotAllowed { .. } => "compiler_not_allowed",
         CcError::ForbiddenFlag { .. } => "forbidden_flag",
+        CcError::HelperOption { .. } => "helper_option",
+        CcError::WriteRedirect { .. } => "write_redirect",
         CcError::OutsideRunRoot { .. } => "outside_run_root",
         CcError::Empty => "empty_capture",
         CcError::DuplicateOutput { .. } => "duplicate_output",
