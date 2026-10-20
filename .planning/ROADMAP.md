@@ -89,7 +89,7 @@ Plans:
   3. For every target and configuration the capture command writes a `compile_commands.json` covering every translation unit, and replaying it in the container reproduces the original build output (byte-identical objects, or identical after a documented normalisation); targets that cannot be reproduced are dropped with the cause logged, leaving at least 10.
   4. Each target has a seed corpus extracted from its own tests and fixtures, or at least 10 hand-made seeds (proposed) when it has none.
 
-**Plans:** 19/20 plans executed (02-11 to 02-20 are gap closure)
+**Plans:** 20/20 plans executed (02-11 to 02-20 are gap closure)
 
 Plans:
 **Wave 1**
@@ -136,7 +136,7 @@ Plans:
 - [x] 02-19-PLAN.md — WR-04 (CI): one build container per pair with only its run directory writable, isolated determinism rerun; final green full-bed run
 
 **Wave 13** *(gap closure; blocked on Wave 12 completion)*
-- [ ] 02-20-PLAN.md — G-02-5, G-02-6, G-02-7 (WR-11, WR-12, T-02-67, T-02-70): compile-command gate refuses helper-executing GCC driver options and bounds every write path (`--output` like `-o`) at capture and replay; record stage refuses a build record that names no failure, captures only on passed gates and objects, checks stage/toolchain.cmake; module doc and AR-02-03 amended; final green full-bed run
+- [x] 02-20-PLAN.md — G-02-5, G-02-6, G-02-7 (WR-11, WR-12, T-02-67, T-02-70): compile-command gate refuses helper-executing GCC driver options and bounds every write path (`--output` like `-o`) at capture and replay; record stage refuses a build record that names no failure, captures only on passed gates and objects, checks stage/toolchain.cmake; module doc and AR-02-03 amended; final green full-bed run
 
 ### Phase 3: Equivalence Contract and Test-Vector Schema
 
@@ -282,7 +282,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Pinned Toolchain Container | 9/9 | Complete    | 2026-10-12 |
-| 2. Test Bed and Build Capture | 19/20 | In Progress | - |
+| 2. Test Bed and Build Capture | 20/20 | In Progress | - |
 | 3. Equivalence Contract and Test-Vector Schema | 0/0 | Not started | - |
 | 4. UB Detection and Decision Log | 0/0 | Not started | - |
 | 5. Target-Matched Differential Harness | 0/0 | Not started | - |
