@@ -18,9 +18,13 @@
 //! every object file the build created must be declared by a compile command
 //! (Bear fails silently, Pitfall 7), and no captured source may use
 //! `__TIMESTAMP__`, which depends on a file's modification time and so cannot be
-//! reproduced. No recorded argument may make the GCC driver run or load another
-//! program ([`crate::cc::HELPER_OPTION_PREFIXES`]) or write a file outside the run
-//! root ([`crate::cc::check_write_paths`], with `--output` resolved like `-o`).
+//! reproduced. Every recorded command must pass the allow-list walk
+//! ([`crate::cc::walk_arguments`] over [`crate::cc::ALLOWED_OPTIONS`], through
+//! [`crate::cc::CcPolicy::check_command`]): an argument that is not on the list
+//! is `option_not_allowed`, a response file or an unshipped spec file is
+//! `helper_option`, a depfile option without an operand is `write_redirect`, an
+//! `-o` or `-MF` path outside the run root is `outside_run_root`, and a command
+//! without a top-level `-c` is `not_compile_only`.
 //! A failed gate is a verdict and a cause in the report, never a pass. Every
 //! subprocess runs through the `mt-toolchain` runner.
 //!
@@ -1206,6 +1210,7 @@ fn cause_of(error: &CcError) -> &'static str {
         CcError::CompilerNotAllowed { .. } => "compiler_not_allowed",
         CcError::ForbiddenFlag { .. } => "forbidden_flag",
         CcError::HelperOption { .. } => "helper_option",
+        CcError::OptionNotAllowed { .. } => "option_not_allowed",
         CcError::WriteRedirect { .. } => "write_redirect",
         CcError::OutsideRunRoot { .. } => "outside_run_root",
         CcError::Empty => "empty_capture",
