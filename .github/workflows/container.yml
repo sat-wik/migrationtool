@@ -6,7 +6,7 @@
 # Log and artifact hosts are not reachable from cloud sessions, so each job also
 # publishes its evidence as job annotations (titles check-a, negative-pin,
 # manifest-a, manifest-b, manifest-compare, smoke, tool-outputs, pin-binding,
-# image-archive, image-digest, verified-image, publish-skipped, and on failure
+# arm-specs, image-archive, image-digest, verified-image, publish-skipped, and on failure
 # "image-a build tail", "image-b build tail", manifest-diff and tag-lookup).
 # `verified-image` is the digest reference later phases use; it is announced by
 # the publish job, after the push, and only when image-a, image-b and compare all
@@ -224,6 +224,49 @@ jobs:
           { cat "$out/inventory.txt"; echo "exit code: $rc"; docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' mt-toolchain:ci; } > "$out/inventory-notice.txt"
           cat "$out/inventory-notice.txt"
           annotate notice image-inventory "$out/inventory-notice.txt"
+
+      # WR-13 (plan 02-21): which spec files the pinned Arm toolchain ships and
+      # reads from inside itself. For each lib/*.specs it plants an empty file of
+      # the same name in a fresh working directory and asks the driver (-###,
+      # which runs nothing) which file it reads. A name counts as shipped only
+      # when the path lies under /opt/arm-gnu-toolchain; the control, a name the
+      # toolchain does not ship, must read the planted file, or the measurement
+      # is void. The names become the SHIPPED_SPECS constant of mt-capture's cc.rs.
+      - name: List the spec files the pinned Arm toolchain ships (WR-13)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          cat > "$RUNNER_TEMP/arm-specs.sh" <<'SPECS'
+          gcc=/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc
+          "$gcc" --version | head -n 1
+          probe() {
+            local name=$1 dir line
+            dir=$(mktemp -d /tmp/specs.XXXXXX)
+            : > "$dir/$name"
+            line=$(cd "$dir" && "$gcc" -### -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Os \
+              "-specs=$name" -c -x c /dev/null -o /dev/null 2>&1 | grep -m 1 '^Reading specs from ')
+            echo "$name ${line#Reading specs from }"
+          }
+          echo "--- shipped"
+          for f in /opt/arm-gnu-toolchain/arm-none-eabi/lib/*.specs; do
+            [ -e "$f" ] || continue
+            probe "$(basename "$f")"
+          done
+          echo "--- control (planted)"
+          probe only-planted.specs
+          SPECS
+          set +e
+          docker run --rm --network none --user 65534:65534 --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --tmpfs /tmp:rw,nosuid,size=64m \
+            -v "$RUNNER_TEMP/arm-specs.sh:/arm-specs.sh:ro" mt-toolchain:ci bash /arm-specs.sh > "$out/arm-specs.txt" 2>&1
+          rc=$?
+          set -e
+          { cat "$out/arm-specs.txt"; echo "exit code: $rc"; } > "$out/arm-specs-notice.txt"
+          cat "$out/arm-specs-notice.txt"
+          annotate notice arm-specs "$out/arm-specs-notice.txt"
+          exit "$rc"
 
       # CR-01, TOOL-03: the pins govern the installed bytes. The image build wrote
       # /opt/cargo-tools/share/mt/pin-binding.sha256, the sha256 of every file the
