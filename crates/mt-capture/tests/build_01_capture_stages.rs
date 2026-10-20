@@ -25,7 +25,7 @@ use mt_capture::compare::compare_capture_dirs;
 use mt_capture::fetch::fetch;
 use mt_capture::manifest::{BuildArgs, BuildSystem, Config, Target};
 use mt_capture::report::{CaptureReport, CaptureVerdict};
-use mt_capture::treehash::copy_tree;
+use mt_capture::treehash::{copy_tree, sha256_hex};
 use support::{
     capture_context, fetch_context, git_target, local_arm_tools, make_upstream, runner_config,
 };
@@ -653,5 +653,170 @@ fn build_01_record_stage_refuses_a_write_outside_the_run_root_in_the_export() {
     assert!(
         !dependency.exists(),
         "the planted -MF wrote outside the run root"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Plan 02-20, gap G-02-5 (review WR-11, WR-12; threats T-02-68, T-02-69).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn build_01_record_stage_refuses_a_record_that_did_not_build() {
+    let Some(bed) = bed(&MAKE_PROJECT) else {
+        return;
+    };
+    let target = make_target(&bed.upstream);
+    fetched(&bed, &target);
+    let layout = layout_of(&bed);
+    build_stage(&bed, &target);
+    let genuine = read_record(&layout);
+    assert!(genuine.built && genuine.causes.is_empty(), "{genuine:#?}");
+
+    // A record that says the build did not finish, and names no failure.
+    for (what, forge) in [
+        (
+            "built false with no flag and no cause",
+            Box::new(|r: &mut BuildRecord| {
+                r.built = false;
+                r.build_failed = false;
+                r.not_proven = false;
+                r.causes.clear();
+                r.cause_details.clear();
+            }) as Box<dyn Fn(&mut BuildRecord)>,
+        ),
+        (
+            "built false, build_failed set, no cause",
+            Box::new(|r: &mut BuildRecord| {
+                r.built = false;
+                r.build_failed = true;
+                r.not_proven = false;
+                r.causes.clear();
+                r.cause_details.clear();
+            }),
+        ),
+        (
+            "built false, build_failed cause, no flag",
+            Box::new(|r: &mut BuildRecord| {
+                r.built = false;
+                r.build_failed = false;
+                r.not_proven = false;
+                r.causes = vec!["build_failed".to_owned()];
+                r.cause_details = vec!["build_failed: forged".to_owned()];
+            }),
+        ),
+    ] {
+        let mut record = genuine.clone();
+        forge(&mut record);
+        write_record(&layout, &record);
+
+        let report = record_stage(&bed, &target);
+
+        assert_eq!(report.verdict, CaptureVerdict::NotProven, "{what}");
+        assert!(
+            report
+                .causes
+                .iter()
+                .any(|cause| cause == "build_record_inconsistent"),
+            "{what}: {:?}",
+            report.causes
+        );
+        assert!(report.objects.is_empty(), "{what}: {:?}", report.objects);
+    }
+
+    // The genuine record still captures.
+    write_record(&layout, &genuine);
+    let report = record_stage(&bed, &target);
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::Captured,
+        "{:#?}",
+        report.causes
+    );
+}
+
+#[test]
+fn build_01_record_stage_refuses_a_changed_toolchain_file() {
+    let Some(bed) = bed(&CMAKE_PROJECT) else {
+        return;
+    };
+    let target = cmake_target(&bed.upstream);
+    fetched(&bed, &target);
+    let layout = layout_of(&bed);
+    build_stage(&bed, &target);
+    let path = layout.toolchain_path();
+    let genuine = fs::read(&path).unwrap();
+    let named = |report: &CaptureReport| {
+        report
+            .cause_details
+            .iter()
+            .any(|detail| detail.contains("stage/toolchain.cmake"))
+    };
+
+    // (1) A line that sets another C flag.
+    let mut changed = genuine.clone();
+    changed.extend_from_slice(b"set(CMAKE_C_FLAGS_INIT \"${CMAKE_C_FLAGS_INIT} -DPLANTED\")\n");
+    fs::write(&path, &changed).unwrap();
+    let report = record_stage(&bed, &target);
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::CaptureFailed,
+        "{:#?}",
+        report.causes
+    );
+    assert!(
+        report
+            .causes
+            .iter()
+            .any(|cause| cause == "toolchain_changed"),
+        "{:?}",
+        report.causes
+    );
+    assert!(named(&report), "{:?}", report.cause_details);
+
+    // (2) The file is gone.
+    fs::remove_file(&path).unwrap();
+    let report = record_stage(&bed, &target);
+    assert!(
+        report
+            .causes
+            .iter()
+            .any(|cause| cause == "toolchain_changed"),
+        "{:?}",
+        report.causes
+    );
+    assert_ne!(report.verdict, CaptureVerdict::Captured);
+
+    // (3) A symlink to a copy of the genuine bytes outside the run directory.
+    let outside = tempfile::tempdir().unwrap();
+    let copy = outside.path().join("toolchain.cmake");
+    fs::write(&copy, &genuine).unwrap();
+    symlink(&copy, &path).unwrap();
+    let report = record_stage(&bed, &target);
+    assert!(
+        report.causes.iter().any(|cause| cause == "run_dir_symlink"),
+        "{:?}",
+        report.causes
+    );
+    assert_ne!(report.verdict, CaptureVerdict::Captured);
+
+    // (4) The genuine bytes restored.
+    fs::remove_file(&path).unwrap();
+    fs::write(&path, &genuine).unwrap();
+    let report = record_stage(&bed, &target);
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::Captured,
+        "{:#?}",
+        report.causes
+    );
+    assert!(
+        !report
+            .causes
+            .iter()
+            .any(|cause| cause == "toolchain_changed")
+    );
+    assert_eq!(
+        report.toolchain_file_sha256.as_deref(),
+        Some(sha256_hex(&genuine).as_str())
     );
 }
