@@ -346,13 +346,37 @@ pub const ALLOWED_OPTIONS: [AllowedOption; 56] = [
     joined_only("-specs=", OperandKind::SpecName),
 ];
 
-/// The spec file names `-specs=<name>` may take (review WR-13).
+/// The spec file names `-specs=<name>` may take (review WR-13), in byte order.
 ///
-/// Empty until plan 02-21 Task 3 adds the names measured from the pinned image:
-/// those the pinned Arm GNU Toolchain 14.3.Rel1 ships and its driver reads from
-/// inside the toolchain even when a same-named file is planted in the working
-/// directory. Until then every `-specs=` is refused, the fail-safe direction.
-pub const SHIPPED_SPECS: [&str; 0] = [];
+/// Measured in the pinned image, container run 39453293834 (job image-a
+/// 118734041778, head 4818d97fed3268dc2fdb6994e488ab3e9e80487a), whose driver
+/// reports `arm-none-eabi-gcc (Arm GNU Toolchain 14.3.Rel1 (Build arm-14.174))
+/// 14.3.1 20250623`. Its step "List the spec files the pinned Arm toolchain
+/// ships (WR-13)" planted an empty file of the same name in a fresh working
+/// directory for each `/opt/arm-gnu-toolchain/arm-none-eabi/lib/*.specs` and
+/// asked the driver (`-###`) which file it reads. Every name here read the
+/// toolchain's own file under `/opt/arm-gnu-toolchain/`, never the planted
+/// one, and the control `only-planted.specs` read the planted file, so the
+/// measurement is live (`arm-specs` notice).
+///
+/// A name is added only from such a measurement, test first
+/// (`build_01_specs_allowed_only_for_shipped_names`). Any other name, a name
+/// with `/`, an empty name and every other `-specs` spelling stay refused.
+pub const SHIPPED_SPECS: [&str; 13] = [
+    "aprofile-validation-v2m.specs",
+    "aprofile-validation.specs",
+    "aprofile-ve-v2m.specs",
+    "aprofile-ve.specs",
+    "iq80310.specs",
+    "linux.specs",
+    "nano.specs",
+    "nosys.specs",
+    "pid.specs",
+    "rdimon-v2m.specs",
+    "rdimon.specs",
+    "rdpmon.specs",
+    "redboot.specs",
+];
 
 /// What one walk of a recorded command found ([`walk_arguments`]).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
