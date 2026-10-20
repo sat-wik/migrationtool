@@ -13,7 +13,7 @@ mod support;
 
 use std::collections::BTreeSet;
 use std::fs;
-use std::os::unix::fs::{MetadataExt, symlink};
+use std::os::unix::fs::{MetadataExt, PermissionsExt, symlink};
 use std::os::unix::net::UnixListener;
 use std::path::{Path, PathBuf};
 
@@ -554,5 +554,104 @@ fn build_01_record_stage_does_not_follow_symlinks() {
         report.causes.iter().any(|cause| cause == "no_build_record"),
         "{:?}",
         report.causes
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Plan 02-20, gap G-02-6 (threats T-02-67 and T-02-70): the record stage
+// canonicalises the build's export, so a planted driver option or write path in
+// it is refused before anything runs.
+// ---------------------------------------------------------------------------
+
+/// Insert `inserted` after `argv[0]` of the first entry of the build's raw export.
+fn plant_in_the_export(layout: &RunLayout, inserted: &[&str]) {
+    let path = layout.raw_path();
+    let mut export: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    let arguments = export[0]["arguments"]
+        .as_array_mut()
+        .expect("Bear writes an arguments array");
+    for (offset, text) in inserted.iter().enumerate() {
+        arguments.insert(1 + offset, serde_json::Value::String((*text).to_owned()));
+    }
+    fs::write(&path, serde_json::to_vec_pretty(&export).unwrap()).unwrap();
+}
+
+#[test]
+fn build_01_record_stage_refuses_a_helper_option_in_the_export() {
+    let Some(bed) = bed(&MAKE_PROJECT) else {
+        return;
+    };
+    let target = make_target(&bed.upstream);
+    fetched(&bed, &target);
+    let layout = layout_of(&bed);
+    build_stage(&bed, &target);
+
+    let probes = tempfile::tempdir().unwrap();
+    let script = probes.path().join("wrapper.sh");
+    fs::write(
+        &script,
+        "#!/bin/sh\n: > \"$(dirname \"$0\")/marker\"\nexec \"$@\"\n",
+    )
+    .unwrap();
+    fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+    plant_in_the_export(&layout, &["-wrapper", script.to_str().unwrap()]);
+
+    let report = record_stage(&bed, &target);
+
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::CaptureFailed,
+        "{:#?}",
+        report.causes
+    );
+    assert_eq!(report.causes, ["helper_option"]);
+    assert!(
+        report
+            .cause_details
+            .iter()
+            .any(|detail| detail.contains("-wrapper")),
+        "{:?}",
+        report.cause_details
+    );
+    assert!(
+        !layout.canonical_path().exists(),
+        "a refused export must leave no canonical compile commands"
+    );
+    assert!(
+        !probes.path().join("marker").exists(),
+        "the planted wrapper ran"
+    );
+}
+
+#[test]
+fn build_01_record_stage_refuses_a_write_outside_the_run_root_in_the_export() {
+    let Some(bed) = bed(&MAKE_PROJECT) else {
+        return;
+    };
+    let target = make_target(&bed.upstream);
+    fetched(&bed, &target);
+    let layout = layout_of(&bed);
+    build_stage(&bed, &target);
+
+    let outside = tempfile::tempdir().unwrap();
+    let dependency = outside.path().join("x.d");
+    plant_in_the_export(&layout, &["-MD", "-MF", dependency.to_str().unwrap()]);
+
+    let report = record_stage(&bed, &target);
+
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::CaptureFailed,
+        "{:#?}",
+        report.causes
+    );
+    assert_eq!(report.causes, ["outside_run_root"]);
+    assert!(
+        !layout.canonical_path().exists(),
+        "a refused export must leave no canonical compile commands"
+    );
+    assert!(
+        !dependency.exists(),
+        "the planted -MF wrote outside the run root"
     );
 }

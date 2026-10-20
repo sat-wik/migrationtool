@@ -400,3 +400,250 @@ fn bed_01_tree_copy_preserves_symlinks_and_refuses_escapes() {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// Plan 02-20, gap G-02-6 (threats T-02-67 and T-02-70): replay refuses a
+// recorded driver option that would run or load another program, and a write
+// path outside the run root, before it deletes, copies or spawns anything.
+// ---------------------------------------------------------------------------
+
+/// Programs a hostile compile command could make the driver run. Each one
+/// leaves `marker` behind when it runs.
+struct Probes {
+    _dir: TempDir,
+    marker: PathBuf,
+    wrapper: PathBuf,
+    /// A `-B` directory (with a trailing slash) holding a `cc1` that leaves the marker.
+    prefix: String,
+    /// A response file that holds `-wrapper <wrapper>`.
+    response: PathBuf,
+}
+
+fn make_executable(path: &Path, text: &str) {
+    fs::write(path, text).unwrap();
+    fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
+}
+
+fn probes() -> Probes {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().to_path_buf();
+    let wrapper = root.join("wrapper.sh");
+    make_executable(
+        &wrapper,
+        "#!/bin/sh\n: > \"$(dirname \"$0\")/marker\"\nexec \"$@\"\n",
+    );
+    let bin = root.join("bdir");
+    fs::create_dir_all(&bin).unwrap();
+    make_executable(
+        &bin.join("cc1"),
+        "#!/bin/sh\n: > \"$(dirname \"$0\")/../marker\"\nexit 1\n",
+    );
+    let response = root.join("opts.rsp");
+    fs::write(&response, format!("-wrapper {}\n", wrapper.display())).unwrap();
+    Probes {
+        marker: root.join("marker"),
+        prefix: format!("{}/", bin.display()),
+        wrapper,
+        response,
+        _dir: dir,
+    }
+}
+
+/// Run the host compiler with `arguments` (after CC) inside the probe directory
+/// and require that the marker appears; then remove it. A dead probe would make
+/// every refusal test below vacuous.
+fn assert_probe_is_live(probes: &Probes, fixture: &Fixture, arguments: &[&str]) {
+    let source = fixture.run_root.join("src/a.c");
+    let source = source.to_str().unwrap();
+    let mut argv = vec![CC];
+    argv.extend_from_slice(arguments);
+    argv.extend(["-c", "-o", "probe.o", source]);
+    let scratch = probes.marker.parent().unwrap();
+    run(&config(), &request(&argv, scratch)).unwrap();
+    assert!(
+        probes.marker.exists(),
+        "positive control: {arguments:?} did not run the probe"
+    );
+    fs::remove_file(&probes.marker).unwrap();
+}
+
+/// A one-entry plan: CC, `options`, then `-c -o out/a.o a.c` in the source directory.
+fn plan_with_options(fixture: &Fixture, options: &[String]) -> ReplayPlan {
+    let directory = fixture.run_root.join("src");
+    let mut arguments = vec![CC.to_owned()];
+    arguments.extend(options.iter().cloned());
+    arguments.extend(["-c", "-o", "out/a.o", "a.c"].map(str::to_owned));
+    let mut plan = fixture.plan();
+    plan.entries = vec![CcEntry {
+        directory: directory.to_str().unwrap().to_owned(),
+        file: "a.c".to_owned(),
+        arguments,
+        output: directory.join("out/a.o").to_str().unwrap().to_owned(),
+    }];
+    plan
+}
+
+fn originals_are_present(fixture: &Fixture) {
+    for key in [A_OBJECT, B_OBJECT] {
+        assert!(
+            fixture.run_root.join(key).is_file(),
+            "{key} was deleted before the refusal"
+        );
+    }
+}
+
+#[test]
+fn build_02_replay_refuses_helper_executing_driver_options() {
+    let fixture = Fixture::new();
+    let probes = probes();
+    let wrapper = probes.wrapper.to_str().unwrap().to_owned();
+    let prefix = probes.prefix.clone();
+    let response = format!("@{}", probes.response.display());
+
+    // The probes are live: the same argv, unguarded, runs the program.
+    assert_probe_is_live(&probes, &fixture, &["-wrapper", &wrapper]);
+    assert_probe_is_live(&probes, &fixture, &[&format!("-B{prefix}")]);
+
+    // (options, the argument the error must name)
+    let cases: Vec<(Vec<String>, String)> = vec![
+        (vec!["-wrapper".into(), wrapper.clone()], "-wrapper".into()),
+        (vec![format!("-B{prefix}")], format!("-B{prefix}")),
+        (vec!["-B".into(), prefix.clone()], "-B".into()),
+        (
+            vec![format!("--prefix={prefix}")],
+            format!("--prefix={prefix}"),
+        ),
+        (vec!["-specs=x.specs".into()], "-specs=x.specs".into()),
+        (vec!["--specs".into(), "x.specs".into()], "--specs".into()),
+        (
+            vec!["-fplugin=/nonexistent/p.so".into()],
+            "-fplugin=/nonexistent/p.so".into(),
+        ),
+        (
+            vec!["-fplugin-arg-p-k=v".into()],
+            "-fplugin-arg-p-k=v".into(),
+        ),
+        (
+            vec!["-iplugindir=/nonexistent".into()],
+            "-iplugindir=/nonexistent".into(),
+        ),
+        (
+            vec![format!("-fcompare-debug=-B{prefix}")],
+            format!("-fcompare-debug=-B{prefix}"),
+        ),
+        (vec![response.clone()], response.clone()),
+        (vec![format!("-Wp,{response}")], format!("-Wp,{response}")),
+        (
+            vec!["-Xpreprocessor".into(), "-fplugin=/nonexistent/p.so".into()],
+            "-fplugin=/nonexistent/p.so".into(),
+        ),
+    ];
+    for (options, expected) in cases {
+        let plan = plan_with_options(&fixture, &options);
+        let error = replay(&config(), &plan).unwrap_err();
+        assert!(
+            matches!(
+                &error,
+                ReplayError::Entry(CcError::HelperOption { flag }) if *flag == expected
+            ),
+            "{options:?}: expected HelperOption {{ {expected} }}, got {error:?}"
+        );
+        assert!(
+            !probes.marker.exists(),
+            "{options:?}: the refused option still ran a program"
+        );
+        originals_are_present(&fixture);
+    }
+}
+
+#[test]
+fn build_02_replay_refuses_writes_outside_the_run_root() {
+    let fixture = Fixture::new();
+    let outside = tempfile::tempdir().unwrap();
+    let outside_dir = outside.path().to_str().unwrap().to_owned();
+    let probes = probes();
+
+    // The positive control: unguarded, the driver does write the dependency file.
+    let source = fixture.run_root.join("src/a.c");
+    let dep = format!("{outside_dir}/control.d");
+    run(
+        &config(),
+        &request(
+            &[
+                CC,
+                "-MD",
+                "-MF",
+                &dep,
+                "-c",
+                "-o",
+                "probe.o",
+                source.to_str().unwrap(),
+            ],
+            probes.marker.parent().unwrap(),
+        ),
+    )
+    .unwrap();
+    assert!(Path::new(&dep).is_file(), "positive control: no depfile");
+    fs::remove_file(&dep).unwrap();
+
+    let directory = fixture.run_root.join("src");
+    let directory_text = directory.to_str().unwrap().to_owned();
+    let entry = |arguments: Vec<String>, output: String| CcEntry {
+        directory: directory_text.clone(),
+        file: "a.c".to_owned(),
+        arguments,
+        output,
+    };
+    let strings =
+        |parts: &[&str]| -> Vec<String> { parts.iter().map(|s| (*s).to_owned()).collect() };
+
+    // `--output=<outside>/x.o`: the real target is outside the run root.
+    let target = format!("{outside_dir}/x.o");
+    let by_output = entry(
+        strings(&[CC, "-c", &format!("--output={target}"), "a.c"]),
+        target.clone(),
+    );
+    // `-MD -MF <outside>/x.d`: a dependency file outside the run root.
+    let depfile = format!("{outside_dir}/x.d");
+    let by_depfile = entry(
+        strings(&[CC, "-MD", "-MF", &depfile, "-c", "-o", "out/a.o", "a.c"]),
+        directory.join("out/a.o").to_str().unwrap().to_owned(),
+    );
+    // `-Wp,-MD,<outside>/wp.d`: a write the gate cannot bound.
+    let carried = format!("-Wp,-MD,{outside_dir}/wp.d");
+    let by_carrier = entry(
+        strings(&[CC, &carried, "-c", "-o", "out/a.o", "a.c"]),
+        directory.join("out/a.o").to_str().unwrap().to_owned(),
+    );
+
+    for (what, offending) in [("output", by_output), ("depfile", by_depfile)] {
+        let mut plan = fixture.plan();
+        plan.entries = vec![offending];
+        let error = replay(&config(), &plan).unwrap_err();
+        let expected = if what == "output" { &target } else { &depfile };
+        assert!(
+            matches!(
+                &error,
+                ReplayError::Entry(CcError::OutsideRunRoot { path }) if path == expected
+            ),
+            "{what}: {error:?}"
+        );
+    }
+    let mut plan = fixture.plan();
+    plan.entries = vec![by_carrier];
+    let error = replay(&config(), &plan).unwrap_err();
+    assert!(
+        matches!(
+            &error,
+            ReplayError::Entry(CcError::WriteRedirect { flag }) if *flag == carried
+        ),
+        "{error:?}"
+    );
+
+    assert_eq!(
+        fs::read_dir(outside.path()).unwrap().count(),
+        0,
+        "a refused entry still wrote under the outside directory"
+    );
+    originals_are_present(&fixture);
+}
