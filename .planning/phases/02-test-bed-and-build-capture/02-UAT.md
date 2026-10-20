@@ -1,14 +1,18 @@
 ---
-status: diagnosed
+status: testing
 phase: 02-test-bed-and-build-capture
-source: [02-VERIFICATION.md]
+source: [02-VERIFICATION.md (2026-10-13 and 2026-10-20 re-verification)]
 started: 2026-10-13T18:40:00Z
-updated: 2026-10-13T19:10:00Z
+updated: 2026-10-20T02:45:00Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 6
+name: Triage review warnings WR-11 and WR-12 (the record stage trust of the build record): fix before ship, or accept and log
+expected: |
+  Either a follow-up plan makes the record stage refuse a record with built:false and no failure cause (verdict depends on the gates) and compare stage/toolchain.cmake with the recomputed text, or the founder accepts both as residual risk next to AR-02-03
+awaiting: user response
 
 ## Tests
 
@@ -41,12 +45,24 @@ result: issue
 reported: "Switch the zip backend to flate2 with miniz_oxide (all safe Rust) and add a total decompressed-size budget (review WR-07)."
 severity: major
 
+### 6. Triage review warnings WR-11 and WR-12 (the record stage trust of the build record): fix before ship, or accept and log
+expected: Either a follow-up plan makes the record stage refuse a record with built:false and no failure cause (verdict depends on the gates) and compare stage/toolchain.cmake with the recomputed text, or the founder accepts both as residual risk next to AR-02-03
+result: [pending]
+
+### 7. Register or explicitly accept the unregistered SECURITY.md observation: replay passes the recorded GCC driver flags to the pinned gcc
+expected: Founder registers it as a medium threat (a later plan rejects -wrapper, -B<dir>, -specs and plugin options in the compile-command gate) or accepts it, logged as an accepted risk
+result: [pending]
+
+### 8. Confirm accepted risk AR-02-03 (a pair own build writes its build record) with WR-11 in view
+expected: Founder confirms AR-02-03 stands with its rationale amended to say what a forged record can and cannot do, or asks for the WR-11 fix first
+result: [pending]
+
 ## Summary
 
-total: 5
+total: 8
 passed: 1
 issues: 4
-pending: 0
+pending: 3
 skipped: 0
 blocked: 0
 
