@@ -18,8 +18,11 @@
 //! every object file the build created must be declared by a compile command
 //! (Bear fails silently, Pitfall 7), and no captured source may use
 //! `__TIMESTAMP__`, which depends on a file's modification time and so cannot be
-//! reproduced. A failed gate is a verdict and a cause in the report, never a
-//! pass. Every subprocess runs through the `mt-toolchain` runner.
+//! reproduced. No recorded argument may make the GCC driver run or load another
+//! program ([`crate::cc::HELPER_OPTION_PREFIXES`]) or write a file outside the run
+//! root ([`crate::cc::check_write_paths`], with `--output` resolved like `-o`).
+//! A failed gate is a verdict and a cause in the report, never a pass. Every
+//! subprocess runs through the `mt-toolchain` runner.
 //!
 //! # Two stages and the trust model (review warning WR-04)
 //!
@@ -41,7 +44,8 @@
 //! single-process capture always did. It verifies the source cache again, takes
 //! the tools from the pins, hashes the committed inputs from `testbed/` and
 //! refuses a run directory whose inputs copy differs (`inputs_changed`), and
-//! recomputes the toolchain file from the pins and the configuration. It reads the
+//! recomputes the toolchain file from the pins and the configuration and compares
+//! that text with `stage/toolchain.cmake` (`toolchain_changed`). It reads the
 //! run directory only through [`read_run_file`], which never follows a symlink:
 //! the build record, the raw export, every object, every configure-time file and
 //! every file of the inputs copy. A refused build record is `not_proven` with the
@@ -54,13 +58,36 @@
 //! may legitimately hold symlinks), and the readelf runs on objects the record
 //! stage has already opened as regular files.
 //!
-//! The record stage takes from the build record only what describes the build
-//! itself: the build steps' run records, the `not_proven` and `build_failed`
-//! flags, and the `before` listing. Those can be falsified only by the same
-//! pair's own build, which could equally have built different objects, so they
-//! cannot alter another pair's evidence, the source verification, the tools, the
-//! inputs check or the replay comparison. A forged record can therefore make its
-//! own pair read as built, failed or not proven, and nothing else.
+//! What the record stage takes from the build record: the build steps' run
+//! records, the cause lines, the `built`, `build_failed` and `not_proven` flags,
+//! and the `before` listing.
+//!
+//! What a forged or corrupt record can still do. It can make its own pair read
+//! `build_failed` or `not_proven`. It can falsify the step run records and cause
+//! lines its report shows. Through the `before` listing, which is the base of the
+//! undeclared-object gate and of the exclusion of build-created archives from the
+//! configure-time hashes, it can hide an object the build created from that gate,
+//! or leave an archive out of those hashes. None of this reaches another pair, and
+//! the same build could equally have built other objects.
+//!
+//! What it can no longer do. It cannot make its pair read `captured` unless the
+//! record stage itself found the build's real outputs pass every gate:
+//!
+//! - a record with `built: false` must name its failure, or the pair is
+//!   `not_proven` with `build_record_inconsistent`
+//!   (`build_01_record_stage_refuses_a_record_that_did_not_build`);
+//! - `captured` needs no cause, both gates passed and a non-empty object set,
+//!   otherwise `gates_not_passed` ([`settle_verdict`],
+//!   `build_01_captured_verdict_needs_passed_gates_and_objects`);
+//! - the compile commands must pass the driver-option gate (`helper_option`,
+//!   `build_01_record_stage_refuses_a_helper_option_in_the_export`) and the
+//!   write-path gate (`outside_run_root`, `write_redirect`,
+//!   `build_01_record_stage_refuses_a_write_outside_the_run_root_in_the_export`);
+//! - it cannot change the toolchain file unnoticed (`toolchain_changed`,
+//!   `build_01_record_stage_refuses_a_changed_toolchain_file`), nor the source
+//!   verification, the tools, the inputs check, another pair's evidence
+//!   (`build_record_mismatch`, `build_01_record_stage_refuses_a_record_for_another_pair`)
+//!   or the replay comparison.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
