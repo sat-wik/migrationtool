@@ -44,16 +44,20 @@
 //! | an `-o` or `-MF` path, the directory or the derived output outside the run root (lexically) | `OutsideRunRoot` | `outside_run_root` |
 //! | no top-level `-c` after a complete walk | `NotCompileOnly` | `not_compile_only` |
 //!
-//! Measured basis (plan 02-21 planning, re-run at execution). With the host
-//! `arm-none-eabi-gcc` 13.2.1 and `-###`, which runs nothing: `-I @x.rsp`,
-//! `-MT @x.rsp` and `-o @x.rsp`, with `x.rsp` holding `-wrapper
-//! /bin/echo,viarsp`, each made every subcommand run under `/bin/echo`;
-//! `-MD -MT -c t.c -o t.o` runs `collect2`. With the host `/usr/bin/cc` 13.3.0
-//! and GNU as 2.42, real compiles wrote outside the working directory for
-//! `--dump-final-insns=`, `--opt-info-all=` (CR-01), `-Wa,-MD,`, `-Wa,-MD=`,
-//! `-Wa,--M,`, `-Xassembler -MD -Xassembler <path>` (CR-02) and the CR-03
-//! vector with `-Wl,-Map=`. The pinned toolchain is Arm GNU Toolchain
-//! 14.3.Rel1; its shipped spec names are measured in CI (WR-13).
+//! Measured basis (plan 02-21, re-run at execution on 2026-10-20). The driver
+//! splices a response file's words in place of the `@` argument before it
+//! parses options, so in operand position the first word becomes the operand
+//! and the rest are options: with `x.rsp` holding `-I. -wrapper <script>`,
+//! each of `-I @x.rsp`, `-MT @x.rsp`, `-MF @x.rsp`, `-o @x.rsp` and `@x.rsp`
+//! ran every subcommand under the script, with the host `arm-none-eabi-gcc`
+//! 13.2.1 and `-###` (which runs nothing) and with a real compile by the host
+//! `/usr/bin/cc` 13.3.0. `-MD -MT -c t.c -o t.o` runs `collect2` under `-###`.
+//! With the host `/usr/bin/cc` 13.3.0 and GNU as 2.42, real compiles wrote
+//! outside the working directory for `--dump-final-insns=`, `--opt-info-all=`
+//! (CR-01), `-Wa,-MD,`, `-Wa,-MD=`, `-Wa,--M,`, `-Xassembler -MD -Xassembler
+//! <path>` (CR-02) and the CR-03 vector with `-Wl,-Map=`. The pinned
+//! toolchain is Arm GNU Toolchain 14.3.Rel1; its shipped spec names are
+//! measured in CI (WR-13).
 
 use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
