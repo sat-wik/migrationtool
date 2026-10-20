@@ -105,7 +105,7 @@ findings:
     title: "Some of the new refusal evidence is not live or not run in CI"
   - id: WR-11
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "A build record with `built: false` and no cause yields a `captured` report in which no gate ran"
   - id: WR-02
     severity: warning
@@ -165,7 +165,7 @@ recorded: 2026-10-20T10:34:12.071Z
 | IN-13 | info | open | - |
 | IN-14 | info | open | - |
 | IN-15 | info | open | - |
-| WR-11 | warning | open | - (not in the current review) |
+| WR-11 | warning | fixed | 02-20 (69adb69); confirmed fixed by the post-02-20 re-review |
 | WR-02 | warning | fixed | 02-16 (fa1df60); confirmed fixed by the 2026-10-20 re-review (not in the current review) |
 | WR-04 | warning | fixed | 02-17/02-18/02-19 (fb04867); confirmed fixed by the 2026-10-20 re-review (not in the current review) |
 | WR-05 | warning | fixed | 02-14/02-17 (687faf2); confirmed fixed by the 2026-10-20 re-review (not in the current review) |
