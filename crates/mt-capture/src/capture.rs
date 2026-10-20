@@ -1232,12 +1232,52 @@ struct Session<'a> {
     before: BTreeSet<String>,
 }
 
+/// Raise `token` on `report`: the token once in `causes`, the detail as
+/// `"{token}: {detail}"`.
+fn raise_cause(report: &mut CaptureReport, token: &str, detail: &str) {
+    if !report.causes.iter().any(|existing| existing == token) {
+        report.causes.push(token.to_owned());
+    }
+    report.cause_details.push(format!("{token}: {detail}"));
+}
+
+/// Set the verdict of a record-stage report (BUILD-01, review WR-11, D-22).
+///
+/// `not_proven` wins, then `build_failed`, then any cause (`capture_failed`).
+/// Otherwise the report is `captured` only when both gates passed
+/// (`gates.compiler_allow_listed` and `gates.arch_ok`) and the object set is
+/// non-empty. A gate that was not evaluated reads as failed, and now that
+/// decides the verdict: when the conditions do not hold, the cause
+/// `gates_not_passed` (naming the three values) is added and the verdict is
+/// `capture_failed`. A report that no cause explains therefore cannot read
+/// `captured`, whatever the build record said.
+pub fn settle_verdict(report: &mut CaptureReport, not_proven: bool, build_failed: bool) {
+    report.verdict = if not_proven {
+        CaptureVerdict::NotProven
+    } else if build_failed {
+        CaptureVerdict::BuildFailed
+    } else if !report.causes.is_empty() {
+        CaptureVerdict::CaptureFailed
+    } else if report.gates.compiler_allow_listed
+        && report.gates.arch_ok
+        && !report.objects.is_empty()
+    {
+        CaptureVerdict::Captured
+    } else {
+        let detail = format!(
+            "compiler_allow_listed={} arch_ok={} objects={}: a capture needs both gates passed and at least one object",
+            report.gates.compiler_allow_listed,
+            report.gates.arch_ok,
+            report.objects.len()
+        );
+        raise_cause(report, "gates_not_passed", &detail);
+        CaptureVerdict::CaptureFailed
+    };
+}
+
 impl Session<'_> {
     fn cause(&mut self, token: &str, detail: String) {
-        if !self.report.causes.iter().any(|existing| existing == token) {
-            self.report.causes.push(token.to_owned());
-        }
-        self.report.cause_details.push(format!("{token}: {detail}"));
+        raise_cause(&mut self.report, token, &detail);
     }
 
     fn halt(&mut self, token: &str, detail: String) -> Flow {
@@ -1788,6 +1828,35 @@ impl Session<'_> {
         Ok(())
     }
 
+    /// Compare `stage/toolchain.cmake`, which the untrusted build could have
+    /// rewritten, byte for byte with `expected`, the text recomputed from the
+    /// pins and the configuration (WR-12). A different or missing file is the
+    /// cause `toolchain_changed`; a symlink or a file that is not regular is
+    /// `run_dir_symlink`.
+    fn check_toolchain_file(&mut self, expected: &str) -> Result<(), CaptureError> {
+        let key = format!("{STAGE_DIR}/{TOOLCHAIN_FILE}");
+        match read_run_file(&self.layout.run_root, &key) {
+            Ok(found) if found == expected.as_bytes() => {}
+            Ok(found) => self.cause(
+                "toolchain_changed",
+                format!(
+                    "{key} differs from the toolchain file recomputed from the pins and the configuration (found sha256 {}, expected {})",
+                    sha256_hex(&found),
+                    sha256_hex(expected.as_bytes())
+                ),
+            ),
+            Err(RunReadError::Io { source, .. }) if source.kind() == io::ErrorKind::NotFound => {
+                self.cause(
+                    "toolchain_changed",
+                    format!("{key} is missing: the build stage writes it before cmake configure"),
+                );
+            }
+            Err(error @ RunReadError::NotRegular { .. }) => self.refused(&key, &error),
+            Err(RunReadError::Io { path, source }) => return Err(io_error("read", &path, source)),
+        }
+        Ok(())
+    }
+
     /// The build record of the build stage, read without following a symlink and
     /// checked against this pair and the verified source.
     fn load_build_record(&self, id: &str, config: &str, source: &SourceRef) -> RecordState {
@@ -1979,11 +2048,16 @@ pub fn capture_build(
 /// source cache again, takes the tools from the pins, reads the build record
 /// (missing, unreadable, refused or unparseable: `not_proven`, cause
 /// `no_build_record`; for another pair or source: `not_proven`, cause
-/// `build_record_mismatch`), compares the run directory's copy of the committed
-/// inputs with `testbed/` (`inputs_changed`), recomputes the toolchain file, and
-/// then canonicalises and gates the build's outputs, checks the manifest entries
-/// and hashes the configure-time files exactly as a single-process capture does.
-/// A run-directory read that is refused is the cause `run_dir_symlink`.
+/// `build_record_mismatch`; a record with `built: false` that names no failure:
+/// `not_proven`, cause `build_record_inconsistent`), compares the run
+/// directory's copy of the committed inputs with `testbed/` (`inputs_changed`),
+/// recomputes the toolchain file and compares `stage/toolchain.cmake` with it
+/// (`toolchain_changed`), and then canonicalises and gates the build's outputs,
+/// checks the manifest entries and hashes the configure-time files exactly as a
+/// single-process capture does. The verdict is [`settle_verdict`]: `captured`
+/// needs no cause, both gates passed and a non-empty object set
+/// (`gates_not_passed` otherwise). A run-directory read that is refused is the
+/// cause `run_dir_symlink`.
 /// `capture.json` is written in every case.
 ///
 /// # Errors
@@ -2019,12 +2093,27 @@ pub fn capture_record(
             session.cause("build_record_mismatch", detail);
         }
         RecordState::Accepted(record) => {
+            // A record that says the build did not finish must name its failure
+            // the way `capture_build` writes it (WR-11).
+            let names_its_failure = record.built
+                || (record.build_failed && record.causes.iter().any(|c| c == "build_failed"))
+                || (record.not_proven && record.causes.iter().any(|c| c == "not_proven"));
+            let inconsistent = (!names_its_failure).then(|| {
+                format!(
+                    "the build record says built={} build_failed={} not_proven={} causes={:?} and names no failure",
+                    record.built, record.build_failed, record.not_proven, record.causes
+                )
+            });
             session.report.steps.extend(record.steps);
             session.report.causes = record.causes;
             session.report.cause_details = record.cause_details;
             session.before = record.before;
             session.not_proven = record.not_proven;
             session.build_failed = record.build_failed;
+            if let Some(detail) = inconsistent {
+                session.not_proven = true;
+                session.cause("build_record_inconsistent", detail);
+            }
             session.check_inputs(id)?;
             if target.build == BuildSystem::Cmake {
                 let flags = expand_flags(
@@ -2033,6 +2122,7 @@ pub fn capture_record(
                     &session.layout,
                 )?;
                 let text = toolchain_file(&ctx.tools, &flags)?;
+                session.check_toolchain_file(&text)?;
                 session.report.toolchain_file_sha256 = Some(sha256_hex(text.as_bytes()));
                 let path = session.layout.toolchain_copy_path();
                 fs::write(&path, text).map_err(|source| io_error("write", &path, source))?;
@@ -2051,15 +2141,7 @@ pub fn capture_record(
     }
     session.report.steps.extend(verified.steps);
     let mut report = session.report;
-    report.verdict = if session.not_proven {
-        CaptureVerdict::NotProven
-    } else if session.build_failed {
-        CaptureVerdict::BuildFailed
-    } else if report.causes.is_empty() {
-        CaptureVerdict::Captured
-    } else {
-        CaptureVerdict::CaptureFailed
-    };
+    settle_verdict(&mut report, session.not_proven, session.build_failed);
     let path = session.layout.report_path();
     fs::write(&path, report.to_json()?).map_err(|source| io_error("write", &path, source))?;
     Ok(report)
