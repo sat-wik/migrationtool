@@ -449,6 +449,9 @@ fn build_01_allow_list_is_the_measured_set() {
             "-Wformat=2",
             "-Winit-self",
             "-Wmissing-prototypes",
+            // CI-only: cjson adds it when the compiler accepts it, and GCC 14
+            // does (testbed run 39453293771, cjson/default and cjson/no-locale).
+            "-Wmissing-variable-declarations",
             "-Wnested-externs",
             "-Wno-format-nonliteral",
             "-Wparentheses",
