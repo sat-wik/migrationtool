@@ -17,7 +17,7 @@ findings:
     title: "The tree digest is ambiguous for file names that contain a newline"
   - id: WR-07
     severity: warning
-    disposition: open
+    disposition: deferred
     title: "The documented memory bound for zip seed sources does not hold"
   - id: WR-09
     severity: warning
@@ -77,27 +77,27 @@ findings:
     title: "The build notice repeats the pair name on every row"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Replay does not tie the capture report to the manifest pin; `source.commit` is used unvalidated as a path component"
   - id: WR-04
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Untrusted upstream build code runs with write access to the evidence directories and with no resource limits"
   - id: WR-05
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The determinism comparison fails open when a report cannot be normalised"
   - id: WR-08
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The drop-log floor and the evidence fields are not enforced where the evidence is produced"
   - id: WR-10
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`is_cmake_product` is broader than its documentation and masks a known non-determinism"
   - id: IN-07
     severity: info
-    disposition: open
+    disposition: fixed
     title: "`isotp` is dropped as a whole target because of the probe design, not a defect of the target"
 open: 24
 total: 24
@@ -111,7 +111,7 @@ recorded: 2026-10-20T02:32:59.925Z
 | WR-01 | warning | open | - |
 | WR-03 | warning | open | - |
 | WR-06 | warning | open | - |
-| WR-07 | warning | open | - |
+| WR-07 | warning | deferred | total budget fixed in 02-13 (f16fca6); member-count cap deferred by founder (02-13-SUMMARY) |
 | WR-09 | warning | open | - |
 | WR-11 | warning | open | - |
 | WR-12 | warning | open | - |
@@ -126,12 +126,12 @@ recorded: 2026-10-20T02:32:59.925Z
 | IN-10 | info | open | - |
 | IN-11 | info | open | - |
 | IN-12 | info | open | - |
-| WR-02 | warning | open | - (not in the current review) |
-| WR-04 | warning | open | - (not in the current review) |
-| WR-05 | warning | open | - (not in the current review) |
-| WR-08 | warning | open | - (not in the current review) |
-| WR-10 | warning | open | - (not in the current review) |
-| IN-07 | info | open | - (not in the current review) |
+| WR-02 | warning | fixed | 02-16 (fa1df60); confirmed fixed by the 2026-10-20 re-review |
+| WR-04 | warning | fixed | 02-17/02-18/02-19 (fb04867); confirmed fixed by the 2026-10-20 re-review |
+| WR-05 | warning | fixed | 02-14/02-17 (687faf2); confirmed fixed by the 2026-10-20 re-review |
+| WR-08 | warning | fixed | 02-16 (5dc8714, da512c4); confirmed fixed by the 2026-10-20 re-review |
+| WR-10 | warning | fixed | 02-12 (1889fbc); confirmed fixed by the 2026-10-20 re-review |
+| IN-07 | info | fixed | 02-11 (8d92dbb, 23af072); confirmed fixed by the 2026-10-20 re-review |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
