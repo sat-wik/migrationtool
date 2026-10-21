@@ -155,7 +155,32 @@ Plans:
   3. At least 10 test-bed targets have an entry-point adapter declaring the function and its argument roles, so bytes in produce return code, output buffer and library state out as a vector.
   4. The C reference executor runs any vector against the target's original C build and stores the result in a schema-valid vector; running the same vector twice gives byte-identical results.
 
-**Plans**: TBD
+**Plans:** 8 plans
+
+Plans:
+**Wave 1**
+- [ ] 03-01-PLAN.md — Tracer: executor core (shared runtime template, link recipe, qemu-arm -cpu cortex-m4 through the runner, result frame, outcome classification) and `mt vectors selftest` measured in the pinned image before dependent work (D-30)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 03-02-PLAN.md — Contract v0 (docs/specs/equivalence-contract.md 0.1.0) and the mt-contract policy loader with the UB menu, return_error default, default_change and full override records; 16 policy files (EQV-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 03-03-PLAN.md — mt-vectors: nine-field schema, Latin-1 codec, has_ub absence rule, comparison rule, lib_state model, sha256 corpus with provenance index; pinned TRACTOR sample fetched and loaded unchanged, locally and in CI (EQV-02)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 03-04-PLAN.md — Manifest argument roles and the generated driver over the exact captured objects; corejson, lz4, libfdt vectors run twice identically, globals snapshot, replay and determinism steps in CI
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 03-05-PLAN.md — State layout from the pinned GCC's DWARF, pointer classification, typed globals; microcoap, nimble, tinycbor
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 03-06-PLAN.md — Output scalars and pointers, struct and pointer returns, typed heap walk; zlib, paho, nanopb, cjson, corejson JSON_SearchT; adapter drop log and the floor of 10 as a test
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 03-07-PLAN.md — Declared setup sequences (D-12), locals, wrap and state arrays; httpparser, tinycbor validate, qcbor, zcbor
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [ ] 03-08-PLAN.md — Bounded attempts of the remaining entries, completeness test, committed CI-produced vector sample, final full run
 
 ### Phase 4: UB Detection and Decision Log
 
@@ -289,7 +314,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Pinned Toolchain Container | 9/9 | Complete    | 2026-10-12 |
 | 2. Test Bed and Build Capture | 22/22 | Complete    | 2026-10-21 |
-| 3. Equivalence Contract and Test-Vector Schema | 0/0 | Not started | - |
+| 3. Equivalence Contract and Test-Vector Schema | 0/8 | Planned | - |
 | 4. UB Detection and Decision Log | 0/0 | Not started | - |
 | 5. Target-Matched Differential Harness | 0/0 | Not started | - |
 | 6. Symbolic Layer and Analysis Spikes | 0/0 | Not started | - |
