@@ -13,7 +13,8 @@ use mt_harness::runtime::{
     PLACEHOLDER_NAMES, Placeholders, RUNTIME_TEMPLATE, render, render_template,
 };
 use mt_harness::selftest::{
-    CaseRun, SelftestCase, determinism, dwarf_probe, run_case, run_selftest,
+    CaseRun, SelftestCase, determinism, diagnose, dwarf_probe, run_case, run_selftest,
+    stderr_excerpt,
 };
 use mt_harness::tools::ExecTools;
 use mt_toolchain::runner::RunnerConfig;
@@ -306,4 +307,48 @@ fn eqv_04_runtime_render_rejects_unknown_and_leftover_tokens() {
     // A generated fragment that smuggles a token in.
     let smuggled = Placeholders::from_budgets(&Budgets::DEFAULT, "@MT_HEAP_ARENA@".to_owned());
     assert!(render(&smuggled).is_err());
+}
+
+#[test]
+fn eqv_04_selftest_stderr_excerpt_is_short_and_one_line() {
+    let long = format!("qemu: fatal\n  detail\t{}\n", "x".repeat(2000));
+    let excerpt = stderr_excerpt(long.as_bytes());
+    assert!(
+        !excerpt.contains('\n') && !excerpt.contains('\t'),
+        "{excerpt:?}"
+    );
+    assert!(excerpt.starts_with("qemu: fatal detail xxx"), "{excerpt:?}");
+    assert!(excerpt.chars().count() <= 503, "{}", excerpt.len());
+    assert!(excerpt.ends_with("..."));
+    assert_eq!(stderr_excerpt(b""), "(empty)");
+    assert_eq!(stderr_excerpt(b"short\n"), "short");
+}
+
+#[test]
+fn eqv_04_selftest_failure_diagnostics_report_each_variant() {
+    let Some(tools) = host_tools() else {
+        return;
+    };
+    let work = tempfile::tempdir().unwrap();
+    let rows = diagnose(&tools, &runner_config(), work.path()).unwrap();
+    let names = [
+        "as-is",
+        "no-reserve",
+        "no-seed",
+        "cpu-cortex-a15",
+        "cpu-max",
+        "guest-error-log",
+    ];
+    assert_eq!(rows.len(), names.len(), "{rows:?}");
+    for (row, name) in rows.iter().zip(names) {
+        assert!(
+            row.text.starts_with(&format!("diag {name}: exit=")),
+            "{name}: {}",
+            row.text
+        );
+        assert!(row.text.contains(" stderr="), "{}", row.text);
+        assert!(row.ok, "diagnostic rows are informational: {}", row.text);
+    }
+    // On the host the production arguments work.
+    assert!(rows[0].text.contains("exit=0 "), "{}", rows[0].text);
 }
