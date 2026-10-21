@@ -734,19 +734,21 @@ Policy loader sketch (mirrors `Manifest`'s strict parsing): `#[derive(Deserializ
 | A11 | Adding optional manifest keys without a schema bump is acceptable | Q5 | Bump to 2 and update Phase 2 tests |
 | A12 | libfdt and the other floor targets do not require an aligned input buffer | Q5 | Add `align` to the role; default 1 already allowed |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Byte codec for binary data inside TRACTOR strings (needs founder confirmation).**
+All eight questions were answered by the founder decisions of 2026-10-21 (03-CONTEXT.md D-25..D-30) or are documented in the plans; each item below names its resolution.
+
+1. **Byte codec for binary data inside TRACTOR strings (needs founder confirmation).** RESOLVED by D-25: Latin-1 identity in `stdin` and `stdout.pattern`, `is_regex: false`, `rc = -signal` on faults.
    - Known: `stdin` and `stdout.pattern` are JSON strings with no binary convention in 2,610 public vectors.
    - Unclear: whether TRACTOR tools must be able to feed our `stdin` to a process unchanged.
    - Recommendation: Latin-1 identity, written in the contract; revisit only if a TRACTOR runner must execute our vectors.
-2. **`note` key.** Recommendation: accept on load, preserve, never emit, not counted in the nine.
-3. **argv[0] and rc meaning differ from TRACTOR's executables** (first argument; process exit code). No action; document in the contract.
-4. **Assert/abort classification.** An `assert` in a library built without `NDEBUG` is defined library behavior, not C UB. Recommendation: outcome class `abort`, vector `has_ub` label `crash:SIGABRT` with source `observed_crash` so it is out of comparison; Phase 4 may relabel. Founder may prefer a separate "library-abort" label.
-5. **Entries with no seeds** (`cbor_decode_Pet`, `http_parser_parse_url`, `mbedtls_asn1_get_tag`). Recommendation: log `no_seeds`; floor does not depend on them. Alternative: allow a manifest key `seed_from = ["other_entry"]` for explicit borrowing.
-6. **Input transport.** Recommendation: `req.bin` in a fixed cwd. Alternative: add stdin to the runner.
-7. **Shared runtime template vs D-11 "no hand-written per-target C".** The runtime is one shared template inside `mt-harness`, not per-target. Confirm this reading.
-8. **`proptest`.** building-the-tool.md suggests it for schema round-trips; it is not locked. Table-driven tests are proposed instead; ask only if wanted.
+2. **`note` key.** RESOLVED by D-26: accepted on load, never emitted, not counted in the nine fields. Recommendation: accept on load, preserve, never emit, not counted in the nine.
+3. **argv[0] and rc meaning differ from TRACTOR's executables** RESOLVED (documented, no decision needed): D-05 and D-25 fix the convention, and contract v0 states it (plan 03-02, section "Field convention"). (first argument; process exit code). No action; document in the contract.
+4. **Assert/abort classification.** RESOLVED by D-27: outcome class `abort` with a `has_ub` crash label, excluded from comparison; Phase 4 may relabel. An `assert` in a library built without `NDEBUG` is defined library behavior, not C UB. Recommendation: outcome class `abort`, vector `has_ub` label `crash:SIGABRT` with source `observed_crash` so it is out of comparison; Phase 4 may relabel. Founder may prefer a separate "library-abort" label.
+5. **Entries with no seeds** RESOLVED by D-28: logged `no_seeds`, never borrowed from a sibling entry. (`cbor_decode_Pet`, `http_parser_parse_url`, `mbedtls_asn1_get_tag`). Recommendation: log `no_seeds`; floor does not depend on them. Alternative: allow a manifest key `seed_from = ["other_entry"]` for explicit borrowing.
+6. **Input transport.** RESOLVED by D-30: the input goes through a file in the fixed working directory; the runner is not changed. Recommendation: `req.bin` in a fixed cwd. Alternative: add stdin to the runner.
+7. **Shared runtime template vs D-11 "no hand-written per-target C".** RESOLVED by D-29: one shared, reviewed template is not per-target C. The runtime is one shared template inside `mt-harness`, not per-target. Confirm this reading.
+8. **`proptest`.** RESOLVED by D-29: no new crates; table-driven tests. building-the-tool.md suggests it for schema round-trips; it is not locked. Table-driven tests are proposed instead; ask only if wanted.
 
 ## Environment Availability
 
