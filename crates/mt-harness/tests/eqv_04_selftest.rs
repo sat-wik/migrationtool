@@ -14,7 +14,7 @@ use mt_harness::runtime::{
 };
 use mt_harness::selftest::{
     CaseRun, SelftestCase, determinism, diagnose, dwarf_probe, run_case, run_selftest,
-    stderr_excerpt,
+    stderr_excerpt, stderr_tail,
 };
 use mt_harness::tools::ExecTools;
 use mt_toolchain::runner::RunnerConfig;
@@ -338,6 +338,7 @@ fn eqv_04_selftest_failure_diagnostics_report_each_variant() {
         "cpu-cortex-a15",
         "cpu-max",
         "guest-error-log",
+        "strace",
     ];
     assert_eq!(rows.len(), names.len(), "{rows:?}");
     for (row, name) in rows.iter().zip(names) {
@@ -351,4 +352,21 @@ fn eqv_04_selftest_failure_diagnostics_report_each_variant() {
     }
     // On the host the production arguments work.
     assert!(rows[0].text.contains("exit=0 "), "{}", rows[0].text);
+}
+
+#[test]
+fn eqv_04_selftest_stderr_tail_keeps_the_end() {
+    let log = format!(
+        "{}\nmmap2(0x7000000) = -1\nexit_group(98)\n",
+        "a".repeat(900)
+    );
+    let tail = stderr_tail(log.as_bytes(), 40);
+    assert!(tail.starts_with("..."), "{tail:?}");
+    assert!(
+        tail.ends_with("mmap2(0x7000000) = -1 exit_group(98)"),
+        "{tail:?}"
+    );
+    assert!(!tail.contains('\n'));
+    assert_eq!(stderr_tail(b"", 40), "(empty)");
+    assert_eq!(stderr_tail(b"one\ntwo\n", 40), "one two");
 }

@@ -81,9 +81,10 @@ impl Request {
     }
 }
 
-/// The `qemu-arm` argument list for one driver run.
+/// The `qemu-arm` options of every run, before the driver path: the CPU model,
+/// the reserved guest address space (the memory budget) and a fixed seed.
 #[must_use]
-pub fn qemu_args(budgets: &Budgets, elf: &Path) -> Vec<OsString> {
+pub fn qemu_options(budgets: &Budgets) -> Vec<OsString> {
     vec![
         OsString::from("-cpu"),
         OsString::from(CPU_MODEL),
@@ -91,9 +92,16 @@ pub fn qemu_args(budgets: &Budgets, elf: &Path) -> Vec<OsString> {
         OsString::from(format!("{:#x}", budgets.reserved_va)),
         OsString::from("-seed"),
         OsString::from("0"),
-        elf.as_os_str().to_owned(),
-        OsString::from(REQUEST_FILE),
     ]
+}
+
+/// The `qemu-arm` argument list for one driver run.
+#[must_use]
+pub fn qemu_args(budgets: &Budgets, elf: &Path) -> Vec<OsString> {
+    let mut args = qemu_options(budgets);
+    args.push(elf.as_os_str().to_owned());
+    args.push(OsString::from(REQUEST_FILE));
+    args
 }
 
 /// Write `request` into the slot and run the driver once.
@@ -111,6 +119,32 @@ pub fn run_driver(
     slot: &Slot,
     request: &Request,
 ) -> Result<RunOutput, HarnessError> {
+    run_driver_with(
+        tools,
+        cfg,
+        budgets,
+        &qemu_options(budgets),
+        elf,
+        slot,
+        request,
+    )
+}
+
+/// [`run_driver`] with explicit `qemu-arm` options. Only the self-test's failure
+/// diagnostics use other options than [`qemu_options`]; a vector is never made
+/// from such a run.
+///
+/// # Errors
+/// As [`run_driver`].
+pub fn run_driver_with(
+    tools: &ExecTools,
+    cfg: &RunnerConfig,
+    budgets: &Budgets,
+    options: &[OsString],
+    elf: &Path,
+    slot: &Slot,
+    request: &Request,
+) -> Result<RunOutput, HarnessError> {
     let request_path = slot.dir().join(REQUEST_FILE);
     std::fs::write(&request_path, request.to_bytes()).map_err(|source| HarnessError::Io {
         action: "cannot write",
@@ -121,7 +155,9 @@ pub fn run_driver(
     let mut run_cfg = cfg.clone();
     run_cfg.timeout = budgets.timeout();
     let mut argv: Vec<OsString> = vec![tools.qemu_arm.clone().into_os_string()];
-    argv.extend(qemu_args(budgets, elf));
+    argv.extend(options.iter().cloned());
+    argv.push(elf.as_os_str().to_owned());
+    argv.push(OsString::from(REQUEST_FILE));
     let run_request = RunRequest {
         tool_name: "qemu_arm".to_owned(),
         argv,

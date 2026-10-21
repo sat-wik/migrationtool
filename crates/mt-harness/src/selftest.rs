@@ -20,7 +20,7 @@ use crate::HarnessError;
 use crate::budget::Budgets;
 use crate::classify::{Outcome, classify};
 use crate::driver::{DriverBuild, build_driver};
-use crate::exec::{Request, Slot, run_driver};
+use crate::exec::{Request, Slot, qemu_options, run_driver, run_driver_with};
 use crate::frame::{Frame, parse_frame};
 use crate::runtime::{Placeholders, render};
 use crate::tools::ExecTools;
@@ -123,7 +123,7 @@ impl SelftestCase {
         }
     }
 
-    fn request(self) -> Request {
+    pub(crate) fn request(self) -> Request {
         Request {
             fields: vec![
                 self.selector().to_le_bytes().to_vec(),
@@ -496,6 +496,144 @@ pub fn enum_byte_size(text: &str) -> Option<u32> {
     None
 }
 
+/// The most characters of a stderr excerpt.
+const STDERR_EXCERPT_CHARS: usize = 500;
+
+/// The start of a stderr stream on one line: whitespace runs become single
+/// spaces and the text is cut at 500 characters with `...`. For failure rows
+/// only; no verdict ever depends on it.
+#[must_use]
+pub fn stderr_excerpt(stderr: &[u8]) -> String {
+    let text = String::from_utf8_lossy(stderr);
+    let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if flat.is_empty() {
+        return "(empty)".to_owned();
+    }
+    if flat.chars().count() > STDERR_EXCERPT_CHARS {
+        let head: String = flat.chars().take(STDERR_EXCERPT_CHARS).collect();
+        return format!("{head}...");
+    }
+    flat
+}
+
+/// The end of a stderr stream on one line: whitespace runs become single spaces
+/// and, when the text is longer than `max` characters, only the last `max` are
+/// kept, after `...`. For a `qemu-arm -strace` log, whose last lines name the
+/// system call a run ended on.
+#[must_use]
+pub fn stderr_tail(stderr: &[u8], max: usize) -> String {
+    let text = String::from_utf8_lossy(stderr);
+    let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if flat.is_empty() {
+        return "(empty)".to_owned();
+    }
+    let count = flat.chars().count();
+    if count > max {
+        let tail: String = flat.chars().skip(count - max).collect();
+        return format!("...{tail}");
+    }
+    flat
+}
+
+/// The `-flag value` pair removed from a `qemu-arm` option list.
+fn without_option(options: &[OsString], flag: &str) -> Vec<OsString> {
+    let mut kept = Vec::new();
+    let mut skip = false;
+    for option in options {
+        if skip {
+            skip = false;
+        } else if option == flag {
+            skip = true;
+        } else {
+            kept.push(option.clone());
+        }
+    }
+    kept
+}
+
+/// The option list with the CPU model replaced.
+fn with_cpu(options: &[OsString], cpu: &str) -> Vec<OsString> {
+    let mut changed = options.to_vec();
+    if let Some(at) = changed.iter().position(|option| option == "-cpu")
+        && let Some(model) = changed.get_mut(at + 1)
+    {
+        *model = OsString::from(cpu);
+    }
+    changed
+}
+
+/// Run the ok case once per `qemu-arm` option variant and describe each result.
+/// Used when the ok case did not end ok, so the failure report says what changes
+/// the outcome. The production run never uses these options, and no row decides
+/// whether the self-test passed.
+///
+/// # Errors
+/// [`HarnessError`] when the driver cannot be built or `qemu-arm` cannot be
+/// started.
+pub fn diagnose(
+    tools: &ExecTools,
+    cfg: &RunnerConfig,
+    work_dir: &Path,
+) -> Result<Vec<SelftestRow>, HarnessError> {
+    let build = build_selftest_driver(tools, cfg, work_dir)?;
+    diagnose_built(tools, cfg, work_dir, &build)
+}
+
+fn diagnose_built(
+    tools: &ExecTools,
+    cfg: &RunnerConfig,
+    work_dir: &Path,
+    build: &DriverBuild,
+) -> Result<Vec<SelftestRow>, HarnessError> {
+    let budgets = Budgets::DEFAULT;
+    let base = qemu_options(&budgets);
+    let mut guest_errors = vec![OsString::from("-d"), OsString::from("guest_errors,unimp")];
+    guest_errors.extend(base.iter().cloned());
+    let mut strace = vec![OsString::from("-strace")];
+    strace.extend(base.iter().cloned());
+    // The last variant shows the end of its log (the last system calls); the
+    // others show the start of stderr.
+    let variants: [(&str, Vec<OsString>, bool); 7] = [
+        ("as-is", base.clone(), false),
+        ("no-reserve", without_option(&base, "-R"), false),
+        ("no-seed", without_option(&base, "-seed"), false),
+        ("cpu-cortex-a15", with_cpu(&base, "cortex-a15"), false),
+        ("cpu-max", with_cpu(&base, "max"), false),
+        ("guest-error-log", guest_errors, false),
+        ("strace", strace, true),
+    ];
+    let mut rows = Vec::new();
+    for (name, options, tail) in variants {
+        let slot = Slot::create(&selftest_dir(work_dir).join("slot"))?;
+        let output = run_driver_with(
+            tools,
+            cfg,
+            &budgets,
+            &options,
+            &build.elf_path,
+            &slot,
+            &SelftestCase::Ok.request(),
+        )?;
+        let exit = &output.record.exit;
+        let show = |value: Option<i32>| value.map_or_else(|| "none".to_owned(), |v| v.to_string());
+        rows.push(SelftestRow {
+            text: format!(
+                "diag {name}: exit={} signal={} stdout_bytes={} stderr={}",
+                show(exit.code),
+                show(exit.signal),
+                output.record.stdout.bytes_total,
+                if tail {
+                    stderr_tail(&output.stderr, STDERR_EXCERPT_CHARS)
+                } else {
+                    stderr_excerpt(&output.stderr)
+                }
+            ),
+            ok: true,
+        });
+    }
+    Ok(rows)
+}
+
 fn describe(outcome: &Outcome) -> String {
     let mut text = format!("outcome={}", outcome.class_word());
     if let Some(rc) = outcome.rc() {
@@ -581,9 +719,10 @@ fn check_ok_case(run: &CaseRun) -> SelftestRow {
     } else {
         SelftestRow {
             text: format!(
-                "case ok outcome={} (expected ok with input_len={expected_len}): {:?}",
+                "case ok outcome={} (expected ok with input_len={expected_len}): {:?} stderr={}",
                 run.outcome.class_word(),
-                run.outcome
+                run.outcome,
+                stderr_excerpt(&run.output.stderr)
             ),
             ok: false,
         }
@@ -724,6 +863,13 @@ pub fn run_selftest(
     });
 
     let passed = rows.iter().all(|row| row.ok);
+    if cases
+        .iter()
+        .any(|run| run.case == SelftestCase::Ok && !matches!(run.outcome, Outcome::Ok { .. }))
+    {
+        // The ok case itself failed: say which qemu-arm option changes that.
+        rows.extend(diagnose_built(tools, cfg, work_dir, &build)?);
+    }
     Ok(SelftestReport {
         rows,
         cases,
