@@ -13,7 +13,8 @@ use mt_capture::manifest::ManifestError;
 use mt_capture::seeding::run_seeds_detailed;
 use mt_capture::testbed::{
     Selection, StepSummary, TestbedError, TestbedOptions, run_capture, run_capture_build,
-    run_capture_record, run_fetch, run_pairs, run_replay, run_validate,
+    run_capture_record, run_capture_record_read_only, run_fetch, run_pairs, run_replay,
+    run_toolchains, run_validate,
 };
 use mt_toolchain::build_args::{self, Scope};
 use mt_toolchain::check::{capture_toml, run_check, run_check_observed};
@@ -198,6 +199,33 @@ enum TestbedAction {
         #[arg(long, value_enum)]
         stage: Option<StageArg>,
         /// The configuration to build; only with --stage build.
+        #[arg(long)]
+        config: Option<String>,
+        /// Only with --stage build: configure a CMake pair with
+        /// <DIR>/toolchain.cmake, written by `mt testbed toolchains` and mounted
+        /// read-only, so the untrusted build cannot change the toolchain file
+        /// configure reads (WR-12). The file must equal the pinned text, or
+        /// nothing is built (exit 2).
+        #[arg(long, value_name = "DIR")]
+        toolchain_dir: Option<PathBuf>,
+        /// Only with --stage record: require the read-only toolchain file of
+        /// every CMake pair (`<work-dir>/toolchain/<id>/<config>/toolchain.cmake`);
+        /// a pair without it, or with a toolchain file the build wrote, is
+        /// `toolchain_changed` (WR-12).
+        #[arg(long)]
+        read_only_toolchain: bool,
+    },
+    /// Write the pinned CMake toolchain file of one pair to
+    /// `<work-dir>/toolchain/<id>/<config>/toolchain.cmake` (WR-12). It runs no tool
+    /// and no upstream code; the testbed workflow mounts the directory read-only
+    /// into the build container. A Make pair gets the empty directory. Prints
+    /// `<id>/<config> toolchain written`, `no toolchain (make)` or `dropped
+    /// (<cause>)` for a pair of the drop log (nothing is written for it). Exit 0,
+    /// or 2 for invalid input (it needs exactly one id, --config, and not --all).
+    Toolchains {
+        #[command(flatten)]
+        args: TestbedArgs,
+        /// The configuration of the pair.
         #[arg(long)]
         config: Option<String>,
     },
@@ -437,14 +465,31 @@ fn finish_testbed(result: Result<StepSummary, TestbedError>) -> anyhow::Result<b
     }
 }
 
-/// The capture command: both stages in one process, or one stage (WR-04). Only
-/// the shape of the arguments is checked here.
-fn capture_command(
-    args: TestbedArgs,
+/// The arguments of `mt testbed capture` besides the shared ones.
+struct CaptureArgs {
     image: Option<String>,
     stage: Option<StageArg>,
     config: Option<String>,
-) -> anyhow::Result<bool> {
+    toolchain_dir: Option<PathBuf>,
+    read_only_toolchain: bool,
+}
+
+/// The capture command: both stages in one process, or one stage (WR-04). Only
+/// the shape of the arguments is checked here.
+fn capture_command(args: TestbedArgs, capture: CaptureArgs) -> anyhow::Result<bool> {
+    let CaptureArgs {
+        image,
+        stage,
+        config,
+        toolchain_dir,
+        read_only_toolchain,
+    } = capture;
+    if toolchain_dir.is_some() && stage != Some(StageArg::Build) {
+        anyhow::bail!("--toolchain-dir is only valid with --stage build");
+    }
+    if read_only_toolchain && stage != Some(StageArg::Record) {
+        anyhow::bail!("--read-only-toolchain is only valid with --stage record");
+    }
     match (stage, config) {
         (Some(StageArg::Build), config) => {
             let (Some(config), false, [id]) = (config, args.all, args.ids.as_slice()) else {
@@ -453,7 +498,12 @@ fn capture_command(
                 );
             };
             let id = id.clone();
-            match run_capture_build(&testbed_options(args, image), &id, &config) {
+            match run_capture_build(
+                &testbed_options(args, image),
+                &id,
+                &config,
+                toolchain_dir.as_deref(),
+            ) {
                 Ok(word) => {
                     println!("{id}/{config} {word}");
                     Ok(true)
@@ -471,9 +521,34 @@ fn capture_command(
         }
         (_, Some(_)) => anyhow::bail!("--config is only valid with --stage build"),
         (Some(StageArg::Record), None) => {
-            finish_testbed(run_capture_record(&testbed_options(args, image)))
+            let opts = testbed_options(args, image);
+            finish_testbed(if read_only_toolchain {
+                run_capture_record_read_only(&opts)
+            } else {
+                run_capture_record(&opts)
+            })
         }
         (None, None) => finish_testbed(run_capture(&testbed_options(args, image))),
+    }
+}
+
+/// Write the trusted toolchain file of one pair and print its word (WR-12).
+fn toolchains_command(args: TestbedArgs, config: Option<String>) -> anyhow::Result<bool> {
+    let (Some(config), false, [id]) = (config, args.all, args.ids.as_slice()) else {
+        anyhow::bail!(
+            "toolchains writes one pair: name exactly one target id and --config <NAME>, and do not use --all"
+        );
+    };
+    let id = id.clone();
+    match run_toolchains(&testbed_options(args, None), &id, &config) {
+        Ok(word) => {
+            println!("{id}/{config} {word}");
+            Ok(true)
+        }
+        Err(error) => {
+            print_issues(&error);
+            Err(error.into())
+        }
     }
 }
 
@@ -502,7 +577,19 @@ fn testbed_command(action: TestbedAction) -> anyhow::Result<bool> {
             image,
             stage,
             config,
-        } => capture_command(args, image, stage, config),
+            toolchain_dir,
+            read_only_toolchain,
+        } => capture_command(
+            args,
+            CaptureArgs {
+                image,
+                stage,
+                config,
+                toolchain_dir,
+                read_only_toolchain,
+            },
+        ),
+        TestbedAction::Toolchains { args, config } => toolchains_command(args, config),
         TestbedAction::Pairs(args) => pairs_command(args),
         TestbedAction::Replay(args) => finish_testbed(run_replay(&testbed_options(args, None))),
         TestbedAction::Compare { first, second } => compare_command(&first, &second),

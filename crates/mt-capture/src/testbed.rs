@@ -22,6 +22,13 @@
 //! [`run_capture`] from what the builds left, and [`run_pairs`] lists the retained
 //! pairs. [`run_capture`] and [`run_capture_record`] share one loop.
 //!
+//! The read-only toolchain file (WR-12): [`run_toolchains`] writes the pinned
+//! CMake toolchain file of one pair to `<work>/toolchain/<id>/<config>` and runs
+//! no tool and no upstream code. The testbed workflow mounts that directory
+//! read-only into the build container and passes it to [`run_capture_build`],
+//! and its record steps use [`run_capture_record_read_only`], which refuses a
+//! CMake pair that was not built against it.
+//!
 //! Every external tool runs through the `mt-toolchain` runner; this module
 //! spawns nothing itself.
 
@@ -37,7 +44,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::capture::{
     BuildRecord, CaptureContext, CaptureError, RunLayout, ToolPaths, VariantDiff, capture,
-    capture_build, capture_record, configure_evidence_changed, reported_tools, variant_code_diff,
+    capture_build, capture_build_with_toolchain, capture_record, capture_record_read_only,
+    configure_evidence_changed, reported_tools, variant_code_diff, write_trusted_toolchain,
 };
 use crate::cc::{CcEntry, CcPolicy};
 use crate::droplog::{DropLog, DropLogError, Dropped, MIN_RETAINED};
@@ -514,25 +522,13 @@ fn build_word(record: &BuildRecord) -> &'static str {
     }
 }
 
-/// Run the build stage of one pair ([`capture_build`]): the untrusted upstream
-/// build, writing only `<work>/run/<id>/<config>` (WR-04). Returns `built`,
-/// `build_failed` or `not_proven` from the build record, or `dropped (<cause>)`
-/// for a pair of the drop log, which is not run and writes nothing. It writes no
-/// report and no output file. Only the pair is selected, whatever `opts.selection`
-/// holds, so the 10-target floor does not apply.
-///
-/// # Errors
-/// [`TestbedError`] for unusable inputs (an unknown target or configuration, no
-/// recipe), a tool that cannot start, and [`CaptureError::Fetch`] (as
-/// [`TestbedError::Capture`]) when the source cache is missing or does not verify.
-pub fn run_capture_build(
-    opts: &TestbedOptions,
+/// The target and the configuration of one pair, or the error naming what the
+/// manifest does not hold.
+fn one_pair<'a>(
+    inputs: &'a Inputs,
     id: &str,
     config: &str,
-) -> Result<String, TestbedError> {
-    let mut one = opts.clone();
-    one.selection = Selection::Ids(vec![id.to_owned()]);
-    let inputs = load_inputs(&one, true)?;
+) -> Result<(&'a Target, &'a Config), TestbedError> {
     let target = target_of(&inputs.manifest, id)?;
     let Some(found) = ordered_configs(target)
         .into_iter()
@@ -543,14 +539,78 @@ pub fn run_capture_build(
             config: config.to_owned(),
         });
     };
+    Ok((target, found))
+}
+
+/// Run the build stage of one pair ([`capture_build`]): the untrusted upstream
+/// build, writing only `<work>/run/<id>/<config>` (WR-04). Returns `built`,
+/// `build_failed` or `not_proven` from the build record, or `dropped (<cause>)`
+/// for a pair of the drop log, which is not run and writes nothing. It writes no
+/// report and no output file. Only the pair is selected, whatever `opts.selection`
+/// holds, so the 10-target floor does not apply.
+///
+/// With `toolchain_dir` a CMake pair is built against
+/// `<toolchain_dir>/toolchain.cmake` ([`capture_build_with_toolchain`]), which must
+/// equal the pinned text before anything runs (WR-12); the testbed workflow
+/// passes the read-only mount `/opt/mt/toolchain`.
+///
+/// # Errors
+/// [`TestbedError`] for unusable inputs (an unknown target or configuration, no
+/// recipe, a toolchain file that is not the pinned text), a tool that cannot
+/// start, and [`CaptureError::Fetch`] (as [`TestbedError::Capture`]) when the
+/// source cache is missing or does not verify.
+pub fn run_capture_build(
+    opts: &TestbedOptions,
+    id: &str,
+    config: &str,
+    toolchain_dir: Option<&Path>,
+) -> Result<String, TestbedError> {
+    let mut one = opts.clone();
+    one.selection = Selection::Ids(vec![id.to_owned()]);
+    let inputs = load_inputs(&one, true)?;
+    let (target, found) = one_pair(&inputs, id, config)?;
     if let Some(dropped) = inputs.drops.is_dropped(id, config) {
         return Ok(format!("dropped ({})", dropped.cause.as_str()));
     }
     let cfg = runner_config(&inputs.pins, BUILD_TIMEOUT);
     make_work_dir(&one)?;
     let ctx = capture_context_of(&one, &inputs)?;
-    let record = capture_build(&cfg, &ctx, id, target, found)?;
+    let record = match toolchain_dir {
+        Some(dir) => capture_build_with_toolchain(&cfg, &ctx, id, target, found, dir)?,
+        None => capture_build(&cfg, &ctx, id, target, found)?,
+    };
     Ok(build_word(&record).to_owned())
+}
+
+/// Write the trusted toolchain file of one pair ([`write_trusted_toolchain`],
+/// WR-12): `<work>/toolchain/<id>/<config>/toolchain.cmake` for a CMake pair, the
+/// empty directory for a Make pair. Returns `toolchain written`, `no toolchain
+/// (make)` or `dropped (<cause>)` for a pair of the drop log, for which nothing is
+/// written. It runs no tool and no upstream code. Only the pair is selected,
+/// whatever `opts.selection` holds.
+///
+/// # Errors
+/// [`TestbedError`] for unusable inputs (an unknown target or configuration, no
+/// recipe, a flag that cannot be written into a toolchain file) or a file
+/// operation that fails.
+pub fn run_toolchains(
+    opts: &TestbedOptions,
+    id: &str,
+    config: &str,
+) -> Result<String, TestbedError> {
+    let mut one = opts.clone();
+    one.selection = Selection::Ids(vec![id.to_owned()]);
+    let inputs = load_inputs(&one, true)?;
+    let (target, found) = one_pair(&inputs, id, config)?;
+    if let Some(dropped) = inputs.drops.is_dropped(id, config) {
+        return Ok(format!("dropped ({})", dropped.cause.as_str()));
+    }
+    make_work_dir(&one)?;
+    let ctx = capture_context_of(&one, &inputs)?;
+    Ok(match write_trusted_toolchain(&ctx, id, target, found)? {
+        Some(_) => "toolchain written".to_owned(),
+        None => "no toolchain (make)".to_owned(),
+    })
 }
 
 /// Capture every configuration of every selected target, build and entry check
@@ -576,6 +636,17 @@ pub fn run_capture(opts: &TestbedOptions) -> Result<StepSummary, TestbedError> {
 /// a tool that cannot start.
 pub fn run_capture_record(opts: &TestbedOptions) -> Result<StepSummary, TestbedError> {
     capture_pairs(opts, capture_record)
+}
+
+/// [`run_capture_record`] with [`capture_record_read_only`] (WR-12): a CMake pair
+/// without the read-only toolchain file `<work>/toolchain/<id>/<config>/toolchain.cmake`,
+/// or with a build-written toolchain file, is `toolchain_changed`. Every record
+/// step of the testbed workflow uses it.
+///
+/// # Errors
+/// As [`run_capture_record`].
+pub fn run_capture_record_read_only(opts: &TestbedOptions) -> Result<StepSummary, TestbedError> {
+    capture_pairs(opts, capture_record_read_only)
 }
 
 /// The loop [`run_capture`] and [`run_capture_record`] share, so the two cannot
