@@ -18,8 +18,9 @@ use std::os::unix::net::UnixListener;
 use std::path::{Path, PathBuf};
 
 use mt_capture::capture::{
-    BuildRecord, CaptureContext, RunLayout, RunReadError, capture, capture_build, capture_record,
-    list_files, read_run_file,
+    BuildRecord, CaptureContext, CaptureError, RunLayout, RunReadError, capture, capture_build,
+    capture_build_with_toolchain, capture_record, capture_record_read_only, list_files,
+    read_run_file, write_trusted_toolchain,
 };
 use mt_capture::cc::SHIPPED_SPECS;
 use mt_capture::compare::compare_capture_dirs;
@@ -970,5 +971,353 @@ fn build_01_record_stage_refuses_a_changed_toolchain_file() {
     assert_eq!(
         report.toolchain_file_sha256.as_deref(),
         Some(sha256_hex(&genuine).as_str())
+    );
+}
+
+// ---------------------------------------------------------------------------
+// WR-12 (plan 02-22): the read-only toolchain file. In the testbed workflow the
+// trusted copy `<work>/toolchain/<id>/<cfg>/toolchain.cmake` is written by a
+// step that runs no upstream code and is mounted read-only into the build
+// container, so the build cannot change what configure reads. In process there
+// is no mount: these tests prove the library's side of the contract.
+
+/// The trusted toolchain directory of the pair `demo/default`.
+fn trusted_dir(bed: &Bed) -> PathBuf {
+    bed.ctx
+        .work_dir
+        .join("toolchain")
+        .join("demo")
+        .join("default")
+}
+
+/// Write the trusted copy and check where it went.
+fn write_trusted(bed: &Bed, target: &Target) -> PathBuf {
+    let dir = trusted_dir(bed);
+    let written = write_trusted_toolchain(&bed.ctx, "demo", target, &default_config()).unwrap();
+    assert_eq!(written, Some(dir.join("toolchain.cmake")));
+    assert_eq!(
+        layout_of(bed).trusted_toolchain_path(),
+        dir.join("toolchain.cmake")
+    );
+    dir
+}
+
+fn trusted_build_stage(bed: &Bed, target: &Target, dir: &Path) -> BuildRecord {
+    capture_build_with_toolchain(
+        &runner_config(),
+        &bed.ctx,
+        "demo",
+        target,
+        &default_config(),
+        dir,
+    )
+    .unwrap()
+}
+
+fn read_only_record_stage(bed: &Bed, target: &Target) -> CaptureReport {
+    capture_record_read_only(
+        &runner_config(),
+        &bed.ctx,
+        "demo",
+        target,
+        &default_config(),
+    )
+    .unwrap()
+}
+
+fn has_cause(report: &CaptureReport, token: &str) -> bool {
+    report.causes.iter().any(|cause| cause == token)
+}
+
+fn detail_with(report: &CaptureReport, text: &str) -> bool {
+    report
+        .cause_details
+        .iter()
+        .any(|detail| detail.contains(text))
+}
+
+#[test]
+fn build_01_record_stage_uses_the_read_only_toolchain_file() {
+    let Some(bed) = bed(&CMAKE_PROJECT) else {
+        return;
+    };
+    let target = cmake_target(&bed.upstream);
+    fetched(&bed, &target);
+    let layout = layout_of(&bed);
+    let dir = write_trusted(&bed, &target);
+    let trusted = fs::read(dir.join("toolchain.cmake")).unwrap();
+
+    let record = trusted_build_stage(&bed, &target, &dir);
+
+    assert!(record.built, "{record:#?}");
+    assert!(
+        fs::symlink_metadata(layout.toolchain_path()).is_err(),
+        "the build stage wrote stage/toolchain.cmake although a read-only one was given"
+    );
+    let configure = record
+        .steps
+        .iter()
+        .find(|step| step.name == "cmake configure")
+        .expect("a cmake configure step");
+    let wanted = format!(
+        "-DCMAKE_TOOLCHAIN_FILE={}",
+        dir.join("toolchain.cmake").display()
+    );
+    assert!(
+        configure
+            .run
+            .argv
+            .iter()
+            .any(|argument| *argument == wanted),
+        "{:?}",
+        configure.run.argv
+    );
+
+    let report = read_only_record_stage(&bed, &target);
+
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::Captured,
+        "{:#?}",
+        report.cause_details
+    );
+    assert!(report.toolchain_file_read_only);
+    assert_eq!(
+        report.toolchain_file_sha256.as_deref(),
+        Some(sha256_hex(&trusted).as_str())
+    );
+}
+
+#[test]
+fn build_01_record_stage_refuses_a_build_that_rewrote_the_read_only_toolchain_file() {
+    // During configure the project appends a flag to the toolchain file it was
+    // given. In process the write succeeds; in the testbed workflow it fails on
+    // the read-only mount (the container workflow's toolchain-ro-control).
+    let lists = "cmake_minimum_required(VERSION 3.10)\nproject(demo C)\n\
+                 file(APPEND \"${CMAKE_TOOLCHAIN_FILE}\" \"set(CMAKE_C_FLAGS_INIT \\\"\\${CMAKE_C_FLAGS_INIT} -DPLANTED\\\")\\n\")\n\
+                 configure_file(gen.h.in gen.h)\n\
+                 add_library(tj STATIC t.c)\n\
+                 target_include_directories(tj PRIVATE ${CMAKE_CURRENT_BINARY_DIR})\n\
+                 add_library(unused STATIC EXCLUDE_FROM_ALL u.c)\n";
+    let mut files = CMAKE_PROJECT;
+    files[0] = ("CMakeLists.txt", lists);
+    let Some(bed) = bed(&files) else {
+        return;
+    };
+    let target = cmake_target(&bed.upstream);
+    fetched(&bed, &target);
+    let dir = write_trusted(&bed, &target);
+    let genuine = fs::read(dir.join("toolchain.cmake")).unwrap();
+
+    trusted_build_stage(&bed, &target, &dir);
+
+    let after = fs::read(dir.join("toolchain.cmake")).unwrap();
+    assert_ne!(
+        after, genuine,
+        "the planted configure-time write did not happen"
+    );
+    assert!(
+        String::from_utf8_lossy(&after).contains("-DPLANTED"),
+        "{}",
+        String::from_utf8_lossy(&after)
+    );
+    let report = read_only_record_stage(&bed, &target);
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::CaptureFailed,
+        "{:#?}",
+        report.cause_details
+    );
+    assert!(
+        has_cause(&report, "toolchain_changed"),
+        "{:?}",
+        report.causes
+    );
+    assert!(
+        detail_with(&report, "read-only"),
+        "{:?}",
+        report.cause_details
+    );
+}
+
+#[test]
+fn build_01_record_stage_refuses_its_own_toolchain_file_beside_a_read_only_one() {
+    let Some(bed) = bed(&CMAKE_PROJECT) else {
+        return;
+    };
+    let target = cmake_target(&bed.upstream);
+    fetched(&bed, &target);
+    let layout = layout_of(&bed);
+    let dir = write_trusted(&bed, &target);
+    let genuine = fs::read(dir.join("toolchain.cmake")).unwrap();
+    assert!(trusted_build_stage(&bed, &target, &dir).built);
+
+    // The genuine text, written where the end-state mode reads, as a build could.
+    fs::write(layout.toolchain_path(), &genuine).unwrap();
+    let report = read_only_record_stage(&bed, &target);
+
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::CaptureFailed,
+        "{:#?}",
+        report.cause_details
+    );
+    assert!(
+        has_cause(&report, "toolchain_changed"),
+        "{:?}",
+        report.causes
+    );
+    assert!(
+        detail_with(
+            &report,
+            "the build stage wrote its own toolchain file although a read-only one was given"
+        ),
+        "{:?}",
+        report.cause_details
+    );
+}
+
+#[test]
+fn build_01_build_stage_refuses_a_read_only_toolchain_that_differs_from_the_pins() {
+    let Some(bed) = bed(&CMAKE_PROJECT) else {
+        return;
+    };
+    let target = cmake_target(&bed.upstream);
+    fetched(&bed, &target);
+    let layout = layout_of(&bed);
+    let dir = write_trusted(&bed, &target);
+    let path = dir.join("toolchain.cmake");
+    let mut edited = fs::read(&path).unwrap();
+    edited.extend_from_slice(b"set(CMAKE_C_FLAGS_INIT \"${CMAKE_C_FLAGS_INIT} -DPLANTED\")\n");
+    fs::write(&path, &edited).unwrap();
+
+    let result = capture_build_with_toolchain(
+        &runner_config(),
+        &bed.ctx,
+        "demo",
+        &target,
+        &default_config(),
+        &dir,
+    );
+
+    assert!(
+        matches!(result, Err(CaptureError::InvalidInput(_))),
+        "{result:?}"
+    );
+    assert!(
+        !layout.build_record_path().exists(),
+        "a build record was written"
+    );
+    assert!(
+        !layout.build.exists(),
+        "a build directory exists, so something ran"
+    );
+}
+
+#[test]
+fn build_01_record_stage_requires_the_read_only_toolchain_when_asked() {
+    let Some(bed) = bed(&CMAKE_PROJECT) else {
+        return;
+    };
+    let target = cmake_target(&bed.upstream);
+    fetched(&bed, &target);
+    // The end-state mode: no trusted copy.
+    assert!(build_stage(&bed, &target).built);
+
+    let report = read_only_record_stage(&bed, &target);
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::CaptureFailed,
+        "{:#?}",
+        report.cause_details
+    );
+    assert!(
+        has_cause(&report, "toolchain_changed"),
+        "{:?}",
+        report.causes
+    );
+    assert!(
+        detail_with(&report, "no read-only toolchain file for this CMake pair"),
+        "{:?}",
+        report.cause_details
+    );
+
+    let report = record_stage(&bed, &target);
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::Captured,
+        "{:#?}",
+        report.cause_details
+    );
+    assert!(!report.toolchain_file_read_only);
+}
+
+#[test]
+fn build_01_record_stage_checks_the_toolchain_consistency() {
+    let Some(bed) = bed(&CMAKE_PROJECT) else {
+        return;
+    };
+    let target = cmake_target(&bed.upstream);
+    fetched(&bed, &target);
+    let layout = layout_of(&bed);
+    assert!(build_stage(&bed, &target).built);
+    let cache_path = layout.build.join("CMakeCache.txt");
+    let cache = fs::read_to_string(&cache_path).unwrap();
+    let raw = fs::read_to_string(layout.raw_path()).unwrap();
+
+    // (1) A flag appended to the cache's CMAKE_C_FLAGS line.
+    let planted: String = cache
+        .lines()
+        .map(|line| {
+            if line.starts_with("CMAKE_C_FLAGS:STRING=") {
+                format!("{line} -DPLANTED\n")
+            } else {
+                format!("{line}\n")
+            }
+        })
+        .collect();
+    assert_ne!(
+        planted, cache,
+        "the cache has no CMAKE_C_FLAGS:STRING= line"
+    );
+    fs::write(&cache_path, &planted).unwrap();
+    let report = record_stage(&bed, &target);
+    assert!(
+        has_cause(&report, "toolchain_changed"),
+        "{:?}",
+        report.causes
+    );
+    assert!(
+        detail_with(&report, "CMakeCache.txt"),
+        "{:?}",
+        report.cause_details
+    );
+    assert_ne!(report.verdict, CaptureVerdict::Captured);
+
+    // (2) The cache restored, -mfpu=fpv4-sp-d16 removed from every command.
+    fs::write(&cache_path, &cache).unwrap();
+    let without = raw.replace(" -mfpu=fpv4-sp-d16", "");
+    assert_ne!(
+        without, raw,
+        "the raw export does not carry -mfpu=fpv4-sp-d16"
+    );
+    fs::write(layout.raw_path(), &without).unwrap();
+    let report = record_stage(&bed, &target);
+    assert!(
+        has_cause(&report, "toolchain_changed"),
+        "{:?}",
+        report.causes
+    );
+    assert!(detail_with(&report, "t.c"), "{:?}", report.cause_details);
+    assert_ne!(report.verdict, CaptureVerdict::Captured);
+
+    // (3) Both restored.
+    fs::write(layout.raw_path(), &raw).unwrap();
+    let report = record_stage(&bed, &target);
+    assert_eq!(
+        report.verdict,
+        CaptureVerdict::Captured,
+        "{:#?}",
+        report.cause_details
     );
 }
