@@ -328,8 +328,21 @@ dependencies = [
  "anyhow",
  "clap",
  "mt-capture",
+ "mt-harness",
  "mt-toolchain",
  "tempfile",
+]
+
+[[package]]
+name = "mt-harness"
+version = "0.1.0"
+dependencies = [
+ "mt-capture",
+ "mt-toolchain",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
 ]
 
 [[package]]

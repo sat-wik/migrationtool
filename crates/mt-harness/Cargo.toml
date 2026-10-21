@@ -1,0 +1,19 @@
+[package]
+name = "mt-harness"
+description = "C reference executor: shared runtime template, link recipe, qemu-arm run and outcome classification"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+mt-capture = { path = "../mt-capture" }
+mt-toolchain = { path = "../mt-toolchain" }
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true
