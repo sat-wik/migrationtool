@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 02
 current_phase_name: Test Bed and Build Capture
 status: executing
-stopped_at: Completed 02-21-PLAN.md
-last_updated: "2026-10-21T01:16:51.572Z"
+stopped_at: Completed 02-22-PLAN.md
+last_updated: "2026-10-21T01:58:59.753Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: 79fe1925dc8473ccbb5dd3626cbaa371cadbd957
+state_head: 7c55dbe5f7b2b563a9024bd2c9330e41abd4ca60
 progress:
   total_phases: 12
   completed_phases: 1
   total_plans: 31
-  completed_plans: 30
+  completed_plans: 31
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 02 (Test Bed and Build Capture) — EXECUTING
-Plan: 12 of 19
+Plan: 13 of 19
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -77,6 +77,7 @@ Progress: [█░░░░░░░░░] 8%
 | Phase 02 P19 | 17 min | 2 tasks | 3 files |
 | Phase 02 P20 | 20 min | 3 tasks | 8 files |
 | Phase 02 P21 | 45min | 3 tasks | 10 files |
+| Phase 02 P22 | 30min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,9 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 02]: 02-20: cause tokens helper_option, write_redirect, build_record_inconsistent, toolchain_changed, gates_not_passed; a trailing -o stays dangling_output; T-02-67..T-02-70 registered open below the high threshold
 - [Phase 02]: 02-21: allow-list compile-command gate (walk_arguments over 56 measured spellings, 13 SHIPPED_SPECS measured in the pinned image) replaces the 02-20 deny-list at capture and replay
 - [Phase 02]: 02-21: -Wmissing-variable-declarations added under the pre-decided measurement-gap handling (testbed run 39453293771, cjson)
+- [Phase 02]: 02-22: WR-12 proven by a read-only toolchain file: mt testbed toolchains (no upstream code) writes <work>/toolchain/<id>/<cfg>/toolchain.cmake, run_build mounts it read-only at /opt/mt/toolchain, the build stage checks it against the pins before configure, and every record step requires it (--read-only-toolchain)
+- [Phase 02]: 02-22: the CMakeCache.txt line and contiguous-flag checks are consistency checks only (toolchain_changed); the local in-process fallback is the end-state comparison with toolchain_file_read_only false
+- [Phase 02]: 02-22: WR-14: an unreadable toolchain file or build/CMakeCache.txt is the cause toolchain_unreadable on its pair; check_toolchain_file and check_configured_toolchain have no error path
 
 ### Pending Todos
 
@@ -163,6 +167,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T01:16:51.431Z
-Stopped at: Completed 02-21-PLAN.md
+Last session: 2026-10-21T01:58:59.627Z
+Stopped at: Completed 02-22-PLAN.md
 Resume file: None
