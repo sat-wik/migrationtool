@@ -9,6 +9,9 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use mt_capture::capture::{RunLayout, ToolPaths, effective_cflags, expand_flags, toolchain_file};
+use mt_capture::manifest::Manifest;
+use mt_toolchain::pins::Pins;
 use mt_toolchain::runner::{self, RunRequest, RunnerConfig};
 
 const SMALL: &str = include_str!("../../mt-capture/tests/fixtures/manifest-small.toml");
@@ -311,6 +314,164 @@ fn build_01_capture_stage_build_of_an_unknown_pair_exits_two() {
             outcome.stderr.contains("absent"),
             "{id}/{config}: {}",
             outcome.stderr
+        );
+    }
+}
+
+/// The pinned toolchain text of `id`/`config` in the fixture bed: the pins'
+/// tools and the run layout's expanded flags.
+fn pinned_toolchain_text(bed: &Bed, id: &str, config: &str) -> String {
+    let manifest = Manifest::parse(SMALL).unwrap();
+    let pins = Pins::load(&repo_root().join("container/pins.toml")).unwrap();
+    let tools = ToolPaths::from_pins(&pins).unwrap();
+    let target = &manifest.target[id];
+    let found = target
+        .config
+        .iter()
+        .find(|candidate| candidate.name == config)
+        .unwrap();
+    let layout = RunLayout::new(&bed.work, id, config);
+    let flags = expand_flags(
+        &effective_cflags(&manifest.baseline.cflags, found),
+        &tools,
+        &layout,
+    )
+    .unwrap();
+    toolchain_file(&tools, &flags).unwrap()
+}
+
+#[test]
+fn build_01_toolchains_writes_the_pinned_text_for_cmake_pairs() {
+    // WR-12 (plan 02-22): `mt testbed toolchains` runs no tool and no upstream
+    // code; the testbed workflow mounts what it writes read-only into the build
+    // container.
+    let bed = make_bed();
+    for config in ["default", "depth-8"] {
+        let outcome = testbed(&bed, &["toolchains"], &["--config", config, "demo_cmake"]);
+
+        assert_eq!(outcome.code, Some(0), "stderr: {}", outcome.stderr);
+        assert_eq!(
+            outcome.stdout.trim_end(),
+            format!("demo_cmake/{config} toolchain written")
+        );
+        let written = bed
+            .work
+            .join("toolchain/demo_cmake")
+            .join(config)
+            .join("toolchain.cmake");
+        assert_eq!(
+            fs::read_to_string(&written).unwrap(),
+            pinned_toolchain_text(&bed, "demo_cmake", config)
+        );
+    }
+
+    // A Make pair: the directory exists (the mount source), with no file.
+    let outcome = testbed(&bed, &["toolchains"], &["--config", "default", "demo_make"]);
+    assert_eq!(outcome.code, Some(0), "stderr: {}", outcome.stderr);
+    assert_eq!(
+        outcome.stdout.trim_end(),
+        "demo_make/default no toolchain (make)"
+    );
+    let dir = bed.work.join("toolchain/demo_make/default");
+    assert!(dir.is_dir(), "{} was not created", dir.display());
+    assert_eq!(
+        fs::read_dir(&dir).unwrap().count(),
+        0,
+        "a Make pair got a file"
+    );
+
+    // A dropped pair: nothing is written.
+    let fresh = make_bed();
+    let outcome = testbed(
+        &fresh,
+        &["toolchains"],
+        &["--config", "no-float", "demo_make"],
+    );
+    assert_eq!(outcome.code, Some(0), "stderr: {}", outcome.stderr);
+    assert_eq!(
+        outcome.stdout.trim_end(),
+        "demo_make/no-float dropped (differs)"
+    );
+    assert!(
+        !fresh.work.exists(),
+        "a dropped pair wrote under the work directory"
+    );
+}
+
+#[test]
+fn build_01_toolchain_dir_needs_stage_build() {
+    let bed = make_bed();
+    for (extra, needle) in [
+        (
+            vec!["--toolchain-dir", "/opt/mt/toolchain", "demo_make"],
+            "--toolchain-dir",
+        ),
+        (
+            vec![
+                "--stage",
+                "record",
+                "--toolchain-dir",
+                "/opt/mt/toolchain",
+                "demo_make",
+            ],
+            "--toolchain-dir",
+        ),
+        (
+            vec!["--read-only-toolchain", "demo_make"],
+            "--read-only-toolchain",
+        ),
+        (
+            vec![
+                "--stage",
+                "build",
+                "--config",
+                "default",
+                "--read-only-toolchain",
+                "demo_make",
+            ],
+            "--read-only-toolchain",
+        ),
+    ] {
+        let outcome = testbed(&bed, &["capture"], &extra);
+
+        assert_eq!(
+            outcome.code,
+            Some(2),
+            "{extra:?}: stdout {}",
+            outcome.stdout
+        );
+        assert!(
+            outcome.stderr.contains(needle),
+            "{extra:?}: {}",
+            outcome.stderr
+        );
+        assert!(
+            !bed.work.exists(),
+            "{extra:?}: the work directory was touched"
+        );
+    }
+
+    for extra in [
+        vec!["demo_make"],
+        vec!["--config", "default", "demo_make", "demo_cmake"],
+        vec!["--config", "default", "--all"],
+    ] {
+        let outcome = testbed(&bed, &["toolchains"], &extra);
+
+        assert_eq!(
+            outcome.code,
+            Some(2),
+            "{extra:?}: stdout {}",
+            outcome.stdout
+        );
+        assert!(
+            outcome.stderr.contains("exactly one target id") && outcome.stderr.contains("--config"),
+            "{extra:?}: {}",
+            outcome.stderr
+        );
+        assert!(
+            !bed.work.exists(),
+            "{extra:?}: the work directory was touched"
         );
     }
 }

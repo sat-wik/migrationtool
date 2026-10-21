@@ -15,8 +15,15 @@ use regex::Regex;
 const WORKFLOW: &str = ".github/workflows/testbed.yml";
 
 /// The subcommands of `mt testbed` a workflow step may name.
-const SUBCOMMANDS: [&str; 7] = [
-    "validate", "fetch", "capture", "replay", "seeds", "compare", "pairs",
+const SUBCOMMANDS: [&str; 8] = [
+    "validate",
+    "fetch",
+    "capture",
+    "replay",
+    "seeds",
+    "compare",
+    "pairs",
+    "toolchains",
 ];
 
 /// The resource limits every container helper carries (WR-04, T-02-57).
@@ -603,7 +610,43 @@ fn build_02_untrusted_builds_cannot_write_the_evidence() {
             "run_build has no read-only mount ending {readonly}: {mounts:?}"
         );
     }
+    // WR-12 (plan 02-22): the toolchain file configure reads is written by a
+    // container that runs no upstream code (`run_offline toolchains`, before the
+    // build container) and mounted read-only at /opt/mt/toolchain, in the
+    // read-only root file system and outside both writable mounts. The build
+    // stage is told to use it.
+    let toolchain_mounts: Vec<&String> = mounts
+        .iter()
+        .filter(|m| m.ends_with(":/opt/mt/toolchain:ro"))
+        .collect();
+    assert_eq!(
+        toolchain_mounts,
+        ["$work/toolchain/$id/$cfg:/opt/mt/toolchain:ro"],
+        "run_build must mount the pair's trusted toolchain directory read-only at /opt/mt/toolchain: {mounts:?}"
+    );
     let code = code_lines(&build);
+    let build_line = code
+        .iter()
+        .find(|line| line.contains("--stage build"))
+        .expect("run_build runs the build stage");
+    assert!(
+        build_line.contains("--toolchain-dir /opt/mt/toolchain"),
+        "the build stage is not given the read-only toolchain: {build_line}"
+    );
+    let toolchains = first_line_with(&code, "run_offline toolchains")
+        .unwrap_or_else(|| panic!("run_build never runs `run_offline toolchains`:\n{build}"));
+    let container = first_line_with(&code, "docker run")
+        .unwrap_or_else(|| panic!("run_build starts no container:\n{build}"));
+    assert!(
+        toolchains < container,
+        "the toolchains step must run before the build container:\n{build}"
+    );
+    for mount in volume_mounts(&text) {
+        assert!(
+            !mount.contains("toolchain") || mount.ends_with(":ro"),
+            "a toolchain path is mounted writable: {mount}"
+        );
+    }
     assert!(
         code.iter().any(|line| line
             .trim_start()
@@ -721,6 +764,34 @@ fn build_02_readme_names_the_container_kinds() {
         assert!(
             readme.contains(needle),
             "testbed/README.md does not describe {needle:?}"
+        );
+    }
+}
+
+#[test]
+fn build_02_record_steps_require_the_read_only_toolchain() {
+    // WR-12 (plan 02-22): every record stage refuses a CMake pair that was not
+    // built against the read-only toolchain file, so the read-only mode covers
+    // every CMake pair the workflow captures: the record step and the
+    // determinism rerun.
+    let text = read_repo_file(WORKFLOW);
+    let records: Vec<String> = code_lines(&text)
+        .into_iter()
+        .filter(|line| line.contains("--stage record"))
+        .collect();
+    assert_eq!(
+        records.len(),
+        2,
+        "expected the record step and the determinism rerun: {records:?}"
+    );
+    for line in &records {
+        assert!(
+            line.contains("run_offline capture --stage record"),
+            "a record line is not `run_offline capture --stage record`: {line}"
+        );
+        assert!(
+            line.contains("--read-only-toolchain"),
+            "a record line does not require the read-only toolchain: {line}"
         );
     }
 }
