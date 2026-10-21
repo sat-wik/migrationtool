@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 02
 current_phase_name: Test Bed and Build Capture
 status: executing
-stopped_at: Completed 02-20-PLAN.md
-last_updated: "2026-10-20T10:16:27.349Z"
+stopped_at: Completed 02-21-PLAN.md
+last_updated: "2026-10-21T01:16:51.572Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: 6b8480a8caf29d35da0fb981461ddb75cc5ddcad
+state_head: 79fe1925dc8473ccbb5dd3626cbaa371cadbd957
 progress:
   total_phases: 12
   completed_phases: 1
-  total_plans: 29
-  completed_plans: 29
+  total_plans: 31
+  completed_plans: 30
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 02 (Test Bed and Build Capture) — EXECUTING
-Plan: 11 of 19
+Plan: 12 of 19
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -76,6 +76,7 @@ Progress: [█░░░░░░░░░] 8%
 | Phase 02 P18 | 12 min | 2 tasks | 6 files |
 | Phase 02 P19 | 17 min | 2 tasks | 3 files |
 | Phase 02 P20 | 20 min | 3 tasks | 8 files |
+| Phase 02 P21 | 45min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,8 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 02]: Plan 02-19: run_build runs each retained pair's upstream build in its own no-network container whose only writable mounts are a discarded scratch /work and the pair's run directory; only the record step (no upstream code) writes the capture artifacts; the determinism rerun builds into its own work directory — WR-04 closed in CI; pinned by build_02_untrusted_builds_cannot_write_the_evidence; final full-bed run 39335185551 green on the first round trip (1 of 3 used), notices identical to plan 02-17's apart from the new testbed-build notice
 - [Phase 02]: Residual: replay's configure_evidence_changed and replay copy still read the run directory with plain fs::read (not covered by plan 02-19) — Bounded by the offline replay container; noted in the 02-18 and 02-19 summaries for a follow-up
 - [Phase 02]: 02-20: cause tokens helper_option, write_redirect, build_record_inconsistent, toolchain_changed, gates_not_passed; a trailing -o stays dangling_output; T-02-67..T-02-70 registered open below the high threshold
+- [Phase 02]: 02-21: allow-list compile-command gate (walk_arguments over 56 measured spellings, 13 SHIPPED_SPECS measured in the pinned image) replaces the 02-20 deny-list at capture and replay
+- [Phase 02]: 02-21: -Wmissing-variable-declarations added under the pre-decided measurement-gap handling (testbed run 39453293771, cjson)
 
 ### Pending Todos
 
@@ -160,6 +163,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T10:16:27.203Z
-Stopped at: Completed 02-20-PLAN.md
+Last session: 2026-10-21T01:16:51.431Z
+Stopped at: Completed 02-21-PLAN.md
 Resume file: None
