@@ -1,0 +1,2151 @@
+{
+  "id": "0x55f2cca5f7b8",
+  "kind": "FunctionDecl",
+  "loc": {
+    "offset": 28799,
+    "file": "/work/run/qcbor/default/src/inc/qcbor/qcbor_decode.h",
+    "line": 700,
+    "col": 1,
+    "tokLen": 16,
+    "includedFrom": {
+      "file": "/work/capture/qcbor/default/entry_probe.c"
+    }
+  },
+  "range": {
+    "begin": {
+      "offset": 28794,
+      "line": 699,
+      "col": 1,
+      "tokLen": 4,
+      "includedFrom": {
+        "file": "/work/capture/qcbor/default/entry_probe.c"
+      }
+    },
+    "end": {
+      "offset": 28887,
+      "line": 700,
+      "col": 89,
+      "tokLen": 1,
+      "includedFrom": {
+        "file": "/work/capture/qcbor/default/entry_probe.c"
+      }
+    }
+  },
+  "name": "QCBORDecode_Init",
+  "mangledName": "QCBORDecode_Init",
+  "type": {
+    "qualType": "void (QCBORDecodeContext *, UsefulBufC, QCBORDecodeMode)"
+  },
+  "inner": [
+    {
+      "id": "0x55f2cca5f540",
+      "kind": "ParmVarDecl",
+      "loc": {
+        "offset": 28836,
+        "col": 38,
+        "tokLen": 4,
+        "includedFrom": {
+          "file": "/work/capture/qcbor/default/entry_probe.c"
+        }
+      },
+      "range": {
+        "begin": {
+          "offset": 28816,
+          "col": 18,
+          "tokLen": 18,
+          "includedFrom": {
+            "file": "/work/capture/qcbor/default/entry_probe.c"
+          }
+        },
+        "end": {
+          "offset": 28836,
+          "col": 38,
+          "tokLen": 4,
+          "includedFrom": {
+            "file": "/work/capture/qcbor/default/entry_probe.c"
+          }
+        }
+      },
+      "name": "pCtx",
+      "type": {
+        "qualType": "QCBORDecodeContext *"
+      }
+    },
+    {
+      "id": "0x55f2cca5f5b8",
+      "kind": "ParmVarDecl",
+      "loc": {
+        "offset": 28853,
+        "col": 55,
+        "tokLen": 11,
+        "includedFrom": {
+          "file": "/work/capture/qcbor/default/entry_probe.c"
+        }
+      },
+      "range": {
+        "begin": {
+          "offset": 28842,
+          "col": 44,
+          "tokLen": 10,
+          "includedFrom": {
+            "file": "/work/capture/qcbor/default/entry_probe.c"
+          }
+        },
+        "end": {
+          "offset": 28853,
+          "col": 55,
+          "tokLen": 11,
+          "includedFrom": {
+            "file": "/work/capture/qcbor/default/entry_probe.c"
+          }
+        }
+      },
+      "name": "EncodedCBOR",
+      "type": {
+        "desugaredQualType": "struct q_useful_buf_c",
+        "qualType": "UsefulBufC",
+        "typeAliasDeclId": "0x55f2cc9e1410"
+      }
+    },
+    {
+      "id": "0x55f2cca5f690",
+      "kind": "ParmVarDecl",
+      "loc": {
+        "offset": 28882,
+        "col": 84,
+        "tokLen": 5,
+        "includedFrom": {
+          "file": "/work/capture/qcbor/default/entry_probe.c"
+        }
+      },
+      "range": {
+        "begin": {
+          "offset": 28866,
+          "col": 68,
+          "tokLen": 15,
+          "includedFrom": {
+            "file": "/work/capture/qcbor/default/entry_probe.c"
+          }
+        },
+        "end": {
+          "offset": 28882,
+          "col": 84,
+          "tokLen": 5,
+          "includedFrom": {
+            "file": "/work/capture/qcbor/default/entry_probe.c"
+          }
+        }
+      },
+      "name": "nMode",
+      "type": {
+        "desugaredQualType": "QCBORDecodeMode",
+        "qualType": "QCBORDecodeMode",
+        "typeAliasDeclId": "0x55f2cca59018"
+      }
+    },
+    {
+      "id": "0x55f2cca69a10",
+      "kind": "FullComment",
+      "loc": {
+        "offset": 27160,
+        "line": 663,
+        "col": 3,
+        "tokLen": 0,
+        "includedFrom": {
+          "file": "/work/capture/qcbor/default/entry_probe.c"
+        }
+      },
+      "range": {
+        "begin": {
+          "offset": 27160,
+          "col": 3,
+          "tokLen": 0,
+          "includedFrom": {
+            "file": "/work/capture/qcbor/default/entry_probe.c"
+          }
+        },
+        "end": {
+          "offset": 28788,
+          "line": 697,
+          "col": 28,
+          "tokLen": 1,
+          "includedFrom": {
+            "file": "/work/capture/qcbor/default/entry_probe.c"
+          }
+        }
+      },
+      "inner": [
+        {
+          "id": "0x55f2cca68e10",
+          "kind": "ParagraphComment",
+          "loc": {
+            "offset": 27160,
+            "line": 663,
+            "col": 3,
+            "tokLen": 0,
+            "includedFrom": {
+              "file": "/work/capture/qcbor/default/entry_probe.c"
+            }
+          },
+          "range": {
+            "begin": {
+              "offset": 27160,
+              "col": 3,
+              "tokLen": 0,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            },
+            "end": {
+              "offset": 27196,
+              "col": 39,
+              "tokLen": 1,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            }
+          },
+          "inner": [
+            {
+              "id": "0x55f2cca68de0",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27160,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27160,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27196,
+                  "col": 39,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " Initialize the CBOR decoder context."
+            }
+          ]
+        },
+        {
+          "id": "0x55f2cca68e60",
+          "kind": "ParagraphComment",
+          "loc": {
+            "offset": 27203,
+            "line": 665,
+            "col": 3,
+            "tokLen": 0,
+            "includedFrom": {
+              "file": "/work/capture/qcbor/default/entry_probe.c"
+            }
+          },
+          "range": {
+            "begin": {
+              "offset": 27203,
+              "col": 3,
+              "tokLen": 0,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            },
+            "end": {
+              "offset": 27203,
+              "col": 3,
+              "tokLen": 0,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            }
+          },
+          "inner": [
+            {
+              "id": "0x55f2cca68e30",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27203,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27203,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27203,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " "
+            }
+          ]
+        },
+        {
+          "id": "0x55f2cca68e80",
+          "kind": "ParamCommandComment",
+          "loc": {
+            "offset": 27205,
+            "col": 5,
+            "tokLen": 5,
+            "includedFrom": {
+              "file": "/work/capture/qcbor/default/entry_probe.c"
+            }
+          },
+          "range": {
+            "begin": {
+              "offset": 27204,
+              "col": 4,
+              "tokLen": 1,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            },
+            "end": {
+              "offset": 27257,
+              "line": 666,
+              "col": 3,
+              "tokLen": 0,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            }
+          },
+          "direction": "in",
+          "explicit": true,
+          "param": "pCtx",
+          "paramIdx": 0,
+          "inner": [
+            {
+              "id": "0x55f2cca68f30",
+              "kind": "ParagraphComment",
+              "loc": {
+                "offset": 27219,
+                "line": 665,
+                "col": 19,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27219,
+                  "col": 19,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27257,
+                  "line": 666,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "inner": [
+                {
+                  "id": "0x55f2cca68ee0",
+                  "kind": "TextComment",
+                  "loc": {
+                    "offset": 27219,
+                    "line": 665,
+                    "col": 19,
+                    "tokLen": 0,
+                    "includedFrom": {
+                      "file": "/work/capture/qcbor/default/entry_probe.c"
+                    }
+                  },
+                  "range": {
+                    "begin": {
+                      "offset": 27219,
+                      "col": 19,
+                      "tokLen": 0,
+                      "includedFrom": {
+                        "file": "/work/capture/qcbor/default/entry_probe.c"
+                      }
+                    },
+                    "end": {
+                      "offset": 27253,
+                      "col": 53,
+                      "tokLen": 1,
+                      "includedFrom": {
+                        "file": "/work/capture/qcbor/default/entry_probe.c"
+                      }
+                    }
+                  },
+                  "text": "         The context to initialize."
+                },
+                {
+                  "id": "0x55f2cca68f00",
+                  "kind": "TextComment",
+                  "loc": {
+                    "offset": 27257,
+                    "line": 666,
+                    "col": 3,
+                    "tokLen": 0,
+                    "includedFrom": {
+                      "file": "/work/capture/qcbor/default/entry_probe.c"
+                    }
+                  },
+                  "range": {
+                    "begin": {
+                      "offset": 27257,
+                      "col": 3,
+                      "tokLen": 0,
+                      "includedFrom": {
+                        "file": "/work/capture/qcbor/default/entry_probe.c"
+                      }
+                    },
+                    "end": {
+                      "offset": 27257,
+                      "col": 3,
+                      "tokLen": 0,
+                      "includedFrom": {
+                        "file": "/work/capture/qcbor/default/entry_probe.c"
+                      }
+                    }
+                  },
+                  "text": " "
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0x55f2cca68f50",
+          "kind": "ParamCommandComment",
+          "loc": {
+            "offset": 27259,
+            "col": 5,
+            "tokLen": 5,
+            "includedFrom": {
+              "file": "/work/capture/qcbor/default/entry_probe.c"
+            }
+          },
+          "range": {
+            "begin": {
+              "offset": 27258,
+              "col": 4,
+              "tokLen": 1,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            },
+            "end": {
+              "offset": 27334,
+              "line": 667,
+              "col": 3,
+              "tokLen": 0,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            }
+          },
+          "direction": "in",
+          "explicit": true,
+          "param": "EncodedCBOR",
+          "paramIdx": 1,
+          "inner": [
+            {
+              "id": "0x55f2cca69010",
+              "kind": "ParagraphComment",
+              "loc": {
+                "offset": 27280,
+                "line": 666,
+                "col": 26,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27280,
+                  "col": 26,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27334,
+                  "line": 667,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "inner": [
+                {
+                  "id": "0x55f2cca68fc0",
+                  "kind": "TextComment",
+                  "loc": {
+                    "offset": 27280,
+                    "line": 666,
+                    "col": 26,
+                    "tokLen": 0,
+                    "includedFrom": {
+                      "file": "/work/capture/qcbor/default/entry_probe.c"
+                    }
+                  },
+                  "range": {
+                    "begin": {
+                      "offset": 27280,
+                      "col": 26,
+                      "tokLen": 0,
+                      "includedFrom": {
+                        "file": "/work/capture/qcbor/default/entry_probe.c"
+                      }
+                    },
+                    "end": {
+                      "offset": 27330,
+                      "col": 76,
+                      "tokLen": 1,
+                      "includedFrom": {
+                        "file": "/work/capture/qcbor/default/entry_probe.c"
+                      }
+                    }
+                  },
+                  "text": "  The buffer with CBOR encoded bytes to be decoded."
+                },
+                {
+                  "id": "0x55f2cca68fe0",
+                  "kind": "TextComment",
+                  "loc": {
+                    "offset": 27334,
+                    "line": 667,
+                    "col": 3,
+                    "tokLen": 0,
+                    "includedFrom": {
+                      "file": "/work/capture/qcbor/default/entry_probe.c"
+                    }
+                  },
+                  "range": {
+                    "begin": {
+                      "offset": 27334,
+                      "col": 3,
+                      "tokLen": 0,
+                      "includedFrom": {
+                        "file": "/work/capture/qcbor/default/entry_probe.c"
+                      }
+                    },
+                    "end": {
+                      "offset": 27334,
+                      "col": 3,
+                      "tokLen": 0,
+                      "includedFrom": {
+                        "file": "/work/capture/qcbor/default/entry_probe.c"
+                      }
+                    }
+                  },
+                  "text": " "
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0x55f2cca69030",
+          "kind": "ParamCommandComment",
+          "loc": {
+            "offset": 27336,
+            "col": 5,
+            "tokLen": 5,
+            "includedFrom": {
+              "file": "/work/capture/qcbor/default/entry_probe.c"
+            }
+          },
+          "range": {
+            "begin": {
+              "offset": 27335,
+              "col": 4,
+              "tokLen": 1,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            },
+            "end": {
+              "offset": 27376,
+              "col": 45,
+              "tokLen": 1,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            }
+          },
+          "direction": "in",
+          "explicit": true,
+          "param": "nMode",
+          "paramIdx": 2,
+          "inner": [
+            {
+              "id": "0x55f2cca69110",
+              "kind": "ParagraphComment",
+              "loc": {
+                "offset": 27351,
+                "col": 20,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27351,
+                  "col": 20,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27376,
+                  "col": 45,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "inner": [
+                {
+                  "id": "0x55f2cca69090",
+                  "kind": "TextComment",
+                  "loc": {
+                    "offset": 27351,
+                    "col": 20,
+                    "tokLen": 0,
+                    "includedFrom": {
+                      "file": "/work/capture/qcbor/default/entry_probe.c"
+                    }
+                  },
+                  "range": {
+                    "begin": {
+                      "offset": 27351,
+                      "col": 20,
+                      "tokLen": 0,
+                      "includedFrom": {
+                        "file": "/work/capture/qcbor/default/entry_probe.c"
+                      }
+                    },
+                    "end": {
+                      "offset": 27372,
+                      "col": 41,
+                      "tokLen": 0,
+                      "includedFrom": {
+                        "file": "/work/capture/qcbor/default/entry_probe.c"
+                      }
+                    }
+                  },
+                  "text": "        See below and "
+                },
+                {
+                  "id": "0x55f2cca690e0",
+                  "kind": "InlineCommandComment",
+                  "loc": {
+                    "offset": 27373,
+                    "col": 42,
+                    "tokLen": 1,
+                    "includedFrom": {
+                      "file": "/work/capture/qcbor/default/entry_probe.c"
+                    }
+                  },
+                  "range": {
+                    "begin": {
+                      "offset": 27373,
+                      "col": 42,
+                      "tokLen": 1,
+                      "includedFrom": {
+                        "file": "/work/capture/qcbor/default/entry_probe.c"
+                      }
+                    },
+                    "end": {
+                      "offset": 27376,
+                      "col": 45,
+                      "tokLen": 1,
+                      "includedFrom": {
+                        "file": "/work/capture/qcbor/default/entry_probe.c"
+                      }
+                    }
+                  },
+                  "name": "ref",
+                  "renderKind": "normal",
+                  "args": [
+                    "QCBORDecodeMode."
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0x55f2cca69180",
+          "kind": "ParagraphComment",
+          "loc": {
+            "offset": 27400,
+            "line": 669,
+            "col": 3,
+            "tokLen": 0,
+            "includedFrom": {
+              "file": "/work/capture/qcbor/default/entry_probe.c"
+            }
+          },
+          "range": {
+            "begin": {
+              "offset": 27400,
+              "col": 3,
+              "tokLen": 0,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            },
+            "end": {
+              "offset": 27473,
+              "line": 670,
+              "col": 8,
+              "tokLen": 1,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            }
+          },
+          "inner": [
+            {
+              "id": "0x55f2cca69130",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27400,
+                "line": 669,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27400,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27464,
+                  "col": 67,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " Initialize context for a pre-order traversal of the encoded CBOR"
+            },
+            {
+              "id": "0x55f2cca69150",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27468,
+                "line": 670,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27468,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27473,
+                  "col": 8,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " tree."
+            }
+          ]
+        },
+        {
+          "id": "0x55f2cca691f0",
+          "kind": "ParagraphComment",
+          "loc": {
+            "offset": 27480,
+            "line": 672,
+            "col": 3,
+            "tokLen": 0,
+            "includedFrom": {
+              "file": "/work/capture/qcbor/default/entry_probe.c"
+            }
+          },
+          "range": {
+            "begin": {
+              "offset": 27480,
+              "col": 3,
+              "tokLen": 0,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            },
+            "end": {
+              "offset": 27589,
+              "line": 673,
+              "col": 45,
+              "tokLen": 1,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            }
+          },
+          "inner": [
+            {
+              "id": "0x55f2cca691a0",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27480,
+                "line": 672,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27480,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27543,
+                  "col": 66,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " Most CBOR decoding can be completed by calling this function to"
+            },
+            {
+              "id": "0x55f2cca691c0",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27547,
+                "line": 673,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27547,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27589,
+                  "col": 45,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " start and QCBORDecode_GetNext() in a loop."
+            }
+          ]
+        },
+        {
+          "id": "0x55f2cca69290",
+          "kind": "ParagraphComment",
+          "loc": {
+            "offset": 27596,
+            "line": 675,
+            "col": 3,
+            "tokLen": 0,
+            "includedFrom": {
+              "file": "/work/capture/qcbor/default/entry_probe.c"
+            }
+          },
+          "range": {
+            "begin": {
+              "offset": 27596,
+              "col": 3,
+              "tokLen": 0,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            },
+            "end": {
+              "offset": 27756,
+              "line": 677,
+              "col": 39,
+              "tokLen": 1,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            }
+          },
+          "inner": [
+            {
+              "id": "0x55f2cca69210",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27596,
+                "line": 675,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27596,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27648,
+                  "col": 55,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " If indefinite-length strings are to be decoded, then"
+            },
+            {
+              "id": "0x55f2cca69230",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27652,
+                "line": 676,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27652,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27716,
+                  "col": 67,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " QCBORDecode_SetMemPool() or QCBORDecode_SetUpAllocator() must be"
+            },
+            {
+              "id": "0x55f2cca69250",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27720,
+                "line": 677,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27720,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27756,
+                  "col": 39,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " called to set up a string allocator."
+            }
+          ]
+        },
+        {
+          "id": "0x55f2cca69470",
+          "kind": "ParagraphComment",
+          "loc": {
+            "offset": 27763,
+            "line": 679,
+            "col": 3,
+            "tokLen": 0,
+            "includedFrom": {
+              "file": "/work/capture/qcbor/default/entry_probe.c"
+            }
+          },
+          "range": {
+            "begin": {
+              "offset": 27763,
+              "col": 3,
+              "tokLen": 0,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            },
+            "end": {
+              "offset": 28038,
+              "line": 683,
+              "col": 25,
+              "tokLen": 1,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            }
+          },
+          "inner": [
+            {
+              "id": "0x55f2cca692b0",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27763,
+                "line": 679,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27763,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27816,
+                  "col": 56,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " Three decoding modes are supported.  In normal mode, "
+            },
+            {
+              "id": "0x55f2cca69310",
+              "kind": "InlineCommandComment",
+              "loc": {
+                "offset": 27817,
+                "col": 57,
+                "tokLen": 1,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27817,
+                  "col": 57,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27820,
+                  "col": 60,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "name": "ref",
+              "renderKind": "normal",
+              "args": [
+                "QCBOR_DECODE_MODE_NORMAL,"
+              ]
+            },
+            {
+              "id": "0x55f2cca69330",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27850,
+                "line": 680,
+                "col": 29,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27850,
+                  "col": 29,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27891,
+                  "col": 70,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " maps are decoded and strings and integers"
+            },
+            {
+              "id": "0x55f2cca69350",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27895,
+                "line": 681,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27895,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27958,
+                  "col": 66,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " are accepted as map labels. If a label is other than these, the"
+            },
+            {
+              "id": "0x55f2cca69370",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27962,
+                "line": 682,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27962,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27968,
+                  "col": 9,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " error "
+            },
+            {
+              "id": "0x55f2cca693d0",
+              "kind": "InlineCommandComment",
+              "loc": {
+                "offset": 27969,
+                "col": 10,
+                "tokLen": 1,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27969,
+                  "col": 10,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 27972,
+                  "col": 13,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "name": "ref",
+              "renderKind": "normal",
+              "args": [
+                "QCBOR_ERR_MAP_LABEL_TYPE"
+              ]
+            },
+            {
+              "id": "0x55f2cca693f0",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 27998,
+                "col": 39,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 27998,
+                  "col": 39,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28012,
+                  "col": 53,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " is returned by"
+            },
+            {
+              "id": "0x55f2cca69410",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28016,
+                "line": 683,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28016,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28038,
+                  "col": 25,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " QCBORDecode_GetNext()."
+            }
+          ]
+        },
+        {
+          "id": "0x55f2cca69680",
+          "kind": "ParagraphComment",
+          "loc": {
+            "offset": 28045,
+            "line": 685,
+            "col": 3,
+            "tokLen": 0,
+            "includedFrom": {
+              "file": "/work/capture/qcbor/default/entry_probe.c"
+            }
+          },
+          "range": {
+            "begin": {
+              "offset": 28045,
+              "col": 3,
+              "tokLen": 0,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            },
+            "end": {
+              "offset": 28343,
+              "line": 689,
+              "col": 24,
+              "tokLen": 1,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            }
+          },
+          "inner": [
+            {
+              "id": "0x55f2cca69490",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28045,
+                "line": 685,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28045,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28067,
+                  "col": 25,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " In strings-only mode, "
+            },
+            {
+              "id": "0x55f2cca694f0",
+              "kind": "InlineCommandComment",
+              "loc": {
+                "offset": 28068,
+                "col": 26,
+                "tokLen": 1,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28068,
+                  "col": 26,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28071,
+                  "col": 29,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "name": "ref",
+              "renderKind": "normal",
+              "args": [
+                "QCBOR_DECODE_MODE_MAP_STRINGS_ONLY,"
+              ]
+            },
+            {
+              "id": "0x55f2cca69510",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28108,
+                "col": 66,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28108,
+                  "col": 66,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28112,
+                  "col": 70,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " only"
+            },
+            {
+              "id": "0x55f2cca69530",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28116,
+                "line": 686,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28116,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28182,
+                  "col": 69,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " text strings are accepted for map labels.  This lines up with CBOR"
+            },
+            {
+              "id": "0x55f2cca69550",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28186,
+                "line": 687,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28186,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28219,
+                  "col": 36,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " that converts to JSON. The error "
+            },
+            {
+              "id": "0x55f2cca695b0",
+              "kind": "InlineCommandComment",
+              "loc": {
+                "offset": 28220,
+                "col": 37,
+                "tokLen": 1,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28220,
+                  "col": 37,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28223,
+                  "col": 40,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "name": "ref",
+              "renderKind": "normal",
+              "args": [
+                "QCBOR_ERR_MAP_LABEL_TYPE"
+              ]
+            },
+            {
+              "id": "0x55f2cca695d0",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28249,
+                "col": 66,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28249,
+                  "col": 66,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28251,
+                  "col": 68,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " is"
+            },
+            {
+              "id": "0x55f2cca695f0",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28255,
+                "line": 688,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28255,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28318,
+                  "col": 66,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " returned by QCBORDecode_GetNext() if anything but a text string"
+            },
+            {
+              "id": "0x55f2cca69610",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28322,
+                "line": 689,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28322,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28343,
+                  "col": 24,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " label is encountered."
+            }
+          ]
+        },
+        {
+          "id": "0x55f2cca69990",
+          "kind": "ParagraphComment",
+          "loc": {
+            "offset": 28350,
+            "line": 691,
+            "col": 3,
+            "tokLen": 0,
+            "includedFrom": {
+              "file": "/work/capture/qcbor/default/entry_probe.c"
+            }
+          },
+          "range": {
+            "begin": {
+              "offset": 28350,
+              "col": 3,
+              "tokLen": 0,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            },
+            "end": {
+              "offset": 28788,
+              "line": 697,
+              "col": 28,
+              "tokLen": 1,
+              "includedFrom": {
+                "file": "/work/capture/qcbor/default/entry_probe.c"
+              }
+            }
+          },
+          "inner": [
+            {
+              "id": "0x55f2cca696a0",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28350,
+                "line": 691,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28350,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28353,
+                  "col": 6,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " In "
+            },
+            {
+              "id": "0x55f2cca69700",
+              "kind": "InlineCommandComment",
+              "loc": {
+                "offset": 28354,
+                "col": 7,
+                "tokLen": 1,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28354,
+                  "col": 7,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28357,
+                  "col": 10,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "name": "ref",
+              "renderKind": "normal",
+              "args": [
+                "QCBOR_DECODE_MODE_MAP_AS_ARRAY"
+              ]
+            },
+            {
+              "id": "0x55f2cca69720",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28389,
+                "col": 42,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28389,
+                  "col": 42,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28416,
+                  "col": 69,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " maps are treated as special"
+            },
+            {
+              "id": "0x55f2cca69740",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28420,
+                "line": 692,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28420,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28464,
+                  "col": 47,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " arrays.  They will be returned with special "
+            },
+            {
+              "id": "0x55f2cca69790",
+              "kind": "InlineCommandComment",
+              "loc": {
+                "offset": 28465,
+                "col": 48,
+                "tokLen": 1,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28465,
+                  "col": 48,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28466,
+                  "col": 49,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "name": "c",
+              "renderKind": "monospaced",
+              "args": [
+                "uDataType"
+              ]
+            },
+            {
+              "id": "0x55f2cca697b0",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28477,
+                "col": 60,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28477,
+                  "col": 60,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28477,
+                  "col": 60,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " "
+            },
+            {
+              "id": "0x55f2cca69800",
+              "kind": "InlineCommandComment",
+              "loc": {
+                "offset": 28478,
+                "col": 61,
+                "tokLen": 1,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28478,
+                  "col": 61,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28481,
+                  "col": 64,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "name": "ref",
+              "renderKind": "normal",
+              "args": [
+                "QCBOR_TYPE_MAP_AS_ARRAY"
+              ]
+            },
+            {
+              "id": "0x55f2cca69820",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28509,
+                "line": 693,
+                "col": 27,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28509,
+                  "col": 27,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28513,
+                  "col": 31,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " and "
+            },
+            {
+              "id": "0x55f2cca69860",
+              "kind": "InlineCommandComment",
+              "loc": {
+                "offset": 28514,
+                "col": 32,
+                "tokLen": 1,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28514,
+                  "col": 32,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28515,
+                  "col": 33,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "name": "c",
+              "renderKind": "monospaced",
+              "args": [
+                "uCount,"
+              ]
+            },
+            {
+              "id": "0x55f2cca69880",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28524,
+                "col": 42,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28524,
+                  "col": 42,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28552,
+                  "col": 70,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " the number of items, will be"
+            },
+            {
+              "id": "0x55f2cca698a0",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28556,
+                "line": 694,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28556,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28619,
+                  "col": 66,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " double what it would be for a normal map because the labels are"
+            },
+            {
+              "id": "0x55f2cca698c0",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28623,
+                "line": 695,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28623,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28690,
+                  "col": 70,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " also counted. This mode is useful for decoding CBOR that has labels"
+            },
+            {
+              "id": "0x55f2cca698e0",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28694,
+                "line": 696,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28694,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28759,
+                  "col": 68,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " that are not integers or text strings, but the caller must manage"
+            },
+            {
+              "id": "0x55f2cca69900",
+              "kind": "TextComment",
+              "loc": {
+                "offset": 28763,
+                "line": 697,
+                "col": 3,
+                "tokLen": 0,
+                "includedFrom": {
+                  "file": "/work/capture/qcbor/default/entry_probe.c"
+                }
+              },
+              "range": {
+                "begin": {
+                  "offset": 28763,
+                  "col": 3,
+                  "tokLen": 0,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                },
+                "end": {
+                  "offset": 28788,
+                  "col": 28,
+                  "tokLen": 1,
+                  "includedFrom": {
+                    "file": "/work/capture/qcbor/default/entry_probe.c"
+                  }
+                }
+              },
+              "text": " much of the map decoding."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

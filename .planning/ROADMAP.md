@@ -27,7 +27,7 @@ Phase sizing: each phase is meant to be finishable in 1-2 weeks of part-time wor
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Pinned Toolchain Container** - Reproducible container, one LLVM pin in 16-19, subprocess runner, Rust workspace skeleton (completed 2026-10-12)
-- [ ] **Phase 2: Test Bed and Build Capture** - 10-20 pinned C parsers whose real builds are captured and replayed exactly per configuration
+- [x] **Phase 2: Test Bed and Build Capture** - 10-20 pinned C parsers whose real builds are captured and replayed exactly per configuration (completed 2026-10-21)
 - [ ] **Phase 3: Equivalence Contract and Test-Vector Schema** - Refinement contract, TRACTOR-compatible vectors, deterministic C reference executor
 - [ ] **Phase 4: UB Detection and Decision Log** - Separate sanitizer builds, -O0 vs real-flags differential, symbolic C scan, UB decisions log
 - [ ] **Phase 5: Target-Matched Differential Harness** - C vs Rust differential fuzzing on ILP32 unsigned-char, C-side coverage, emulated-target replay
@@ -89,32 +89,60 @@ Plans:
   3. For every target and configuration the capture command writes a `compile_commands.json` covering every translation unit, and replaying it in the container reproduces the original build output (byte-identical objects, or identical after a documented normalisation); targets that cannot be reproduced are dropped with the cause logged, leaving at least 10.
   4. Each target has a seed corpus extracted from its own tests and fixtures, or at least 10 hand-made seeds (proposed) when it has none.
 
-**Plans:** 1/10 plans executed
+**Plans:** 22/22 plans complete (02-11 to 02-22 are gap closure)
 
 Plans:
 **Wave 1**
 - [x] 02-01-PLAN.md — Image extension on the session branch: pin discovery, git/cmake/curl/bzip2 plus a make pin, REQUIRED_TOOLS, fixtures, container round trips (D-30)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 02-02-PLAN.md — Ship the image to main: PR via GitHub MCP, founder merge checkpoint, merge-back, `## Current image` (checkpoint)
-- [ ] 02-03-PLAN.md — mt-capture crate: manifest schema and validator, tree hash, D-03 target-list approval, testbed/manifest.toml, PROJECT D-18/D-19/D-20 (checkpoint)
+- [x] 02-02-PLAN.md — Ship the image to main: PR via GitHub MCP, founder merge checkpoint, merge-back, `## Current image` (checkpoint)
+- [x] 02-03-PLAN.md — mt-capture crate: manifest schema and validator, tree hash, D-03 target-list approval, testbed/manifest.toml, PROJECT D-18/D-19/D-20 (checkpoint)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 02-04-PLAN.md — Offline capture/replay core: tiny host-cc replay, canonical compile_commands and gates, ELF sections, arch gate, D-09 normalisation
+- [x] 02-04-PLAN.md — Offline capture/replay core: tiny host-cc replay, canonical compile_commands and gates, ELF sections, arch gate, D-09 normalisation
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 02-05-PLAN.md — Fetch by commit/archive with verified cache, Make/CMake capture drivers with silent-wrong-build gates, clang entry check
-- [ ] 02-07-PLAN.md — mt-seeds crate: C lexer, hex and zip readers, deterministic selection under caps, seed index
+- [x] 02-05-PLAN.md — Fetch by commit/archive with verified cache, Make/CMake capture drivers with silent-wrong-build gates, clang entry check
+- [x] 02-07-PLAN.md — mt-seeds crate: C lexer, hex and zip readers, deterministic selection under caps, seed index
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 02-06-PLAN.md — Tracer: `mt testbed` CLI and testbed workflow, qcbor (Make plus Bear) and corejson (CMake) end to end in the real image; static tests; CI fixture notices
+- [x] 02-06-PLAN.md — Tracer: `mt testbed` CLI and testbed workflow, qcbor (Make plus Bear) and corejson (CMake) end to end in the real image; static tests; CI fixture notices
 
 **Wave 6** *(blocked on Wave 5 completion)*
-- [ ] 02-08-PLAN.md — Committed seed corpus: seed sources, `mt testbed seeds [--check]`, hand-made sets, CI regeneration check
-- [ ] 02-10-PLAN.md — CI-captured fixtures from the tracer run (compile_commands, reports, readelf, Arm objects, AST dump) and their offline tests; no push
+- [x] 02-08-PLAN.md — Committed seed corpus: seed sources, `mt testbed seeds [--check]`, hand-made sets, CI regeneration check
+- [x] 02-10-PLAN.md — CI-captured fixtures from the tracer run (compile_commands, reports, readelf, Arm objects, AST dump) and their offline tests; no push
 
 **Wave 7** *(blocked on Wave 6 completion)*
-- [ ] 02-09-PLAN.md — Full bed: drop log, remaining recipes, `--all` round trips with one fix attempt per failure, at least 10 retained
+- [x] 02-09-PLAN.md — Full bed: drop log, remaining recipes, `--all` round trips with one fix attempt per failure, at least 10 retained
+
+**Wave 8** *(gap closure; blocked on Wave 7 completion)*
+- [x] 02-11-PLAN.md — G-02-1: entry probe reproduces the defining TU's include prefix; isotp reopened with its seed corpus (paho/server stays dropped)
+- [x] 02-12-PLAN.md — G-02-2, WR-10: Makefile2 hashed after sorting prerequisite runs; exact is_cmake_product; exclusion constants
+- [x] 02-13-PLAN.md — G-02-4, WR-07: zip on flate2 rust_backend (miniz_oxide) after a founder legitimacy check; per-archive decompressed budget (checkpoint)
+- [x] 02-14-PLAN.md — WR-05: fail-closed `mt testbed compare` for the determinism step
+
+**Wave 9** *(gap closure; blocked on Wave 8 completion)*
+- [x] 02-15-PLAN.md — G-02-3: seed sources of httpparser (`.raw` designator), qcbor (CBOR arrays) and nanopb (fixtures and fuzz corpora) narrowed; corpora regenerated
+- [x] 02-16-PLAN.md — WR-02, WR-08: replay tied to the manifest pin and tools; 10-target floor enforced on `--all`; `differs` drops need their evidence
+
+**Wave 10** *(gap closure; blocked on Wave 9 completion)*
+- [x] 02-17-PLAN.md — Workflow: compare step, container limits, complete exclusion comment, `--all` pin; full-bed CI run proving G-02-1 to G-02-4
+
+**Wave 11** *(gap closure; blocked on Wave 10 completion)*
+- [x] 02-18-PLAN.md — WR-04 (tool): capture split into an untrusted build stage and a trusted record stage; `--stage`, `pairs`
+
+**Wave 12** *(gap closure; blocked on Wave 11 completion)*
+- [x] 02-19-PLAN.md — WR-04 (CI): one build container per pair with only its run directory writable, isolated determinism rerun; final green full-bed run
+
+**Wave 13** *(gap closure; blocked on Wave 12 completion)*
+- [x] 02-20-PLAN.md — G-02-5, G-02-6, G-02-7 (WR-11, WR-12, T-02-67, T-02-70): compile-command gate refuses helper-executing GCC driver options and bounds every write path (`--output` like `-o`) at capture and replay; record stage refuses a build record that names no failure, captures only on passed gates and objects, checks stage/toolchain.cmake; module doc and AR-02-03 amended; final green full-bed run
+
+**Wave 14** *(gap closure; blocked on Wave 13 completion)*
+- [x] 02-21-PLAN.md — G-02-8 (CR-01..CR-03, WR-13, T-02-67, T-02-70): allow-list compile-command gate on one operand-aware walk shared by the `-c` test, derive_output and the write-path check at capture and replay; `@` arguments refused everywhere; `-specs=` only for the 13 names the pinned toolchain ships; confirming full-bed run
+
+**Wave 15** *(gap closure; blocked on Wave 14 completion)*
+- [x] 02-22-PLAN.md — G-02-8 (WR-12, WR-14): pinned toolchain file written by a trusted step and mounted read-only into every build, required at record; unreadable toolchain file is a named cause on the pair; final full-bed run with notices equal to 02-20
 
 ### Phase 3: Equivalence Contract and Test-Vector Schema
 
@@ -260,7 +288,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Pinned Toolchain Container | 9/9 | Complete    | 2026-10-12 |
-| 2. Test Bed and Build Capture | 1/10 | In Progress | - |
+| 2. Test Bed and Build Capture | 22/22 | Complete    | 2026-10-21 |
 | 3. Equivalence Contract and Test-Vector Schema | 0/0 | Not started | - |
 | 4. UB Detection and Decision Log | 0/0 | Not started | - |
 | 5. Target-Matched Differential Harness | 0/0 | Not started | - |

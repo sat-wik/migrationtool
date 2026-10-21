@@ -1,0 +1,683 @@
+# The test bed: fetch each open-source parser by its pinned commit, capture its
+# real build, and replay the captured compile commands in a clean copy, all in
+# the pinned toolchain image (BED-01, BED-02, BUILD-01, BUILD-02; CONTEXT D-10,
+# D-12, D-19, D-21, D-25). Docker exists only here, so this workflow is where
+# every container-level claim of the test bed is proven.
+#
+# Log and artifact hosts are not reachable from cloud sessions, so each step also
+# publishes its evidence as job annotations. Titles: testbed-image,
+# testbed-validate, testbed-fetch, testbed-seeds, testbed-build, testbed-capture,
+# testbed-replay, testbed-determinism. A failing step publishes the same title as
+# an error, followed by the causes and details of every failing report.
+#
+# Network policy (D-12): fetch is the only step with network access. Validate,
+# seeds, pairs, record, replay and compare go through run_offline, which adds
+# `--network none`; a test (build_02_workflow_runs_capture_and_replay_without_network)
+# fails if any step other than fetch goes through run_networked.
+#
+# Trust split (WR-04): only fetch is networked, and only run_build runs upstream
+# build code. run_build starts one container per retained pair; the only places it
+# can write are a fresh scratch /work that is discarded and that pair's own run
+# directory. The source cache is mounted read-only, and /out, the capture artifacts
+# and every other pair's directories are not mounted at all. Every other step runs
+# no upstream code: the record step alone writes the capture artifacts that replay
+# and the determinism comparison read, and the determinism rerun builds into a work
+# directory of its own. The CMake toolchain file a build configures with (WR-12) is
+# written by `mt testbed toolchains` in a container that runs no upstream code, and
+# run_build mounts it read-only at /opt/mt/toolchain; every record step requires it
+# (--read-only-toolchain), so no build can change the toolchain file its configure
+# reads. Tests (build_02_untrusted_builds_cannot_write_the_evidence,
+# build_02_record_steps_require_the_read_only_toolchain) pin this layout.
+#
+# Action commit SHAs are pinned here because GitHub resolves `uses:` before any
+# step can read container/pins.toml; every other pin comes from that file.
+name: testbed
+
+on:
+  push:
+    # A superset of the paths D-25 names (testbed/ and crates/mt-capture/):
+    # mt-cli, mt-toolchain, the pins and the image digest change what runs.
+    paths:
+      - testbed/**
+      - crates/**
+      - Cargo.toml
+      - Cargo.lock
+      - container/pins.toml
+      - container/README.md
+      - .github/workflows/testbed.yml
+  workflow_dispatch:
+  # Weekly, offset from the container workflow's schedule. It becomes active once
+  # this file reaches the default branch.
+  schedule:
+    - cron: "41 5 * * 2"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testbed-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The targets every step runs on (D-25): `--all` is the whole manifest, minus
+  # the pairs testbed/dropped.toml drops (reported as `dropped (<cause>)`, never
+  # as passing). The steps leave it unquoted on purpose, so a list of ids would
+  # split into one argument per id; the same value can name ids for a local run.
+  TESTBED_SELECTION: "--all"
+
+jobs:
+  # A static musl `mt` runs on the image's older glibc; it is mounted into the
+  # image at run time and never baked into it.
+  mt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # With no arguments rustup installs the toolchain named by rust-toolchain.toml.
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Build mt as a static binary
+        run: cargo build --release --locked -p mt-cli --target x86_64-unknown-linux-musl
+
+      - name: Assemble the bundle
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bundle"
+          cp target/x86_64-unknown-linux-musl/release/mt "$RUNNER_TEMP/bundle/mt"
+          ls -l "$RUNNER_TEMP/bundle"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mt-bundle
+          path: ${{ runner.temp }}/bundle
+          if-no-files-found: error
+          retention-days: 7
+
+  testbed:
+    needs: mt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mt-bundle
+          path: ${{ runner.temp }}/bundle
+
+      - name: Make mt executable (artifacts do not keep the mode)
+        run: chmod +x "$RUNNER_TEMP/bundle/mt"
+
+      - name: Write the annotation and docker helpers
+        run: |
+          cat > "$RUNNER_TEMP/ci-lib.sh" <<'LIB'
+          # annotate LEVEL TITLE FILE [FROM [TO]]: FILE as annotations of at most 3800 bytes
+          # each (the API keeps 4096 characters of a message), titled "TITLE (i/n)" when
+          # split. Parts are whole lines. GitHub keeps only the first 10 annotations of a
+          # level per step, so a file of more than 9 parts is published by several steps,
+          # each naming its part range FROM..TO (1-based, TO 0 or absent: to the end).
+          # A consumer joins the parts with a newline (each part's final newline is
+          # dropped) and the whole file loses its final newline.
+          annotate() {
+            local level=$1 title=$2 file=$3 from=${4:-1} to=${5:-0} dir n i label text
+            if [ ! -s "$file" ]; then
+              printf '::%s title=%s::(empty)\n' "$level" "$title"
+              return 0
+            fi
+            dir=$(mktemp -d)
+            split -C 3800 -d -a 3 "$file" "$dir/part."
+            local -a parts=("$dir"/part.*)
+            n=${#parts[@]}
+            for i in "${!parts[@]}"; do
+              if [ $((i + 1)) -lt "$from" ]; then continue; fi
+              if [ "$to" -gt 0 ] && [ $((i + 1)) -gt "$to" ]; then break; fi
+              label=$title
+              if [ "$n" -gt 1 ]; then label="$title ($((i + 1))/$n)"; fi
+              text=$(cat "${parts[$i]}")
+              text=${text//'%'/'%25'}
+              text=${text//$'\r'/'%0D'}
+              text=${text//$'\n'/'%0A'}
+              printf '::%s title=%s::%s\n' "$level" "$label" "$text"
+            done
+            rm -rf "$dir"
+          }
+          # run_networked SUBCOMMAND ARGS...: `mt testbed` in the image WITH the default
+          # network. Only the fetch step may use it (D-12). The container is unprivileged,
+          # read-only and drops every capability; mt, the pins and the committed testbed
+          # directory are mounted read-only, and only /work and /out are writable.
+          # All four helpers bound the container's resources (WR-04, T-02-57):
+          # --pids-limit caps processes (a fork loop), --memory and --memory-swap cap RAM
+          # and swap together (a runaway build), --cpus caps CPU time. Until now only the
+          # 45-minute job timeout stopped such a build.
+          # The host directories behind /work and /out are WORK_HOST and OUT_HOST
+          # (default $RUNNER_TEMP/work and $RUNNER_TEMP/out); the determinism rerun
+          # points WORK_HOST at a work directory of its own.
+          run_networked() {
+            docker run --rm --platform linux/amd64 --user 65534:65534 --read-only --cap-drop ALL \
+              --pids-limit 1024 --memory 6g --memory-swap 6g --cpus 2 \
+              --security-opt no-new-privileges --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
+              -v "$GITHUB_WORKSPACE/container/pins.toml:/opt/mt/pins.toml:ro" \
+              -v "$GITHUB_WORKSPACE/testbed:/opt/mt/testbed:ro" \
+              -v "${WORK_HOST:-$RUNNER_TEMP/work}:/work" -v "${OUT_HOST:-$RUNNER_TEMP/out}:/out" \
+              "$IMAGE" mt testbed "$@"
+          }
+          # run_offline SUBCOMMAND ARGS...: the same container with NO network. Every
+          # `mt testbed` step except fetch goes through it, so a build that tries to
+          # download something fails here instead of passing quietly (D-12). It runs no
+          # upstream build code (that is run_build). When CACHE_HOST is set it is mounted
+          # read-only at /work/cache, for a work directory that holds no cache of its own.
+          run_offline() {
+            local -a cache=()
+            if [ -n "${CACHE_HOST:-}" ]; then cache=(-v "$CACHE_HOST:/work/cache:ro"); fi
+            docker run --rm --platform linux/amd64 --network none --user 65534:65534 --read-only --cap-drop ALL \
+              --pids-limit 1024 --memory 6g --memory-swap 6g --cpus 2 \
+              --security-opt no-new-privileges --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
+              -v "$GITHUB_WORKSPACE/container/pins.toml:/opt/mt/pins.toml:ro" \
+              -v "$GITHUB_WORKSPACE/testbed:/opt/mt/testbed:ro" \
+              -v "${WORK_HOST:-$RUNNER_TEMP/work}:/work" ${cache[@]+"${cache[@]}"} -v "${OUT_HOST:-$RUNNER_TEMP/out}:/out" \
+              "$IMAGE" mt testbed "$@"
+          }
+          # image_tool WORKDIR PROGRAM ARGS...: run one tool of the image (not mt) with NO
+          # network, /work read-only and /out writable. It reads what a step captured and
+          # writes the fixture files of the notices below.
+          image_tool() {
+            local workdir=$1
+            shift
+            docker run --rm --platform linux/amd64 --network none --user 65534:65534 --read-only --cap-drop ALL \
+              --pids-limit 1024 --memory 6g --memory-swap 6g --cpus 2 \
+              --security-opt no-new-privileges --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "${WORK_HOST:-$RUNNER_TEMP/work}:/work:ro" -v "${OUT_HOST:-$RUNNER_TEMP/out}:/out" \
+              -w "$workdir" "$IMAGE" "$@"
+          }
+          # run_build ID CONFIG: the build stage of one retained pair, the only place
+          # upstream build code runs (WR-04). It is its own container with NO network, and
+          # it may write exactly two places: a fresh scratch directory mounted as /work
+          # (HOME and temporary files of the build; discarded, never read again) and this
+          # pair's run directory, mounted below it. The source cache is read-only. /out, the
+          # capture artifacts and the other pairs' run directories are not mounted, so a
+          # build cannot rewrite the evidence that replay and the determinism comparison
+          # trust. RUNNER_TEMP is fresh per job, so a run directory that exists already is
+          # an error, never deleted.
+          # The CMake toolchain file (WR-12) comes from `run_offline toolchains`, a container
+          # that runs no upstream code, which writes the pinned text to
+          # $work/toolchain/$id/$cfg. The build container mounts that directory read-only at
+          # /opt/mt/toolchain, in its read-only root file system next to the other /opt/mt
+          # mounts and outside both writable mounts, and the build stage configures with it
+          # (--toolchain-dir) only after checking it against the pins. It is not put inside
+          # the run directory: prepare_run empties that directory in place, and a mount point
+          # there could be moved away together with its writable parent and replaced.
+          # Returns the exit code of the build stage of `mt testbed capture` (0 when the
+          # build record was written, 1 when the cache does not verify, 2 for invalid input,
+          # including a toolchain file that is not the pinned text), or 2 here when the run
+          # directory already exists or the toolchains step fails.
+          run_build() {
+            local id=$1 cfg=$2 work scratch
+            work="${WORK_HOST:-$RUNNER_TEMP/work}"
+            scratch="$RUNNER_TEMP/scratch/$(basename "$work")/$id/$cfg"
+            if [ -e "$work/run/$id/$cfg" ]; then
+              echo "run_build: $work/run/$id/$cfg already exists; a run directory is never reused" >&2
+              return 2
+            fi
+            # The container user is 65534:65534 (RESEARCH Pitfall 15).
+            mkdir -p "$scratch/work" "$work/run/$id/$cfg"
+            chmod 0777 "$scratch/work" "$work/run/$id/$cfg"
+            # Its word goes to stderr, so the build notice rows do not change.
+            run_offline toolchains --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --config "$cfg" "$id" >&2 || return 2
+            docker run --rm --platform linux/amd64 --network none --user 65534:65534 --read-only --cap-drop ALL \
+              --pids-limit 1024 --memory 6g --memory-swap 6g --cpus 2 \
+              --security-opt no-new-privileges --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
+              -v "$GITHUB_WORKSPACE/container/pins.toml:/opt/mt/pins.toml:ro" \
+              -v "$GITHUB_WORKSPACE/testbed:/opt/mt/testbed:ro" \
+              -v "$scratch/work:/work" \
+              -v "${CACHE_HOST:-$work/cache}:/work/cache:ro" \
+              -v "$work/run/$id/$cfg:/work/run/$id/$cfg" \
+              -v "$work/toolchain/$id/$cfg:/opt/mt/toolchain:ro" \
+              "$IMAGE" mt testbed capture --stage build --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --config "$cfg" "$id" --toolchain-dir /opt/mt/toolchain
+          }
+          # evidence STEP: lines read from the step's reports, appended to its notice.
+          evidence() {
+            local step=$1 out="$RUNNER_TEMP/out"
+            local -a reports
+            case "$step" in
+              fetch)
+                echo "--- fetched sources"
+                jq -r '"\(.target) \(.source_kind) commit \(.commit) tree_sha256 \(.tree_sha256) reused=\(.reused)"' "$out"/fetch/*.json
+                ;;
+              seeds)
+                # The committed corpora that were compared with the regenerated ones.
+                echo "--- committed seed corpora (compared offline with the container's regeneration)"
+                if [ "$TESTBED_SELECTION" = "--all" ]; then
+                  mapfile -t ids < <(ls "$GITHUB_WORKSPACE/testbed/seeds")
+                else
+                  read -r -a ids <<< "$TESTBED_SELECTION"
+                fi
+                for id in "${ids[@]}"; do
+                  jq -r '"\(.target) commit \(.commit) seeds=\(.seeds | length) hand_made=\([.seeds[] | select(.method == "hand_made")] | length) bytes=\([.seeds[].bytes] | add) skipped=\(.skipped | tojson)"' "$GITHUB_WORKSPACE/testbed/seeds/$id/index.json"
+                done
+                ;;
+              capture)
+                mapfile -t reports < <(find "$out/capture" -name '*.json' ! -name '*.compile_commands.json' ! -name variant.json | sort)
+                echo "--- gates and entries"
+                jq -r 'select(.kind == "capture") | "\(.target)/\(.config) compiler_allow_listed=\(.gates.compiler_allow_listed) arch_ok=\(.gates.arch_ok) undeclared=\(.gates.created_undeclared | length) timestamp_macro=\(.gates.timestamp_macro | length) objects=\(.objects | length) opt_goals=\([.objects[].opt_goal] | unique | join(",")) entries=" + ([.entries | to_entries[] | "\(.key)=found:\(.value.found),signature:\(.value.signature_matches),header:\(.value.header_included)"] | join(";"))' "${reports[@]}"
+                echo "--- normalised configure files (G-02-2)"
+                jq -r 'select(.kind == "capture") | .target as $t | .config as $c | (.normalised_configure_files // {}) | to_entries[] | "\($t)/\($c) normalised \(.key) rule=\(.value.rule) sha256=\(.value.sha256)"' "${reports[@]}"
+                echo "--- variants"
+                jq -r '"\(.target) variant \(.variant): changes_code=\(.diff.changes_code) code_differs=\(.diff.code_differs | join(","))"' "$out"/capture/*/variant.json
+                ;;
+              replay)
+                mapfile -t reports < <(find "$out/replay" -name '*.json' | sort)
+                echo "--- objects"
+                jq -r '"\(.target)/\(.config) verdict=\(.verdict) objects=\(.objects | length) normalisation_applied=\(.normalisation_applied)"' "${reports[@]}"
+                ;;
+            esac
+          }
+          # failing_details: the causes and details of every capture or replay report
+          # that is not a pass.
+          failing_details() {
+            local out="$RUNNER_TEMP/out" file
+            while IFS= read -r file; do
+              jq -r '
+                (select(.kind == "capture" and .verdict != "captured")
+                  | "capture \(.target)/\(.config): \(.verdict) causes=\(.causes | join(",")) details=\(.cause_details | join(" | "))"),
+                (select(.kind == "replay" and (.verdict | startswith("identical") | not))
+                  | "replay \(.target)/\(.config): \(.verdict) detail=\(.detail // "-") objects=" + ([.objects | to_entries[] | select(.value.status != "identical" and .value.status != "identical_after_normalisation") | "\(.key):\(.value.status):sections=\(.value.differing_sections | join(","))"] | join(" ")))
+              ' "$file"
+            done < <(find "$out/capture" "$out/replay" -name '*.json' ! -name '*.compile_commands.json' ! -name variant.json 2>/dev/null | sort)
+          }
+          # finish_step STEP RC: publish the step's summary table (written by the caller
+          # to $RUNNER_TEMP/out/STEP.txt, with stderr in STEP.err) as notice
+          # testbed-STEP when RC is 0, otherwise as error testbed-STEP with the stderr
+          # and the failing reports, and fail the step.
+          finish_step() {
+            local step=$1 rc=$2 out="$RUNNER_TEMP/out"
+            local notice="$out/notice-$step.txt"
+            cat "$out/$step.txt"
+            if [ -s "$out/$step.err" ]; then cat "$out/$step.err" >&2; fi
+            {
+              cat "$out/$step.txt"
+              echo "exit code: $rc"
+              if [ "$rc" -eq 0 ]; then
+                evidence "$step" || echo "(evidence unavailable)"
+              else
+                if [ -s "$out/$step.err" ]; then echo "--- stderr"; tail -c 2500 "$out/$step.err"; fi
+                echo "--- failing reports"
+                failing_details || true
+              fi
+            } > "$notice"
+            if [ "$rc" -ne 0 ]; then
+              annotate error "testbed-$step" "$notice"
+              return 1
+            fi
+            annotate notice "testbed-$step" "$notice"
+          }
+          LIB
+          mkdir -p "$RUNNER_TEMP/work" "$RUNNER_TEMP/out"
+          # The container user is 65534:65534 (RESEARCH Pitfall 15).
+          chmod 0777 "$RUNNER_TEMP/work" "$RUNNER_TEMP/out"
+
+      # D-10, T-02-27: the image is named only by the digest under `## Current
+      # image` of container/README.md, and exactly one such digest may exist.
+      - name: Pull the image by digest
+        id: image
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          refs=$(grep -oE 'ghcr.io/sat-wik/migrationtool-toolchain@sha256:[0-9a-f]{64}' container/README.md | sort -u)
+          if [ "$(printf '%s\n' "$refs" | grep -c .)" -ne 1 ]; then
+            printf 'expected exactly one image reference in container/README.md, found:\n%s\n' "$refs" > "$RUNNER_TEMP/image.txt"
+            annotate error testbed-image "$RUNNER_TEMP/image.txt"
+            exit 1
+          fi
+          echo "IMAGE=$refs" >> "$GITHUB_ENV"
+          set +e
+          docker pull "$refs" > "$RUNNER_TEMP/pull.txt" 2>&1
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            { echo "docker pull $refs failed with exit code $rc"; tail -n 20 "$RUNNER_TEMP/pull.txt"; } > "$RUNNER_TEMP/image.txt"
+            annotate error testbed-image "$RUNNER_TEMP/image.txt"
+            exit 1
+          fi
+          { echo "image: $refs"; docker image inspect --format 'id: {{.Id}}' "$refs"; docker image inspect --format 'architecture: {{.Os}}/{{.Architecture}}' "$refs"; } > "$RUNNER_TEMP/image.txt"
+          cat "$RUNNER_TEMP/image.txt"
+          annotate notice testbed-image "$RUNNER_TEMP/image.txt"
+
+      - name: Validate the manifest
+        id: validate
+        if: ${{ !cancelled() && steps.image.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          run_offline validate --manifest /opt/mt/testbed/manifest.toml > "$out/validate.txt" 2> "$out/validate.err"
+          rc=$?
+          set -e
+          finish_step validate "$rc"
+
+      # The only step with network access: each source arrives by its pinned commit
+      # and is accepted only when its tree sha256 equals the manifest (D-17).
+      - name: Fetch the sources
+        id: fetch
+        if: ${{ !cancelled() && steps.validate.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          # shellcheck disable=SC2086
+          run_networked fetch --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out $TESTBED_SELECTION > "$out/fetch.txt" 2> "$out/fetch.err"
+          rc=$?
+          set -e
+          finish_step fetch "$rc"
+
+      # BUILD-03 (D-19, D-21): the committed seeds must equal what this image
+      # regenerates, offline, from the trees the fetch step just verified. A drift
+      # means a host-fetched tree differed from the container's, or the extraction
+      # is not deterministic: investigate, never regenerate the corpus from CI output
+      # by hand. It does not gate the capture step, so one run reports both.
+      - name: Check the committed seeds
+        id: seeds
+        if: ${{ !cancelled() && steps.fetch.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          # shellcheck disable=SC2086
+          run_offline seeds --check --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out --seeds-dir /opt/mt/testbed/seeds $TESTBED_SELECTION > "$out/seeds.txt" 2> "$out/seeds.err"
+          rc=$?
+          set -e
+          finish_step seeds "$rc"
+
+      # WR-04: every retained pair builds in its own container (run_build), which can
+      # write only that pair's run directory and a discarded scratch /work. The list of
+      # pairs comes from `mt testbed pairs`, in the same container as every offline
+      # step. The step goes on after a failed build so that one run reports every pair;
+      # its exit code is non-zero if the list or any build exited non-zero. A build
+      # that failed or was not proven still wrote its build record, and the record step
+      # reports it.
+      - name: Build each pair in its own container
+        id: build
+        if: ${{ !cancelled() && steps.fetch.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          : > "$out/build.txt"
+          : > "$out/build.err"
+          rc=0
+          set +e
+          # shellcheck disable=SC2086
+          run_offline pairs --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work $TESTBED_SELECTION > "$out/pairs.txt" 2>> "$out/build.err"
+          pairs_rc=$?
+          if [ "$pairs_rc" -ne 0 ]; then
+            echo "mt testbed pairs exit code: $pairs_rc" >> "$out/build.txt"
+            rc=1
+          fi
+          # stdin is /dev/null so that docker cannot consume the list of pairs.
+          while read -r id cfg; do
+            run_build "$id" "$cfg" < /dev/null > "$out/build-one.txt" 2> "$out/build-one.err"
+            one_rc=$?
+            if [ "$one_rc" -eq 0 ]; then
+              echo "$id/$cfg $(cat "$out/build-one.txt")" >> "$out/build.txt"
+            else
+              echo "$id/$cfg exit $one_rc: $(tail -c 300 "$out/build-one.err" | tr '\n' ' ')" >> "$out/build.txt"
+              rc=1
+            fi
+            cat "$out/build-one.err" >> "$out/build.err"
+          done < "$out/pairs.txt"
+          set -e
+          finish_step build "$rc"
+
+      # The record stage runs no upstream code: it reads what the builds left, with
+      # symlinks refused, and alone writes the capture artifacts and reports that
+      # replay and the determinism comparison trust.
+      - name: Record the captures
+        id: capture
+        if: ${{ !cancelled() && steps.fetch.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          # shellcheck disable=SC2086
+          run_offline capture --stage record --read-only-toolchain --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out --image "$IMAGE" $TESTBED_SELECTION > "$out/capture.txt" 2> "$out/capture.err"
+          rc=$?
+          set -e
+          finish_step capture "$rc"
+
+      - name: Replay the captured builds
+        id: replay
+        if: ${{ !cancelled() && steps.capture.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          # shellcheck disable=SC2086
+          run_offline replay --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out $TESTBED_SELECTION > "$out/replay.txt" 2> "$out/replay.err"
+          rc=$?
+          set -e
+          finish_step replay "$rc"
+
+      # RESEARCH Pitfall 14: a second capture in the same run must produce the same
+      # reports and compile commands, and `mt testbed compare` decides it (WR-05). The
+      # comparison runs in Rust and fails closed: a file that cannot be parsed, an empty
+      # file, a file present on one side only, a file that is not a regular file and a
+      # comparison of no files at all are differences, never a pass. This step fails
+      # when the rerun's exit code or the comparison's exit code is not 0.
+      # What is not compared byte for byte, and nothing else is left out. In every
+      # capture report the step output fields: stdout sha256, bytes_total and
+      # bytes_stored of the step "cmake configure" (CMake prints its own elapsed time)
+      # and stdout sha256, bytes_total and bytes_stored of the steps "clang ast
+      # <function>" (clang's JSON AST dump holds node addresses); the entry results
+      # derived from that dump stay compared. The configure-time evidence inside each
+      # capture report (configure_files) leaves out exactly these: objects named in the
+      # capture report; CMakeFiles/CMakeConfigureLog.yaml, CMakeFiles/CMakeOutput.log
+      # and CMakeFiles/CMakeError.log; CMakeFiles/<version>/CMakeDetermineCompilerABI_<C
+      # or CXX>.bin; CMakeFiles/<version>/CompilerId<C or CXX>/CMake<C or
+      # CXX>CompilerId.o; static archives and shared libraries (.a, .so) created by the
+      # cmake build step. It hashes only a normalised form of: CMakeFiles/Makefile2,
+      # hashed with each run of prerequisite lines of one target sorted (the rule is
+      # recorded in the report as normalised_configure_files). Everything else is
+      # compared: every other field of every report and every compile_commands file.
+      # The rerun is isolated (WR-04): its builds run in run_build with a work directory
+      # of their own, work-rerun, and the first run's verified cache read-only, and its
+      # record stage writes only work-rerun and /out/capture-rerun, so nothing it runs can
+      # write the first capture's artifacts or reports before they are compared.
+      - name: Capture again and compare the reports (determinism)
+        id: determinism
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          export WORK_HOST="$RUNNER_TEMP/work-rerun" CACHE_HOST="$RUNNER_TEMP/work/cache"
+          mkdir -p "$WORK_HOST"
+          chmod 0777 "$WORK_HOST"
+          : > "$out/rerun.txt"
+          : > "$out/rerun.err"
+          rerun_rc=0
+          set +e
+          # stdin is /dev/null so that docker cannot consume the list of pairs.
+          while read -r id cfg; do
+            run_build "$id" "$cfg" < /dev/null >> "$out/rerun.txt" 2>> "$out/rerun.err" || rerun_rc=1
+          done < "$out/pairs.txt"
+          # shellcheck disable=SC2086
+          run_offline capture --stage record --read-only-toolchain --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --out /out/capture-rerun --image "$IMAGE" $TESTBED_SELECTION >> "$out/rerun.txt" 2>> "$out/rerun.err" || rerun_rc=1
+          run_offline compare --first /out/capture --second /out/capture-rerun/capture > "$out/compare.txt" 2> "$out/compare.err"
+          compare_rc=$?
+          set -e
+          cat "$out/rerun.txt"
+          {
+            echo "rerun capture exit code: $rerun_rc"
+            cat "$out/compare.txt"
+            echo "compare exit code: $compare_rc"
+            if [ "$rerun_rc" -ne 0 ] && [ -s "$out/rerun.err" ]; then echo "--- rerun stderr"; tail -c 1500 "$out/rerun.err"; fi
+            if [ -s "$out/compare.err" ]; then echo "--- compare stderr"; tail -c 1500 "$out/compare.err"; fi
+          } > "$out/determinism.txt"
+          cat "$out/determinism.txt"
+          if [ "$rerun_rc" -ne 0 ] || [ "$compare_rc" -ne 0 ]; then
+            annotate error testbed-determinism "$out/determinism.txt"
+            exit 1
+          fi
+          annotate notice testbed-determinism "$out/determinism.txt"
+
+      # D-26 fixtures. The notices below carry the real CI data that plan 02-10 commits
+      # as offline fixtures; each is its own step because GitHub caps the annotations
+      # of a step.
+      - name: Fixture qcbor-default compile_commands
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture qcbor-default compile_commands" "$RUNNER_TEMP/out/capture/qcbor/default.compile_commands.json"
+
+      - name: Fixture corejson-default compile_commands
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture corejson-default compile_commands" "$RUNNER_TEMP/out/capture/corejson/default.compile_commands.json"
+
+      - name: Fixture corejson-default capture report
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture corejson-default capture" "$RUNNER_TEMP/out/capture/corejson/default.json"
+
+      - name: Fixture corejson-default replay report
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture corejson-default replay" "$RUNNER_TEMP/out/replay/corejson/default.json"
+
+      # readelf -A of the corejson object, run in the image with no network.
+      - name: Fixture readelf-A
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          objects="$RUNNER_TEMP/work/capture/corejson/default/objects"
+          rel=$(cd "$objects" && find . -type f | sort | head -n 1 | sed 's#^\./##')
+          {
+            echo "object: $rel"
+            image_tool /work /opt/arm-gnu-toolchain/bin/arm-none-eabi-readelf -A "/work/capture/corejson/default/objects/$rel"
+          } > "$out/fixture-readelf-A.txt"
+          cat "$out/fixture-readelf-A.txt"
+          annotate notice "fixture readelf-A" "$out/fixture-readelf-A.txt"
+
+      # The smallest captured object, and a copy of it whose .comment section alone was
+      # replaced by arm-none-eabi-objcopy, as base64. Removing .comment from both must
+      # leave identical files, which is what the notice states.
+      - name: Make the two Arm fixture objects
+        id: armsmall
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          objcopy=/opt/arm-gnu-toolchain/bin/arm-none-eabi-objcopy
+          # sed -n 1p reads the whole listing. `sort | head -n 1` under pipefail is a
+          # race: head exits after its first line, and when the runner ignores SIGPIPE,
+          # sort fails its remaining writes with "Broken pipe" and exits 2. A one-write
+          # listing cannot race; the --all listing of about 490 paths can (02-09).
+          small=$(find "$RUNNER_TEMP/work/capture" -path '*/objects/*' -type f -printf '%s %p\n' | sort -n -k1,1 -k2 | sed -n 1p | cut -d' ' -f2-)
+          rel=${small#"$RUNNER_TEMP/work"}
+          cp "$small" "$out/arm-small.o"
+          printf 'mt-fixture-comment\0' > "$out/comment.bin"
+          image_tool /work "$objcopy" --update-section .comment=/out/comment.bin "/work$rel" /out/arm-small-comment.o
+          image_tool /work "$objcopy" --remove-section=.comment "/work$rel" /out/arm-small-stripped.o
+          image_tool /work "$objcopy" --remove-section=.comment /out/arm-small-comment.o /out/arm-small-comment-stripped.o
+          echo "$rel" > "$out/arm-small.path"
+          if cmp -s "$out/arm-small.o" "$out/arm-small-comment.o"; then
+            echo "the two objects are identical; .comment was not replaced"
+            exit 1
+          fi
+          if ! cmp -s "$out/arm-small-stripped.o" "$out/arm-small-comment-stripped.o"; then
+            echo "the objects differ in more than .comment"
+            exit 1
+          fi
+          ls -l "$out"/arm-small*.o
+
+      - name: Fixture arm-small.o
+        if: ${{ !cancelled() && steps.armsmall.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          {
+            echo "source: $(cat "$out/arm-small.path")"
+            echo "sha256: $(sha256sum "$out/arm-small.o" | cut -d' ' -f1)"
+            echo "bytes: $(stat -c %s "$out/arm-small.o")"
+            echo "base64:"
+            base64 -w 76 "$out/arm-small.o"
+          } > "$out/fixture-arm-small.txt"
+          annotate notice "fixture arm-small.o" "$out/fixture-arm-small.txt"
+
+      - name: Fixture arm-small-comment.o
+        if: ${{ !cancelled() && steps.armsmall.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          {
+            echo "source: $(cat "$out/arm-small.path"), .comment replaced by arm-none-eabi-objcopy --update-section"
+            echo "sha256: $(sha256sum "$out/arm-small-comment.o" | cut -d' ' -f1)"
+            echo "bytes: $(stat -c %s "$out/arm-small-comment.o")"
+            echo "differs from arm-small.o only in .comment: yes (objcopy --remove-section=.comment gives identical files)"
+            echo "base64:"
+            base64 -w 76 "$out/arm-small-comment.o"
+          } > "$out/fixture-arm-small-comment.txt"
+          annotate notice "fixture arm-small-comment.o" "$out/fixture-arm-small-comment.txt"
+
+      # The AST dump of the QCBORDecode_Init probe, with the argv and working
+      # directory the entry check recorded in the capture report. The dump is longer
+      # than 9 annotation parts, so three steps publish parts 1 to 9, 10 to 18 and 19 on.
+      - name: Fixture qcbor entry ast (parts 1 to 9)
+        id: ast
+        if: ${{ !cancelled() && steps.replay.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          step=$(jq -c '[.steps[] | select(.name == "clang ast QCBORDecode_Init")][0] | {argv: .run.argv, cwd: .run.cwd}' "$out/capture/qcbor/default.json")
+          cwd=$(jq -r '.cwd' <<< "$step")
+          mapfile -t argv < <(jq -r '.argv[]' <<< "$step")
+          image_tool "$cwd" "${argv[@]}" > "$out/fixture-qcbor-ast.json"
+          annotate notice "fixture qcbor entry ast" "$out/fixture-qcbor-ast.json" 1 9
+
+      - name: Fixture qcbor entry ast (parts 10 to 18)
+        if: ${{ !cancelled() && steps.ast.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture qcbor entry ast" "$RUNNER_TEMP/out/fixture-qcbor-ast.json" 10 18
+
+      - name: Fixture qcbor entry ast (parts 19 on)
+        if: ${{ !cancelled() && steps.ast.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture qcbor entry ast" "$RUNNER_TEMP/out/fixture-qcbor-ast.json" 19 27
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: testbed-reports
+          path: ${{ runner.temp }}/out
+          if-no-files-found: ignore
+          retention-days: 7

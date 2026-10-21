@@ -1,0 +1,257 @@
+{
+  "schema_version": 1,
+  "target": "zlib",
+  "commit": "da607da739fa6047df13e66a2af6b8bec7c2a498",
+  "licence": {
+    "spdx": "Zlib",
+    "elected": "Zlib",
+    "file": "LICENSE"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "0f441ff0436f0eb074e7362c697e382b54b3fcaabf420a20fb649fba20d86f13",
+      "bytes": 16,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/bad_header_check.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "218f80536d00cba77bffa9ad2ff6a56a0bfb4ac40a5205cc36287d0144044834",
+      "bytes": 7,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/reserved_block_type.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "22935adb8c80702502ee42becfef9f146a00472ff1e809ce7b4d19e68ca80c50",
+      "bytes": 16,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/window_too_large.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "3a1e59bbc5afcd22252e28dc83b17bd87f1c834f158f8503647bc7f35ef7d3be",
+      "bytes": 24,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/dynamic_huffman_40_a.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "425976c9f59a5446f62f3f7a89c343a9770dcd936becf42d36532760ece1fa06",
+      "bytes": 12,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/missing_trailer.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "4cd56456762f2d338589e13d335a2f71369fc47bb79f92dceb73949b4c02772a",
+      "bytes": 9,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/fixed_huffman_high_literal.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "60941a57901712171a3d50c4789bb129d08e93a64c143589f66020ecfd419f12",
+      "bytes": 12,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/fixed_huffman_with_match.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "6c3f6efdedee33bd86b7cabbd2b127a4dfcaad6480c072e6220bd7d754885b76",
+      "bytes": 20,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/preset_dictionary_flag.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "8697003ea5c8f20f906cf3e1c5a02071cd8030421091c335812e8c3555cd673c",
+      "bytes": 9,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/fixed_huffman_literal.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "898fa8bd66143a48c25a7f7fa94d69698db5de9e634a2e78c1bc020591c64e88",
+      "bytes": 10,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/fixed_huffman_distance_too_far.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "8ed607cce0c7449ce30482343b0e1598dfac0aac4b520dfce6e9484d6847969e",
+      "bytes": 16,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/bad_compression_method.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "97f9801921a58c8974033d06b3e143971fd795bbbe47899498fd58319387c21f",
+      "bytes": 6,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/truncated_mid_stored.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "b8f45bcbd81d3edbe2fe2eaddfe03209b3dd10924cb291d4b79a47d63bb8cef9",
+      "bytes": 11,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/stored_empty.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "d104fc1616c09bb2895ee89c897ea8780965b184691d9ac2d0b1f27912788256",
+      "bytes": 21,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/stored_two_blocks.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "e00cc3a166153d6cf724f7214bc3280f2bbf620788732fe8aee3b65a7ad10afc",
+      "bytes": 16,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/stored_hello.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "e01487bfdd24c74e6d7bfebf69066204d4e658931fcaeed025c8090dc6704933",
+      "bytes": 16,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/bad_adler32.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "eea482a748cb80dd60da12c5923bf384427595db8b2753df4ca2cb6fed7c1949",
+      "bytes": 16,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/stored_len_nlen_mismatch.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "f5e2794887fba944442f1d3619e6773e55259ef5f3c73112857f0e293be739a0",
+      "bytes": 2,
+      "entries": [
+        "inflate",
+        "uncompress"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/zlib/hand-made/truncated_after_header.hex"
+      },
+      "proposed": true
+    }
+  ],
+  "skipped": {
+    "duplicate": 0,
+    "too_large": 0,
+    "over_cap": 0,
+    "unsupported": 0
+  }
+}

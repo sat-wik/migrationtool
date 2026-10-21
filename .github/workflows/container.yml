@@ -6,7 +6,8 @@
 # Log and artifact hosts are not reachable from cloud sessions, so each job also
 # publishes its evidence as job annotations (titles check-a, negative-pin,
 # manifest-a, manifest-b, manifest-compare, smoke, tool-outputs, pin-binding,
-# image-archive, image-digest, verified-image, publish-skipped, and on failure
+# arm-specs, toolchain-ro-control, image-archive, image-digest, verified-image,
+# publish-skipped, and on failure
 # "image-a build tail", "image-b build tail", manifest-diff and tag-lookup).
 # `verified-image` is the digest reference later phases use; it is announced by
 # the publish job, after the push, and only when image-a, image-b and compare all
@@ -224,6 +225,142 @@ jobs:
           { cat "$out/inventory.txt"; echo "exit code: $rc"; docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' mt-toolchain:ci; } > "$out/inventory-notice.txt"
           cat "$out/inventory-notice.txt"
           annotate notice image-inventory "$out/inventory-notice.txt"
+
+      # WR-13 (plan 02-21): which spec files the pinned Arm toolchain ships and
+      # reads from inside itself. For each lib/*.specs it plants an empty file of
+      # the same name in a fresh working directory and asks the driver (-###,
+      # which runs nothing) which file it reads. A name counts as shipped only
+      # when the path lies under /opt/arm-gnu-toolchain; the control, a name the
+      # toolchain does not ship, must read the planted file, or the measurement
+      # is void. The names become the SHIPPED_SPECS constant of mt-capture's cc.rs.
+      - name: List the spec files the pinned Arm toolchain ships (WR-13)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          cat > "$RUNNER_TEMP/arm-specs.sh" <<'SPECS'
+          gcc=/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc
+          "$gcc" --version | head -n 1
+          probe() {
+            local name=$1 dir line
+            dir=$(mktemp -d /tmp/specs.XXXXXX)
+            : > "$dir/$name"
+            line=$(cd "$dir" && "$gcc" -### -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Os \
+              "-specs=$name" -c -x c /dev/null -o /dev/null 2>&1 | grep -m 1 '^Reading specs from ')
+            echo "$name ${line#Reading specs from }"
+          }
+          echo "--- shipped"
+          for f in /opt/arm-gnu-toolchain/arm-none-eabi/lib/*.specs; do
+            [ -e "$f" ] || continue
+            probe "$(basename "$f")"
+          done
+          echo "--- control (planted)"
+          probe only-planted.specs
+          SPECS
+          set +e
+          docker run --rm --network none --user 65534:65534 --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --tmpfs /tmp:rw,nosuid,size=64m \
+            -v "$RUNNER_TEMP/arm-specs.sh:/arm-specs.sh:ro" mt-toolchain:ci bash /arm-specs.sh > "$out/arm-specs.txt" 2>&1
+          rc=$?
+          set -e
+          { cat "$out/arm-specs.txt"; echo "exit code: $rc"; } > "$out/arm-specs-notice.txt"
+          cat "$out/arm-specs-notice.txt"
+          annotate notice arm-specs "$out/arm-specs-notice.txt"
+          exit "$rc"
+
+      # WR-12 (plan 02-22): the testbed workflow's run_build mounts the pinned CMake
+      # toolchain file read-only at /opt/mt/toolchain, so the untrusted build cannot
+      # change the file its configure reads. This step proves that live with run_build's
+      # docker flags: a one-line toolchain.cmake in a host directory is mounted the same
+      # way, and inside the container appending to it, truncating it, creating a file
+      # beside it, a CMake configure whose CMakeLists.txt does file(APPEND) on
+      # ${CMAKE_TOOLCHAIN_FILE}, removing the file and renaming /opt/mt/toolchain must
+      # each fail; back on the runner its sha256 must be unchanged. The file and its
+      # directory are writable by the container user, and the same writes on a writable
+      # mount must succeed (the control), so only the read-only mount can make them fail.
+      - name: Prove a read-only toolchain mount cannot be written (WR-12)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          cat > "$RUNNER_TEMP/toolchain-ro.sh" <<'RO'
+          f=/opt/mt/toolchain/toolchain.cmake
+          attempt() {
+            local what=$1 rc
+            shift
+            "$@" > /tmp/attempt.out 2>&1
+            rc=$?
+            echo "$what: exit $rc: $(tr '\n' ' ' < /tmp/attempt.out | cut -c 1-200)"
+          }
+          mkdir -p /tmp/ro-cmake/src
+          {
+            echo 'cmake_minimum_required(VERSION 3.10)'
+            echo 'project(x NONE)'
+            echo 'file(APPEND "${CMAKE_TOOLCHAIN_FILE}" "set(PLANTED 1)\n")'
+          } > /tmp/ro-cmake/src/CMakeLists.txt
+          attempt append sh -c "echo 'set(PLANTED 1)' >> $f"
+          attempt truncate truncate -s 0 "$f"
+          attempt create sh -c ': > /opt/mt/toolchain/new.cmake'
+          attempt cmake-file-append cmake -S /tmp/ro-cmake/src -B /tmp/ro-cmake/build -DCMAKE_TOOLCHAIN_FILE="$f"
+          attempt remove rm "$f"
+          attempt rename mv /opt/mt/toolchain /opt/mt/toolchain.moved
+          RO
+          ro="$RUNNER_TEMP/toolchain-ro/ro"
+          rw="$RUNNER_TEMP/toolchain-ro/rw"
+          mkdir -p "$ro" "$rw"
+          for d in "$ro" "$rw"; do
+            printf 'set(CMAKE_C_FLAGS_INIT "-Os")\n' > "$d/toolchain.cmake"
+            chmod 0777 "$d"
+            chmod 0666 "$d/toolchain.cmake"
+          done
+          before=$(sha256sum "$ro/toolchain.cmake" | cut -d ' ' -f 1)
+          set +e
+          docker run --rm --network none --user 65534:65534 --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --tmpfs /tmp:rw,nosuid,size=64m \
+            -v "$RUNNER_TEMP/toolchain-ro.sh:/toolchain-ro.sh:ro" \
+            -v "$ro:/opt/mt/toolchain:ro" mt-toolchain:ci bash /toolchain-ro.sh > "$out/toolchain-ro.txt" 2>&1
+          ro_rc=$?
+          docker run --rm --network none --user 65534:65534 --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --tmpfs /tmp:rw,nosuid,size=64m \
+            -v "$RUNNER_TEMP/toolchain-ro.sh:/toolchain-ro.sh:ro" \
+            -v "$rw:/opt/mt/toolchain" mt-toolchain:ci bash /toolchain-ro.sh > "$out/toolchain-rw.txt" 2>&1
+          rw_rc=$?
+          set -e
+          after=$(sha256sum "$ro/toolchain.cmake" | cut -d ' ' -f 1)
+          failed=0
+          for op in append truncate create cmake-file-append remove rename; do
+            line=$(grep -m 1 "^$op: exit " "$out/toolchain-ro.txt" || true)
+            if [ -z "$line" ] || printf '%s\n' "$line" | grep -q "^$op: exit 0:"; then failed=1; fi
+          done
+          if [ "$before" != "$after" ]; then failed=1; fi
+          # The control: on a writable mount every write but the rename of the mount
+          # point succeeds, so the failures above come from the read-only mount.
+          for op in append truncate create cmake-file-append remove; do
+            grep -q "^$op: exit 0:" "$out/toolchain-rw.txt" || failed=1
+          done
+          {
+            echo "--- read-only mount ($ro:/opt/mt/toolchain:ro, run_build's docker flags)"
+            cat "$out/toolchain-ro.txt"
+            echo "container exit code: $ro_rc"
+            echo "sha256 before: $before"
+            echo "sha256 after: $after"
+            echo "--- control (the same writes on a writable mount)"
+            cat "$out/toolchain-rw.txt"
+            echo "container exit code: $rw_rc"
+            if [ "$failed" -eq 0 ]; then
+              echo "result: every write to the read-only mount failed, the file is unchanged, and the writable control accepted the writes"
+            else
+              echo "result: FAILED: a write to the read-only mount succeeded, the file changed, or the control did not accept the writes"
+            fi
+          } > "$out/toolchain-ro-notice.txt"
+          cat "$out/toolchain-ro-notice.txt"
+          if [ "$failed" -ne 0 ]; then
+            annotate error toolchain-ro-control "$out/toolchain-ro-notice.txt"
+            exit 1
+          fi
+          annotate notice toolchain-ro-control "$out/toolchain-ro-notice.txt"
 
       # CR-01, TOOL-03: the pins govern the installed bytes. The image build wrote
       # /opt/cargo-tools/share/mt/pin-binding.sha256, the sha256 of every file the

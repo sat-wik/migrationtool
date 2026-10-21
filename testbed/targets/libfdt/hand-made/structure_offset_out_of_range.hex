@@ -1,0 +1,10 @@
+# Devicetree Specification, chapter 5 (Flattened Devicetree format), version 17 header, section 5.2 (off_dt_struct)
+# case: off_dt_struct 0x7ffffff0, far outside the blob
+# generated once by: python3 -I research/testbed-seeds/libfdt.py structure_offset_out_of_range
+d0 0d fe ed 00 00 00 6d 7f ff ff f0 00 00 00 58
+00 00 00 28 00 00 00 11 00 00 00 10 00 00 00 00
+00 00 00 15 00 00 00 20 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00
+00 00 00 03 00 00 00 03 00 00 00 00 6d 74 00 00
+00 00 00 02 00 00 00 09 6d 6f 64 65 6c 00 72 65
+67 00 63 6f 6d 70 61 74 69 62 6c 65 00

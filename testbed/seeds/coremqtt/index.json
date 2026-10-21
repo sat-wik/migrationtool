@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "target": "coremqtt",
+  "commit": "04845c6a8e5f9cf2d232f1c6e80baeb81302e690",
+  "licence": {
+    "spdx": "MIT",
+    "elected": "MIT",
+    "file": "LICENSE"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "3b6bfb6786ce43dc91285f18a6c13eb54bc22c2d594ee101fafa9cd2a60c3a8c",
+      "bytes": 7,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/coremqtt/hand-made/suback_v5.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "3bc5d71e81106e842b8b71bb84150c1e30e8abcef145a9d17119a952ecee6ce9",
+      "bytes": 4,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/coremqtt/hand-made/pubcomp.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd",
+      "bytes": 1,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/unit-test/core_mqtt_prop_serializer_utest.c",
+        "line": 1730
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "570eb213d70b0872c6aa89311521a19e24a6f031d3d6d715dfe4e873814c9f61",
+      "bytes": 4,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/coremqtt/hand-made/pubrel.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "59d186037585997b7b991fda8d9a6093c8d445a9363a67f1440d2105566f79b7",
+      "bytes": 4,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/coremqtt/hand-made/pubrec.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "5df1c389344a9597cf74a1c4a044b0db21c60af616851eb387ba8d3b357ba77b",
+      "bytes": 3,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/coremqtt/hand-made/ack_truncated.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "6a0a5636e34a7fc5103956249c162160296dbb249bd1ace3352c5cda3a4ebf3c",
+      "bytes": 6,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/coremqtt/hand-made/unsuback_v5.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "bytes": 1,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/unit-test/core_mqtt_prop_serializer_utest.c",
+        "line": 43
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8c18c4c33ca33ab422688765748d843b75c24a98e9ccccc82861213a0bd8ac9b",
+      "bytes": 23,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/unit-test/core_mqtt_serializer_utest.c",
+        "line": 3012
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9e8ad16c934f6a17138f0657aa5d68715e98771fbdc9f534f1683caa3b03462e",
+      "bytes": 7,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/unit-test/core_mqtt_serializer_utest.c",
+        "line": 3051
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a7e50102475befdecffa7d941666b63bd66565dbaa8b5609d73e1f0544b4f38a",
+      "bytes": 11,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/coremqtt/hand-made/publish_qos1_zero_packet_id.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "be81fe4316df9b2c7b167f68bf1236a93ac7885211be33ebff7d638c095b2f15",
+      "bytes": 2,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/coremqtt/hand-made/disconnect.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "c45e60b11a6556f1f3a6e429d8e3d9c60a8e1718e321b79c6c748177a36885e9",
+      "bytes": 17,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/coremqtt/hand-made/publish_v5_properties.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "c51f4893dd7e8cd8b008ac944f2d799a8f5611b26766785bb227c09f09dfaa80",
+      "bytes": 33,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "c_array",
+      "source": {
+        "path": "test/unit-test/core_mqtt_oob_utest.c",
+        "line": 45
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e270428adcda900938774fb513751fc1489876e15b23a6d10349c663dfab6de6",
+      "bytes": 10,
+      "entries": [
+        "MQTT_DeserializeAck",
+        "MQTT_DeserializePublish"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/coremqtt/hand-made/puback_v5_reason_and_properties.hex"
+      },
+      "proposed": true
+    }
+  ],
+  "skipped": {
+    "duplicate": 988,
+    "too_large": 0,
+    "over_cap": 0,
+    "unsupported": 32
+  }
+}

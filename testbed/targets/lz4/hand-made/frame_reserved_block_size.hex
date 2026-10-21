@@ -1,0 +1,4 @@
+# LZ4 Frame Format specification (lz4_Frame_format.md), BD block maximum size
+# case: BD 0x00: a reserved block maximum size
+# generated once by: python3 -I research/testbed-seeds/lz4.py frame_reserved_block_size
+04 22 4d 18 60 00 84

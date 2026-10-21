@@ -1,0 +1,967 @@
+# The committed test bed: 16 open-source C parsers whose real builds are captured
+# and replayed (BED-01, BED-02). Phase 2 CONTEXT D-03: the founder approved this
+# exact list as proposed, with no edits, before this file existed; the approval
+# (target_list_approval: approve-as-proposed, drop_granularity: variant) is
+# recorded in .planning/phases/02-test-bed-and-build-capture/02-03-SUMMARY.md.
+#
+# Pins (D-17): every source is fixed by a 40-hex commit and a 64-hex tree_sha256
+# (the algorithm of crates/mt-capture/src/treehash.rs; `.git` excluded). The
+# values come from 02-RESEARCH.md "Appendix: manifest-ready pins"; the CI fetch
+# in plans 02-06 and 02-09 is what checks them against the real repositories.
+# Mbed TLS is an archive source (D-20, PROJECT.md D-20): pinned by archive sha256
+# plus tree sha256, with the commit of the tag kept for provenance only.
+#
+# Licences (D-02, D-27, PROJECT.md D-19): `spdx` is the upstream expression,
+# `elected` the permissive operand this project uses, `file` the licence file at
+# the pinned commit. Nothing here is a legal opinion.
+#
+# Recipes (D-03, D-07): every target carries a build recipe table that drives the
+# project's own Make or CMake build. The tracer targets (qcbor, corejson) were
+# written first; plan 02-09 wrote the other 14 from RESEARCH Table 1 and Pitfall 11
+# after the tracer was green.
+#
+# Placeholders allowed in build strings (D-20): {cc} the pinned arm-none-eabi-gcc,
+# {cflags} baseline then the configuration's defines and cflags, {src} the source
+# root of the run, {inputs} the directory of committed files under
+# testbed/targets/<id>/.
+schema_version = 1
+
+[decisions]
+# D-08 / PROJECT.md D-18: parsers are RTOS-independent, so the choice is deferred.
+first_rtos = "deferred"
+first_rtos_reason = "parsers are RTOS-independent; revisit after the design-partner interviews (weeks 4-10)"
+first_rtos_candidates = ["freertos", "zephyr"]
+project_decision = "D-18"
+
+[image]
+# The toolchain image every capture and replay runs in (D-10). The same digest is
+# under "Current image" in container/README.md; a test keeps the two equal.
+digest = "sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9"
+
+[baseline]
+# D-06: Cortex-M4F with hardware floating point, optimised for size.
+cflags = ["-mcpu=cortex-m4", "-mthumb", "-mfloat-abi=hard", "-mfpu=fpv4-sp-d16", "-Os"]
+
+[seed_caps]
+# D-16: the caps every target's seed corpus is selected under (RESEARCH "Caps and
+# selection"). Each limit is inclusive and above zero.
+max_seeds = 200
+max_total_bytes = 1048576
+max_seed_bytes = 65536
+
+# ---------------------------------------------------------------------------
+# 1. tinycbor: CBOR (spec example). CMake only at v7.0.
+# ---------------------------------------------------------------------------
+[target.tinycbor]
+category = ["cbor"]
+build = "cmake"
+
+[target.tinycbor.source]
+kind = "git"
+url = "https://github.com/intel/tinycbor"
+ref = "v7.0"
+commit = "6442e749ca811e24afad1551338a45c75e09808f"
+tree_sha256 = "9acf217a3877140b998586cc8c4172e28bfe90630938344e3cc6067a35b86189"
+
+[target.tinycbor.licence]
+spdx = "MIT"
+elected = "MIT"
+file = "LICENSE"
+
+[target.tinycbor.build_args]
+dir = "."
+cmake_target = "tinycbor"
+
+[[target.tinycbor.entry]]
+name = "cbor_parser_init"
+header = "src/cbor.h"
+source = "src/cborparser.c"
+form = "direct"
+signature = "CborError (const uint8_t *, size_t, uint32_t, CborParser *, CborValue *)"
+
+[[target.tinycbor.entry]]
+name = "cbor_value_validate"
+header = "src/cbor.h"
+source = "src/cborvalidation.c"
+form = "wrapped"
+signature = "CborError (const CborValue *, uint32_t)"
+accepted_wrapped = true
+
+[[target.tinycbor.config]]
+name = "default"
+
+[[target.tinycbor.config]]
+name = "no-float"
+cmake_options = ["-DWITH_FLOATING_POINT=OFF"]
+
+# Seeds (BUILD-03): the parser tests hold raw("\x..") rows.
+[[target.tinycbor.seed_source]]
+path = "tests/parser"
+methods = ["c_string"]
+entries = ["cbor_parser_init", "cbor_value_validate"]
+
+# ---------------------------------------------------------------------------
+# 2. zcbor: CBOR (spec example), the generated decoder used across Zephyr.
+# ---------------------------------------------------------------------------
+[target.zcbor]
+category = ["cbor"]
+build = "cmake"
+
+[target.zcbor.source]
+kind = "git"
+url = "https://github.com/zephyrproject-rtos/zcbor"
+ref = "main"
+commit = "9164bd18dcd88ff9d9ef98279501fc1093571017"
+tree_sha256 = "131d840f381cd3ac9e5d118f7c59717f04deda4c92e546eeab12663528509f1f"
+
+[target.zcbor.licence]
+spdx = "Apache-2.0"
+elected = "Apache-2.0"
+file = "LICENSE"
+
+# The library has no top-level build: samples/pet is plain CMake and the target
+# pet is the library (the app target needs the Python zcbor tool).
+[target.zcbor.build_args]
+dir = "samples/pet"
+cmake_target = "pet"
+
+[[target.zcbor.entry]]
+name = "cbor_decode_Pet"
+header = "samples/pet/include/pet_decode.h"
+source = "samples/pet/src/pet_decode.c"
+form = "direct"
+signature = "int (const uint8_t *, size_t, struct Pet *, size_t *)"
+
+[[target.zcbor.entry]]
+name = "zcbor_new_decode_state"
+header = "include/zcbor_decode.h"
+source = "src/zcbor_decode.c"
+form = "direct"
+signature = "void (zcbor_state_t *, size_t, const uint8_t *, size_t, size_t, uint8_t *, size_t)"
+
+[[target.zcbor.config]]
+name = "default"
+
+[[target.zcbor.config]]
+name = "stop-on-error"
+defines = ["ZCBOR_STOP_ON_ERROR"]
+
+# Seeds (BUILD-03): the SUIT and corner-case examples as hex text, and the byte
+# arrays of the decode and encode tests.
+[[target.zcbor.seed_source]]
+path = "tests/cases"
+methods = ["hex_text"]
+extensions = ["cborhex"]
+entries = ["zcbor_new_decode_state"]
+
+[[target.zcbor.seed_source]]
+path = "tests"
+methods = ["c_array"]
+entries = ["zcbor_new_decode_state"]
+
+# ---------------------------------------------------------------------------
+# 3. qcbor: CBOR for COSE and EAT. Tracer target (Make plus Bear).
+# ---------------------------------------------------------------------------
+[target.qcbor]
+category = ["cbor"]
+build = "make"
+
+[target.qcbor.source]
+kind = "git"
+url = "https://github.com/laurencelundblade/QCBOR"
+ref = "v1.6.1"
+commit = "930708bb86481e88879eb1d87fd4d664f1d69503"
+tree_sha256 = "ed42fa8d2ea1619e71613e2925c197ae55a6c0dee151d61983334ef6968f8ee0"
+
+[target.qcbor.licence]
+spdx = "BSD-3-Clause"
+elected = "BSD-3-Clause"
+file = "LICENSE"
+note = "essentially the 3-clause text; files from Qualcomm CAF carry a modified clause"
+
+[target.qcbor.build_args]
+dir = "."
+goals = ["libqcbor.a"]
+make_vars = ["CC={cc} {cflags}"]
+
+[[target.qcbor.entry]]
+name = "QCBORDecode_Init"
+header = "inc/qcbor/qcbor_decode.h"
+source = "src/qcbor_decode.c"
+form = "wrapped"
+signature = "void (QCBORDecodeContext *, UsefulBufC, QCBORDecodeMode)"
+accepted_wrapped = true
+
+[[target.qcbor.config]]
+name = "default"
+
+[[target.qcbor.config]]
+name = "no-hw-float"
+defines = ["QCBOR_DISABLE_FLOAT_HW_USE", "QCBOR_DISABLE_PREFERRED_FLOAT"]
+
+# Seeds (BUILD-03, G-02-3): the constant byte arrays of the test files whose arrays are
+# CBOR encodings: qcbor_decode_tests.c (inputs to decode), qcbor_encode_tests.c (the
+# expected encodings, which are valid CBOR; a few small payload blobs that the tests
+# encode into byte strings are swept in with them), not_well_formed_cbor.h (the
+# not-well-formed inputs) and float_tests.c (expected float encodings). No string
+# source remains: the strings of the tests are labels such as "another int" and
+# " tests failed". UsefulBuf_Tests.c (buffer utility tests, arrays of '+' and
+# "Boo") and run_tests.c (the runner) are left out because they hold no CBOR.
+[[target.qcbor.seed_source]]
+path = "test/qcbor_decode_tests.c"
+methods = ["c_array"]
+entries = ["QCBORDecode_Init"]
+
+[[target.qcbor.seed_source]]
+path = "test/qcbor_encode_tests.c"
+methods = ["c_array"]
+entries = ["QCBORDecode_Init"]
+
+[[target.qcbor.seed_source]]
+path = "test/not_well_formed_cbor.h"
+methods = ["c_array"]
+entries = ["QCBORDecode_Init"]
+
+[[target.qcbor.seed_source]]
+path = "test/float_tests.c"
+methods = ["c_array"]
+entries = ["QCBORDecode_Init"]
+
+# ---------------------------------------------------------------------------
+# 4. nanopb: Protocol Buffers for microcontrollers (spec example).
+# ---------------------------------------------------------------------------
+[target.nanopb]
+category = ["protobuf"]
+build = "cmake"
+
+[target.nanopb.source]
+kind = "git"
+url = "https://github.com/nanopb/nanopb"
+ref = "nanopb-0.4.9.2"
+commit = "160d4f09e5fabb2b66aa2dea32d4f38ace2c4b3f"
+tree_sha256 = "b86f61ac9e874160f9f405412d131d3522c2e9b536a582b8581158ee9520b6ce"
+
+[target.nanopb.licence]
+spdx = "Zlib"
+elected = "Zlib"
+file = "LICENSE.txt"
+
+# CMake looks for protoc at configure time even with the generator off, so protoc
+# is pointed at /usr/bin/true (coreutils); only the static runtime library is built.
+[target.nanopb.build_args]
+dir = "."
+cmake_target = "protobuf-nanopb-static"
+cmake_options = ["-Dnanopb_PROTOC_PATH=/usr/bin/true", "-Dnanopb_BUILD_GENERATOR=OFF"]
+
+[[target.nanopb.entry]]
+name = "pb_istream_from_buffer"
+header = "pb_decode.h"
+source = "pb_decode.c"
+form = "direct"
+signature = "pb_istream_t (const pb_byte_t *, size_t)"
+
+[[target.nanopb.entry]]
+name = "pb_decode_ex"
+header = "pb_decode.h"
+source = "pb_decode.c"
+form = "wrapped"
+signature = "_Bool (pb_istream_t *, const pb_msgdesc_t *, void *, unsigned int)"
+accepted_wrapped = true
+
+[[target.nanopb.config]]
+name = "default"
+
+[[target.nanopb.config]]
+name = "buffer-only"
+defines = ["PB_BUFFER_ONLY=1", "PB_NO_ERRMSG=1"]
+
+# Seeds (BUILD-03, G-02-3): the fuzz test's sample messages and its fuzz corpora
+# (corpus.zip, regressions.zip), which are the protobuf inputs of nanopb. There is
+# no string source: the strings under tests/ are test names, messages, malloc
+# wrappers and platform vectors. An archive above 2 MiB is not opened.
+[[target.nanopb.seed_source]]
+path = "tests/fuzztest/sample_data"
+methods = ["file_copy"]
+extensions = ["pb"]
+entries = ["pb_decode_ex", "pb_istream_from_buffer"]
+
+[[target.nanopb.seed_source]]
+path = "tests/fuzztest"
+methods = ["zip_member"]
+extensions = ["zip"]
+entries = ["pb_decode_ex", "pb_istream_from_buffer"]
+
+# ---------------------------------------------------------------------------
+# 5. cjson: the most-copied C JSON parser. It allocates.
+# ---------------------------------------------------------------------------
+[target.cjson]
+category = ["json"]
+build = "cmake"
+
+[target.cjson.source]
+kind = "git"
+url = "https://github.com/DaveGamble/cJSON"
+ref = "v1.7.19"
+commit = "c859b25da02955fef659d658b8f324b5cde87be3"
+tree_sha256 = "cb98da4236b68041e4be9a325bf3b41ce8a639bd0080faa0abe4a117afde0618"
+
+[target.cjson.licence]
+spdx = "MIT"
+elected = "MIT"
+file = "LICENSE"
+
+[target.cjson.build_args]
+dir = "."
+cmake_target = "cjson"
+cmake_options = ["-DBUILD_SHARED_LIBS=OFF", "-DENABLE_CJSON_TEST=OFF"]
+
+[[target.cjson.entry]]
+name = "cJSON_ParseWithLength"
+header = "cJSON.h"
+source = "cJSON.c"
+form = "direct"
+signature = "cJSON *(const char *, size_t)"
+
+[[target.cjson.config]]
+name = "default"
+
+[[target.cjson.config]]
+name = "no-locale"
+cmake_options = ["-DENABLE_LOCALES=OFF"]
+
+# Seeds (BUILD-03): the test inputs (files without an extension; the .expected
+# files are outputs) and the fuzzing inputs.
+[[target.cjson.seed_source]]
+path = "tests/inputs"
+methods = ["file_copy"]
+extensions = [""]
+entries = ["cJSON_ParseWithLength"]
+
+[[target.cjson.seed_source]]
+path = "fuzzing/inputs"
+methods = ["file_copy"]
+entries = ["cJSON_ParseWithLength"]
+
+# ---------------------------------------------------------------------------
+# 6. corejson: allocation-free JSON. Tracer target (CMake).
+# ---------------------------------------------------------------------------
+[target.corejson]
+category = ["json"]
+build = "cmake"
+
+[target.corejson.source]
+kind = "git"
+url = "https://github.com/FreeRTOS/coreJSON"
+ref = "v3.3.1"
+commit = "cffa492da18c890181d64462f8af63992a69d3b0"
+tree_sha256 = "9ca1058329f6ce0c31f9c13f861ec20cf75f35230b9aae0122ab81480a6df9a5"
+
+[target.corejson.licence]
+spdx = "MIT"
+elected = "MIT"
+file = "LICENSE"
+
+[target.corejson.build_args]
+dir = "."
+cmake_target = "core_json"
+
+[[target.corejson.entry]]
+name = "JSON_Validate"
+header = "source/include/core_json.h"
+source = "source/core_json.c"
+form = "direct"
+signature = "JSONStatus_t (const char *, size_t)"
+
+[[target.corejson.entry]]
+name = "JSON_SearchT"
+header = "source/include/core_json.h"
+source = "source/core_json.c"
+form = "direct"
+signature = "JSONStatus_t (char *, size_t, const char *, size_t, char **, size_t *, JSONTypes_t *)"
+
+[[target.corejson.config]]
+name = "default"
+
+[[target.corejson.config]]
+name = "depth-8"
+defines = ["JSON_MAX_DEPTH=8"]
+
+# Seeds (BUILD-03): the string literals of the unit tests. The repository's
+# .clusterfuzzlite directory holds no corpus files at this commit.
+[[target.corejson.seed_source]]
+path = "test/unit-test"
+methods = ["c_string"]
+extensions = ["c"]
+entries = ["JSON_SearchT", "JSON_Validate"]
+
+# ---------------------------------------------------------------------------
+# 7. coremqtt: MQTT from FreeRTOS. Both entries are struct-wrapped (D-28).
+# ---------------------------------------------------------------------------
+[target.coremqtt]
+category = ["mqtt"]
+build = "cmake"
+
+[target.coremqtt.source]
+kind = "git"
+url = "https://github.com/FreeRTOS/coreMQTT"
+ref = "v5.0.2"
+commit = "04845c6a8e5f9cf2d232f1c6e80baeb81302e690"
+tree_sha256 = "4ab12658af26706fb40200ff240e86b240041bcb002e5467ff1c2b01e7c0739e"
+
+[target.coremqtt.licence]
+spdx = "MIT"
+elected = "MIT"
+file = "LICENSE"
+
+# Without this switch coreMQTT needs a user core_mqtt_config.h.
+[target.coremqtt.build_args]
+dir = "."
+cmake_target = "core_mqtt"
+cmake_options = ["-DSTANDALONE_TEST_BUILD_UNIX=ON"]
+
+[[target.coremqtt.entry]]
+name = "MQTT_DeserializePublish"
+header = "source/include/core_mqtt_serializer.h"
+source = "source/core_mqtt_serializer.c"
+form = "wrapped"
+signature = "MQTTStatus_t (const MQTTPacketInfo_t *, uint16_t *, MQTTPublishInfo_t *, MQTTPropBuilder_t *, uint32_t, uint16_t)"
+accepted_wrapped = true
+
+[[target.coremqtt.entry]]
+name = "MQTT_DeserializeAck"
+header = "source/include/core_mqtt_serializer.h"
+source = "source/core_mqtt_serializer.c"
+form = "wrapped"
+signature = "MQTTStatus_t (const MQTTPacketInfo_t *, uint16_t *, MQTTReasonCodeInfo_t *, MQTTPropBuilder_t *, const MQTTConnectionProperties_t *)"
+accepted_wrapped = true
+
+[[target.coremqtt.config]]
+name = "default"
+
+[[target.coremqtt.config]]
+name = "sub-vectors-2"
+defines = ["MQTT_SUB_UNSUB_MAX_VECTORS=2U"]
+
+# Seeds (BUILD-03): the packet byte arrays of the unit tests.
+[[target.coremqtt.seed_source]]
+path = "test/unit-test"
+methods = ["c_array"]
+extensions = ["c"]
+entries = ["MQTT_DeserializeAck", "MQTT_DeserializePublish"]
+
+# ---------------------------------------------------------------------------
+# 8. paho: Eclipse embedded MQTT packet library. Dual-licensed (D-27).
+# ---------------------------------------------------------------------------
+[target.paho]
+category = ["mqtt"]
+build = "cmake"
+
+[target.paho.source]
+kind = "git"
+url = "https://github.com/eclipse-paho/paho.mqtt.embedded-c"
+ref = "master"
+commit = "6035ea2d4922bb7558b444fb2a051743f3f1974b"
+tree_sha256 = "a69bce85a45e561bdf490f80b35ddae7d13eb04a67c9b59fb070a2593286320b"
+
+[target.paho.licence]
+spdx = "EPL-2.0 OR BSD-3-Clause"
+elected = "BSD-3-Clause"
+file = "edl-v10"
+note = "EDL-1.0 is the BSD-3-Clause text, elected here; the repository also ships LICENSE and epl-v20"
+
+# The top-level CMake also enables C++ and exports the C++ client's compile
+# commands, which the compiler allow-list refuses, so the C-only MQTTPacket
+# project is the source directory (it is the project's own CMake build). Its
+# libraries are SHARED, which falls back to static on the Generic system.
+[target.paho.build_args]
+dir = "MQTTPacket"
+cmake_target = "MQTTPacketClient"
+
+# The declaring headers (MQTTPublish.h, MQTTConnect.h) use MQTTString without
+# including its definition, so they do not compile alone; MQTTPacket.h is the public
+# header that includes them and declares the types first.
+[[target.paho.entry]]
+name = "MQTTDeserialize_publish"
+header = "MQTTPacket/src/MQTTPacket.h"
+source = "MQTTPacket/src/MQTTDeserializePublish.c"
+form = "direct"
+signature = "int (unsigned char *, int *, unsigned char *, unsigned short *, MQTTString *, unsigned char **, int *, unsigned char *, int)"
+
+[[target.paho.entry]]
+name = "MQTTDeserialize_connack"
+header = "MQTTPacket/src/MQTTPacket.h"
+source = "MQTTPacket/src/MQTTConnectClient.c"
+form = "direct"
+signature = "int (unsigned char *, unsigned char *, unsigned char *, int)"
+
+[[target.paho.config]]
+name = "default"
+
+[[target.paho.config]]
+name = "server"
+cmake_target = "MQTTPacketServer"
+
+# Seeds (BUILD-03): none. MQTTPacket/test/test1.c only round-trips packets it
+# builds itself, so the seeds are hand-made (testbed/targets/paho/hand-made).
+
+# ---------------------------------------------------------------------------
+# 9. microcoap: CoAP, whose options are TLV (D-29). Unmaintained.
+# ---------------------------------------------------------------------------
+[target.microcoap]
+category = ["coap", "tlv"]
+build = "make"
+
+[target.microcoap.source]
+kind = "git"
+url = "https://github.com/1248/microcoap"
+ref = "master"
+commit = "ef272895925f0d4c563725fe0102966f544a0fdc"
+tree_sha256 = "8d331b8362cb16f499647c044f5d4b2033e5fc8ad5a3a33809d86582526cb415"
+
+[target.microcoap.licence]
+spdx = "MIT"
+elected = "MIT"
+file = "LICENSE.txt"
+
+# Only the two library sources; main-posix.c is the demo program.
+[target.microcoap.build_args]
+dir = "."
+goals = ["coap.o", "endpoints.o"]
+make_vars = ["CC={cc} {cflags}"]
+
+[[target.microcoap.entry]]
+name = "coap_parse"
+header = "coap.h"
+source = "coap.c"
+form = "direct"
+signature = "int (coap_packet_t *, const uint8_t *, size_t)"
+
+[[target.microcoap.config]]
+name = "default"
+
+[[target.microcoap.config]]
+name = "release"
+make_vars = ["CFLAGS=-Wall"]
+
+# Seeds (BUILD-03): none in the repository; the seeds are hand-made
+# (testbed/targets/microcoap/hand-made).
+
+# ---------------------------------------------------------------------------
+# 10. mbedtls: ASN.1 and X.509, DER is TLV (spec example). Archive source.
+# ---------------------------------------------------------------------------
+[target.mbedtls]
+category = ["asn1_x509", "tlv"]
+build = "make"
+
+[target.mbedtls.source]
+kind = "archive"
+url = "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2"
+sha256 = "a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6"
+strip_components = 1
+ref = "mbedtls-3.6.7"
+commit = "068ff080b369adfac81509f9b57b2afabaf82dc5"
+tree_sha256 = "00a636ffc99e447237abd6dee684a9ba0fe3727c1ea6d266cbe68989bb408248"
+
+[target.mbedtls.licence]
+spdx = "Apache-2.0 OR GPL-2.0-or-later"
+elected = "Apache-2.0"
+file = "LICENSE"
+
+# testbed/targets/mbedtls/user_config.h removes the operating-system modules; it is
+# part of every Mbed TLS configuration and hashed into each capture report.
+[target.mbedtls.build_args]
+dir = "library"
+goals = ["static"]
+make_vars = ["CC={cc} {cflags}", "CFLAGS=-Os -DMBEDTLS_USER_CONFIG_FILE='\"{inputs}/user_config.h\"'"]
+
+[[target.mbedtls.entry]]
+name = "mbedtls_x509_crt_parse_der"
+header = "include/mbedtls/x509_crt.h"
+source = "library/x509_crt.c"
+form = "direct"
+signature = "int (mbedtls_x509_crt *, const unsigned char *, size_t)"
+
+[[target.mbedtls.entry]]
+name = "mbedtls_asn1_get_tag"
+header = "include/mbedtls/asn1.h"
+source = "library/asn1parse.c"
+form = "range"
+signature = "int (unsigned char **, const unsigned char *, size_t *, int)"
+
+[[target.mbedtls.config]]
+name = "default"
+
+[[target.mbedtls.config]]
+name = "suite-b"
+cflags = ["-DMBEDTLS_CONFIG_FILE='\"{src}/configs/config-suite-b.h\"'"]
+
+# Seeds (BUILD-03): the DER certificates and structures of the test data.
+[[target.mbedtls.seed_source]]
+path = "framework/data_files"
+methods = ["file_copy"]
+extensions = ["der"]
+entries = ["mbedtls_x509_crt_parse_der"]
+
+# ---------------------------------------------------------------------------
+# 11. nimble: BLE advertising data and UUID parsers; AD structures are TLV.
+# ---------------------------------------------------------------------------
+[target.nimble]
+category = ["ble", "tlv"]
+build = "make"
+
+[target.nimble.source]
+kind = "git"
+url = "https://github.com/apache/mynewt-nimble"
+ref = "nimble_1_10_0_tag"
+commit = "a7a156f28954819e158b62dd613008f22f9cf73b"
+tree_sha256 = "726eb68c8d5179d0c57aade2ecf44f4a653a11870e0585f8b340ee154e317700"
+
+[target.nimble.licence]
+spdx = "Apache-2.0"
+elected = "Apache-2.0"
+file = "LICENSE"
+
+# The dummy port's Makefile with CC, NIMBLE_CFG_MBEDTLS, NIMBLE_CFLAGS and
+# NIMBLE_LDFLAGS overridden, and its object list named explicitly: the NimBLE
+# sources and the dummy NPL, without ble_sm_alg.c (needs Mbed TLS or tinycrypt
+# headers), the socket transport, main.c and the timer ports. No link step.
+[target.nimble.build_args]
+dir = "porting/examples/dummy"
+make_vars = ["CC={cc}", "NIMBLE_CFG_MBEDTLS=", "NIMBLE_CFLAGS={cflags}", "NIMBLE_LDFLAGS="]
+goals = [
+  "../../../porting/npl/dummy/src/npl_os_dummy.o",
+  "../../../porting/nimble/src/endian.o",
+  "../../../porting/nimble/src/mem.o",
+  "../../../porting/nimble/src/nimble_port.o",
+  "../../../porting/nimble/src/os_mbuf.o",
+  "../../../porting/nimble/src/os_mempool.o",
+  "../../../porting/nimble/src/os_msys.o",
+  "../../../nimble/host/src/ble_att.o",
+  "../../../nimble/host/src/ble_att_clt.o",
+  "../../../nimble/host/src/ble_att_cmd.o",
+  "../../../nimble/host/src/ble_att_svr.o",
+  "../../../nimble/host/src/ble_cs.o",
+  "../../../nimble/host/src/ble_dtm.o",
+  "../../../nimble/host/src/ble_eatt.o",
+  "../../../nimble/host/src/ble_eddystone.o",
+  "../../../nimble/host/src/ble_gap.o",
+  "../../../nimble/host/src/ble_gattc.o",
+  "../../../nimble/host/src/ble_gatts.o",
+  "../../../nimble/host/src/ble_hs.o",
+  "../../../nimble/host/src/ble_hs_adv.o",
+  "../../../nimble/host/src/ble_hs_atomic.o",
+  "../../../nimble/host/src/ble_hs_cfg.o",
+  "../../../nimble/host/src/ble_hs_conn.o",
+  "../../../nimble/host/src/ble_hs_flow.o",
+  "../../../nimble/host/src/ble_hs_hci.o",
+  "../../../nimble/host/src/ble_hs_hci_cmd.o",
+  "../../../nimble/host/src/ble_hs_hci_evt.o",
+  "../../../nimble/host/src/ble_hs_hci_util.o",
+  "../../../nimble/host/src/ble_hs_id.o",
+  "../../../nimble/host/src/ble_hs_log.o",
+  "../../../nimble/host/src/ble_hs_mbuf.o",
+  "../../../nimble/host/src/ble_hs_misc.o",
+  "../../../nimble/host/src/ble_hs_mqueue.o",
+  "../../../nimble/host/src/ble_hs_periodic_sync.o",
+  "../../../nimble/host/src/ble_hs_pvcy.o",
+  "../../../nimble/host/src/ble_hs_shutdown.o",
+  "../../../nimble/host/src/ble_hs_startup.o",
+  "../../../nimble/host/src/ble_hs_stop.o",
+  "../../../nimble/host/src/ble_ibeacon.o",
+  "../../../nimble/host/src/ble_iso.o",
+  "../../../nimble/host/src/ble_l2cap.o",
+  "../../../nimble/host/src/ble_l2cap_coc.o",
+  "../../../nimble/host/src/ble_l2cap_sig.o",
+  "../../../nimble/host/src/ble_l2cap_sig_cmd.o",
+  "../../../nimble/host/src/ble_sm.o",
+  "../../../nimble/host/src/ble_sm_cmd.o",
+  "../../../nimble/host/src/ble_sm_lgcy.o",
+  "../../../nimble/host/src/ble_sm_sc.o",
+  "../../../nimble/host/src/ble_store.o",
+  "../../../nimble/host/src/ble_store_util.o",
+  "../../../nimble/host/src/ble_uuid.o",
+  "../../../nimble/host/util/src/addr.o",
+  "../../../nimble/host/services/ans/src/ble_svc_ans.o",
+  "../../../nimble/host/services/bas/src/ble_svc_bas.o",
+  "../../../nimble/host/services/gap/src/ble_svc_gap.o",
+  "../../../nimble/host/services/gatt/src/ble_svc_gatt.o",
+  "../../../nimble/host/services/dis/src/ble_svc_dis.o",
+  "../../../nimble/host/services/ias/src/ble_svc_ias.o",
+  "../../../nimble/host/services/lls/src/ble_svc_lls.o",
+  "../../../nimble/host/services/tps/src/ble_svc_tps.o",
+  "../../../nimble/host/store/config/src/ble_store_config.o",
+  "../../../nimble/host/store/config/src/ble_store_config_conf.o",
+  "../../../nimble/transport/src/monitor.o",
+  "../../../nimble/transport/src/rx_task.o",
+  "../../../nimble/transport/src/transport.o"
+]
+
+[[target.nimble.entry]]
+name = "ble_hs_adv_parse_fields"
+header = "nimble/host/include/host/ble_hs_adv.h"
+source = "nimble/host/src/ble_hs_adv.c"
+form = "direct"
+signature = "int (struct ble_hs_adv_fields *, const uint8_t *, uint8_t)"
+
+[[target.nimble.entry]]
+name = "ble_uuid_init_from_buf"
+header = "nimble/host/include/host/ble_uuid.h"
+source = "nimble/host/src/ble_uuid.c"
+form = "direct"
+signature = "int (ble_uuid_any_t *, const void *, size_t)"
+
+[[target.nimble.config]]
+name = "default"
+
+[[target.nimble.config]]
+name = "peripheral"
+defines = ["MYNEWT_VAL_BLE_ROLE_OBSERVER=0", "MYNEWT_VAL_BLE_ROLE_CENTRAL=0"]
+
+# Seeds (BUILD-03): the advertisement and attribute byte arrays of the host tests.
+[[target.nimble.seed_source]]
+path = "nimble/host/test/src"
+methods = ["c_array"]
+entries = ["ble_hs_adv_parse_fields", "ble_uuid_init_from_buf"]
+
+# ---------------------------------------------------------------------------
+# 12. libfdt: stands in for the OTA image header (a FIT image is a devicetree
+# blob, D-29). Only libfdt is dual-licensed; dtc and its tests are GPL.
+# fdt_check_header is omitted: it takes no length, so it is not a D-24 entry.
+# ---------------------------------------------------------------------------
+[target.libfdt]
+category = ["ota_header", "tlv"]
+build = "make"
+
+[target.libfdt.source]
+kind = "git"
+url = "https://github.com/dgibson/dtc"
+ref = "v1.8.1"
+commit = "8f48565e5cfedc74d3f7512f1e0188e9d85dc1de"
+tree_sha256 = "f844d15ee31ac3a97fdecce950e50472a4f7a889c2e4e1b678bf9f26dc21b313"
+
+[target.libfdt.licence]
+spdx = "GPL-2.0-or-later OR BSD-2-Clause"
+elected = "BSD-2-Clause"
+file = "BSD-2-Clause"
+note = "only libfdt is dual-licensed; dtc itself and tests/ are GPL; see README.license"
+
+# libfdt/libfdt.a, not the libfdt goal (which links a shared library).
+[target.libfdt.build_args]
+dir = "."
+goals = ["libfdt/libfdt.a"]
+make_vars = ["CC={cc} {cflags}", "NO_PYTHON=1", "NO_YAML=1"]
+
+[[target.libfdt.entry]]
+name = "fdt_check_full"
+header = "libfdt/libfdt.h"
+source = "libfdt/fdt_check.c"
+form = "direct"
+signature = "int (const void *, size_t)"
+
+[[target.libfdt.config]]
+name = "default"
+
+[[target.libfdt.config]]
+name = "assume-valid"
+make_vars = ["ASSUME_MASK=0xff"]
+
+# Seeds (BUILD-03): none that may be taken. The repository ships devicetree
+# sources, not blobs, and its tests directory is GPL; the seeds are hand-made
+# (testbed/targets/libfdt/hand-made).
+
+# ---------------------------------------------------------------------------
+# 13. httpparser: HTTP, widely embedded. Its Makefile appends -O3 after the
+# baseline; the optimisation gate records that and does not fail it (Open
+# Question 7).
+# ---------------------------------------------------------------------------
+[target.httpparser]
+category = ["http"]
+build = "make"
+
+[target.httpparser.source]
+kind = "git"
+url = "https://github.com/nodejs/http-parser"
+ref = "v2.9.4"
+commit = "2343fd6b5214b2ded2cdcf76de2bf60903bb90cd"
+tree_sha256 = "03f91004dd3d60a8b7ada8106d16b3ec6976006f208b216a3f630434436a68a6"
+
+[target.httpparser.licence]
+spdx = "MIT"
+elected = "MIT"
+file = "LICENSE-MIT"
+
+# The Makefile appends -O3 after the caller's flags: recorded by the optimisation
+# gate, not failed.
+[target.httpparser.build_args]
+dir = "."
+goals = ["libhttp_parser.o"]
+make_vars = ["CC={cc} {cflags}"]
+
+[[target.httpparser.entry]]
+name = "http_parser_execute"
+header = "http_parser.h"
+source = "http_parser.c"
+form = "direct"
+signature = "size_t (http_parser *, const http_parser_settings *, const char *, size_t)"
+
+[[target.httpparser.entry]]
+name = "http_parser_parse_url"
+header = "http_parser.h"
+source = "http_parser.c"
+form = "direct"
+signature = "int (const char *, size_t, int, struct http_parser_url *)"
+
+[[target.httpparser.config]]
+name = "default"
+
+[[target.httpparser.config]]
+name = "strict"
+make_vars = ["CPPFLAGS_FAST=-I. -DHTTP_PARSER_STRICT=1"]
+
+# Seeds (BUILD-03, G-02-3): the `.raw` members of the requests[] and responses[]
+# arrays of test.c are the HTTP messages its tests feed to http_parser_execute. The
+# rest of the file's strings are message names, header fields, bodies, the URLs of
+# url_tests[] (http_parser_parse_url, not an entry) and printf messages.
+[[target.httpparser.seed_source]]
+path = "test.c"
+methods = ["c_string"]
+designators = ["raw"]
+entries = ["http_parser_execute"]
+
+# ---------------------------------------------------------------------------
+# 14. isotp: CAN ISO-TP framing. Configured through isotp_config.h only, so it
+# has the default configuration alone.
+# ---------------------------------------------------------------------------
+[target.isotp]
+category = ["can"]
+build = "cmake"
+
+[target.isotp.source]
+kind = "git"
+url = "https://github.com/lishen2/isotp-c"
+ref = "master"
+commit = "5593428d95af10dde1e565cebcda16089fc74857"
+tree_sha256 = "6829a25ee549e3ea0e152124ddd6ebb1945ac548a2b46ce4c3f06e73da73e4c0"
+
+[target.isotp.licence]
+spdx = "MIT"
+elected = "MIT"
+file = "LICENSE"
+
+[target.isotp.build_args]
+dir = "."
+cmake_target = "isotp"
+
+[[target.isotp.entry]]
+name = "isotp_on_can_message"
+header = "isotp.h"
+source = "isotp.c"
+form = "direct"
+signature = "void (IsoTpLink *, uint8_t *, uint8_t)"
+
+[[target.isotp.config]]
+name = "default"
+
+# Seeds (BUILD-03): none in the repository; the seeds are hand-made
+# (testbed/targets/isotp/hand-made).
+
+# ---------------------------------------------------------------------------
+# 15. lz4: decompression, lib/ only (the rest of the repository is GPL).
+# ---------------------------------------------------------------------------
+[target.lz4]
+category = ["compression"]
+build = "make"
+
+[target.lz4.source]
+kind = "git"
+url = "https://github.com/lz4/lz4"
+ref = "v1.10.0"
+commit = "ebb370ca83af193212df4dcbadcc5d87bc0de2f0"
+tree_sha256 = "8def842ac8ebd5d80ddd31f00ddb3bb156edf5d7980dbcde5c734ac7a2f57ca7"
+
+[target.lz4.licence]
+spdx = "BSD-2-Clause"
+elected = "BSD-2-Clause"
+file = "lib/LICENSE"
+note = "only lib/ is BSD-2-Clause; the rest of the repository is GPL-2.0-or-later"
+
+# The Makefile has -O3 before the user's CFLAGS, so CFLAGS=-Os restores size.
+[target.lz4.build_args]
+dir = "lib"
+goals = ["liblz4.a"]
+make_vars = ["CC={cc} {cflags}", "CFLAGS=-Os"]
+
+[[target.lz4.entry]]
+name = "LZ4_decompress_safe"
+header = "lib/lz4.h"
+source = "lib/lz4.c"
+form = "direct"
+signature = "int (const char *, char *, int, int)"
+
+[[target.lz4.entry]]
+name = "LZ4F_getFrameInfo"
+header = "lib/lz4frame.h"
+source = "lib/lz4frame.c"
+form = "direct"
+signature = "size_t (LZ4F_dctx *, LZ4F_frameInfo_t *, const void *, size_t *)"
+
+[[target.lz4.config]]
+name = "default"
+
+[[target.lz4.config]]
+name = "heap-small"
+defines = ["LZ4_HEAPMODE=1", "LZ4_MEMORY_USAGE=10"]
+
+# Seeds (BUILD-03): none may be taken. Test data outside lib/ is GPL-2.0-or-later
+# (RESEARCH Pitfall 18), so the seeds are hand-made (testbed/targets/lz4/hand-made).
+
+# ---------------------------------------------------------------------------
+# 16. zlib: inflate.
+# ---------------------------------------------------------------------------
+[target.zlib]
+category = ["compression"]
+build = "cmake"
+
+[target.zlib.source]
+kind = "git"
+url = "https://github.com/madler/zlib"
+ref = "v1.3.2"
+commit = "da607da739fa6047df13e66a2af6b8bec7c2a498"
+tree_sha256 = "76b51f6bd05c3ad238b1a05c7c163f83f082b64d9d1d3f5df83912f2bd3b26f3"
+
+[target.zlib.licence]
+spdx = "Zlib"
+elected = "Zlib"
+file = "LICENSE"
+
+[target.zlib.build_args]
+dir = "."
+cmake_target = "zlibstatic"
+cmake_options = ["-DZLIB_BUILD_SHARED=OFF", "-DZLIB_BUILD_TESTING=OFF"]
+
+[[target.zlib.entry]]
+name = "uncompress"
+header = "zlib.h"
+source = "uncompr.c"
+form = "direct"
+signature = "int (Bytef *, uLongf *, const Bytef *, uLong)"
+
+[[target.zlib.entry]]
+name = "inflate"
+header = "zlib.h"
+source = "inflate.c"
+form = "wrapped"
+signature = "int (z_streamp, int)"
+accepted_wrapped = true
+
+[[target.zlib.config]]
+name = "default"
+
+[[target.zlib.config]]
+name = "no-gzip"
+defines = ["NO_GZIP"]
+
+# Seeds (BUILD-03): none taken. test/example.c holds error messages and test/
+# infcover.c holds its inflate streams as hex text inside C strings, so a string
+# extraction would yield the ASCII of those messages, not zlib streams. The seeds
+# are hand-made streams (testbed/targets/zlib/hand-made).

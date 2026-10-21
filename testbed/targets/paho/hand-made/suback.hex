@@ -1,0 +1,3 @@
+# MQTT Version 3.1.1 (OASIS Standard, 29 October 2014), section 3.9 SUBACK
+# case: packet identifier 10, granted QoS 1
+90 03 00 0a 01

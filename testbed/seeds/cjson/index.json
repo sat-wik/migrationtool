@@ -1,0 +1,323 @@
+{
+  "schema_version": 1,
+  "target": "cjson",
+  "commit": "c859b25da02955fef659d658b8f324b5cde87be3",
+  "licence": {
+    "spdx": "MIT",
+    "elected": "MIT",
+    "file": "LICENSE"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "03812794e39a3cec68aaf709d3ff1f890bdccae55f2ccc0c8b5287b79b795e7e",
+      "bytes": 249,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test8"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0411a8d09c3329fee6fdd1cfcdaeb8ecc30cc7a150fea5226b8af787c22e6099",
+      "bytes": 81,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test10"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "06fc27d33b348407fe50b34a4c4397e33cb7acae094cbeb232daad07e7715f60",
+      "bytes": 603,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/inputs/test3"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2933710b91761580feafa16315e57281f24b1defa74687f38705a511ba05fe92",
+      "bytes": 52,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test9"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2b3b1a75dca9ca58523f2bcc9066345220bff8fbe959daed1fa2647dba747450",
+      "bytes": 244,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test2"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "323abb1689f7030df78c587b4d4622341fc155ac8b4fe3c477568eb653ec624e",
+      "bytes": 149,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/inputs/test11"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "38e8f277565a0dd5194fc8bf1dc028469d70149eba3b75b730eb8802921c5b27",
+      "bytes": 603,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test3.bu"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "575a805b8582fcafe96e4e49b9b0c8cf42a49759ed41afe1046a27656e126ea2",
+      "bytes": 585,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test1"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5f0911f8e7bd504fb9485d11f5097a666c323f6a26fc12b865c78c940effc595",
+      "bytes": 603,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test3.uf"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6a9b241591ac80f24357f94d518487501984578411cb57657b79142a8c56f6bb",
+      "bytes": 875,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test5"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7ab9252284ec773b973208aa60d48f199a2b72b1f8e1136248171362cbbebdfc",
+      "bytes": 603,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test3.uu"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "800ee3dbe3b5ac0eb3c84d3c408594837d25cb017cfe461f11afe6b5d895466d",
+      "bytes": 399,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/inputs/test7"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8cb1309e2c70a9737a690ab6d0da386db20150e50eaf1aedb3c822f2cdf8b887",
+      "bytes": 79,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/inputs/test10"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8f12cafffed5858bcf1db7add4f96e7ddf302ce0920b4262f925720dfe756aea",
+      "bytes": 247,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/inputs/test8"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "99956a0476bef0fa482b71764091dc9ad46851f91ddac1e62e9b69abffb3135d",
+      "bytes": 50,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/inputs/test9"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a01e18f77d08bdef9a872d9c3d2b5f58b86c3ed6db1f9bf68db969357b0743e4",
+      "bytes": 3464,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/inputs/test4"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b03c70f84fecd61f88de1d480a6b151157db38d1459d79fcb08046189946e6ae",
+      "bytes": 583,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/inputs/test1"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bbb2d49cf5e36d7f09e3e23843022c61f8226afbb8b33ec859668ab57173e206",
+      "bytes": 484,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/inputs/test6"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bcf0193107b78a8835fe4bbbee161caa6d803d709cff043f2a1191a49d117c7b",
+      "bytes": 242,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/inputs/test2"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bfe13f225816216354d11c3c147b75414ec69b669cc84dcd2c4b05ae29530986",
+      "bytes": 487,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test6"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c13f3e1957ddb0aaec77173a0aaae9838f910f8d0b4d6cd0bbdb37e8b49f5bd9",
+      "bytes": 873,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/inputs/test5"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ddb6276d3aebc311a9b042459f544f80c1b3e1f11591e43926e29b519225530e",
+      "bytes": 3465,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test4"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e426feb8b6664ddaf3fab041829ce34439161371e6d1c9a3360c11d6b1bb3894",
+      "bytes": 151,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test11"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ef5c0435dcdea047bb105c44a5ea059772cd55ebb4e3db293849f8e7c3be6cc4",
+      "bytes": 603,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test3"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ff934c7141f8b6a5429b1a45250024187258c0b030b0eff236c467fb9440fb38",
+      "bytes": 401,
+      "entries": [
+        "cJSON_ParseWithLength"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "fuzzing/inputs/test7"
+      },
+      "proposed": false
+    }
+  ],
+  "skipped": {
+    "duplicate": 0,
+    "too_large": 0,
+    "over_cap": 0,
+    "unsupported": 0
+  }
+}

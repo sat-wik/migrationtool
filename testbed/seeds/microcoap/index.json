@@ -1,0 +1,215 @@
+{
+  "schema_version": 1,
+  "target": "microcoap",
+  "commit": "ef272895925f0d4c563725fe0102966f544a0fdc",
+  "licence": {
+    "spdx": "MIT",
+    "elected": "MIT",
+    "file": "LICENSE.txt"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "0969ca0c7da8b243e16b3fa6d5a8e20f5a13029fd4613486d163da6210e2af68",
+      "bytes": 5,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/payload_marker_empty_payload.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "0e48b1ff81d014e09697e6e29677751314ae5bb6bca1f95dd0776594b9528ef8",
+      "bytes": 14,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/token_length_8.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "13785f70ee5f9ea2cbaeacbd60db44a3fa87001a1b874bbc50383e87ddbc27f6",
+      "bytes": 4,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/con_get_empty.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "31ebf3a9bd4dd3d4484a319b1ebf81c47a272067b3eb2d87ff9fae96d63436d9",
+      "bytes": 8,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/option_delta_extension_14.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "4721c560dce7c4bcdc5306a948a7b1cb5dfbdd9c33a95820004e6cb0d4950626",
+      "bytes": 12,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/ack_piggybacked_2_05.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "554aaf0372bd0558182cd23a92f6ec2ffca456dca157775ff4ae23a9dd812e97",
+      "bytes": 9,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/con_get_uri_path_test_no_token.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "6481bf19022f429827fa08804605f1f587741bc6e94368eb3ca7d1cefdc746ef",
+      "bytes": 9,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/option_length_extension_truncated.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "6e2727a99bfc166998f1537d034817830f240f6f887d271a8535c9b1c079f76e",
+      "bytes": 20,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/option_length_extension_13.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "80e2f82dae4baad86a141ac7176d8e6ea69355d03748af5d1541f6cd7d9c3467",
+      "bytes": 13,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/token_length_9_reserved.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "9392949106f327b2174462a9ceb183e617b67799dfda8ab8d6eba1b16e72eb73",
+      "bytes": 7,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/option_delta_extension_13.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "99f9e38a0c702feac1f8834578bfab5fbc8ebd9ee8ba4edf6b0786e3621012dc",
+      "bytes": 3,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/truncated_header.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "9b722536cc6a84dc7457b49e12c3b51648c3186627688db633e6380c33c63514",
+      "bytes": 11,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/post_two_uri_path_with_payload.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "a7ed1c1931cfde60266c09513843a9d562392f44a97d15e43af6f210d3f6e156",
+      "bytes": 17,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/con_get_uri_path_temperature.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "b9eb9b2f55307e4a1ba5493eef8de0d6214afcf089e45e4d415bfb8b41d27c46",
+      "bytes": 6,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/option_delta_15_reserved.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "c9089939fb646fa9ad92bf2ddd5e2af6fa8db4385e3f77d7984b1411a19b464c",
+      "bytes": 4,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/reset_message.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "f332adbaa0050d3dcf2f731dfa685ed9a56e327b37abcadbe208eb681c5fc616",
+      "bytes": 4,
+      "entries": [
+        "coap_parse"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/microcoap/hand-made/bad_version.hex"
+      },
+      "proposed": true
+    }
+  ],
+  "skipped": {
+    "duplicate": 0,
+    "too_large": 0,
+    "over_cap": 0,
+    "unsupported": 0
+  }
+}

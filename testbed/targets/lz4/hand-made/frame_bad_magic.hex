@@ -1,0 +1,4 @@
+# LZ4 Frame Format specification (lz4_Frame_format.md), magic number 0x184D2204
+# case: first magic byte changed
+# generated once by: python3 -I research/testbed-seeds/lz4.py frame_bad_magic
+05 22 4d 18 60 40 82

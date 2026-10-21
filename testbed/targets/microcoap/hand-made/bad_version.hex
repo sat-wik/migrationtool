@@ -1,0 +1,3 @@
+# RFC 7252 (CoAP), section 3 message format, section 3 (version 1)
+# case: version bits 10
+80 01 00 09

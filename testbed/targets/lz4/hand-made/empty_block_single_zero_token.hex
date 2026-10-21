@@ -1,0 +1,4 @@
+# LZ4 Block Format specification (lz4_Block_format.md), empty input
+# case: a single zero token, the block that decodes to nothing
+# generated once by: python3 -I research/testbed-seeds/lz4.py empty_block_single_zero_token
+00

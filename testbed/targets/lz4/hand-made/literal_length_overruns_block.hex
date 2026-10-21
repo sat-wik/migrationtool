@@ -1,0 +1,4 @@
+# LZ4 Block Format specification (lz4_Block_format.md), literal length extension bytes
+# case: extension bytes 255 255 255 1 announce far more literals than the input holds
+# generated once by: python3 -I research/testbed-seeds/lz4.py literal_length_overruns_block
+f0 ff ff ff 01

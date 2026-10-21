@@ -1,0 +1,5 @@
+# RFC 1950 (zlib format) and RFC 1951 (deflate), RFC 1950 section 2.2 (FDICT)
+# case: FLG has the preset dictionary bit and a DICTID follows the header
+# generated once by: python3 -I research/testbed-seeds/zlib.py preset_dictionary_flag
+78 20 06 2c 02 15 01 05 00 fa ff 68 65 6c 6c 6f
+06 2c 02 15

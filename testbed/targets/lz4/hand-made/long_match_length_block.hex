@@ -1,0 +1,4 @@
+# LZ4 Block Format specification (lz4_Block_format.md), match length 15 plus extension bytes
+# case: match length nibble 15 and extension 255 + 2: a long match
+# generated once by: python3 -I research/testbed-seeds/lz4.py long_match_length_block
+4f 61 62 63 64 04 00 ff 02 50 65 66 67 68 69

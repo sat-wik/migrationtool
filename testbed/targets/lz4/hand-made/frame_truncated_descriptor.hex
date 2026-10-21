@@ -1,0 +1,4 @@
+# LZ4 Frame Format specification (lz4_Frame_format.md)
+# case: magic and FLG only
+# generated once by: python3 -I research/testbed-seeds/lz4.py frame_truncated_descriptor
+04 22 4d 18 60

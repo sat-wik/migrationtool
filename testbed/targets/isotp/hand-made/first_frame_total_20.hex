@@ -1,0 +1,3 @@
+# ISO 15765-2 (ISO-TP), network protocol control information, classic CAN frames, first frame
+# case: FF announcing 20 bytes, with the first 6
+10 14 01 02 03 04 05 06

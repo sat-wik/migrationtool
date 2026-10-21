@@ -1,0 +1,1535 @@
+{
+  "schema_version": 1,
+  "target": "corejson",
+  "commit": "cffa492da18c890181d64462f8af63992a69d3b0",
+  "licence": {
+    "spdx": "MIT",
+    "elected": "MIT",
+    "file": "LICENSE"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "001fdc96bd5b6029bff95c70ab2f34d546d7b734fbee5d98c2d68c463ac52442",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 114
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "021fb596db81e6d02bf3d2586ee3981fe519f275c0ac9ca76bbcf2ebb4097d96",
+      "bytes": 1,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 231
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "02dc364ac6e54c299a0e6c9b96ea8e7e5df5023f4d71bf66f80ca4fd5df05da8",
+      "bytes": 12,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 127
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "03197725f8890cd5e45be443521379c4d2418e75e32c04ef930dfd1a5f6e92bf",
+      "bytes": 6,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 417
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "05d60eac9dfcbe106e9ca64155ce612b74ab98df9fb6b4991d9b00afca14dc39",
+      "bytes": 11,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 291
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "06d033ece6645de592db973644cf7357255f24536ff7b03c3b2ace10736f7636",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 979
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "06e9a494ce7dc0036d116d94e6ea3f55ce1ec5c262a3cd3b6552d781eadb80a8",
+      "bytes": 28,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 339
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "077bee7b7245a53ffbbeb7a08859f33b1789aa1f48895fae129d64e52290527b",
+      "bytes": 16,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 314
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "07fac7b0e8f33a11e8f770d273e62bb0e3c86a4591c97227c2b46354aabe7f85",
+      "bytes": 2,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 63
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "080a9ed428559ef602668b4c00f114f1a11c3f6b02a435f0bdc154578e4d7f22",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 974
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "08b53b7d666cf717c2136d704d53b965a6557080d27d1ba4c884dee6b2fb8a0a",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 77
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "117a55b59ec7af4d9ceabfd16c5d50f17b64e9e24c7f1c5fe9df5c5af6464225",
+      "bytes": 11,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 437
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "11a1162b984fef626ecc27c659a8b0eead5248ca867a6a87bea72f8a8706109d",
+      "bytes": 12,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 1892
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "16390873ae6b6a173fc894a873bab02283debbd320b5f0758849d01afa6ee8b6",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 1106
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "194aa390a244ed61c8819d5246186385111ee621e801712f381936cc04e692c2",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 62
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1a0f564ddc6039457b2fb26b3d6a316c15eba20a886449847c3210c35821a693",
+      "bytes": 4,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 429
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1ae3592f8248c3f879b56afe3f2ce6aad45ba898434796d35c565684397fb3e6",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 981
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2116529b57f360ee921a6d990a2fe083ecad432b6c2d415eca1d5c6dca64f336",
+      "bytes": 12,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 248
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "245843abef9e72e7efac30138a994bf6301e7e1d7d7042a33d42e863d2638811",
+      "bytes": 1,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 82
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "25ac2a5fba906f666c03526f46e70b97e707778503619633f005f7c7150cea91",
+      "bytes": 14,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 242
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 48
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2c8d1299f81e32e6b435bf15601ed224da2fba4cbd4741b2e3e5271fdbe81135",
+      "bytes": 11,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 378
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881",
+      "bytes": 1,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 1741
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "31f0520ac302091cf8261dc841f52c978161dfa2db6ea2e2c24b1550e9f358f5",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 1600
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3608bca1e44ea6c4d268eb6db02260269892c0b42b86bbf1e77a6fa16c3c9282",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 57
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "386cf314bb05acdaaabdf4da1caf140167271a26bd08bf34c3a7427d4bc4431f",
+      "bytes": 2,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 421
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "389a369fc31b297927e1833f1a2322c71bb3dd7ae95b88b8f9d0dfc9a90d5fb8",
+      "bytes": 20,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 334
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "39c894e133ff5a1e8ac17ee9cbc6152b7b78fb87b3ffa2633d342794c67d8180",
+      "bytes": 21,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 171
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3b3e37411d7667ba487803da829d611f86584f026f91f0e5e513017479a66937",
+      "bytes": 8,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 216
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3be196256d35feb2e2338699d2c239fddd314047b78ef43072c5733f88a8eafd",
+      "bytes": 20,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 319
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3f1f7508982e745fcf7c7e15716d1cc71595d78417898587fa2e5f39498dc5a5",
+      "bytes": 9,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 365
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "44f21f180c3b153de7a6fda2a489d407492e3c359e052d9ec5f99de27a5086bd",
+      "bytes": 13,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 222
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "46b1884167c4edd308bcf0c04163dd02d05c9742b35e86b57b5f7ed1b82f3850",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 980
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "48be6e39387b515ddbb9491c0cd50696576ebfb144fcf3507db2d04d45edecc0",
+      "bytes": 10,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 360
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "49832e34b6e276322a942b54c2f314c1a0ee33cb756d3349458134e6bf06ca9f",
+      "bytes": 21,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 219
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4bda208a67a3efaec46c2904cd07060256f9cb8d907220ffad6726c3738c465b",
+      "bytes": 20,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 329
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4ed1257ebabbef6a723d63bad35c544b043f8b9a238f2aea8e9d105c0d588f1e",
+      "bytes": 30,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 106
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4f8579df5c2f1c4b0998b6c49e6a576fc003b8df571dd4d96ce57419a7efed71",
+      "bytes": 12,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 301
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5a6e99b186f762fca3ab5be014c97008083aa0a4d6daed6801992cb58b08c7ea",
+      "bytes": 4,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 168
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5a776c4050d757a0401a2afb9be1e2d86b01972e78f8459f0a8b7b434a12d4f3",
+      "bytes": 9,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 275
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5f6d5e805aabc20ea7eeb1baecda9b2fa5a1b21daba866a74c046c151dc49028",
+      "bytes": 9,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 203
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5f8f04f6a3a892aaabbddb6cf273894493773960d4a325b105fee46eef4304f1",
+      "bytes": 18,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 109
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "600323d8518a1ee3bd1d2b00788729e452082a04abc234760ca0874f0e8ae9c3",
+      "bytes": 11,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 296
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6017dbca8e3eeb2f73be4123b0032c736d8c8f9bf8c86e6631887342c06fec90",
+      "bytes": 2,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 62
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "666f8ee2fc7cbfaa37495f78c7630b5e7685372d8b70d9cd46c92b0e63a690b6",
+      "bytes": 2,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 78
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "667dbfd0b9bc5f0fcc8d0cee5f8b20fadb6e3b4fd62af1a5740f353ac2298dd4",
+      "bytes": 6,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 399
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "687c58ed00e8c4aba81f9b59b2a8047f1f6ff3a63b1649dd5d8156eea919408a",
+      "bytes": 5,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 443
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "69548cbb1b97a734ba788bfab76987144271dd86fe0709c7b71ffaa294c50ab0",
+      "bytes": 11,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 286
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6ca26f97f8a01f3df43a51f21b7b5c18e27f9fd9d320daf7bc9d7efcd015ac60",
+      "bytes": 14,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 405
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "bytes": 4,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 75
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "74300afb00a6f9d9ca2cc41e4f5d194bfc924f8b3b5901ec6fef1892b5ec4ba9",
+      "bytes": 11,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 118
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "74dae1cfab1e66a201ba85ccd28fdc02a3a17d20bb6d75ea4f194bb294701cc9",
+      "bytes": 20,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 349
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "78abd1adc37020afc3d7a1101d0d9107db916f443c17ca03e90162faecd2fcac",
+      "bytes": 5,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 146
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7a36943b4c15b9b1a25ebaf7d3c388c419b6b80ff1bee1e2f9be11ff7b9e947e",
+      "bytes": 9,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 255
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7c1ab703f76987ec6e3efa1f04221bee198c0eed1d2482fe98ce5b632e39d051",
+      "bytes": 5,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 123
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7f518b56d1668997315c21c7e9443f7f8a111393b66d79b5cc209810b8d2ffce",
+      "bytes": 191,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 99
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7fa62f5eb3bb1396651570289ddfaaaca957da200f10f60d9953d215fcfeea89",
+      "bytes": 14,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 113
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "863d091a34ac4478ce4f706a044bd1e8333dccd0b59df8a413990cf668e99288",
+      "bytes": 28,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 177
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8b940be7fb78aaa6b6567dd7a3987996947460df1c668e698eb92ca77e425349",
+      "bytes": 2,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 71
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8c105d15b3a5974b3db77fd812caceb29a63f58db187caaa0b779987d73bafde",
+      "bytes": 6,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 156
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8c1f1046219ddd216a023f792356ddf127fce372a72ec9b4cdac989ee5b0b455",
+      "bytes": 2,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 72
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8d15bdf32bc005160d38290517fccc8374436938d52690a4aa63b6fdb9a41497",
+      "bytes": 20,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 324
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "904d4e6ba0cce5cc54311888f48c7f743b21bb992b0587e1abc0323f461018ca",
+      "bytes": 13,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 183
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "91a39aaf19903ed47ff6ce26f251c5747a8212176ac7a1f053fd152ee68899bb",
+      "bytes": 11,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 433
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "96cbb9421313dffe5080dfe045f8b42629e9d6c68bcb2462a844f467d2ba23fe",
+      "bytes": 5,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 114
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "97134f2636f7fdd819694a4997c9f7ac8b276cca13715f1c49c2ed5765719ada",
+      "bytes": 7,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 70
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "99fc363d4746fe6289abe429533708003ff3f9793813e91363543b2b541c4e83",
+      "bytes": 10,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 152
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9c2ba28f85a2614943db501850df3918df8b63206baede9f80ec9919d872ff2a",
+      "bytes": 2,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 425
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a1fce4363854ff888cff4b8e7875d600c2682390412a8cf79b37d0b11148b0fa",
+      "bytes": 1,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 1741
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a3c7f8cabebcea5261cb9ffe51a847d6d74fe8c90c76d886d4748c8f74119383",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 1788
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a4a42fd0800a0a1cc67f27f1bb94cda9c9efc48cda1b85c809fe8d4270756216",
+      "bytes": 8,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 439
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 67
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a7965634a8050f55ec87eabb350e39678c9580debbe9fbd0f4fefad1a4f1d5b8",
+      "bytes": 2,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 1592
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "aa3f30a4b3d96f095434400408ff96ee10a0fab328497ff8b16d87140cc8d128",
+      "bytes": 10,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 149
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "abe87361366da7700c5309e9e9a9ce160aca8fa27a2ec214fffb2328e0095de3",
+      "bytes": 9,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 384
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "adf47e90aa01ae39a9cbf422797ea44f6ba590378a0e8f8911dddd0e2f25ce19",
+      "bytes": 20,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 344
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b33032bb927dfadf209efe4371ee8822e7b0d9d9339d0b8a4d6c2565f9a4c0d3",
+      "bytes": 10,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 372
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b3a8e0e1f9ab1bfe3a36f231f676f78bb30a519d2b21e6c530c0eee8ebb4a5d0",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 68
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b",
+      "bytes": 4,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 73
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b9f4ed525f6f40f18f6651f9d09f17200be14b321e0a372c12e6de707dca4b9b",
+      "bytes": 29,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 180
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 69
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bbfe446958d91ba1bcdbc70f93f41cd98c3ff34a658ac6535677be154edef7cf",
+      "bytes": 20,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 354
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bc0b02719643f489c8f8e198e0a1777243c01518d07b3416fb4b58377376a63c",
+      "bytes": 28,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 198
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bc21c97373a97c4c1cb248070fca8678b95ce29be386934156c322f174d6f9ac",
+      "bytes": 16,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 174
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c178f2fd9e60882f0eae876662ffe86b0ea8fd653bb62c8a70ffcca0fd7be7bc",
+      "bytes": 21,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 186
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c50fdad451a4d14a93dd1a7310dd7a5e1fcad8ebfe0f768dc3c014508ea15ec4",
+      "bytes": 12,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 306
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c60445cf4cb3e2ac32742d55c1f4912cd7b5ea3eb934d7d8d3997a8d28f1c154",
+      "bytes": 10,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 263
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c832ebd5493b2726f26783fb7de8712675bd6067c60ade01689ffcde99a63957",
+      "bytes": 21,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 192
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ca231bbc79013b3305c05842b0c0017a4022ebbfe1f03144651d731d8c5e8b9d",
+      "bytes": 22,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 160
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cafe4bcfda38676f24eef93b9fcd63235d28105becbbd4dcce0f4b3fa7c984ce",
+      "bytes": 11,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 163
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cdb4ee2aea69cc6a83331bbe96dc2caa9a299d21329efb0336fc02a82e1839a8",
+      "bytes": 1,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 43
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cfa4e1721254f203855d2092d8145ca0a4c0c768f6e3c286a84d3739711b7dc0",
+      "bytes": 12,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 136
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cfae0d4248f7142f7b17f826cd7a519280e312577690e957830d23dcf35a3fff",
+      "bytes": 1,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 83
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cffef51267043459139be53e135cd9c40a72888d6f2afde6d14aeec333e542fe",
+      "bytes": 5,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 411
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d03502c43d74a30b936740a9517dc4ea2b2ad7168caa0a774cefe793ce0b33e7",
+      "bytes": 1,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 82
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d0bca111f8628137adc4c16f123496dcdd1d590d06cb5d9acd68b39fe656fb97",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 973
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d10b36aa74a59bcf4a88185837f658afaf3646eff2bb16c3928d0e9335e945d2",
+      "bytes": 1,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 78
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d1a4dc8b61ef51fa5f72b229df8d29b26f391b9fbbd3ec9078b7c9f66b9cc59a",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 447
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d7107892f2b0adc478cd8d3ff4fff43966d2344d4b8bfb78227f414f1071f3e0",
+      "bytes": 21,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 189
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e2586475be2a97fb673d55f0405d3da3fb2a349bb2c2743bd4c0228fa7aec947",
+      "bytes": 4,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 114
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e2a0443a79e2e4f1c7b75d632647a0832e7da56a1fe3124aa32ddcb8414ac38a",
+      "bytes": 4,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 975
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e3153ee9a632b56c725ffdda222b2051cf70f499a54bfc76aa9905c12baaa382",
+      "bytes": 5,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 391
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e395fd7479fd02d81486056ea9d88ee3310282b805426f4e05d7c143f38a08a0",
+      "bytes": 9,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 269
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e76ce94e133b9b12a43109fab3442b061fd38437e7d38122bbcbe381368ae4e8",
+      "bytes": 10,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 281
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f1a4d495555b6895c69b3f2de9c7a2d24ad14978d75b6330d67fb782220ba1e7",
+      "bytes": 20,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 211
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fa91a100d7e2433171350836c1fb3ec01ce13e2d82910a8c62f3fbc8f5b0af2e",
+      "bytes": 19,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 195
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa",
+      "bytes": 5,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 74
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9",
+      "bytes": 3,
+      "entries": [
+        "JSON_SearchT",
+        "JSON_Validate"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test/unit-test/core_json_utest.c",
+        "line": 45
+      },
+      "proposed": false
+    }
+  ],
+  "skipped": {
+    "duplicate": 119,
+    "too_large": 0,
+    "over_cap": 0,
+    "unsupported": 0
+  }
+}

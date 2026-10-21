@@ -1,0 +1,283 @@
+{
+  "schema_version": 1,
+  "target": "lz4",
+  "commit": "ebb370ca83af193212df4dcbadcc5d87bc0de2f0",
+  "licence": {
+    "spdx": "BSD-2-Clause",
+    "elected": "BSD-2-Clause",
+    "file": "lib/LICENSE"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "1217dc412e20407744b6ac91b689262960cc1d9136a1ae71d71da59a850358c4",
+      "bytes": 10,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/overlapping_match_block.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "2b67ecfe932a60f39db98d8da83d1f521bac5eb67d31236ded25522ac2395f30",
+      "bytes": 7,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/frame_bad_magic.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "327012d7bf73338b6d762139e30b25765b72f065c00a7b333a9afbeaa65f5f3a",
+      "bytes": 15,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/long_match_length_block.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "32f3a6e92fb7ab5720412fc2e0f06601d83beee363e3f7a7a904271c33af5835",
+      "bytes": 6,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/literal_only_block.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "40dd9278e2afcb4b04b42c7982367b3409b779e75f879de6353dcbc331420804",
+      "bytes": 20,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/frame_uncompressed_block.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "4312a14915475236066f08602105f237bc3fc01505e85a2d16df44638f9dfd43",
+      "bytes": 11,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/offset_beyond_output_block.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "50b6528acb69a49f170a18ea8158fa3d1e6c86663b9f311e3841d9e172f48cc1",
+      "bytes": 28,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/frame_with_content_size.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "62be6ae8f7c7a494f55d4fcb57af2f36bfadd13d5de844782825ea69d87007cf",
+      "bytes": 5,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/frame_truncated_descriptor.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "bytes": 1,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/empty_block_single_zero_token.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "79fb04d7451d7a4bc13879dea4e9df3386e215a87bb33ad6ef195ce5a37f8a26",
+      "bytes": 13,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/match_with_offset_block.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "ae1ded87f0bc3c7f9f76947d85c435ee0719274912ded084b7a78822ceebf7b5",
+      "bytes": 7,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/frame_bad_header_checksum.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "b89073d8b2810c0a555832c11d6f0f178d27975e6acab8836efd70fe2d7c9ab6",
+      "bytes": 24,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/frame_content_checksum_wrong.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "be0eb9db1afd3826ad971cea13a3d743e7f33f3552afcefb355fc9c3daedd391",
+      "bytes": 7,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/frame_reserved_block_size.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "c050c6ab1d2d182d5ff53bed082535d253c4b11d65dd0c2ae311c7d2d432378f",
+      "bytes": 7,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/ends_after_match_block.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "ce75a05a07aa72869a55309e82e5bc2b64a71a09bdf39ce9368e18d98b2e0b5f",
+      "bytes": 5,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/literal_length_overruns_block.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "dcd9c0a832c7c8659d1ec671cd41b64b99e2c2742b8459fdc72e986ad7485861",
+      "bytes": 20,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/long_literal_length_block.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "e983ce91d32aafe82ac788dd89ba5450ecb548ee33564f92c6836b5541a9c973",
+      "bytes": 6,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/truncated_offset_block.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "eed782511f1edd240054260bb80b143345c823343bd3de6c3ad2be6b8696410f",
+      "bytes": 10,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/offset_zero_block.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "efde4bd5f014ca4ac23b25f7d0e2896c5e29de5bc66990dce532319ede4c650b",
+      "bytes": 4,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/truncated_in_literals_block.hex"
+      },
+      "proposed": true
+    },
+    {
+      "sha256": "ffad447b614733cf75b7d4dbe92347e07148ae92119e2d80e2ee6c3825208407",
+      "bytes": 7,
+      "entries": [
+        "LZ4F_getFrameInfo",
+        "LZ4_decompress_safe"
+      ],
+      "method": "hand_made",
+      "source": {
+        "path": "testbed/targets/lz4/hand-made/frame_bad_version.hex"
+      },
+      "proposed": true
+    }
+  ],
+  "skipped": {
+    "duplicate": 0,
+    "too_large": 0,
+    "over_cap": 0,
+    "unsupported": 0
+  }
+}

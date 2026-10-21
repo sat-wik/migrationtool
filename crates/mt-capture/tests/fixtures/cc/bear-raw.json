@@ -1,0 +1,31 @@
+[
+  {
+    "arguments": [
+      "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc",
+      "-mcpu=cortex-m4",
+      "-mthumb",
+      "-Os",
+      "-c",
+      "/work/run/fixture/default/src/lz4.c"
+    ],
+    "directory": "/work/run/fixture/default/src/cachedObjs/ab12cd",
+    "file": "/work/run/fixture/default/src/lz4.c"
+  },
+  {
+    "arguments": [
+      "/opt/arm-gnu-toolchain/bin/arm-none-eabi-gcc",
+      "-mcpu=cortex-m4",
+      "-mthumb",
+      "-Os",
+      "-I",
+      "inc",
+      "-c",
+      "-o",
+      "qcbor_decode.o",
+      "qcbor_decode.c"
+    ],
+    "directory": "/work/run/fixture/default/src",
+    "file": "/work/run/fixture/default/src/qcbor_decode.c",
+    "output": "qcbor_decode.o"
+  }
+]

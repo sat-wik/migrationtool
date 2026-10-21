@@ -1,0 +1,8 @@
+# Devicetree Specification, chapter 5 (Flattened Devicetree format), version 17 header
+# case: valid blob cut in the middle of the structure block
+# generated once by: python3 -I research/testbed-seeds/libfdt.py truncated_mid_structure
+d0 0d fe ed 00 00 00 6d 00 00 00 38 00 00 00 58
+00 00 00 28 00 00 00 11 00 00 00 10 00 00 00 00
+00 00 00 15 00 00 00 20 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00
+00 00 00 03 00 00 00 03

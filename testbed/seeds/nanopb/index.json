@@ -1,0 +1,2821 @@
+{
+  "schema_version": 1,
+  "target": "nanopb",
+  "commit": "160d4f09e5fabb2b66aa2dea32d4f38ace2c4b3f",
+  "licence": {
+    "spdx": "Zlib",
+    "elected": "Zlib",
+    "file": "LICENSE.txt"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "001067254ce4a61bf7aa84f306437f58cfd9e338d788490a00f82f1e2bd5feee",
+      "bytes": 190,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0628cfe01e2546f76e802fa56d6803254aab958c"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "00e0d893e3e1766b278980837068e9f360121899711dded64844d3a0e9344cac",
+      "bytes": 765,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0a6131c20a4090716dc0c0122e3f8f3cbad0db02"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "01ead304a3cc90f8b9c6fde6da109611b126bf499341f158d30fd72cd28375a7",
+      "bytes": 1061,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/regressions.zip",
+        "member": "6e2124841cc8eb6e5cf14cec35a48cfe086d51de"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "039fd6973c0e787525cd391852388543f714005532079548f92f13df1c3e74c9",
+      "bytes": 11,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "05ecfd71cd277125759b9fd7d3201abe44dc5c19"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "054062d101e1e64a7f3432cc24359a379223eaed4d64b652ba94c7d8b95c8447",
+      "bytes": 147,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0adc9eb5fce1d947de1836bdd2142dba0427b408"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0598d8796dc6db580a72e75f97f39b83a42b0adf3091643747036a07732f7250",
+      "bytes": 12,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "052fba2e81937441ed1e5c5ab34695dbeb76cb5d"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "05b478f17e7bacbb91342e605bf3416eb19fe96054c8b7d04ce7cdbb7801f78d",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "09c18fb2cba95ad61b292908ca46d81715412b4f"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "05da9b6b00c897d15a0623be743131a65c86e6fc5f7e61b1db66c86fc896787d",
+      "bytes": 294,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "012df54ff1926e07c78cd4f176c0687610ac2e09"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "05eef146725ea84412e9ac3dab7a6e0de5362dd8685dae8fdbd3a1e5c03657c7",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "055bb24adce136fe0d1f13058924587af5ea1418"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0607f555628d612c83b02fa69d1789beaa3d6ed7945a4ae8793e20e4e31b66bc",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "055c8d8dbec0c8785e85bdb6c50754d0146b8507"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "06876ebc05c85739a98a19bc354e3045eb06e01cfd3110982ea9f488139ce50a",
+      "bytes": 18,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "05227dce5dd38a18b660cb52a0e0c6943a866292"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "07a71d818d564871f6075a8165f20e371b4fb91701236760b3a2c32bfc7888d7",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "02dd3fe37efedb3a657ddd79270dea348edcee5e"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "07e410edbad1b1888593b93e787dded6e1928425bb030dde0ece921df69ade25",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "065276fe6007e2df9a059210fd33e8e371717038"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0920ac94f19040ac571cef5cad82a139c1a89c44c71d84195dca7c0489004097",
+      "bytes": 16,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "03d70b810b8624cc96c403a74e69ccd8f10c47f5"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "093582e01bc6ee585748fad7e94ac5af224fa0e8fc014cce4ce977360fe2c5b6",
+      "bytes": 57,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0a40305aa7188eb842c7213c2dce030e6dd8859b"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "09ab08cd1a2f68492a08f50a170fe1e48dca8173c2c43d78f5d69885facfdda5",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "06f21ffcf875b31a6135ccc0d7d0bb6eacd28e72"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0a08dacc21f76307b30c4d0698b2d038cd1936ac70b6991a3091f3745eda5c0c",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "098a679869f3b024a9948a3e363f712748ed948e"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0b0226c927a598a04be311e03e06954ccec8c5a4dc7d575381c64fdeacdfaff7",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0ad6fb7efd5e70ef966301cfa7ae7a6c6a0f97b9"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0b25b840fe97807ea24d29b9e2537fffecf928d0fb4a6e8100cd9d3f4d35f994",
+      "bytes": 2,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "065abfccb95d375f46779563ed47887f7da49442"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0c6c9a62310941a7c39ed84a3ea773db26701babd9dcfb08cb0ea96f98b21f87",
+      "bytes": 33,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0911237a51a2194ab5eb6a2464c9247ab9fbe59b"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0dfa57564d7218f3adeab4941f83dca857102f58817ed8caf4d62faff2d6cfc4",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0688640efad24c754864b891b606071321bd79b3"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0e6089e5d98cbfc62a8f3753f0498363d097dccda3e99ebcec69b0ca0c811088",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "014389033133b4776947a48dc8baa7a9655c5322"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0e608b4d3b8830c7050638c339bbd4ef9b304e1a441832fd71aae4ce8fd19884",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0848471a1efe17e33220676716efbeab602ce26b"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0e734ba5ce246fd482d67a8c6221a0bb47b8356516a58646cf135ea7acc35711",
+      "bytes": 2,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "06effa0c5852641cb4874d9c0dd885ff0863eae4"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "12f64c7ea50c66a29f9965db9acbeea3d335fa1be0bfc622f92303a54ac939bc",
+      "bytes": 21,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0acd1f85e8ac39731669038f904bba2598ed02e1"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "13707221472abadc41c03375d1006dd2f29a43db3250ab60d7d83c521359c564",
+      "bytes": 520,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "089fd7311e3769b49e1ddfb0b883bc4686d2fd93"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "15322d2af6d36e69b529e212c94862cbf588c8215c6f8897ef3970e8266ad670",
+      "bytes": 34297,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "006a7e621b67dd5b02c9378250dd929384422965"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "19a5b5488d4760d5f29be60835c202c16c3be959dfc4401231172b39ee723dbc",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "07adc77d30189af497f92538513a4def8e1f8dae"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1e9964013437acafb412cb38e9c2264f43b758c3b6e085af4c9001f7917c139c",
+      "bytes": 21,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "04154c6070b1f34fa828bc1adef644b37b3e041a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "231337d44eab1d715a92e9d3bc7bed7f3527a041efb71ea50ddb4fad99ddc262",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "01449a827f82f733595e7ca83736f2e5f746e0b4"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "23461aa8fa456a419123442bca390d6b36a2556d7096a6c4b49f1a0352c4b00e",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0560a6a8f96143169e374fb35dc32b5439f60565"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2613c76814a1eeeb0ac931489458bc5f4fb8952c96190e34c1ad96dd702d7cbf",
+      "bytes": 254,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "01b6da93cf40c58c1fc8de2d46c6a3b334c86eb9"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2729e56ed4f270032058874bd631a5b0bb2c46cd27535b7bd2db8c898ed20953",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "03ab48f320f1289f2d2bf7b553a6e1cf71c8df83"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "27486d236b2f14cce8893e6aa643f8746d81e9dfc9b3aa4197e23d2526f7519f",
+      "bytes": 1026,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "063bdf586d8b241a9ead1ea1db44261a0177c6e3"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "274c4c2c7db5a6aba29253228d51312014fc55e7b5c3cffbb2a12fe8d3b7acc5",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "04a3386a054aeefd468b9d3820e9096e30c5903f"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "27eb381d83e0851b4f03fd9d3e9647c023e0d4e45aa5424e2dc0d1d20d8ea4a4",
+      "bytes": 72,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0505de8626c65776c27986a30a150c094680726c"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2883eeb4d7a3c4c430dfeaa80967c8673fbb55f4a98b14490601fba940515832",
+      "bytes": 20,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0a4581ae900b3e5c581f680f1a44aaa090e6b545"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2ade19900c180fa56d5baa70169609f5928275392592659284609c7f8f67c2e5",
+      "bytes": 10,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "06b2f2a5f74c457d66c2cc1797c3a35962f6ce94"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2e31294e6fea13dab31c7d8fbebbfdb4be24bfc2582c383d9ae468fd8da38e5d",
+      "bytes": 33,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0828c810d9fc0d8d9d9bb48c302b10659285d0c2"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2fa7e841d930cf5b6d52c01ac0f877ef28ae8987cc1b9ea779712ec657c31eb0",
+      "bytes": 72,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "04d7559e4a2e20c8a80c6acdd0e0ee875b85a899"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "33970c275ccea2b4531ca7a0960a05bc382fe010bfebbe5f843a2b03704d2b36",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0bb33372e25ebbee3063d44c41a3e54ed931de5f"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "33bb379c75c6c42435fde5470e0c7ac62111633932f0b5a41d4fe658775f9ca4",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0b07f92b775bc3e1e1667b97d600ace823077ec6"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "353fdfcec6f2bc4a5d80226f93d9662ae79dff00a6264b104127f090fe089a16",
+      "bytes": 14,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "065644b0291ab3c6195a549d9c10a39115c4f90f"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "393f0a370fa1cd1e53928743c725aef9559ea8fdeb2c9efd93a05e8e3df7e71c",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0269eedb56c65a4ad771032412bb958e2abae3c2"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3af78c7af0236b15de78079c29a0ff201d9629e832ce5015f006baf00386c37b",
+      "bytes": 149,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/regressions.zip",
+        "member": "27f7d07cd827165babd0b18bd1a92c503d23642d"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3b3d7c14f65bcdf1aa5b46df61a49f80d4819308e13aa1ed061e01e5711cf006",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0574d91e8eb4c481c6fbc68795ebb50747653064"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3ea5c2a7a5f0d8487e4f0acbd33f050215b8d9df795ae82daa8e9363bed7d2b0",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0cb0e5bd19aee5c5834deb4298cf40be3ab3d89f"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "43041bd7ab0f579724595708cb96972b68a9c0862ce951f6fa1afc384580f03f",
+      "bytes": 1635,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0abe53aac71ff4a48d6bfa0a1d2307bc10ffb7b4"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "44866123e0e4afc752b7885be0dcd4933b6a3f2f54aa74c002d151fc2f93e365",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0b3e4d82d52638d46d7946efa2fbf46e761cee44"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "44cfdbdc700a90d723e192d1d6c91c1c08bbf3a85e4f591c8cc2fbcdfedf24fb",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "069f43d80c77195904a5780b85a14b81f021ebde"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "45153e7a1a72028ab811295fb405130b8e4d3dd587d7292a279311bf9f1810cf",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "069f71f6e0c29b10bc7575031bcd86ccb99bd817"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "47f349d054e620c871cb2a22cb6fa9e7c50708a450100377dd0186c3186460c0",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "00a762c98c81a0321a577cc11fe0a49174c7b24a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "482d4d8c4ea618a075a3adca5713d6fb6dc737b6d3dfed2ab33f1a1a679e8837",
+      "bytes": 11,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0630997ee78dfe154fa18b16a5bdc613e1596f15"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "484ee4ab6d60952d2149c3a9ff14154dce005a1221a98628f1f31e2d4010bab3",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0a1bab83c2180e50ad7222151a2ad03901b8ff23"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4c12c4c781a903ae38c28de15bba7d54b9fb8db2a3bf2466d88b6969a451e1fd",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0b37c5f89b1058ab325479a9d5d0046cc4e3a3f4"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4c5a5ddf8e1235ee48ff0ced3df9f7e4e8cf5888a4a31757423b2dc37fa05208",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "07e9a0058d6396929496e48a9f6e10503b06b98d"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4d6f17ea4a28bca20ad58f8129e73cf23092c36691284419fb7b9eed615cf52b",
+      "bytes": 175,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "034082a953ff7ea03a3d05e32d969cc4e0fe77df"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4d9f8930a48343492acec132acd4e87105fda2c18818f33e8dfc5f08d3eac6ae",
+      "bytes": 225,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "077e85143e6cc37b04a8dd75e98a798a2f93e766"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4f82608634bf8ffef94768ed5ce07868544ade95a2beebba1fc63d67fbaf4c7d",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0c0b1b04a5c0ac357059c9bacd49249d49dbf3e1"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5270ec3ffe823f7ad46ff5c416ff1b374fd2744a368e2921a96051f6a47ffcb8",
+      "bytes": 2,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "07cbe4afdaf4a056846dc6d22f367c04a9ffa849"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "52dfd95fbcf318d857db38f450268a8b2567b2fa0aef5aac5dc86b27048f94d2",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0c8814b531920a1fde392e940fd50b61dc24814e"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "549dd77dc5e98cf5d950e60ef305675e2e9cbeb56f6163fa9a76d60f6a7b276f",
+      "bytes": 882,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "065251486b8d2c1b8dc7ce263cee6da430e3ec96"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "550d2d4d8c3263055e34d66a8642edd90bfca72eefacc705c3bd9d1f58d2ed81",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "062841c363da66cac9aacc6166c92735e1f11a81"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "56b2d05fbf6959a3deb1d71e68425b51bb084f52146fcedd79a55dea06ba68fa",
+      "bytes": 220,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0a7c80853fbf492fd42552be0d39039ccca9d170"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "56f97489ede58d798e26387a89a2aa90d8fe7a9f7c496a16f3c420ac5dcf8ecd",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0660488991a26a5d8c68bcc4c6e2478854ee3247"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5846e3822cae78e7efc214555c8c0729734b0f882e4df4be35d831f5b5715193",
+      "bytes": 64,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "07e251cfc6771ca5f1dbde13f432bbb3dfa9d134"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5c0a35cee76768eafd7beeff0e907936a0e0c0cd014317c44168d31b7571a89c",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "03785358f0fc8581d25b9572a075cedddd722017"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5c1e9ba834f4b0caf9e260844264be8a574f2bf9592ac5f8b84a145b1761b9b4",
+      "bytes": 2,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "06148fb62cb370389881f6c71e515b9dd11496f0"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5d3d7898da6429b2c90827410d458f2011623fff63c722e63f79a6a89f9310ed",
+      "bytes": 12,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "054d1bf8e46cf935b89e3c4b45f5fe3353cc1eb1"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "606497c58f64dfe871cb6d5adaab804e15f838a20b23d1fe228abd289b50f478",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "07c0b4ae7af04a366ad0d723648724009a5287bc"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6069a93e69c1e921fef0a302e7c859ae766c3d753bed8224931b2383542e9647",
+      "bytes": 2,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0995d10e920f6720744b7722a5540406385c32e8"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "62b67e1f685b7fef51102005dddd27774be3fee38c42965c53aab035d0b6b221",
+      "bytes": 1,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "091385be99b45f459a231582d583ec9f3fa3d194"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "63b66b0f2917e14c5453f895f536cd09a85b1ab133bdf903997732232036ab0f",
+      "bytes": 10,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "095dd18f39430090797672f642947057b7ed0ea5"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "66540b01bab76a831cb8ba2aac5c85259075a8fe1999b07a278c597eca816108",
+      "bytes": 20,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "090e29069bdd216ca89a7bf516cab782236228e8"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6998067c0fcd681de29a550082da8f0ee305065593e6259e1f60d16ab35e64aa",
+      "bytes": 16,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0aa8d3b5eb430bd7322aea801455133bdd1cc87a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6ed0b2e9695f077569c981020baf3b006f4d7ab3ccf8f199c5f7bf024086e995",
+      "bytes": 31,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "087423cbbda2999c83979f1e73e341914e34541e"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6f820c37a38dc4bf8ec2184347d04dba0271fb8bbe17a98868be74d547ea4169",
+      "bytes": 68,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0b7d641b4252f712b76a748ef84d22e70c1991dd"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6fbab014cfd74d39d8903c79eb40de3b5a1fcc885a9e5f9fc7e1267fd82dbeab",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "04ee7c866509a393440464ff6f7473b43ff5d15c"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6fed1962ab41c391e83e7ef64fac46d7b2ec39d209e2c1475a6cb8200e721d2b",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "07791dd52c1ad3a8d888925bd9f656e4adad8467"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "714c6978bb41b7c053780e413a26bbbe9620e5d0b56decff56a76462feefa315",
+      "bytes": 22,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "06d6657502a0568c386cb3b889f006fe898ca189"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7174d7107ffc4d9e339e7cf4630031b2113da143e79d12792d35c80336c690d7",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0741121766d88def9f49019032a94ad2bad1381a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7335c35f74ef1373a917bf091b5806fc575bf2953d822c406d3c2d81a5476711",
+      "bytes": 13,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "02f204f99fe0a48aa385f43ca56be4b9558495ab"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "739f73df4488aa7e065af0d3b8e4bc96340c45023d29151df0bd2f58055fb7ea",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0766729cdb2bd4f6a7f24c0e9f2e53f20e9a95a0"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "77cf049d68a07bf5debb62625c936b65c6c498925e0b2b9121260a96916c20a8",
+      "bytes": 2,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0d505de4192932587dcf43f6d11ec11ff04583ab"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7a0013117bbfedf81b059e8c472eb4b5e344923d78896cd91e6fd1550831e366",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0ba548bfb596fd26f2acaa71e9827ef447749508"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7ea31e8ad37a545125ccb780d0090b30e76018ddfa8c0af402eb63233a428e44",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0b505b63b51eb4bab356016d5af17b34f2ffe689"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7fc4fbb931d023f3514854248aa79f3ea8f52082284f4e3f15f978ff1664998c",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "04cbf22666807934ab26d1db75bf3b500857e595"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7fdc81505f607832d0796e12c483c60fa64737758f4dbbb427c57d6ba32e8123",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "04939b96d71c560967894e1c33b34c13a11d09cf"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "801e7803d6175db7a807ca66d0e00f0cf84baedef30f558b1c0831c30a64e019",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0d03dcad48aa560820315d0f209bea4f90c4b0ed"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "80a02e3786b9573af5abd555c21efd10fcfb39b4b70296b3f41ec8e097303d7f",
+      "bytes": 13,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "09ad953f31998f65ed8da8953b5610f9919c899f"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8217e0885b92a337cbc552ba63e0149454bb739a49925fa5f826838c3f14790b",
+      "bytes": 279,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "09dfd3ba84b4b02bdf5dea2fd8c4c495f4923aff"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8455897c9d044fdc8e6e316a7cf3c6156452e7fb763ba0583a459a9ccad1a308",
+      "bytes": 26,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0a87d4eb0455f4cc0323b7ee5219c57461d639bb"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8c334be99f1c010ae211b91ca388327a63b70c6a039247b0d9e1b318edf500ae",
+      "bytes": 151,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "08b480d23be557790b92a6433563f14ac0e06dab"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8ca868be74d752004e6af3c73b854f69079abab02fdabbbd8cacbeb5e6a66a31",
+      "bytes": 275,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "02100ff212a6ecb10467c0f52a2b7706583981df"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8cee577344e783aeed1e8a24816e400a03ab3cd9c9fe5208337b59b38dfbf9fd",
+      "bytes": 130,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0adc9948315576b30fe0701fcadfa2686b875acb"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+      "bytes": 1,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "02aa629c8b16cd17a44f3a0efec2feed43937642"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8faf4d3ea7dba90ec9fa87c8d3fd045cbde39aada030040e04c24375f75c63ad",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0349d5e9de003f81444b5333b0826d8dade358c5"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8fe63eac74dd0e7d1fbd30fa517051cb624c30383d0fbf4c77d9bf18fe98a5e9",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "07a60ff4270810604e36bc9dfe3dc119b37f9d52"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "91db13ca4087a983e454a8ffd2033cacd44b441b582d39aadeec942a37c46860",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "07acb717d8e0fd0644675fcac04de428a28dcbd5"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "92268be7b9c16c496253d276f49496608c4205c4f28704940e52dbaddece0330",
+      "bytes": 1542,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "011eb50dd80bac1fc4735158046a532ba7399f09"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "92d1e87f2847d45f1806d5ae74d60fd3b1f3fa80f98c7bc61bbfce89a9fec184",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "074fa7cb42a283a9aea8a6864557b690ba340213"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "93139cabbfbc5cd7c4b4dc395acf9a6b6dd8bdb573d15f49d0e4c46276242582",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0cb681b212c513ac4a243cff24b993b0d87663fc"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9400407c32384b1bd7ad8504286cca4aaaaa8b27def850fddc5dd32e43ed04d2",
+      "bytes": 4122,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/regressions.zip",
+        "member": "3f5a1f8968141e4c72812ed8f794c48ed07b5e09"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "954fe6043e5263e8d152f1475310b60f57bdbde00021c114f71601e7a2bee901",
+      "bytes": 194,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0a838095f7c733b7c080e4ffe8361b2b6d857be0"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "967d5dd7e20e483366f700eabd257907980f7aca7f7e09f3d9c8c24239ca0c96",
+      "bytes": 9,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0218bd0be46a3856a31cdb6e6b0aa52eaf26c75a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "972eabda3c63590651e5fc8d5f794818bc889c8eda3975857c012a31bcda1a05",
+      "bytes": 2,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "06e6afdfb3c3abeeb50047b4810b0da2f0711589"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "973b93d23b62f43bbddccabf86af00876e91c62ab42eb02d10d24c1d387cd204",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0d7f710207a4e40031d8b536d713efbcc43786bb"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9804cbcba99d57ece87344f449fa7afbfdbc9bc85e28b816e0a5f8f7021775f4",
+      "bytes": 36,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "06ab7e5467e30f29606ef16fe9f7765623f9cd8d"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "992293d89120a6fb380f75cde6d7ed14ad8cdb97dfaa9816e5c1a5421b3c91eb",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "047972b7458b23e2a539f43a593a5762b372f4d2"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9928feb72c70296081f11f487706752ba561c19088f2a6972235cd11bcc2a22a",
+      "bytes": 25,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "06c32baca2bba56b28ee39ac680c8191482cf420"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9ae0e5f24746e6eb58c739c993110a1bcc2f99d0dc7f52f55183338ebd2e80a5",
+      "bytes": 11,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0b8710a1a9db6af44d4c2ba2eb98ddd660ee74e1"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9ce8bdedde209d6493a30032468225f1afbc217e1ed30c5059655a555adb78f2",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0301ad562598f045aa5796b278fd06059af16287"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9f093f28bdf16b376986ebf2924169a4f8515d3fb649f59aaf6771a8737083e7",
+      "bytes": 29,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "09373f8cc48b91c7004bd3e32e2236a4f18d9d44"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9f7441a9ceee5d75cf2a2aec41198913805274f7a9cb6c283eb6e0d2625ca0a6",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "02c59da8b7008c1b3ded08a0f0808aab1b7f6117"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a1100c3dd3fe9c31f2d6f2ac8bc32f7b514db2fb07b3ec2d0bdf5a983cce735f",
+      "bytes": 49,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "07183be0988280ce408ea5d44d7a3a92028949af"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a18ebbd132abbc1bb4988a835cd41b10ef4c854d0aa55dad19e55296f6cca3d8",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "021d4ca2cfdce56b37fe56198600895aa0f2c88a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a18f92835498ca47d92c91fcada9f12399724116f713e5fc32473d34d182de33",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0318ae179db37cb276dbb66c55a580108ba0abd5"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a1daaf8ec8b24c695397b6a06d87d696e6704a0464357b36dfcc1e345a47ff9b",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "03f5c70366326a3f3c7f57ca66483207b0e4555a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a2594df108bb40eb198469159db43d79af58b14d6bf6fe0bf4ecdf52da78506c",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "00a6e1d8b77566d277ea42dab7a1f97fbca63de1"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a28a19231eee995d84e55f2fbb9a504cba6063c5a86c0eea47e4c1ab9e7f1ef2",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "00ed56c0c4492ce0465fa28b370e9fb8d6c92f71"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a295749a7f3678ac8f75fa9a6c4bc75536fb645a1e1eb2fd20535a0ce6513bfe",
+      "bytes": 78,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "02c8affd4c841844a803108bedb199bbaf6c2cc9"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a2cbde6d92565d55dfb947957e86741bc0d4d09c07c24db5fa3bcfcfc79a8c63",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "016bcd53e9b586d767b2b1d5a0b79cd2496c5a68"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a48a930ecb3199e0bbeaef6a4f84d851c18f03da2abd9454eb395c012948a7da",
+      "bytes": 9,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "00d2275bfd1cade4f84af8d4f48e85e9a6b687fb"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a7a3cb4130b26b7dfda38c119dcea004f5b1501fe494837b8e41d34304ab1c2f",
+      "bytes": 13,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "033b2d52508c25e6b070302159a261d37e12a575"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ab5d985669a5994f452833a357e706e3249de8a60ce1bc4551effd5ea7dd1594",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "048e68fa8a9b3580d69d72a2939b662263085ba5"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ac768273a45c2042cb4470c2ef81b243a458275a6a0fc6913f53a8ba32a03a7f",
+      "bytes": 13,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0c4097cd5d1e2126ecd2e94802d37c43ecb2167a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "acde336400f410667758714a1046b22d08c85603e25046b6c36b2e30d22bed32",
+      "bytes": 33,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "07fca327def9ae3534c774d65dcf57e091571ca2"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "acf780fe54f6c79d15a80a3cf59aed393ff03b7bfa651587e513c46b02b6f25b",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0729487e8359e4c7f1197f7b5fc81a988e75c3b6"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ade3c999d23a48241708883d78986e5cb24c050cb6b1eb223574da721098e55e",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0cfa6eff8b2ffac0db0e6ba77a2d0b03c0d1bb28"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "af26c70bcfaaeffa1a57788c4d08e9ce5359ff3785a5c5307f39065ed7ca996c",
+      "bytes": 51,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/regressions.zip",
+        "member": "246e862159ebaec964f0882feda52eedc66a333a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b15076457d4a05994d67e42bebc4dd3db0df000828c917e13ef42bcb09c2a864",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0764c44ffb6964b1f94ec7625df1d8c42f80d9cb"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b26f99543485cab0666a50160ed4281d01669a10feb99985525b10dd791f1e9d",
+      "bytes": 2,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0c161b681ee31966327432e1e8628383b342bdc9"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b36ff2fd38b7b98a158619535066231408aac48706f600ed5da40ccdec5d8065",
+      "bytes": 3616,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "000bbe6bda8a31e260c03433e882d0658b062c25"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b486ec0ca6306f3ca6a7144d98b92fcb85e986838dcc1b75bf674b4f454d8468",
+      "bytes": 21,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0a3dc3f8836431acc93075b900acad79f065ce21"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b876c5eabdca825fe4bb36295754c9d8592a955ecb74fecb0963c7103dd9fe68",
+      "bytes": 25,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "07f0ac02410f93ca8470430ad872f6635e795bd3"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b8cafb4f25a3659054438eb3df417f77e967bd8ad37deccf30ef6f6daa1e7748",
+      "bytes": 243,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/regressions.zip",
+        "member": "673e8ef0d4e3785bf4f7a9cacb6b592e237a5731"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ba67e86d827ab4c950017d1bfa6f82a1e7ac60baa80f086ad2f7c9e765011dbe",
+      "bytes": 9,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "05ce5aa3a72f4dccdaa251bbac738a03296be1f7"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bbe60287df85b56ce373429565f67f4f0b099001a2e7b02f56e29492e9f218a7",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "06332c8ef161a1d3d9610b696348314d7c8b3677"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "be8bc3a0c6dffb7513e48977d800c77555d8b7f6c954babbc0cbea4d54dfd2de",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "03fd100c43428a0d146de651872a164e8a9ba52a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "be8f4fbc6194c427f3fe192e3bcbf97c26cd112875818c9bd072e2ee37975c3f",
+      "bytes": 11,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "01f70adfa21418b017512ed8affc0840f754ab3b"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c14a4cec91b83571afd61acfc0a01fbfd95647eded17df97b021cd19df6c359f",
+      "bytes": 139,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0a61022d7bb19897bb2689c3c9ef8b133627d000"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c24df507fcf682d5d799293e40f2b127f4cf06b1fa7e99ec29fb030ada720509",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "08a39b1a1430cca268c62969646d5342a3d55ca0"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c435cd2e3560badf0bc6a1db70fa4d904b1ce9fdcaa53f909b889a7cf069a77a",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "05f8dc2386d4098d1d8cc07dd286a8d6327f50ac"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c4657fb7fafa979b509e71b01d007b8972d912b4925152528b0fd86c34fea2ab",
+      "bytes": 573,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/fuzztest/sample_data/sample1.pb"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c4694f2e93d5c4e7d51f9c5deb75e6cc8be5e1114178c6a45b6fc2c566a0aa8c",
+      "bytes": 1,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "08a914cde05039694ef0194d9ee79ff9a79dde33"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c6b34031369c15579ff5da25c0c0487f359497dd0a93608d135d6142ac2a6f4c",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "04ad6f58ce0776b4d5cc2e5d5afdf7621d5eb284"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c76d74bf59a8dced005e50440fb46bd05e49bb705dca50187e90318f48b98e7b",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "088e5b2021c5833b30e6f2e48e849d81384d8175"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c78caa86b9f894b7872900dd5fb21529459fe63e1828f4e6a56237865b332de7",
+      "bytes": 3616,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0dab166b20133892ceba8858c1be7eab8743bbaf"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c798499d22947c55ce86ba1eff50c6e44223cb336882757d7c15815e003ed5b2",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "00c15f00a509c384c4cdfd3a3525aabd1fba5c62"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c7a112148c34d0ba16b1223b1e70b27dfbf80f629d14dba45990e0d6a864eb49",
+      "bytes": 66,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "054ff1195ac7eb14d01f954b9801aaa2565f5806"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ca1dd3968c2aa9583a6fac051fb2f905c931ed0ade606b9a2503c0ce8419d653",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "09acf66cf63cf821362d6ba09c18e2ff3d3c1a02"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cd9a2bbf3094c36f747cb276c46de9663dbee8b6cd4a3dff044375f7b8464fa9",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "01d7781f8f5d686ba9fe20b29123457e53895cca"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cf17acef034e68dc4b23be1b37e2f8dd88dc30a0fb2ca9edec68e6d161ac6edf",
+      "bytes": 17,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0b5d85b1bf7ceb14a9dac381d1dbee12ea904775"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "cf7437e278ce0f000413fef98dac0261cb5b909df3f0f6aaa406bcb376e36dc8",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "090cdc5158ee642352030bb7797afd94db41133b"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d1e3056c16ce51f7b80fe9d0eeb27a901e0842f715af63e26bfadcbe5fbbc484",
+      "bytes": 12,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "053296bf6fdbee8edb90e605db521ed22f479908"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d23534b88d06d04e26b07f75d14d223a1f244b983c50bd4be8744ac1eec9b689",
+      "bytes": 25,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "05894b1adc9c354714ab52c7603488e46a7a54d5"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d56f3ec1f929f73c80c26246aab50f5aed3e848ed64ff8fa229be22b152b4dae",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "08bf25b1fc324b5f28d747e44a3c3df71a62fe33"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d5cd0ada8a09b629d86b0aef6413eb02dc7a950a41a901f0ad3339132e32f23d",
+      "bytes": 466,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "file_copy",
+      "source": {
+        "path": "tests/fuzztest/sample_data/sample2.pb"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d821097bd488da99e2985f0fd83c340d391e4a965eddf8d0e5724447c8d76aa6",
+      "bytes": 21,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0c5d157a9668c89d38dada576ab572d2e5cf39b1"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d86f295f9f4abf217bcaf4deccb490595afc1aaa256f502f284a8ce0aa4fe545",
+      "bytes": 68,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0c1683da9e3926aa996c4fd6a3250c11eb928413"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d8b408b54c1b396caa74ae7158fc13f0f228835d2aad93f3ae8a0a416d120dbc",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "03d0508c65bbfd1339bd76c7829530c072db6236"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d9f5baf83e21edf79fc308894f670cd3e1e501db59be24b60014b3f851f52faa",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0a2d83f9071916bff049f31cb2555873cd693860"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "da9225eab8c6136b89983f08ed076bee804ae816ddd120baa010a100eddf4b26",
+      "bytes": 1023,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "066f3a8be1e514f313ea2b1b61ef6161dc048d7e"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dba440fe08bc97d0ec068efefe44904e91636fc906e32d61458b9eee964989c0",
+      "bytes": 9,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "058aa5528435a383ffaa44ed6bf1bab575cd38c5"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dbf5387e89a1e726baebfeffab509931eeb204ae9beccc2538b3f01e07b533b8",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0625ceb3b37d8a91afd8ce209445b3e884f37445"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dd98a012c4c8cc33f72a47a762afc58a9c5337cb6b49cf8a7e89fb3c51f79bbe",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0c51785c29ee9756303bbc5367d5c4294f7f9624"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "de2e48e0c8fa5e9136078411cedd9c137881cc927dbbf2db7f6cf98a896b3864",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "075ae50f5694216bb24d2cb23c53c24046df5cf9"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "de7d1b721a1e0632b7cf04edf5032c8ecffa9f9a08492152b926f1a5a7e765d7",
+      "bytes": 1,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "042dc4512fa3d391c5170cf3aa61e6a638f84342"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "def17c86b6a95882c98cc7fb0bc84f7e6ebed20cf3b3c66d1103b0e031207e3b",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "03f4b8be5518f07b21096ac43788e89073a40755"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e058b7b7f34eff2da126c738176667d194049e2601dd49e8c2cd47a1729237a6",
+      "bytes": 12,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0629f6f4b1ef6b81bd2c0e8adb9763c45d9706a5"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e129592dd6c0ca40c56c8abfc5b429d9fad5cf87d67628d0eb747dad6859a6eb",
+      "bytes": 310,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/regressions.zip",
+        "member": "84fcc23be29a7b7f11c9643bb6f47ebf2b8644e1"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e15d57fb3896f6e7ab6957d1ae6a11e7a8bf30921e9cd9d69b6b76b5d563a9ca",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "04b0428c54403a1efe5283ff6d96d1510026644a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e1e65370dac229f493f5f0a4e1d170f93b1e9ee15082fc5a46edfa5879e7b192",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "061030cb92fc2750fba7c1c0371aad3147e543c9"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e252774ad9a65246f20880b431eb382e51d1bd490ee7e81a76e86685c49dc1b4",
+      "bytes": 34,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "019be3bd4b6c0b7e842075dcc1346fdd46cccd70"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e545d395bb3fd971f91bf9a2b6722831df704efae6c1aa9da0989ed0970b77bb",
+      "bytes": 2,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "053d8d6ceeba9453c97d0ee5374db863e6f77ad4"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e6475e544be05725c56cb034c07d3638356b65da6145ac0bea6ff79db15d5a51",
+      "bytes": 65,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0386bd19799c0d05e6a060c3d23f8f43649be989"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e8f364c95f4f00a0bae56d71576868c2bfd1e210ffd73600281b138b6fccd928",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0c94d2dcd253018492f1494890420f708e2e0f0e"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ec471df3d9ba905b8f80077fea8501112ee9656feefab8e3d9910e64c7d4b786",
+      "bytes": 8191,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "056bd34531086dcc4ccf7184bbe46a373fc8b918"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ecb75265807098e580252440d0e198f927e5637b83974fd806f07a18c77946b4",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "059db2e5097147409a454cfb06aeca0076803d95"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ecf7e38bd57f5cc67407456da0d4ae5f08b2c57500e6792fa2a521bd5bc74efc",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0280a36e897ccaf9d1d1b29bbfa84beff681d2b5"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "eeafe215f37a7d4dadf14fd053fa682d42dc556c397a7aa29084c034424c4ea1",
+      "bytes": 14857,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0568131e66eeaa3cad74cc41f89d78d8fd49ad43"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "efe7604bbaa8107f22a7360534cdc4f7c94823b1a7ff3925c4402d16355b71ca",
+      "bytes": 32,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "03f0aff045c5274fab327e628e79a034620ff63c"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f03c7cb9c2428ef286ce19daff23deb3c6ea608370c4160b62451c0fa056d8ab",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "06f310e581eb061b2f24fd5b2280c54f4b61a20c"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f06840060d74cc5eac271852e709452f57ff5e64c50de45101aa854d2a702156",
+      "bytes": 18,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "018525c40b0b3319f3d7b1cf9235b8e7e98e83bc"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f0a128fd5ea396e921dfec50191165c1c8b0821d00cfe925d1e2723f9bc5a5d5",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "019435b90d98d97347edc6d776c97f1fe2cc09cd"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f27d05f7278a0448e25a8a5f1a9a99c785da647e3e944bf5b9e9a2a3373c6952",
+      "bytes": 18,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "06fc8e289a7f4bce7788d0eb1e30935ef507b8a1"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f3ada4a94425553adbaa3045e7e447fd5f8deb7e9661a29fbc7fdf8f020012c9",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "098cbcbce0ddf8c180a36445217b5e4fdc81189e"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f582c26f0dab266c140f7f1e4c861a153f549941e966196db2314681b33e00cb",
+      "bytes": 7,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0d5c0d13c7121bc26568caff7de4196d454bb1b4"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f599140041f49c5c9e2b05ddc3d4beb2712c3dc976e12c32d88177c6b00c124d",
+      "bytes": 95,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/regressions.zip",
+        "member": "fe1487f17e894924850d40f007f9a6d9e263da31"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f5e609f679c883b1ce357ffd42ebffa9c33c75586cbb28c674decc63c14dabda",
+      "bytes": 232,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "03b355370802b51e1bb5e07435693f699c2f6201"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f726531e5810837c74d4f1fb55387295049bf1a0e1d2343be8b6ecebadec0255",
+      "bytes": 28,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "09f01c40b91e4e9620f175c6afb20e9889a8294a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f767dce72206f042ef04bd59f1e567ec21967915028b420a54a455f3f2082272",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "08728a2621f68fb5670b3a5e6401b4a303c93850"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f7dbf7cd5bedbfdde129586a0e48ee77dacd3e1e75eacfb9f046db0e2fece13b",
+      "bytes": 3,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "066f447909e75c12cea88613f59672654e7356f3"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f7f9798d101428dd90b755e3a55e322f353e1bd2fd87659fa435a78ca4a4f98c",
+      "bytes": 192,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "071e59720b2e0c4281aff2a5956a8794267d415f"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f872af212f36a5fa6982b495ed486371f86ab8b1b3a7e0f7475b9587fb1aadee",
+      "bytes": 6,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "036b58e8cf6557b0e37358208c50b502812780f8"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fa8b48b87bb6ab6c8eac9cf7a064ee3a2fc92f912ea773f2cbda8fda91e80d19",
+      "bytes": 8,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0c3cfc48dc8ba9b9452b192bb3b800de4356ea77"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fbfaafbdf98b2381b54eec797e3b37f1365d4df4b4da016f2be115f670f9e021",
+      "bytes": 5,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0108ae917bc6c86fe059be5db73dbfc1c8ecc79d"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ffcfba38c03ecdb9632a4de690da25806845b2633f19be7d33fc4351f9bc97bf",
+      "bytes": 252,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "00706e3d975a8368e04dcf055aa113783a93cf4e"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ffd8c8881d2643028b7726b27d0eecbbc2610bd83a7df0642109e436fa5964ad",
+      "bytes": 4,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "04e7dec7d5d5345c0bce38cf4ebab46fe522105a"
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ffe6a24c68b83ff7d9bf1ca1c2bfa17c0c28e9bfcc1ba554127c7e18296a6883",
+      "bytes": 32,
+      "entries": [
+        "pb_decode_ex",
+        "pb_istream_from_buffer"
+      ],
+      "method": "zip_member",
+      "source": {
+        "path": "tests/fuzztest/corpus.zip",
+        "member": "0032f1ac024b630cc50b72b787f8842719a2fde0"
+      },
+      "proposed": false
+    }
+  ],
+  "skipped": {
+    "duplicate": 0,
+    "too_large": 189,
+    "over_cap": 3291,
+    "unsupported": 0
+  }
+}

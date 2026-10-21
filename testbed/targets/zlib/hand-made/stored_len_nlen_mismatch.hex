@@ -1,0 +1,4 @@
+# RFC 1950 (zlib format) and RFC 1951 (deflate), RFC 1951 section 3.2.4 (NLEN is the complement of LEN)
+# case: LEN 5 and NLEN 5
+# generated once by: python3 -I research/testbed-seeds/zlib.py stored_len_nlen_mismatch
+78 01 01 05 00 05 00 68 65 6c 6c 6f 06 2c 02 15

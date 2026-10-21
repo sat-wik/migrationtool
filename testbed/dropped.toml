@@ -1,0 +1,35 @@
+# The drop log (CONTEXT D-11, RESEARCH Pattern 13). A target or configuration that
+# still fails after its one documented fix attempt is recorded here, never removed
+# from testbed/manifest.toml. testbed/DROPPED.md carries one heading per entry
+# (a test keeps the two in step) and at least 10 targets must stay retained.
+#
+# Each entry is a [[dropped]] table:
+#   target             a target id of the manifest
+#   config             the dropped variant's name; omit it to drop the whole target
+#   cause              fetch_failed | build_failed | capture_failed | differs |
+#                      not_proven | entry_mismatch | variant_no_code_change | licence
+#   detail             the cause as the CI report stated it
+#   differing_objects  objects that differed (cause differs)
+#   differing_sections ELF sections that differed
+#   fix_attempted      the one fix that was tried (never empty)
+#   ci_run             the numeric id of the testbed workflow run that showed it
+schema_version = 1
+
+[policy]
+# The founder's answer at the D-03 checkpoint (02-03-SUMMARY, drop_granularity
+# variant): a variant that fails after its fix attempt drops only that variant. A
+# failing default drops the target. A variant that changes no compiled code is
+# dropped as a variant under either policy (D-05).
+variant_failure = "drop_variant"
+
+# Run A (testbed run 38387515333, head 564f256): the first full-bed run. Fetch
+# verified all 16 tree hashes and the seeds check found no drift. Capture refused
+# exactly two pairs, both at the entry check; the other 29 captured.
+
+[[dropped]]
+target = "paho"
+config = "server"
+cause = "entry_mismatch"
+detail = "capture paho/server: entry_mismatch: MQTTDeserialize_connack: defining TU not captured. The variant builds the CMake target MQTTPacketServer, which does not compile MQTTConnectClient.c where the approved entry MQTTDeserialize_connack is defined."
+fix_attempted = "The entry header of paho was corrected to MQTTPacket.h for both configurations before run A (MQTTPublish.h and MQTTConnect.h do not compile alone); that fixed paho/default, which captured in run A. For the server variant no data-only fix exists: the entry list is the founder-approved one (D-03) and every entry must be built by every configuration, so replacing MQTTDeserialize_connack by a server-side or shared entry would change the approved list, not the recipe. Dropped as a variant under drop_granularity variant; paho/default stays retained."
+ci_run = 38387515333

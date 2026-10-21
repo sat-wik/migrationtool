@@ -1,0 +1,1011 @@
+{
+  "schema_version": 1,
+  "target": "httpparser",
+  "commit": "2343fd6b5214b2ded2cdcf76de2bf60903bb90cd",
+  "licence": {
+    "spdx": "MIT",
+    "elected": "MIT",
+    "file": "LICENSE-MIT"
+  },
+  "caps": {
+    "max_seeds": 200,
+    "max_total_bytes": 1048576,
+    "max_seed_bytes": 65536
+  },
+  "seeds": [
+    {
+      "sha256": "0480deed8727e1d835fd668bf5433800585500c016b5372835835b03a1cdc50f",
+      "bytes": 99,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1225
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "0482ffa5a72438017c19062ad4dcc444243d68b089d862dcea6e79a1c2c0b032",
+      "bytes": 154,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1436
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "147fb1e266e6f10e825032528a0f9ef645a920d4bdb287d9611c59d79275fc05",
+      "bytes": 56,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1178
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "152569ea2e76a6fe12bae04a8e9b9972defd69ce2e6abdd234fa84a006511c21",
+      "bytes": 48,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 403
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "162eb2e3ead1cdd3ea3a0f6e2323349e680dc475de8c1450111df9ba47b329e8",
+      "bytes": 93,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 263
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "16e663eb18c9be1f36c397fd310915600c853de1f112b13f38b6a0962142c6c2",
+      "bytes": 19,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1594
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1952d81877e867f0cccb21ea35baba26efe0e692fa3c1c169933774387a2b4e0",
+      "bytes": 46,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1709
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1cdfe0dc534e6ce8bf397085be3bc54d96dd13d484fdfc3b14c04cfa7813ebfc",
+      "bytes": 69,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 2029
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "1d3247911e77baea0e96e825ca92ca236448921b2ca30117fad379c09b263d75",
+      "bytes": 125,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1414
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2033800907408f59c5e9ed6a570d79f2e22742fe3563777ae03c0da106be6373",
+      "bytes": 123,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1917
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "21e2422c8d782191c266057ec5dd698ca736f42cdbc11b98ea5a0fa88dfdac47",
+      "bytes": 16,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1365
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "28e21988f166e3ee82713388e8fbde87b71e44ea94cc87990454ecd3c7c0251c",
+      "bytes": 77,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1973
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "292d4e621f0ad6fb8090e68497fea0db38265ff3cb5c3445115c2d4b6fbabd09",
+      "bytes": 58,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 910
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "295c3f2f7afcd5a272dc720de2c01e48822b30d8df745bbcbbfd764221df2ea7",
+      "bytes": 77,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 240
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "2b76509defe7ac31f892696c87320294de7f849e2a1097313a8101278d64a287",
+      "bytes": 52,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 159
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "386451eb29e1f1e54b21ee6a59d8d28b36c2139ba00ad3f6ebe8db1e38692d89",
+      "bytes": 80,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1843
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3d38cb385675c19e799763b85543b3a45aff9564b1bc93da3c3955eb82175c75",
+      "bytes": 727,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1787
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "3e379bbd9de74cff71c177012b9a400605e464883b7d3b569e74ace282b159d1",
+      "bytes": 154,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 97
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "41294628ef296e77a0e45444494188681988dddf65645f8126a9325984175abd",
+      "bytes": 240,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 491
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "46e51930fa3cf296d0ee4be43a5c3bfb1d5f817d22d8349346e6152ed3fe95ae",
+      "bytes": 282,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1491
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4a6e9303083ffdb9f43807f24a52ba66b52fbdfd1197865fe83f0503134db0a6",
+      "bytes": 134,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 343
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4bba4e5aed7c3b90dbe92f066b0d10c28ee90f13620d37005025b18edb6f4aee",
+      "bytes": 115,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 789
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4c3138a4b455aedea91ef3eee1e9bd8334283872fc4497e4f1e6118ea3744ab3",
+      "bytes": 84,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 426
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4ff28b850a0f52118f9660e75aa4cd969287ad416ef36232fa749a18bfe0ed59",
+      "bytes": 97,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1198
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "4ff515b4346568236259501290daa03e1dc62af383ca8a25862e44613daafa32",
+      "bytes": 17,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1827
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5212f7a67551c4744fd1099622fe454a56221fcb231c76d1ab15efbdf44f1057",
+      "bytes": 19,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1675
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5cbc7f0391c8737765eb1b340e562abeea712b3f8d98f5f7edf88e5f281f732e",
+      "bytes": 514,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1256
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5d9b0f71103c5e696b57fe44970102ec88bbb38f9b7d1bb4025f02b19260685d",
+      "bytes": 175,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1464
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "5f6afbb56974322c214b32db3cf26a8c31382f0bfcfe5461de92c45ae7518188",
+      "bytes": 25,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 552
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "689412118439dc8fc08d89281784a394aeffc518ff6f8894a1c2b2bc317a89a6",
+      "bytes": 46,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 653
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "6ce93f5d5978d4fdf3e8e191731e292a16a9fcee9c56129af591c6384e8b6d7b",
+      "bytes": 161,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1110
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "716e268f7d83fb61fe16ce71fa750f7389d80ff8878838171586a91cf441292a",
+      "bytes": 26,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1349
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "741c77fd21c4447d33af7bd0ddd0ae3ffe748b6e67ebded9d729ca2df9290895",
+      "bytes": 51,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1655
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "75312601fb36fa194c075712596752b8b7d74b0ebb9aff5f7368ee38277599d3",
+      "bytes": 133,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1054
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "78dc6c6843a23caa7cfdef9b3a8eb707048274d03ef4b33c785de4d15e048faa",
+      "bytes": 99,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 315
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7a349e3834737929cabb21fb9c24a977bfa686ef65c6147bae900c8a3fea6c9a",
+      "bytes": 42,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 694
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7c3abfd4f9393e94b9637ea688f2c5e231e16ddd35297acb5d35f3f0331873e7",
+      "bytes": 46,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 200
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "7c888964333b3bb8151f323e5d196dac2b51fcf032ae75b01f466faf25a388e2",
+      "bytes": 24,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 473
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "856eeab771da37ad0ef52beba1507c9d2262444c0bc14ea7fbba3be94e81c7ff",
+      "bytes": 99,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1891
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8d862395d61222a4362d66f5ff3fbd9121e620bebda0b1628c3e3b0ec259a408",
+      "bytes": 365,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 123
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8e81da7388c13ad46030c1d1b1a9fac0654170a44c90aabcee8cc511fadbb720",
+      "bytes": 114,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 743
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8f14619b3f6348e1e6eaf7933f835ce993be2422d2b6faf116891d17ef998bf2",
+      "bytes": 38,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 452
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "8f9d116e205b8e8b2f231dd168653399f0d427e6a6a0b6a66932bdf3a314c939",
+      "bytes": 137,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1082
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "905777020d82a26aa2d2bf31b124e8b4465d1bd3e89714519104c5cc6712bf2a",
+      "bytes": 51,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 673
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "911500710b9cf18bc03cd5249bc142375acc0fa38f7de2814dfe5c71a0a5d55d",
+      "bytes": 370,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1527
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "93a8ff1a472e558e328f39f3d02213cf114e75addb1173f9d2de738063111757",
+      "bytes": 118,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 931
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "963e19efdcc702178d48737f2b0dca20a28516498a026061ef0dfdf5fc572666",
+      "bytes": 101,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1998
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "98249c3e88fca24605de7c1b1aa5d9616b31ba33ac1ca5a93adb611d51e25c9e",
+      "bytes": 57,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1158
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9a134fa440f10df2018fb5544a69e6895fb9a55baad7514eb8149c784bd3f214",
+      "bytes": 476,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1305
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "9fb0208bf37115f282503d608e6a0925601cbe063043f948d4b1e57ec4c09af7",
+      "bytes": 220,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1754
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a04486fc085bc5303b8c09c5cb8483d825ee778fab9e38474b900d2a8b614a14",
+      "bytes": 56,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1615
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a1fd60ba62761162cad27fa282cc8d2d7cba420d0cce178a9cdef34d0c8d3052",
+      "bytes": 116,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 814
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "a5b6e3e98b0ad424816209bba039aeada4a50026f823c93cbd8adc7a62666f46",
+      "bytes": 27,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1692
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "abdf1a68dceb9c792fc9bd29ed7e5c267199cc1cf1fbab02c19ddbf4590d2578",
+      "bytes": 91,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1004
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "ade796e9641ce18d379fab4276220bddbd2cb757d34f83d1488a5340205eb84f",
+      "bytes": 135,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 841
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "b0c9d9bf00949d785d1c63297b8ca5aed11471fa62c02a916d6f69ea4a334d0c",
+      "bytes": 149,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 526
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "bc343b98f4b8725d567297e634186d79f96f8185e884dc641002bba6f8d9e7f7",
+      "bytes": 112,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1570
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "be5c3703b6c2d7abc041f94ebaadb9c8f3a404c889e40ce261f26fcae928895f",
+      "bytes": 159,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1380
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c811734a0e8124d8b5a157a92f6008f7377dc007179abc6cdd3bc835a247ac8c",
+      "bytes": 114,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 288
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c88b70a419fa377ee890c1d8c9f865fc7d1546e9b6df6b82200d7edc6e11eec7",
+      "bytes": 57,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 181
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "c90691612ee353b94027c97c1714202b07d036958122c839b480cf6e772cab99",
+      "bytes": 52,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1729
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d2d5fe1099ec8899d1b2e9cba438ecd354794ed4cf9f71ec896d652b922dd442",
+      "bytes": 53,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 218
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "d8e1ffab59e5c208a7cf912cec873edeac8c19602db544322d8d60858e340a33",
+      "bytes": 133,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 615
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "dde62b959cd4a44d76b7c3a68373c43a66c11e80b8180066b36b939762909b5f",
+      "bytes": 89,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 590
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e09d2e8d4feaad4103297ef94e45cb06cc213a3103d79ff320fb3ee5104c71bc",
+      "bytes": 94,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1029
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e2ef9311a628edb99e85c9fc73a35151c5d261fa9b15cf6aa521ac6349b59d4f",
+      "bytes": 266,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 968
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e57ec98287df25eb9c48c38589c0bcfb7da92ae275df7440f91bdd1295e939a7",
+      "bytes": 139,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 715
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e602d1f6d8faaba7b097817f1167cca06e27ce4c900ed8d8f48b70d45ecd8c0b",
+      "bytes": 163,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 375
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e750a29c887c882846cedfc31383df081f20b7f38be27a55a89d3f5d9b5dfd69",
+      "bytes": 43,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1635
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e806c3c463b5823a827d194cecc30ff404694d2dcee152be071f0618cfc93241",
+      "bytes": 111,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1135
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e8fd991e0ff6d476b52f821228ea7b744e0233499bbc8394d376b617eb593adb",
+      "bytes": 58,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 768
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "e9412fa14e7c936cb410009fb364139144e0d5a9d12a9d2457bd804f87fa2d56",
+      "bytes": 51,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 870
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "eb5fba2784cdb7962313ddb5c18db71fa66a1a14c115612e744e85399aa48ddd",
+      "bytes": 9,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 571
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f827ba5b0a8671af69814d631aac5eb874c8be2f62b43807cb4002cba48dbb12",
+      "bytes": 76,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1869
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "f988f2306738889dd294de9c738edab5233a503617e66973844acbd5e2bb992d",
+      "bytes": 58,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 1950
+      },
+      "proposed": false
+    },
+    {
+      "sha256": "fc2c94bdb13129e6979717cec00ad69ac6187af5f80ccbfad73d90602a6ad127",
+      "bytes": 44,
+      "entries": [
+        "http_parser_execute"
+      ],
+      "method": "c_string",
+      "source": {
+        "path": "test.c",
+        "line": 890
+      },
+      "proposed": false
+    }
+  ],
+  "skipped": {
+    "duplicate": 0,
+    "too_large": 0,
+    "over_cap": 0,
+    "unsupported": 0
+  }
+}

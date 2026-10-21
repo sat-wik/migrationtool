@@ -3,10 +3,11 @@ phase: "2"
 slug: "test-bed-and-build-capture"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 # audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-10-12"
+updated: "2026-10-21"
 ---
 
 # Phase 2 — Validation Strategy
@@ -43,34 +44,59 @@ created: "2026-10-12"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | TBD | BED-01 | — | Every target pinned by 40-hex commit (or archive sha256) and 64-hex tree hash | unit, offline | `cargo test -p mt-capture bed_01_manifest_pins_every_target_by_commit` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BED-01 | — | 10 to 20 targets in the committed manifest | unit, offline | `cargo test -p mt-capture bed_01_manifest_has_between_10_and_20_targets` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BED-01 | — | Copyleft-only licence rejected; OR expression accepted only with a permissive `elected` operand (D-27) | unit, offline | `cargo test -p mt-capture bed_01_manifest_rejects_copyleft_licence` and `bed_01_every_target_records_permissive_licence_and_file` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BED-01 | — | 1-3 buffer-in entries per target; wrapped form needs `accepted_wrapped = true` (D-28) | unit, offline | `cargo test -p mt-capture bed_01_every_target_has_a_buffer_in_entry` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BED-01 | — | Unknown keys, duplicate ids, missing entries rejected | unit, offline | `cargo test -p mt-capture bed_01_manifest_rejects_unknown_keys` (and `_duplicate_ids`, `_missing_entry`) | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BED-01 | — | Every beachhead category covered, stand-ins per D-29 | unit, offline | `cargo test -p mt-capture bed_01_every_beachhead_category_is_covered` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BED-01 | — | Tree hash equals the reference vectors (files, exec bit, symlink, `.git` excluded) | unit, offline | `cargo test -p mt-capture bed_01_tree_hash_matches_reference_vectors` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BED-01 | — | Fetch pins commit and tree hash; mismatch rejected; reuse verified | integration, offline (local `file://` repo) | `cargo test -p mt-capture bed_01_fetch_pins_commit_and_tree_hash` and `bed_01_fetch_rejects_tree_hash_mismatch` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BED-01 | — | Entry signature found and equal in the captured build (D-23) | CI + offline fixture parse | testbed `capture` step; `cargo test -p mt-capture bed_01_entry_ast_stream_parses_concatenated_documents` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BED-02 | — | `default` configuration plus at most one variant | unit, offline | `cargo test -p mt-capture bed_02_every_target_declares_default_and_at_most_one_variant` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BED-02 | — | First-RTOS decision recorded (manifest and PROJECT.md) | unit, offline | `cargo test -p mt-capture bed_02_first_rtos_decision_recorded` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BED-02 | — | Variant changes compiled code | CI | testbed `capture` report | n/a | ⬜ pending |
-| TBD | TBD | TBD | BUILD-01 | — | Make and CMake commands canonicalise to `arguments`, sorted, built-only, correct output | unit, offline | `cargo test -p mt-capture build_01_cmake_command_strings_split_into_argv`, `build_01_default_output_is_source_stem_object`, `build_01_cmake_entries_for_unbuilt_targets_are_dropped`, `build_01_entries_sorted_canonically` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BUILD-01 | — | Only allow-listed compilers; every object is Cortex-M4 hard-float (silent-wrong-build gate) | unit, offline | `cargo test -p mt-capture build_01_rejects_non_allowlisted_compiler`, `build_01_captured_objects_are_cortex_m4_hard_float` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BUILD-01 | — | Generated toolchain file carries baseline and config defines | unit, offline | `cargo test -p mt-capture build_01_toolchain_file_carries_baseline_flags` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BUILD-01 | — | `compile_commands.json` covers every TU of every retained target | CI | testbed `capture` step | n/a | ⬜ pending |
-| TBD | TBD | TBD | BUILD-02 | — | Tiny C project replay matches; a changed byte is reported | integration, offline | `cargo test -p mt-capture build_02_replay_matches_original_objects` and `build_02_replay_detects_changed_object` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BUILD-02 | — | Normalisation forgives `.comment`/debug only; `.text` differences fail | unit, offline | `cargo test -p mt-capture build_02_normalisation_only_forgives_comment_and_debug_sections` and `build_02_normalisation_rejects_text_section_difference` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BUILD-02 | — | Clean-copy replay removes stale outputs first | integration, offline | `cargo test -p mt-capture build_02_clean_copy_replay_removes_stale_outputs` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BUILD-02 | — | Reports deterministic (`BTreeMap`, `schema_version`) | unit, offline | `cargo test -p mt-capture build_02_report_is_deterministic` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BUILD-02 | — | Drop log has causes and ≥10 retained; capture/replay run `--network none`, fetch does not | unit, offline (static YAML check) | `cargo test -p mt-capture build_02_drop_log_keeps_at_least_ten_targets` and `build_02_workflow_runs_capture_and_replay_without_network` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BUILD-02 | — | Every retained target and configuration replays identically in the image | CI | testbed `replay` step | n/a | ⬜ pending |
-| TBD | TBD | TBD | BUILD-03 | — | Seed files named by sha256; index deterministic and versioned | unit, offline | `cargo test -p mt-capture build_03_seed_names_are_sha256_of_contents` and `build_03_seed_index_is_deterministic_and_versioned` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BUILD-03 | — | C byte-array extraction follows C escape rules | unit, offline | `cargo test -p mt-capture build_03_c_byte_array_extraction_follows_c_escape_rules` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BUILD-03 | — | Seed caps and selection deterministic | unit, offline | `cargo test -p mt-capture build_03_seed_caps_are_enforced_deterministically` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BUILD-03 | — | Provenance recorded; hand-made sets `proposed` and ≥10 | unit, offline | `cargo test -p mt-capture build_03_hand_made_seeds_marked_proposed_and_at_least_ten` and `build_03_seed_provenance_records_source_path_commit_and_method` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | BUILD-03 | — | Committed seeds equal regenerated seeds | CI | testbed `seeds --check` | n/a | ⬜ pending |
-| TBD | TBD | TBD | (guard) | — | `.mt-work` does not trip the Python check; manifest image digest equals README | unit, offline | `cargo test -p mt-toolchain tool_01_no_python_outside_research` and `cargo test -p mt-capture build_02_image_digest_matches_readme` | ✅ / ❌ W0 | ⬜ pending |
+| — | 02-03 | — | BED-01 | — | Every target pinned by 40-hex commit (or archive sha256) and 64-hex tree hash | unit, offline | `cargo test -p mt-capture bed_01_manifest_pins_every_target_by_commit` | ✅ | ✅ green |
+| — | 02-03 | — | BED-01 | — | 10 to 20 targets in the committed manifest | unit, offline | `cargo test -p mt-capture bed_01_manifest_has_between_10_and_20_targets` | ✅ | ✅ green |
+| — | 02-03 | — | BED-01 | — | Copyleft-only licence rejected; OR expression accepted only with a permissive `elected` operand (D-27) | unit, offline | `cargo test -p mt-capture bed_01_manifest_rejects_copyleft_licence` and `bed_01_every_target_records_permissive_licence_and_file` | ✅ | ✅ green |
+| — | 02-03 | — | BED-01 | — | 1-3 buffer-in entries per target; wrapped form needs `accepted_wrapped = true` (D-28) | unit, offline | `cargo test -p mt-capture bed_01_every_target_has_a_buffer_in_entry` | ✅ | ✅ green |
+| — | 02-03 | — | BED-01 | — | Unknown keys, duplicate ids, missing entries rejected | unit, offline | `cargo test -p mt-capture bed_01_manifest_rejects_unknown_keys` (and `_duplicate_ids`, `_missing_entry`) | ✅ | ✅ green |
+| — | 02-03 | — | BED-01 | — | Every beachhead category covered, stand-ins per D-29 | unit, offline | `cargo test -p mt-capture bed_01_every_beachhead_category_is_covered` | ✅ | ✅ green |
+| — | 02-03 | — | BED-01 | — | Tree hash equals the reference vectors (files, exec bit, symlink, `.git` excluded) | unit, offline | `cargo test -p mt-capture bed_01_tree_hash_matches_reference_vectors` | ✅ | ✅ green |
+| — | 02-05 | — | BED-01 | — | Fetch pins commit and tree hash; mismatch rejected; reuse verified | integration, offline (local `file://` repo) | `cargo test -p mt-capture bed_01_fetch_pins_commit_and_tree_hash` and `bed_01_fetch_rejects_tree_hash_mismatch` | ✅ | ✅ green |
+| — | 02-05 | — | BED-01 | — | Entry signature found and equal in the captured build (D-23) | CI + offline fixture parse | testbed `capture` step; `cargo test -p mt-capture bed_01_entry_ast_stream_parses_concatenated_documents` | ✅ | ✅ green |
+| — | 02-03 | — | BED-02 | — | `default` configuration plus at most one variant | unit, offline | `cargo test -p mt-capture bed_02_every_target_declares_default_and_at_most_one_variant` | ✅ | ✅ green |
+| — | 02-03 | — | BED-02 | — | First-RTOS decision recorded (manifest and PROJECT.md) | unit, offline | `cargo test -p mt-capture bed_02_first_rtos_decision_recorded` | ✅ | ✅ green |
+| — | 02-06/02-09 | — | BED-02 | — | Variant changes compiled code | CI | testbed `capture` report | n/a | ✅ green (testbed run 38430137113) |
+| — | 02-04 | — | BUILD-01 | — | Make and CMake commands canonicalise to `arguments`, sorted, built-only, correct output | unit, offline | `cargo test -p mt-capture build_01_cmake_command_strings_split_into_argv`, `build_01_default_output_is_source_stem_object`, `build_01_cmake_entries_for_unbuilt_targets_are_dropped`, `build_01_entries_sorted_canonically` | ✅ | ✅ green |
+| — | 02-04 | — | BUILD-01 | — | Only allow-listed compilers; every object is Cortex-M4 hard-float (silent-wrong-build gate) | unit, offline | `cargo test -p mt-capture build_01_rejects_non_allowlisted_compiler`, `build_01_captured_objects_are_cortex_m4_hard_float` | ✅ | ✅ green |
+| — | 02-05 | — | BUILD-01 | — | Generated toolchain file carries baseline and config defines | unit, offline | `cargo test -p mt-capture build_01_toolchain_file_carries_baseline_flags` | ✅ | ✅ green |
+| — | 02-06/02-09 | — | BUILD-01 | — | `compile_commands.json` covers every TU of every retained target | CI | testbed `capture` step | n/a | ✅ green (testbed run 38430137113) |
+| — | 02-04 | — | BUILD-02 | — | Tiny C project replay matches; a changed byte is reported | integration, offline | `cargo test -p mt-capture build_02_replay_matches_original_objects` and `build_02_replay_detects_changed_object` | ✅ | ✅ green |
+| — | 02-04 | — | BUILD-02 | — | Normalisation forgives `.comment`/debug only; `.text` differences fail | unit, offline | `cargo test -p mt-capture build_02_normalisation_only_forgives_comment_and_debug_sections` and `build_02_normalisation_rejects_text_section_difference` | ✅ | ✅ green |
+| — | 02-04 | — | BUILD-02 | — | Clean-copy replay removes stale outputs first | integration, offline | `cargo test -p mt-capture build_02_clean_copy_replay_removes_stale_outputs` | ✅ | ✅ green |
+| — | 02-04 | — | BUILD-02 | — | Reports deterministic (`BTreeMap`, `schema_version`) | unit, offline | `cargo test -p mt-capture build_02_report_is_deterministic` | ✅ | ✅ green |
+| — | 02-09 | — | BUILD-02 | — | Drop log has causes and ≥10 retained; capture/replay run `--network none`, fetch does not | unit, offline (static YAML check) | `cargo test -p mt-capture build_02_drop_log_keeps_at_least_ten_targets` and `build_02_workflow_runs_capture_and_replay_without_network` | ✅ | ✅ green |
+| — | 02-06/02-09 | — | BUILD-02 | — | Every retained target and configuration replays identically in the image | CI | testbed `replay` step | n/a | ✅ green (testbed run 38430137113) |
+| — | 02-07 | — | BUILD-03 | — | Seed files named by sha256; index deterministic and versioned | unit, offline | `cargo test -p mt-capture build_03_seed_names_are_sha256_of_contents` and `build_03_seed_index_is_deterministic_and_versioned` | ✅ | ✅ green |
+| — | 02-07 | — | BUILD-03 | — | C byte-array extraction follows C escape rules | unit, offline | `cargo test -p mt-capture build_03_c_byte_array_extraction_follows_c_escape_rules` | ✅ | ✅ green |
+| — | 02-07 | — | BUILD-03 | — | Seed caps and selection deterministic | unit, offline | `cargo test -p mt-capture build_03_seed_caps_are_enforced_deterministically` | ✅ | ✅ green |
+| — | 02-08 | — | BUILD-03 | — | Provenance recorded; hand-made sets `proposed` and ≥10 | unit, offline | `cargo test -p mt-capture build_03_hand_made_seeds_marked_proposed_and_at_least_ten` and `build_03_seed_provenance_records_source_path_commit_and_method` | ✅ | ✅ green |
+| — | 02-06/02-09 | — | BUILD-03 | — | Committed seeds equal regenerated seeds | CI | testbed `seeds --check` | n/a | ✅ green (testbed run 38430137113) |
+| — | 02-05 | — | (guard) | — | `.mt-work` does not trip the Python check; manifest image digest equals README | unit, offline | `cargo test -p mt-toolchain tool_01_no_python_outside_research` and `cargo test -p mt-capture build_02_image_digest_matches_readme` | ✅ | ✅ green |
+| — | 02-11 | 8 | BED-01, BUILD-02 | — | Entry probe uses the defining TU's include prefix; unreproducible prefix falls back to header-alone; comparison unchanged (G-02-1) | integration + unit, offline | `cargo test -p mt-capture --test bed_01_entry_include_prefix` (incl. `bed_01_entry_probe_uses_the_defining_tu_include_prefix`) | ✅ | ✅ green |
+| — | 02-12 | 8 | BUILD-01, BUILD-02 | — | Makefile2 hashed after normalisation; exact CMake product list; pure skip decision (G-02-2, WR-10) | unit, offline (tool-free) | `cargo test -p mt-capture --test build_02_configure_evidence` (incl. `build_01_cmake_products_are_exactly_the_documented_paths`, `build_02_real_makefile2_variants_normalise_equal`) | ✅ | ✅ green |
+| — | 02-13 | 8 | BUILD-03 | — | Zip inflated by miniz_oxide only (no zlib-rs/C zlib in lock); per-archive decompressed budget (G-02-4, WR-07) | unit, offline | `cargo test -p mt-seeds --test build_03_zip_backend` (incl. `build_03_zip_inflates_with_miniz_oxide_only`, `build_03_zip_archive_has_a_total_decompressed_budget`) | ✅ | ✅ green |
+| — | 02-13 | 8 | BUILD-03 | — | Founder legitimacy approval of miniz_oxide 0.9.1, adler2 2.0.1, simd-adler32 0.3.10 | manual | checkpoint (approved 2026-10-19, recorded in 02-13-SUMMARY.md) | n/a | ✅ approved |
+| — | 02-14 | 8 | BUILD-02 | — | Determinism comparison fails closed (unparseable, empty, one-sided, non-regular, zero files); only the two documented exclusions (WR-05) | unit + CLI, offline | `cargo test -p mt-capture --test build_02_compare` and `cargo test -p mt-cli --test build_02_compare_cli` | ✅ | ✅ green |
+| — | 02-15 | 9 | BUILD-03 | — | Designated-string selector; narrowed httpparser/nanopb/qcbor corpora hold only input methods (G-02-3) | unit + committed data, offline | `cargo test -p mt-seeds --test build_03_seed_designators` and `cargo test -p mt-capture --test build_03_seed_narrowing` | ✅ | ✅ green |
+| — | 02-16 | 9 | BUILD-02 | — | Replay bound to manifest pin, pair and tool set; 10-target floor on every `--all`; `differs` drops name evidence (WR-02, WR-08) | integration + CLI, offline | `cargo test -p mt-capture --test build_02_replay_pin --test build_02_drop_log` and `cargo test -p mt-cli --test build_03_seeds_cli` | ✅ | ✅ green |
+| — | 02-17 | 10 | BED-01, BUILD-01..03 | — | Whole bed green in the pinned image with isotp retained, normalised Makefile2, `mt testbed compare` determinism | CI + static | testbed run 39331139047 (head 687faf2); `cargo test -p mt-capture --test build_02_workflow_static` | ✅ | ✅ green |
+| — | 02-18 | 11 | BUILD-01, BUILD-02 | — | Capture split into build and record stages; record stage refuses symlinks, changed inputs, foreign build records (WR-04) | integration + CLI, offline | `cargo test -p mt-capture --test build_01_capture_stages` and `cargo test -p mt-cli --test build_01_capture_stages_cli` | ✅ | ✅ green |
+| — | 02-19 | 12 | BED-01, BUILD-01..03 | — | Untrusted builds run one container per pair and cannot write the evidence; final full bed green (WR-04) | CI + static | testbed run 39335185551, ci run 39335185566 (head fb04867); `build_02_untrusted_builds_cannot_write_the_evidence` | ✅ | ✅ green |
+| — | 02-20 | 13 | BUILD-01, BUILD-02 | T-02-67 | Compile-command gate refuses helper-executing GCC driver options at capture and replay, before any spawn (G-02-6) | unit + integration, offline | `build_01_rejects_helper_executing_driver_options`, `build_02_replay_refuses_helper_executing_driver_options`, `build_01_record_stage_refuses_a_helper_option_in_the_export`, `build_01_driver_option_gate_keeps_ordinary_flags` | ✅ | ✅ green; superseded by the 02-21 allow-list rows (same test names, refusal causes now mostly `option_not_allowed`; deny-list code removed) |
+| — | 02-20 | 13 | BUILD-01, BUILD-02 | T-02-70 | Every write-path option (`-o`, `--output`, `-MF`, dump/aux options) resolves under the run root, carried writes refused (G-02-6, T-02-15 extension) | unit + integration, offline | `build_01_handles_write_path_options`, `build_02_replay_refuses_writes_outside_the_run_root`, `build_01_record_stage_refuses_a_write_outside_the_run_root_in_the_export`; ignored `build_01_local_captures_pass_the_compile_command_gate` over 29 local captures (refused=0) | ✅ | ✅ green; superseded by the 02-21 walk-based `check_write_paths` rows (same test names; refused=0 re-proven by 02-21) |
+| — | 02-20 | 13 | BUILD-02 | T-02-68, T-02-69 | Record stage refuses an inconsistent build record, Captured needs passed gates and objects, toolchain file must equal the pinned text (G-02-5) | unit + integration, offline | `build_01_captured_verdict_needs_passed_gates_and_objects`, `build_01_record_stage_refuses_a_record_that_did_not_build`, `build_01_record_stage_refuses_a_changed_toolchain_file` | ✅ | ✅ green |
+| — | 02-20 | 13 | BED-01, BUILD-01..03 | — | Final full bed still green with the new gates; notices equal 02-19 line for line | CI | testbed run 39405529914, ci run 39405529939 (head e69a699); 02-20-CI-NOTICES.md | ✅ | ✅ green (testbed run 39405529914) |
+| — | 02-21 | 14 | BUILD-01, BUILD-02 | T-02-67, T-02-70 (re-mitigated, G-02-8) | One operand-aware walk (`walk_arguments` over `ALLOWED_OPTIONS`) is the only reader of compile-command options; `check_command` is the whole gate at capture and replay, compile-only from the walk (CR-03, IN-13, IN-14) | unit + integration, offline | `build_01_one_walk_serves_compile_only_output_and_write_paths`, `build_01_gate_decides_compile_only_from_the_walk`, `build_01_record_stage_refuses_an_operand_compile_flag_in_the_export`, `build_01_handles_write_path_options`, `build_02_replay_refuses_writes_outside_the_run_root` | ✅ | ✅ green |
+| — | 02-21 | 14 | BUILD-01, BUILD-02 | T-02-67, T-02-70 | Only measured spellings pass; long `--` spellings, assembler carriers, `-wrapper`, `-B`, plugins refused with `option_not_allowed` at both ends before any spawn (CR-01, CR-02, IN-15) | unit + live replay, offline | `build_01_allow_list_is_the_measured_set`, `build_01_allow_list_refuses_everything_else`, `build_01_gate_refuses_long_option_spellings`, `build_01_gate_refuses_assembler_carrier_spellings`, `build_02_replay_refuses_the_measured_bypasses`, `build_02_replay_refuses_helper_executing_driver_options`, `build_01_rejects_helper_executing_driver_options`, `build_01_record_stage_refuses_a_helper_option_in_the_export`, `build_01_record_stage_refuses_a_write_outside_the_run_root_in_the_export` | ✅ | ✅ green |
+| — | 02-21 | 14 | BUILD-01, BUILD-02 | T-02-72 | The `@` rule refuses response files in operand position, every argument after argv[0] | unit + live replay, offline | `build_01_gate_refuses_response_files_in_operand_position`, `build_02_replay_refuses_helper_executing_driver_options` | ✅ | ✅ green |
+| — | 02-21 | 14 | BUILD-01, BUILD-02 | T-02-73 | Linker reached by an operand `-c` refused; `-Wl,`, `-Xlinker`, `--for-linker` fall to `option_not_allowed` | unit + live replay, offline | `build_01_gate_decides_compile_only_from_the_walk`, `build_02_replay_refuses_the_measured_bypasses`, `build_01_record_stage_refuses_an_operand_compile_flag_in_the_export`, `build_01_one_walk_serves_compile_only_output_and_write_paths` | ✅ | ✅ green |
+| — | 02-21 | 14 | BED-01, BUILD-01, BUILD-02 | T-02-74, T-02-78 (WR-13) | `-specs=` accepted only for the 13 shipped names measured in the pinned image; names enter the constant only from the arm-specs notice | unit + CI | `build_01_shipped_specs_are_measured`, `build_01_specs_allowed_only_for_shipped_names`, `build_01_shipped_spec_names_are_read_from_the_toolchain`; container run 39453293834 arm-specs | ✅ | ✅ green |
+| — | 02-21 | 14 | BED-01, BUILD-01..03 | T-02-75 | No real pair refused by the allow-list: refused=0 over 29 local captures; whole bed captures and replays 30 pairs, notices equal 02-20 from line 5 on | integration + CI | ignored `build_01_local_captures_pass_the_compile_command_gate` (refused=0); `build_01_ci_fixtures`, `build_02_drop_log`, `build_03_committed_seeds`; testbed run 39455562978 (02-21-CI-NOTICES.md), ci run 39455563004 | ✅ | ✅ green (testbed run 39455562978 on 44a3dd6) |
+| — | 02-22 | 15 | BUILD-01, BUILD-02 | T-02-76 (WR-12) | Build cannot rewrite the toolchain file configure reads: trusted copy mounted read-only at `/opt/mt/toolchain`; record stage compares trusted copy with recomputed text, refuses missing copy or build-written stage file; `toolchain_file_read_only: true` reported | integration + CLI + static, offline; CI | `build_01_record_stage_uses_the_read_only_toolchain_file`, `build_01_record_stage_refuses_a_build_that_rewrote_the_read_only_toolchain_file`, `build_01_record_stage_refuses_its_own_toolchain_file_beside_a_read_only_one`, `build_01_build_stage_refuses_a_read_only_toolchain_that_differs_from_the_pins`, `build_01_record_stage_requires_the_read_only_toolchain_when_asked`, `build_01_toolchains_writes_the_pinned_text_for_cmake_pairs`, `build_01_toolchain_dir_needs_stage_build`; container run 39528941352 toolchain-ro-control; testbed run 39528941371 corejson `toolchain_file_read_only: true` | ✅ | ✅ green |
+| — | 02-22 | 15 | BUILD-01, BUILD-02 | T-02-76 (consistency checks only) | CMakeCache `CMAKE_C_FLAGS` and pinned-flag checks are consistency checks, not trust anchors | unit + local proof | `build_01_record_stage_checks_the_toolchain_consistency`, `build_01_configured_toolchain_consistency_findings`; ignored `build_01_local_captures_pass_the_toolchain_consistency_checks` (refused=0) | ✅ | ✅ green |
+| — | 02-22 | 15 | BUILD-01 | T-02-77 (WR-14) | Unreadable (non-NotFound) toolchain file or cache is cause `toolchain_unreadable` on that pair (capture_failed), never an aborted step | unit, offline | `build_01_unreadable_toolchain_file_is_a_named_cause` | ✅ | ✅ green |
+| — | 02-22 | 15 | BED-01, BUILD-01, BUILD-02 | T-02-79 | Mount cannot be bypassed by a writable mount point or later workflow edit: exact `:ro` mount, `--toolchain-dir`, toolchains step before `docker run`, `--read-only-toolchain` on both record lines | static, offline; CI | `build_02_untrusted_builds_cannot_write_the_evidence`, `build_02_record_steps_require_the_read_only_toolchain`; `build_02_workflow_static`; container run 39528941352 | ✅ | ✅ green |
+| — | 02-22 | 15 | BED-01, BUILD-01..03 | T-02-67, T-02-70 (re-verified) | Gate file:line re-read at 9273ef8 (cc.rs and replay.rs unchanged since 02-21); final full bed green with notices equal to 02-20 from line 5 on | CI | testbed run 39528941371 (head 9273ef8, 30 pairs captured and replayed, 02-22-CI-NOTICES.md), ci run 39528941315, container run 39528941352 | ✅ | ✅ green (testbed run 39528941371) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -78,12 +104,12 @@ created: "2026-10-12"
 
 ## Wave 0 Requirements
 
-- [ ] `crates/mt-capture/` crate, workspace member, `tests/` and `tests/fixtures/` (recorded Bear and CMake JSON for two small targets, `readelf -A` text, two Arm `.o` fixtures, a tiny C project)
-- [ ] `testbed/manifest.toml` (after the D-03 checkpoint), `testbed/dropped.toml`
-- [ ] `.github/workflows/testbed.yml`
-- [ ] Image extension and its static tests (D-30, shipped to `main` first)
-- [ ] `Deserialize` derives on `RunRecord` and friends; `ROOT_SKIPS` update for `.mt-work`
-- [ ] Framework install: none (cargo only)
+- [x] `crates/mt-capture/` crate, workspace member, `tests/` and `tests/fixtures/` (recorded Bear and CMake JSON for two small targets, `readelf -A` text, two Arm `.o` fixtures, a tiny C project)
+- [x] `testbed/manifest.toml` (after the D-03 checkpoint), `testbed/dropped.toml`
+- [x] `.github/workflows/testbed.yml`
+- [x] Image extension and its static tests (D-30, shipped to `main` first)
+- [x] `Deserialize` derives on `RunRecord` and friends; `ROOT_SKIPS` update for `.mt-work`
+- [x] Framework install: none (cargo only)
 
 ---
 
@@ -99,11 +125,19 @@ created: "2026-10-12"
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated 2026-10-13; gap closure 02-11..02-19 audited 2026-10-19 (318 tests green, CI runs 39331139047 and 39335185551); gap closure 02-20..02-22 audited 2026-10-21 (workspace `cargo test --workspace --locked --offline` all green, testbed runs 39455562978 and 39528941371, container run 39528941352) (founder approval of the target list recorded in 02-03-SUMMARY.md)
+
+## Validation Audit 2026-10-13
+
+| Metric | Count |
+|---|---|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |

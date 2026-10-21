@@ -1,0 +1,5 @@
+# RFC 1950 (zlib format) and RFC 1951 (deflate), RFC 1951 section 3.2.4
+# case: a non-final stored block of 'he' then a final one of 'llo'
+# generated once by: python3 -I research/testbed-seeds/zlib.py stored_two_blocks
+78 01 00 02 00 fd ff 68 65 01 03 00 fc ff 6c 6c
+6f 06 2c 02 15

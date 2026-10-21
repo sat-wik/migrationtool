@@ -1,0 +1,3 @@
+# MQTT Version 3.1.1 (OASIS Standard, 29 October 2014), section 3.2.2.3
+# case: return code 5 (not authorized)
+20 02 00 05

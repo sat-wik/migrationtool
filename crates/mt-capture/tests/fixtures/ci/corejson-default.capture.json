@@ -1,0 +1,504 @@
+{
+  "schema_version": 1,
+  "kind": "capture",
+  "target": "corejson",
+  "config": "default",
+  "verdict": "captured",
+  "causes": [],
+  "cause_details": [],
+  "image": "ghcr.io/sat-wik/migrationtool-toolchain@sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9",
+  "source": {
+    "commit": "cffa492da18c890181d64462f8af63992a69d3b0",
+    "tree_sha256": "9ca1058329f6ce0c31f9c13f861ec20cf75f35230b9aae0122ab81480a6df9a5"
+  },
+  "tools": {
+    "arm_gcc": "14.3.Rel1",
+    "clang": "16.0.6",
+    "cmake": "3.25.1",
+    "make": "4.3"
+  },
+  "inputs": {},
+  "toolchain_file_sha256": "10b734c60872999b948af8fc674537bb0b7e2eef25214a4077120fd3faa13357",
+  "compile_commands": {
+    "raw_sha256": "6be6cc63ab6cd75a23071714078dab7a34059f70bb2e3ed2f7bf057eec9a0a4c",
+    "canonical_sha256": "32f7eb6cc38c19dc80303cc13a553c5f8db9b4d4725295639c0909172cb08b5f",
+    "entries_exported": 1,
+    "entries_built": 1,
+    "dropped_unbuilt": []
+  },
+  "gates": {
+    "compiler_allow_listed": true,
+    "arch_ok": true,
+    "created_undeclared": [],
+    "timestamp_macro": []
+  },
+  "objects": {
+    "build/CMakeFiles/core_json.dir/source/core_json.c.obj": {
+      "sha256": "93f55ee24173e08e4beb15b7c3d663ceac50be3e45f16ac0da25efcf457b9833",
+      "arch_ok": true,
+      "opt_goal": "Aggressive Size",
+      "code_digest": "23c2718578d14adb297cb40791adfc0bc87d8876d005c9a1a65af01a51259648"
+    }
+  },
+  "configure_files": {
+    "build/CMakeCache.txt": "85c0d8e8fab7cff5b3390f217aa973c36acf8fbf0459ebb308bbbf355f1ae296",
+    "build/CMakeFiles/3.25.1/CMakeCCompiler.cmake": "9d5eb22a50817cd88b621774de7076ef04eafbb6f9d16277e607b32aea953f9e",
+    "build/CMakeFiles/3.25.1/CMakeSystem.cmake": "5637432f028436045dd3e04b873f9d6354721c96af3cae5ec771cf98ccc0c830",
+    "build/CMakeFiles/3.25.1/CompilerIdC/CMakeCCompilerId.c": "d935d5133e8d5b88e5c4873925a8233b6aeb73d3963575f3e9b1e8cc91b7fd87",
+    "build/CMakeFiles/CMakeDirectoryInformation.cmake": "2216186b3a2aec52746b7ea7845328f8d13a537f5963944cfb155f00f675d60f",
+    "build/CMakeFiles/Makefile.cmake": "73c4be4a76714f890c4e17ca29a0ae5ce42b1afb8fbc14b06e699d1b574b826b",
+    "build/CMakeFiles/Makefile2": "4545f560c11020ca6418a1ec5dfdce432231cbc3e2d94f649dfdcd7e926a6c68",
+    "build/CMakeFiles/TargetDirectories.txt": "b8ba4cd8d9823b74fd9e54d6449614f32d5907f9e4c18244a8f8e477264c34b8",
+    "build/CMakeFiles/cmake.check_cache": "a26189e394421da57f45706a07713c5720acd200a41711b0c0c590c3c63371c4",
+    "build/CMakeFiles/core_json.dir/DependInfo.cmake": "17e16eed46ef2d98db42abfb9f85b5e4cb0af1d05659cd5c02739747ec519bb2",
+    "build/CMakeFiles/core_json.dir/build.make": "89d9473e5a3b8d554940adb57765298c0499c6d5b0eb2daf7326bd21293863be",
+    "build/CMakeFiles/core_json.dir/cmake_clean.cmake": "b1cfa230eb0a182825f567e2c97e1cc379d030320b384fa6ca1a7fbc8f0005bb",
+    "build/CMakeFiles/core_json.dir/cmake_clean_target.cmake": "6874fe5efa1417e51a06d119b486758af9bf5aeb27256ed52e5b8def65b966ec",
+    "build/CMakeFiles/core_json.dir/compiler_depend.make": "5dd93f41721209bfa1226aef11402d738177ca1709cdbc8ae6dce5076410c405",
+    "build/CMakeFiles/core_json.dir/compiler_depend.ts": "e331b2844fd38f10546a717585442e84c868141dcfb7a345967002420901b615",
+    "build/CMakeFiles/core_json.dir/depend.make": "0851795c331001cf21e7ef4d3ce2f01c68a8e2a38a584fd00fd09d0ba0da27f0",
+    "build/CMakeFiles/core_json.dir/flags.make": "3aa0a22e56bc9879e172c4c701d7c34ceea43dd5b31f01d97facf13b2135227c",
+    "build/CMakeFiles/core_json.dir/link.txt": "61a8c996fd1e53820868f714960107128586c3ce00575d692a566116388ca07b",
+    "build/CMakeFiles/core_json.dir/progress.make": "c06e644090b09d41eaddf59d10bcf03c6db6499eb51fa0d03e5128e5a165cc3c",
+    "build/CMakeFiles/core_json.dir/source/core_json.c.obj.d": "19fb1e6615fb6eddb018db5d1270524de948ef0b07f082b729f14055fa4e09e2",
+    "build/CMakeFiles/progress.marks": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+    "build/Makefile": "d308c0405aa4df251f9a83a2335566ea03c1b3463439f2acdaff9bb61e225fdd",
+    "build/cmake_install.cmake": "b50a7a03fcd39ece3ac71d70cf6e638c1735bf63606ee671b6b6cd01f35e137e",
+    "build/compile_commands.json": "6be6cc63ab6cd75a23071714078dab7a34059f70bb2e3ed2f7bf057eec9a0a4c"
+  },
+  "entries": {
+    "JSON_SearchT": {
+      "found": true,
+      "signature_matches": true,
+      "header_included": true,
+      "found_signature": "JSONStatus_t (char *, size_t, const char *, size_t, char **, size_t *, JSONTypes_t *)",
+      "detail": null
+    },
+    "JSON_Validate": {
+      "found": true,
+      "signature_matches": true,
+      "header_included": true,
+      "found_signature": "JSONStatus_t (const char *, size_t)",
+      "detail": null
+    }
+  },
+  "steps": [
+    {
+      "name": "git rev-parse",
+      "run": {
+        "schema_version": 2,
+        "argv": [
+          "/usr/bin/git",
+          "--git-dir",
+          "/work/cache/corejson/cffa492da18c890181d64462f8af63992a69d3b0/tree/.git",
+          "rev-parse",
+          "HEAD"
+        ],
+        "cwd": "/work/cache/corejson/cffa492da18c890181d64462f8af63992a69d3b0",
+        "env": {
+          "GIT_ALLOW_PROTOCOL": "",
+          "GIT_CONFIG_GLOBAL": "/dev/null",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "/work/home",
+          "LANG": "C.UTF-8",
+          "PATH": "/usr/lib/llvm-16/bin:/opt/klee/bin:/opt/cargo-tools/bin:/opt/arm-gnu-toolchain/bin:/opt/cargo/bin:/usr/local/bin:/usr/bin:/bin",
+          "SOURCE_DATE_EPOCH": "1791158400",
+          "TMPDIR": "/work/tmp",
+          "TZ": "UTC"
+        },
+        "tool": {
+          "name": "git",
+          "path": "/usr/bin/git",
+          "version": null
+        },
+        "exit": {
+          "code": 0,
+          "signal": null,
+          "timed_out": false,
+          "tree_kill_sent": false
+        },
+        "stdout": {
+          "sha256": "1452dddee0b6311638ed344bdbc9ec817697398ccc7a7adae5547d7bbcd6ca8c",
+          "bytes_total": 41,
+          "bytes_stored": 41,
+          "truncated": false,
+          "complete": true
+        },
+        "stderr": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes_total": 0,
+          "bytes_stored": 0,
+          "truncated": false,
+          "complete": true
+        }
+      }
+    },
+    {
+      "name": "cmake configure",
+      "run": {
+        "schema_version": 2,
+        "argv": [
+          "/usr/bin/cmake",
+          "-S",
+          "/work/run/corejson/default/src",
+          "-B",
+          "/work/run/corejson/default/build",
+          "-G",
+          "Unix Makefiles",
+          "-DCMAKE_TOOLCHAIN_FILE=/work/capture/corejson/default/toolchain.cmake",
+          "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+          "-DCMAKE_BUILD_TYPE=MinSizeRel",
+          "-DCMAKE_MAKE_PROGRAM=/usr/bin/make"
+        ],
+        "cwd": "/work/run/corejson/default",
+        "env": {
+          "HOME": "/work/home",
+          "LANG": "C.UTF-8",
+          "PATH": "/usr/lib/llvm-16/bin:/opt/klee/bin:/opt/cargo-tools/bin:/opt/arm-gnu-toolchain/bin:/opt/cargo/bin:/usr/local/bin:/usr/bin:/bin",
+          "SOURCE_DATE_EPOCH": "1791158400",
+          "TMPDIR": "/work/tmp",
+          "TZ": "UTC"
+        },
+        "tool": {
+          "name": "cmake",
+          "path": "/usr/bin/cmake",
+          "version": "3.25.1"
+        },
+        "exit": {
+          "code": 0,
+          "signal": null,
+          "timed_out": false,
+          "tree_kill_sent": false
+        },
+        "stdout": {
+          "sha256": "8f3e209928433eaed723d9c1a9bf3d825298f6571eddf41e5685dac6894bdd29",
+          "bytes_total": 388,
+          "bytes_stored": 388,
+          "truncated": false,
+          "complete": true
+        },
+        "stderr": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes_total": 0,
+          "bytes_stored": 0,
+          "truncated": false,
+          "complete": true
+        }
+      }
+    },
+    {
+      "name": "cmake build",
+      "run": {
+        "schema_version": 2,
+        "argv": [
+          "/usr/bin/cmake",
+          "--build",
+          "/work/run/corejson/default/build",
+          "--target",
+          "core_json",
+          "-j1"
+        ],
+        "cwd": "/work/run/corejson/default",
+        "env": {
+          "HOME": "/work/home",
+          "LANG": "C.UTF-8",
+          "PATH": "/usr/lib/llvm-16/bin:/opt/klee/bin:/opt/cargo-tools/bin:/opt/arm-gnu-toolchain/bin:/opt/cargo/bin:/usr/local/bin:/usr/bin:/bin",
+          "SOURCE_DATE_EPOCH": "1791158400",
+          "TMPDIR": "/work/tmp",
+          "TZ": "UTC"
+        },
+        "tool": {
+          "name": "cmake",
+          "path": "/usr/bin/cmake",
+          "version": "3.25.1"
+        },
+        "exit": {
+          "code": 0,
+          "signal": null,
+          "timed_out": false,
+          "tree_kill_sent": false
+        },
+        "stdout": {
+          "sha256": "60c8488ea2937709e14ec742871c1f4c69d0829e64b00a5a0affb07e05943ae7",
+          "bytes_total": 150,
+          "bytes_stored": 150,
+          "truncated": false,
+          "complete": true
+        },
+        "stderr": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes_total": 0,
+          "bytes_stored": 0,
+          "truncated": false,
+          "complete": true
+        }
+      }
+    },
+    {
+      "name": "readelf build/CMakeFiles/core_json.dir/source/core_json.c.obj",
+      "run": {
+        "schema_version": 2,
+        "argv": [
+          "/opt/arm-gnu-toolchain/bin/arm-none-eabi-readelf",
+          "-A",
+          "/work/run/corejson/default/build/CMakeFiles/core_json.dir/source/core_json.c.obj"
+        ],
+        "cwd": "/work/run/corejson/default",
+        "env": {
+          "HOME": "/work/home",
+          "LANG": "C.UTF-8",
+          "PATH": "/usr/lib/llvm-16/bin:/opt/klee/bin:/opt/cargo-tools/bin:/opt/arm-gnu-toolchain/bin:/opt/cargo/bin:/usr/local/bin:/usr/bin:/bin",
+          "SOURCE_DATE_EPOCH": "1791158400",
+          "TMPDIR": "/work/tmp",
+          "TZ": "UTC"
+        },
+        "tool": {
+          "name": "readelf",
+          "path": "/opt/arm-gnu-toolchain/bin/arm-none-eabi-readelf",
+          "version": null
+        },
+        "exit": {
+          "code": 0,
+          "signal": null,
+          "timed_out": false,
+          "tree_kill_sent": false
+        },
+        "stdout": {
+          "sha256": "89a7572afbc9a1b96947b724890e5934137b1857c25626921f0c0af381c5ecf1",
+          "bytes_total": 552,
+          "bytes_stored": 552,
+          "truncated": false,
+          "complete": true
+        },
+        "stderr": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes_total": 0,
+          "bytes_stored": 0,
+          "truncated": false,
+          "complete": true
+        }
+      }
+    },
+    {
+      "name": "clang ast JSON_Validate",
+      "run": {
+        "schema_version": 2,
+        "argv": [
+          "/usr/lib/llvm-16/bin/clang",
+          "--target=arm-none-eabi",
+          "--sysroot=/opt/arm-gnu-toolchain/arm-none-eabi",
+          "-fsyntax-only",
+          "-Xclang",
+          "-ast-dump=json",
+          "-Xclang",
+          "-ast-dump-filter=JSON_Validate",
+          "-I/work/run/corejson/default/src/source/include",
+          "-mcpu=cortex-m4",
+          "-mthumb",
+          "-mfloat-abi=hard",
+          "-mfpu=fpv4-sp-d16",
+          "-DNDEBUG",
+          "/work/capture/corejson/default/entry_probe.c"
+        ],
+        "cwd": "/work/run/corejson/default/build",
+        "env": {
+          "HOME": "/work/home",
+          "LANG": "C.UTF-8",
+          "PATH": "/usr/lib/llvm-16/bin:/opt/klee/bin:/opt/cargo-tools/bin:/opt/arm-gnu-toolchain/bin:/opt/cargo/bin:/usr/local/bin:/usr/bin:/bin",
+          "SOURCE_DATE_EPOCH": "1791158400",
+          "TMPDIR": "/work/tmp",
+          "TZ": "UTC"
+        },
+        "tool": {
+          "name": "clang",
+          "path": "/usr/lib/llvm-16/bin/clang",
+          "version": "16.0.6"
+        },
+        "exit": {
+          "code": 0,
+          "signal": null,
+          "timed_out": false,
+          "tree_kill_sent": false
+        },
+        "stdout": {
+          "sha256": "4aba89c7a97036d88d9a432ac943bfccd0539a6615caef92aa5535bba585580d",
+          "bytes_total": 2518,
+          "bytes_stored": 2518,
+          "truncated": false,
+          "complete": true
+        },
+        "stderr": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes_total": 0,
+          "bytes_stored": 0,
+          "truncated": false,
+          "complete": true
+        }
+      }
+    },
+    {
+      "name": "clang deps JSON_Validate",
+      "run": {
+        "schema_version": 2,
+        "argv": [
+          "/usr/lib/llvm-16/bin/clang",
+          "--target=arm-none-eabi",
+          "--sysroot=/opt/arm-gnu-toolchain/arm-none-eabi",
+          "-MM",
+          "-I/work/run/corejson/default/src/source/include",
+          "-mcpu=cortex-m4",
+          "-mthumb",
+          "-mfloat-abi=hard",
+          "-mfpu=fpv4-sp-d16",
+          "-DNDEBUG",
+          "/work/run/corejson/default/src/source/core_json.c"
+        ],
+        "cwd": "/work/run/corejson/default/build",
+        "env": {
+          "HOME": "/work/home",
+          "LANG": "C.UTF-8",
+          "PATH": "/usr/lib/llvm-16/bin:/opt/klee/bin:/opt/cargo-tools/bin:/opt/arm-gnu-toolchain/bin:/opt/cargo/bin:/usr/local/bin:/usr/bin:/bin",
+          "SOURCE_DATE_EPOCH": "1791158400",
+          "TMPDIR": "/work/tmp",
+          "TZ": "UTC"
+        },
+        "tool": {
+          "name": "clang",
+          "path": "/usr/lib/llvm-16/bin/clang",
+          "version": "16.0.6"
+        },
+        "exit": {
+          "code": 0,
+          "signal": null,
+          "timed_out": false,
+          "tree_kill_sent": false
+        },
+        "stdout": {
+          "sha256": "db9ac3be06071614404b4fb591f3f1e04f875eee590550f81124fab2825b5aa9",
+          "bytes_total": 125,
+          "bytes_stored": 125,
+          "truncated": false,
+          "complete": true
+        },
+        "stderr": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes_total": 0,
+          "bytes_stored": 0,
+          "truncated": false,
+          "complete": true
+        }
+      }
+    },
+    {
+      "name": "clang ast JSON_SearchT",
+      "run": {
+        "schema_version": 2,
+        "argv": [
+          "/usr/lib/llvm-16/bin/clang",
+          "--target=arm-none-eabi",
+          "--sysroot=/opt/arm-gnu-toolchain/arm-none-eabi",
+          "-fsyntax-only",
+          "-Xclang",
+          "-ast-dump=json",
+          "-Xclang",
+          "-ast-dump-filter=JSON_SearchT",
+          "-I/work/run/corejson/default/src/source/include",
+          "-mcpu=cortex-m4",
+          "-mthumb",
+          "-mfloat-abi=hard",
+          "-mfpu=fpv4-sp-d16",
+          "-DNDEBUG",
+          "/work/capture/corejson/default/entry_probe.c"
+        ],
+        "cwd": "/work/run/corejson/default/build",
+        "env": {
+          "HOME": "/work/home",
+          "LANG": "C.UTF-8",
+          "PATH": "/usr/lib/llvm-16/bin:/opt/klee/bin:/opt/cargo-tools/bin:/opt/arm-gnu-toolchain/bin:/opt/cargo/bin:/usr/local/bin:/usr/bin:/bin",
+          "SOURCE_DATE_EPOCH": "1791158400",
+          "TMPDIR": "/work/tmp",
+          "TZ": "UTC"
+        },
+        "tool": {
+          "name": "clang",
+          "path": "/usr/lib/llvm-16/bin/clang",
+          "version": "16.0.6"
+        },
+        "exit": {
+          "code": 0,
+          "signal": null,
+          "timed_out": false,
+          "tree_kill_sent": false
+        },
+        "stdout": {
+          "sha256": "1f3396589a817bd133668f9f79e17fa582b7a36f5c44cebbc758c4db9a21aeeb",
+          "bytes_total": 6666,
+          "bytes_stored": 6666,
+          "truncated": false,
+          "complete": true
+        },
+        "stderr": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes_total": 0,
+          "bytes_stored": 0,
+          "truncated": false,
+          "complete": true
+        }
+      }
+    },
+    {
+      "name": "clang deps JSON_SearchT",
+      "run": {
+        "schema_version": 2,
+        "argv": [
+          "/usr/lib/llvm-16/bin/clang",
+          "--target=arm-none-eabi",
+          "--sysroot=/opt/arm-gnu-toolchain/arm-none-eabi",
+          "-MM",
+          "-I/work/run/corejson/default/src/source/include",
+          "-mcpu=cortex-m4",
+          "-mthumb",
+          "-mfloat-abi=hard",
+          "-mfpu=fpv4-sp-d16",
+          "-DNDEBUG",
+          "/work/run/corejson/default/src/source/core_json.c"
+        ],
+        "cwd": "/work/run/corejson/default/build",
+        "env": {
+          "HOME": "/work/home",
+          "LANG": "C.UTF-8",
+          "PATH": "/usr/lib/llvm-16/bin:/opt/klee/bin:/opt/cargo-tools/bin:/opt/arm-gnu-toolchain/bin:/opt/cargo/bin:/usr/local/bin:/usr/bin:/bin",
+          "SOURCE_DATE_EPOCH": "1791158400",
+          "TMPDIR": "/work/tmp",
+          "TZ": "UTC"
+        },
+        "tool": {
+          "name": "clang",
+          "path": "/usr/lib/llvm-16/bin/clang",
+          "version": "16.0.6"
+        },
+        "exit": {
+          "code": 0,
+          "signal": null,
+          "timed_out": false,
+          "tree_kill_sent": false
+        },
+        "stdout": {
+          "sha256": "db9ac3be06071614404b4fb591f3f1e04f875eee590550f81124fab2825b5aa9",
+          "bytes_total": 125,
+          "bytes_stored": 125,
+          "truncated": false,
+          "complete": true
+        },
+        "stderr": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes_total": 0,
+          "bytes_stored": 0,
+          "truncated": false,
+          "complete": true
+        }
+      }
+    }
+  ]
+}

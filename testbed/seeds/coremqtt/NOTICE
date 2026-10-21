@@ -1,0 +1,15 @@
+Seed corpus of the test-bed target coremqtt
+
+Upstream: https://github.com/FreeRTOS/coreMQTT
+Commit: 04845c6a8e5f9cf2d232f1c6e80baeb81302e690
+Licence (SPDX expression): MIT
+Elected licence: MIT
+Licence file: LICENSE
+
+Seeds whose method is not hand_made are copies of upstream test data taken
+from the paths the manifest declares as seed_source, and they carry the
+licence above.
+Seeds whose method is hand_made were written for this project from the
+format specification named in each source file under
+testbed/targets/coremqtt/hand-made/. They are not upstream test data, and
+index.json marks each of them proposed.

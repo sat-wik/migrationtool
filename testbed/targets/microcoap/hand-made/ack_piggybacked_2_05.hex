@@ -1,0 +1,3 @@
+# RFC 7252 (CoAP), section 3 message format, section 5.2.1 piggybacked response
+# case: ACK 2.05 Content with token 0x74 and payload '22.3 C'
+61 45 7d 34 74 ff 32 32 2e 33 20 43

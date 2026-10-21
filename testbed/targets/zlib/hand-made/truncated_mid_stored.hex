@@ -1,0 +1,4 @@
+# RFC 1950 (zlib format) and RFC 1951 (deflate)
+# case: cut inside the stored block header
+# generated once by: python3 -I research/testbed-seeds/zlib.py truncated_mid_stored
+78 01 01 05 00 fa

@@ -1,0 +1,3 @@
+# MQTT Version 3.1.1 (OASIS Standard, 29 October 2014), section 3.11 UNSUBACK
+# case: packet identifier 11
+b0 02 00 0b
