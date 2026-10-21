@@ -4,12 +4,11 @@ milestone: v1.0
 milestone_name: MVP
 current_phase: 3
 current_phase_name: Equivalence Contract and Test-Vector Schema
-status: planning
+status: "Phase 02 shipped — PR #5"
 stopped_at: Phase 2 complete, ready to plan Phase 3
-last_updated: "2026-10-21T02:45:17.766Z"
+last_updated: "2026-10-21T03:07:23.218Z"
 last_activity: 2026-10-21
-last_activity_desc: Phase 2 complete, transitioned to Phase 3
-state_head: 96de7322b50c3b283dc09de2400f8998f93a2f49
+state_head: 90caa4708d6fe4d6fc84d9ebfa3d60a00222e888
 progress:
   total_phases: 12
   completed_phases: 2
@@ -31,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 
 Phase: 3 — Equivalence Contract and Test-Vector Schema
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-21 — Phase 2 complete, transitioned to Phase 3
+Status: Phase 02 shipped — PR #5
+Last activity: 2026-10-21
 
 Progress: [██░░░░░░░░] 17%
 
