@@ -5,15 +5,15 @@ titles: json
 findings:
   - id: CR-01
     severity: critical
-    disposition: open
+    disposition: fixed
     title: "GCC long-option spellings bypass the helper-option, write-path and `-fprofile-` gates"
   - id: CR-02
     severity: critical
-    disposition: open
+    disposition: fixed
     title: "The assembler carrier deny-list misses single-dash and abbreviated GNU `as` options"
   - id: CR-03
     severity: critical
-    disposition: open
+    disposition: fixed
     title: "The compile-only check accepts a `-c` that GCC reads as an operand, so the linker runs and `-Wl,` is unexamined"
   - id: WR-01
     severity: warning
@@ -37,15 +37,15 @@ findings:
     title: "Archive extraction relies only on the archive digest; the extracted tree is not checked for escaping links"
   - id: WR-12
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The recorded toolchain-file hash is recomputed, never compared with the file the build used"
   - id: WR-13
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The helper-option gate refuses flags that normal Cortex-M builds use, and applies to commands that were never built"
   - id: WR-14
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`check_toolchain_file` turns an unreadable toolchain file into a fatal error instead of a cause"
   - id: IN-01
     severity: info
@@ -93,16 +93,24 @@ findings:
     title: "The build notice repeats the pair name on every row"
   - id: IN-13
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Replay's `check_entry` repeats only part of the capture gate"
   - id: IN-14
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Three hand-kept option tables must agree for the gate to be sound"
   - id: IN-15
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Some of the new refusal evidence is not live or not run in CI"
+  - id: IN-16
+    severity: info
+    disposition: open
+    title: "The non-`--read-only-toolchain` record path and the single-process `capture()` keep the old end-state-only WR-12 weakness"
+  - id: IN-17
+    severity: info
+    disposition: open
+    title: "The read-only-mount control step claims \"run_build's docker flags\" but does not replicate them all"
   - id: WR-11
     severity: warning
     disposition: fixed
@@ -131,26 +139,26 @@ findings:
     severity: info
     disposition: fixed
     title: "`isotp` is dropped as a whole target because of the probe design, not a defect of the target"
-open: 25
-total: 32
-recorded: 2026-10-20T10:34:12.071Z
+open: 17
+total: 34
+recorded: 2026-10-21T00:00:00.000Z
 ---
 
 # Phase 02: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | open | - |
-| CR-02 | critical | open | - |
-| CR-03 | critical | open | - |
+| CR-01 | critical | fixed | 02-21 (8da9874); confirmed fixed by the post-02-22 re-review |
+| CR-02 | critical | fixed | 02-21 (8da9874); confirmed fixed by the post-02-22 re-review |
+| CR-03 | critical | fixed | 02-21 (8da9874); confirmed fixed by the post-02-22 re-review |
 | WR-01 | warning | open | - |
 | WR-03 | warning | open | - |
 | WR-06 | warning | open | - |
 | WR-07 | warning | deferred | total budget fixed in 02-13 (f16fca6); member-count cap deferred by founder (02-13-SUMMARY) |
 | WR-09 | warning | open | - |
-| WR-12 | warning | open | - |
-| WR-13 | warning | open | - |
-| WR-14 | warning | open | - |
+| WR-12 | warning | fixed | 02-22 (e85800f, b312054, 9273ef8); confirmed fixed by the post-02-22 re-review |
+| WR-13 | warning | fixed | 02-21 (44a3dd6), names measured in container run 39453293834; confirmed fixed by the post-02-22 re-review |
+| WR-14 | warning | fixed | 02-22 (e85800f); confirmed fixed by the post-02-22 re-review |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
@@ -162,9 +170,11 @@ recorded: 2026-10-20T10:34:12.071Z
 | IN-10 | info | open | - |
 | IN-11 | info | open | - |
 | IN-12 | info | open | - |
-| IN-13 | info | open | - |
-| IN-14 | info | open | - |
-| IN-15 | info | open | - |
+| IN-13 | info | fixed | 02-21 (8da9874); confirmed fixed by the post-02-22 re-review |
+| IN-14 | info | fixed | 02-21 (8da9874); confirmed fixed by the post-02-22 re-review |
+| IN-15 | info | fixed | 02-21 (148715f), 02-22 (9273ef8); confirmed fixed by the post-02-22 re-review |
+| IN-16 | info | open | - |
+| IN-17 | info | open | - |
 | WR-11 | warning | fixed | 02-20 (69adb69); confirmed fixed by the post-02-20 re-review |
 | WR-02 | warning | fixed | 02-16 (fa1df60); confirmed fixed by the 2026-10-20 re-review (not in the current review) |
 | WR-04 | warning | fixed | 02-17/02-18/02-19 (fb04867); confirmed fixed by the 2026-10-20 re-review (not in the current review) |
