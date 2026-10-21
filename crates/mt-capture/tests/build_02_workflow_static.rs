@@ -150,7 +150,13 @@ fn build_02_workflow_runs_capture_and_replay_without_network() {
     // container with network access by writing its own command.
     let outside = without_functions(
         &text,
-        &["run_offline", "run_networked", "image_tool", "run_build"],
+        &[
+            "run_offline",
+            "run_networked",
+            "image_tool",
+            "run_build",
+            "run_vectors",
+        ],
     );
     assert!(
         !outside

@@ -339,6 +339,7 @@ version = "0.1.0"
 dependencies = [
  "mt-capture",
  "mt-toolchain",
+ "regex",
  "serde_json",
  "sha2",
  "tempfile",
