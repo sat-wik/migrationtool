@@ -10,6 +10,15 @@
 # testbed-replay, testbed-determinism. A failing step publishes the same title as
 # an error, followed by the causes and details of every failing report.
 #
+# The executor self-test (EQV-04, plan 03-01) runs the C reference executor's own
+# cases in the pinned image: `mt vectors selftest` renders a driver from the shared
+# runtime template, links it with the pinned arm-none-eabi-gcc and runs it under
+# `qemu-arm -cpu cortex-m4`. It publishes the titles vectors-selftest and
+# fixture vectors-selftest-dwarf (the pinned compiler's DWARF text for its probe,
+# kept as a test fixture). It runs only the template's own cases, no captured
+# upstream code, and its helper (run_vectors) has no network: no step other than
+# fetch has network access.
+#
 # Network policy (D-12): fetch is the only step with network access. Validate,
 # seeds, pairs, record, replay and compare go through run_offline, which adds
 # `--network none`; a test (build_02_workflow_runs_capture_and_replay_without_network)
@@ -243,6 +252,23 @@ jobs:
               -v "$work/toolchain/$id/$cfg:/opt/mt/toolchain:ro" \
               "$IMAGE" mt testbed capture --stage build --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --config "$cfg" "$id" --toolchain-dir /opt/mt/toolchain
           }
+          # run_vectors SUBCOMMAND ARGS...: `mt vectors` in the image with NO network. It
+          # runs no captured upstream code in this plan, only the executor self-test's own
+          # cases (plan 03-04 adds a separate helper for runs of captured objects). Same
+          # unprivileged, read-only, capability-free container as run_offline; mt, the pins
+          # and the committed testbed directory are read-only, and only /work and /out are
+          # writable. Exit codes are those of `mt vectors`: 0 passed, 1 a row failed, 2
+          # invalid input.
+          run_vectors() {
+            docker run --rm --platform linux/amd64 --network none --user 65534:65534 --read-only --cap-drop ALL \
+              --pids-limit 1024 --memory 6g --memory-swap 6g --cpus 2 \
+              --security-opt no-new-privileges --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
+              -v "$GITHUB_WORKSPACE/container/pins.toml:/opt/mt/pins.toml:ro" \
+              -v "$GITHUB_WORKSPACE/testbed:/opt/mt/testbed:ro" \
+              -v "${WORK_HOST:-$RUNNER_TEMP/work}:/work" -v "${OUT_HOST:-$RUNNER_TEMP/out}:/out" \
+              "$IMAGE" mt vectors "$@"
+          }
           # evidence STEP: lines read from the step's reports, appended to its notice.
           evidence() {
             local step=$1 out="$RUNNER_TEMP/out"
@@ -318,6 +344,26 @@ jobs:
               return 1
             fi
             annotate notice "testbed-$step" "$notice"
+          }
+          # finish_vectors STEP RC: publish the summary of an `mt vectors` step (written by
+          # the caller to $RUNNER_TEMP/out/STEP.txt, with stderr in STEP.err) as notice
+          # vectors-STEP when RC is 0, otherwise as error vectors-STEP with the stderr tail,
+          # and fail the step. It publishes vectors- titles only, never a testbed- title.
+          finish_vectors() {
+            local step=$1 rc=$2 out="$RUNNER_TEMP/out"
+            local notice="$out/notice-vectors-$step.txt"
+            cat "$out/$step.txt"
+            if [ -s "$out/$step.err" ]; then cat "$out/$step.err" >&2; fi
+            {
+              cat "$out/$step.txt"
+              echo "exit code: $rc"
+              if [ "$rc" -ne 0 ] && [ -s "$out/$step.err" ]; then echo "--- stderr"; tail -c 2500 "$out/$step.err"; fi
+            } > "$notice"
+            if [ "$rc" -ne 0 ]; then
+              annotate error "vectors-$step" "$notice"
+              return 1
+            fi
+            annotate notice "vectors-$step" "$notice"
           }
           LIB
           mkdir -p "$RUNNER_TEMP/work" "$RUNNER_TEMP/out"
@@ -673,6 +719,31 @@ jobs:
         run: |
           source "$RUNNER_TEMP/ci-lib.sh"
           annotate notice "fixture qcbor entry ast" "$RUNNER_TEMP/out/fixture-qcbor-ast.json" 19 27
+
+      # EQV-04 (plan 03-01, CONTEXT D-30): the C reference executor proves itself in the
+      # pinned image before any adapter depends on it. `mt vectors selftest` renders a
+      # driver from the shared runtime template, links it with the pinned compiler and
+      # runs the cases under `qemu-arm -cpu cortex-m4`: the pinned QEMU version, guard-page
+      # overruns, the fault handler (no core file), abort, the timeout, the -R memory
+      # budget, 100 identical runs, the presence of the analysis tools and the pinned
+      # GCC's DWARF for a one-byte enum. It runs after every testbed step and reads nothing
+      # they write; the DWARF text is published first, so it survives a failing row.
+      - name: Run the executor self-test in the pinned image
+        id: selftest
+        if: ${{ !cancelled() && steps.image.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          run_vectors selftest --pins /opt/mt/pins.toml --work-dir /work > "$out/selftest.txt" 2> "$out/selftest.err"
+          rc=$?
+          set -e
+          probe="${WORK_HOST:-$RUNNER_TEMP/work}/vectors-selftest/dwarf/probe.txt"
+          if [ -f "$probe" ]; then
+            annotate notice "fixture vectors-selftest-dwarf" "$probe"
+          fi
+          finish_vectors selftest "$rc"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}

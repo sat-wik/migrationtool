@@ -51,13 +51,20 @@ fn function_body(text: &str, name: &str) -> String {
     panic!("{header} is never closed");
 }
 
-/// The text of one workflow step: from its `- name:` line to the next step.
+/// The text of one workflow step: from its `- name:` line to the next step (the
+/// next `- ` item at the same indentation, whatever key it starts with).
 fn step_text(text: &str, name: &str) -> String {
     let header = format!("- name: {name}");
     let mut lines = text.lines().skip_while(|line| line.trim() != header);
-    assert!(lines.next().is_some(), "{WORKFLOW} has no step {name:?}");
+    let first = lines
+        .next()
+        .unwrap_or_else(|| panic!("{WORKFLOW} has no step {name:?}"));
+    let indent = first.len() - first.trim_start().len();
     lines
-        .take_while(|line| !line.trim_start().starts_with("- name:"))
+        .take_while(|line| {
+            let own = line.len() - line.trim_start().len();
+            !(own == indent && line.trim_start().starts_with("- "))
+        })
         .collect::<Vec<_>>()
         .join("\n")
 }
