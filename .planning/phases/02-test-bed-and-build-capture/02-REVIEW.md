@@ -23,8 +23,8 @@ files_reviewed_list:
 findings:
   critical: 0
   warning: 5
-  info: 13
-  total: 18
+  info: 14
+  total: 19
 status: issues_found
 ---
 
@@ -130,6 +130,12 @@ Carried from the previous review, all still open. See the "Previous Findings (st
 **File:** `.github/workflows/container.yml` (step "Prove a read-only toolchain mount cannot be written (WR-12)")
 **Issue:** The control runs `docker run` with `--read-only`, `--cap-drop ALL`, `--security-opt no-new-privileges`, a small `--tmpfs /tmp`, and the `:ro` toolchain mount, and its comment says it uses "run_build's docker flags". It omits `--platform linux/amd64`, `--pids-limit`, `--memory`/`--memory-swap`, `--cpus`, and the `exec`/`size=2g` on `/tmp`. The read-only conclusion depends only on `--read-only` plus the `:ro` mount, so the proof is valid, but the "run_build's docker flags" wording overstates the fidelity of the control to the real build container.
 **Fix:** Either reproduce run_build's full flag set in the control, or soften the comment to say it uses the mount flags that bear on writability (`--read-only` and `:ro`), not the complete run_build invocation.
+
+### IN-18: Options reach the clang entry probe outside the gate walk
+
+**File:** `crates/mt-capture/src/entries.rs:521-574` (`filter_flags`)
+**Issue:** `filter_flags` re-reads the recorded options with its own parser instead of the 02-21 walk. An argument pair the walk reads as an operand can reach clang as an option: `-MT -include x.h` passes the walk as a target name plus an input, but clang receives `-include x.h`. Found by the post-02-22 verifier from reading the code; not reproduced. Impact is limited to how clang parses headers for the entry check: no helper runs and no file is written.
+**Fix:** have `filter_flags` consume the walk's classified arguments rather than re-parsing argv. Deferred to a later phase by founder decision (2026-10-21).
 
 ## Resolved since last review
 

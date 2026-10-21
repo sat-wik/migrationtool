@@ -1,7 +1,7 @@
 ---
 phase: 02-test-bed-and-build-capture
 verified: 2026-10-21T02:34:52Z
-status: human_needed
+status: passed
 score: 12/12 must-haves verified
 covered_files:
   - .github/workflows/container.yml
@@ -90,7 +90,7 @@ covered_files:
   - testbed/README.md
   - testbed/dropped.toml
   - testbed/manifest.toml
-covered_digest: "v3:sha256:4497d286900a7d5a5aa53989086b4cd24a3d29ce3a0760aadacf2f3dfaecc709"
+covered_digest: "v3:sha256:467a1c78753950b183f3d0825ee08df4beb65d5ee1edc58c40124a8859fd2cb0"
 behavior_unverified: 0
 overrides_applied: 0
 re_verification:
@@ -127,21 +127,27 @@ advisory:
     evidence_status: "none provided"
 human_verification:
   - test: "Resolve 02-21 prohibition 1: no unmeasured spelling in ALLOWED_OPTIONS or SHIPPED_SPECS (exceptions: founder depfile flags, one CI-only flag of the named families with CI evidence)"
+    result: "confirmed by the founder on 2026-10-21"
     expected: "Founder marks it resolved, or names a spelling that should not be on the list"
     why_human: "A judgment-tier prohibition with status active in 02-21-PLAN.md. Advisory verifier verdict (not authoritative): holds. cc.rs:290-347 has 56 spellings: 45 measured exact spellings, -Wmissing-variable-declarations (CI-only, testbed run 39453293771 failed on cjson with option_not_allowed, added test first in 1270139/2940852), -MD/-MMD/-MP/-MF/-MT/-MQ (founder), and -o/-I/-D (measured) plus -specs= (founder). SHIPPED_SPECS (cc.rs:365-379) equals the 13 names of the arm-specs notice of container run 39453293834, which I counted. No carrier, long spelling, @ or other file-naming option is on the list"
   - test: "Resolve 02-21 prohibition 2: no existing gate, comparison, limit, verdict rule or floor was relaxed"
+    result: "confirmed by the founder on 2026-10-21"
     expected: "Founder marks it resolved"
     why_human: "Judgment-tier, status active. Advisory verdict: holds. The deny-list became an allow-list, which is stricter. Every changed 02-20 expectation in 02-21-SUMMARY moves an accepted flag to refused. The one cause change (soft-float in build_01_capture_drivers_fail_closed, arch_gate to option_not_allowed) leaves the arch gate's own end-to-end test (build_01_record_stage_refuses_an_object_built_for_another_abi) passing. The notices of the final run equal 02-20's line for line (same 30 captured, 31 replay rows, drop log and floor)"
   - test: "Resolve 02-21 prohibition 3: push only to claude/gsd-discuss-phase-1-mzdw5v, no force-push, never red, at most 3 round trips"
+    result: "confirmed by the founder on 2026-10-21"
     expected: "Founder marks it resolved"
     why_human: "Judgment-tier, status active. Advisory verdict: holds. Every Actions run since 2026-10-20T15:00Z is on that branch. 02-21 used 2 testbed round trips (4818d97 failure, 44a3dd6 success). Every pushed head is an ancestor of HEAD. ci passed on every pushed head (4818d97, 44a3dd6, 79fe192, ae3df6c). No run exists for a RED-only commit. Force-push cannot be fully ruled out from run history alone"
   - test: "Resolve 02-22 prohibition 1: the toolchain directory is never mounted writable, inside the run directory or under a writable mount; --toolchain-dir and --read-only-toolchain are never dropped; CI never falls back to the end-state comparison"
+    result: "confirmed by the founder on 2026-10-21"
     expected: "Founder marks it resolved"
     why_human: "Judgment-tier, status active. Advisory verdict: holds. testbed.yml:243 mounts $work/toolchain/$id/$cfg at /opt/mt/toolchain:ro. The writable mounts are $scratch/work and the run directory (lines 240, 242). Line 244 passes --toolchain-dir and lines 454 and 517 pass --read-only-toolchain. build_02_untrusted_builds_cannot_write_the_evidence and build_02_record_steps_require_the_read_only_toolchain pass. The corejson report of run 39528941371 reads toolchain_file_read_only true"
   - test: "Resolve 02-22 prohibition 2: no relaxation of gates, comparison, limits, the 02-21 allow-list, the verdict rule or the floor"
+    result: "confirmed by the founder on 2026-10-21"
     expected: "Founder marks it resolved"
     why_human: "Judgment-tier, status active. Advisory verdict: holds. cc.rs and replay.rs are unchanged by 02-22 (git log), settle_verdict and the build-record check are unchanged, and the notices equal 02-20's. 02-22 adds causes (toolchain_unreadable, more toolchain_changed cases) and removes none"
   - test: "Resolve 02-22 prohibition 3: push only to the session branch, no force-push, never red, at most 3 round trips"
+    result: "confirmed by the founder on 2026-10-21"
     expected: "Founder marks it resolved"
     why_human: "Judgment-tier, status active. Advisory verdict: holds. 02-22 used 1 testbed round trip (9273ef8). The ci, testbed and container runs on 9273ef8 all passed. Later pushes (7c55dbe..bd0df6a) touch only .planning/ and their ci runs passed"
 ---
@@ -150,7 +156,7 @@ human_verification:
 
 **Phase Goal:** A pinned test bed of 10-20 real C parsers can be rebuilt exactly, per shipped configuration, for Cortex-M with GCC.
 **Verified:** 2026-10-21T02:34:52Z
-**Status:** human_needed
+**Status:** passed (founder confirmed the six judgment-tier prohibitions of 02-21 and 02-22 on 2026-10-21; they are now `status: resolved`)
 **Re-verification:** Yes, after gap-closure plans 02-20, 02-21 and 02-22. This file replaces the report of 2026-10-20T02:40:00Z.
 
 ## Goal Achievement
@@ -386,3 +392,8 @@ What remains for a human is resolving the six active judgment-tier prohibitions 
 
 _Verified: 2026-10-21T02:34:52Z_
 _Verifier: Claude (gsd-verifier)_
+
+
+## Founder sign-off (2026-10-21)
+
+The founder confirmed all six judgment-tier prohibitions of plans 02-21 and 02-22 on the verifier's advisory evidence above, and they are set to `status: resolved` in the PLAN frontmatter. The verifier's advisory finding on `entries.rs` `filter_flags` (options reaching the clang entry probe outside the gate walk) is logged for a later phase as review finding IN-18, by founder decision.

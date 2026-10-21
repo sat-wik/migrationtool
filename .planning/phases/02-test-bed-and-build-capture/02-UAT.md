@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 02-test-bed-and-build-capture
 source: [02-VERIFICATION.md (2026-10-13 and 2026-10-20 re-verification)]
 started: 2026-10-13T18:40:00Z
-updated: 2026-10-20T03:00:00Z
+updated: 2026-10-21T03:00:00Z
 ---
 
 ## Current Test
@@ -148,7 +148,9 @@ blocked: 0
 
 - gap_id: G-02-5
   truth: "The record stage never reports a pair as captured unless its gates ran and passed, and it refuses a build record whose built:false carries no failure cause; the toolchain file the build used equals the pinned toolchain text"
-  status: failed
+  status: resolved
+  resolved_by: 02-20-PLAN.md
+  resolved_at: 2026-10-21
   reason: "User reported: Fix both in a small gap plan: the record stage refuses a record with built:false and no failure cause and makes the verdict depend on the gates (WR-11), and it compares stage/toolchain.cmake with the recomputed text (WR-12)."
   severity: major
   test: 6
@@ -164,7 +166,9 @@ blocked: 0
 
 - gap_id: G-02-6
   truth: "The compile-command gate refuses recorded GCC driver options that execute helper programs, so replay never passes them to the pinned compiler; the threat is registered in 02-SECURITY.md"
-  status: failed
+  status: resolved
+  resolved_by: 02-20-PLAN.md
+  resolved_at: 2026-10-21
   reason: "User reported: Register it as a medium threat, and make the compile-command gate reject GCC driver options that execute helpers (-wrapper, -B<dir>, -specs, plugins) in the same small plan."
   severity: major
   test: 7
@@ -180,7 +184,9 @@ blocked: 0
 
 - gap_id: G-02-7
   truth: "AR-02-03's rationale states exactly what a forged build record can and cannot do after the G-02-5 fix"
-  status: failed
+  status: resolved
+  resolved_by: 02-20-PLAN.md
+  resolved_at: 2026-10-21
   reason: "User reported: Keep AR-02-03, and amend its rationale once WR-11 is fixed so it states what a forged record can and cannot do."
   severity: minor
   test: 8
@@ -194,7 +200,9 @@ blocked: 0
 
 - gap_id: G-02-8
   truth: "The compile-command gate accepts only measured-good options through one operand-aware argument walk, so no spelling, carrier or operand trick reaches the compiler, assembler or linker at capture or replay; the toolchain evidence covers what configure read"
-  status: failed
+  status: resolved
+  resolved_by: 02-21-PLAN.md, 02-22-PLAN.md
+  resolved_at: 2026-10-21
   reason: "Founder decision 2026-10-20 after the post-02-20 code re-review: replace the deny-list gate with an allow-list gate (one operand-aware walk shared by the -c test, derive_output and the write-path check); fold in WR-12 (configure-time toolchain check), WR-13 (-specs allowed only for names the pinned toolchain ships) and WR-14 (an unreadable toolchain file is a named cause on the pair, not an aborted step)."
   severity: blocker
   test: review

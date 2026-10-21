@@ -111,6 +111,10 @@ findings:
     severity: info
     disposition: open
     title: "The read-only-mount control step claims \"run_build's docker flags\" but does not replicate them all"
+  - id: IN-18
+    severity: info
+    disposition: deferred
+    title: "Options reach the clang entry probe outside the gate walk"
   - id: WR-11
     severity: warning
     disposition: fixed
@@ -140,7 +144,7 @@ findings:
     disposition: fixed
     title: "`isotp` is dropped as a whole target because of the probe design, not a defect of the target"
 open: 17
-total: 34
+total: 35
 recorded: 2026-10-21T00:00:00.000Z
 ---
 
@@ -175,6 +179,7 @@ recorded: 2026-10-21T00:00:00.000Z
 | IN-15 | info | fixed | 02-21 (148715f), 02-22 (9273ef8); confirmed fixed by the post-02-22 re-review |
 | IN-16 | info | open | - |
 | IN-17 | info | open | - |
+| IN-18 | info | deferred | found by the post-02-22 verifier; deferred to a later phase by founder decision (2026-10-21) |
 | WR-11 | warning | fixed | 02-20 (69adb69); confirmed fixed by the post-02-20 re-review |
 | WR-02 | warning | fixed | 02-16 (fa1df60); confirmed fixed by the 2026-10-20 re-review (not in the current review) |
 | WR-04 | warning | fixed | 02-17/02-18/02-19 (fb04867); confirmed fixed by the 2026-10-20 re-review (not in the current review) |

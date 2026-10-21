@@ -27,7 +27,7 @@ Phase sizing: each phase is meant to be finishable in 1-2 weeks of part-time wor
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Pinned Toolchain Container** - Reproducible container, one LLVM pin in 16-19, subprocess runner, Rust workspace skeleton (completed 2026-10-12)
-- [ ] **Phase 2: Test Bed and Build Capture** - 10-20 pinned C parsers whose real builds are captured and replayed exactly per configuration
+- [x] **Phase 2: Test Bed and Build Capture** - 10-20 pinned C parsers whose real builds are captured and replayed exactly per configuration (completed 2026-10-21)
 - [ ] **Phase 3: Equivalence Contract and Test-Vector Schema** - Refinement contract, TRACTOR-compatible vectors, deterministic C reference executor
 - [ ] **Phase 4: UB Detection and Decision Log** - Separate sanitizer builds, -O0 vs real-flags differential, symbolic C scan, UB decisions log
 - [ ] **Phase 5: Target-Matched Differential Harness** - C vs Rust differential fuzzing on ILP32 unsigned-char, C-side coverage, emulated-target replay
@@ -89,7 +89,7 @@ Plans:
   3. For every target and configuration the capture command writes a `compile_commands.json` covering every translation unit, and replaying it in the container reproduces the original build output (byte-identical objects, or identical after a documented normalisation); targets that cannot be reproduced are dropped with the cause logged, leaving at least 10.
   4. Each target has a seed corpus extracted from its own tests and fixtures, or at least 10 hand-made seeds (proposed) when it has none.
 
-**Plans:** 20/20 plans executed (02-11 to 02-20 are gap closure)
+**Plans:** 22/22 plans complete (02-11 to 02-22 are gap closure)
 
 Plans:
 **Wave 1**
@@ -137,6 +137,12 @@ Plans:
 
 **Wave 13** *(gap closure; blocked on Wave 12 completion)*
 - [x] 02-20-PLAN.md — G-02-5, G-02-6, G-02-7 (WR-11, WR-12, T-02-67, T-02-70): compile-command gate refuses helper-executing GCC driver options and bounds every write path (`--output` like `-o`) at capture and replay; record stage refuses a build record that names no failure, captures only on passed gates and objects, checks stage/toolchain.cmake; module doc and AR-02-03 amended; final green full-bed run
+
+**Wave 14** *(gap closure; blocked on Wave 13 completion)*
+- [x] 02-21-PLAN.md — G-02-8 (CR-01..CR-03, WR-13, T-02-67, T-02-70): allow-list compile-command gate on one operand-aware walk shared by the `-c` test, derive_output and the write-path check at capture and replay; `@` arguments refused everywhere; `-specs=` only for the 13 names the pinned toolchain ships; confirming full-bed run
+
+**Wave 15** *(gap closure; blocked on Wave 14 completion)*
+- [x] 02-22-PLAN.md — G-02-8 (WR-12, WR-14): pinned toolchain file written by a trusted step and mounted read-only into every build, required at record; unreadable toolchain file is a named cause on the pair; final full-bed run with notices equal to 02-20
 
 ### Phase 3: Equivalence Contract and Test-Vector Schema
 
@@ -282,7 +288,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Pinned Toolchain Container | 9/9 | Complete    | 2026-10-12 |
-| 2. Test Bed and Build Capture | 20/20 | In Progress | - |
+| 2. Test Bed and Build Capture | 22/22 | Complete    | 2026-10-21 |
 | 3. Equivalence Contract and Test-Vector Schema | 0/0 | Not started | - |
 | 4. UB Detection and Decision Log | 0/0 | Not started | - |
 | 5. Target-Matched Differential Harness | 0/0 | Not started | - |
