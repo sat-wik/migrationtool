@@ -16,9 +16,12 @@ use mt_capture::testbed::{
     run_capture_record, run_capture_record_read_only, run_fetch, run_pairs, run_replay,
     run_toolchains, run_validate,
 };
+use mt_harness::selftest::run_selftest;
+use mt_harness::tools::ExecTools;
 use mt_toolchain::build_args::{self, Scope};
 use mt_toolchain::check::{capture_toml, run_check, run_check_observed};
 use mt_toolchain::pins::{Pins, PinsError};
+use mt_toolchain::runner::RunnerConfig;
 use mt_toolchain::{fetch, manifest};
 
 #[derive(Debug, Parser)]
@@ -39,6 +42,11 @@ enum Group {
     Testbed {
         #[command(subcommand)]
         action: TestbedAction,
+    },
+    /// Test vectors and the C reference executor that produces them.
+    Vectors {
+        #[command(subcommand)]
+        action: VectorsAction,
     },
 }
 
@@ -122,6 +130,28 @@ enum ToolchainAction {
         first: PathBuf,
         /// The second manifest.
         second: PathBuf,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum VectorsAction {
+    /// Run the executor's own cases in the current environment: a driver is
+    /// rendered from the shared runtime template, linked with the pinned
+    /// arm-none-eabi-gcc and run under `qemu-arm -cpu cortex-m4` through the
+    /// runner, and each case must end the way the contract says. It proves the
+    /// executor measures what it claims (guard pages, fault handler, budgets,
+    /// determinism) with these tool versions; it runs no captured upstream code.
+    /// Exit 0 when every row passed, 1 when a row failed, 2 for invalid input
+    /// (a missing option, an invalid pins file or a tool that is not installed).
+    Selftest {
+        /// Path to the pins file.
+        #[arg(long)]
+        pins: PathBuf,
+        /// The work directory; the self-test writes under
+        /// `<work-dir>/vectors-selftest`. Defaults to $MT_WORK_DIR, else
+        /// `.mt-work`.
+        #[arg(long)]
+        work_dir: Option<PathBuf>,
     },
 }
 
@@ -624,6 +654,7 @@ fn main() -> ExitCode {
     let result = match cli.group {
         Group::Toolchain { action } => toolchain_command(action),
         Group::Testbed { action } => testbed_command(action).map(|passed| u8::from(!passed)),
+        Group::Vectors { action } => vectors_command(action),
     };
     match result {
         Ok(code) => ExitCode::from(code),
@@ -632,6 +663,32 @@ fn main() -> ExitCode {
             ExitCode::from(2)
         }
     }
+}
+
+fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
+    match action {
+        VectorsAction::Selftest { pins, work_dir } => selftest_command(&pins, work_dir),
+    }
+}
+
+/// Exit code of `mt vectors selftest`: 0 passed, 1 a row failed.
+fn selftest_command(pins_path: &Path, work_dir: Option<PathBuf>) -> anyhow::Result<u8> {
+    let pins = Pins::load(pins_path).context("loading the pins file")?;
+    pins.validate().context("validating the pins file")?;
+    let tools = ExecTools::from_pins(&pins)?;
+    let cfg = RunnerConfig::new(
+        pins.image.tool_path.clone(),
+        pins.image.source_date_epoch.clone(),
+    );
+    let chosen = work_dir
+        .or_else(|| std::env::var_os("MT_WORK_DIR").map(PathBuf::from))
+        .unwrap_or_else(|| PathBuf::from(".mt-work"));
+    // The driver is built and run with absolute paths, so a relative work
+    // directory is made absolute here.
+    let work = std::path::absolute(&chosen).unwrap_or(chosen);
+    let report = run_selftest(&tools, &cfg, &work).context("running the executor self-test")?;
+    print!("{}", report.render());
+    Ok(u8::from(!report.passed))
 }
 
 fn toolchain_command(action: ToolchainAction) -> anyhow::Result<u8> {

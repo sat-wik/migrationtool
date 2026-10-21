@@ -62,7 +62,10 @@ fn eqv_04_selftest_cli_needs_pins() {
         "bin = \"/usr/bin/qemu-arm\"",
         &format!("bin = \"{}\"", missing.display()),
     );
-    assert_ne!(rewritten, text, "container/pins.toml no longer pins qemu-arm");
+    assert_ne!(
+        rewritten, text,
+        "container/pins.toml no longer pins qemu-arm"
+    );
     let pins = dir.path().join("pins.toml");
     std::fs::write(&pins, rewritten).unwrap();
     let work = dir.path().join("work");

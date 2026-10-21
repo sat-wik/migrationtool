@@ -60,13 +60,7 @@ fn eqv_04_selftest_ok_case_runs_end_to_end() {
         argv.windows(flags.len()).any(|window| window == flags),
         "qemu-arm argv lacks {flags:?}: {argv:?}"
     );
-    let keys: Vec<&str> = run
-        .output
-        .record
-        .env
-        .keys()
-        .map(String::as_str)
-        .collect();
+    let keys: Vec<&str> = run.output.record.env.keys().map(String::as_str).collect();
     assert_eq!(keys, ["LANG", "PATH", "SOURCE_DATE_EPOCH", "TZ"]);
     assert_eq!(
         Path::new(&run.output.record.cwd),
