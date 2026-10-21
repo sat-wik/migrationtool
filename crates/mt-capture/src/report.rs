@@ -259,6 +259,13 @@ pub struct CaptureReport {
     pub inputs: BTreeMap<String, String>,
     /// sha256 of the generated CMake toolchain file, for CMake targets.
     pub toolchain_file_sha256: Option<String>,
+    /// True when the record stage compared the trusted read-only toolchain file
+    /// (`<work>/toolchain/<id>/<config>/toolchain.cmake`, which the testbed
+    /// workflow mounts read-only into the build container, WR-12) instead of the
+    /// end state of the build's `stage/toolchain.cmake`. Omitted when false, so
+    /// older reports round-trip.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub toolchain_file_read_only: bool,
     /// The compile-commands counts and digests.
     pub compile_commands: CompileCommandsInfo,
     /// The gates.
@@ -300,6 +307,7 @@ impl CaptureReport {
             tools: BTreeMap::new(),
             inputs: BTreeMap::new(),
             toolchain_file_sha256: None,
+            toolchain_file_read_only: false,
             compile_commands: CompileCommandsInfo::default(),
             gates: Gates::default(),
             objects: BTreeMap::new(),

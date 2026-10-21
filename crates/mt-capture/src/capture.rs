@@ -36,9 +36,11 @@
 //! - [`capture_build`] runs the untrusted upstream build (Makefiles and CMake
 //!   scripts). It writes only inside its pair's run directory
 //!   (`<work>/run/<id>/<config>`): the source copy, the committed inputs, the
-//!   build tree, and under `stage/` the exporter's raw file, the CMake toolchain
-//!   file and the build record ([`BuildRecord`]). It never creates, reads or
-//!   writes `<work>/capture`, the reports or the output directory.
+//!   build tree, and under `stage/` the exporter's raw file, the build record
+//!   ([`BuildRecord`]) and, in the end-state mode only, the CMake toolchain
+//!   file. It never creates, reads or writes `<work>/capture`, the reports or
+//!   the output directory. [`capture_build_with_toolchain`] is the same stage
+//!   against a trusted toolchain file it is given and never writes (WR-12).
 //! - [`capture_record`] runs no upstream code and alone writes the artifacts that
 //!   replay and the determinism step trust (`<work>/capture/<id>/<config>`:
 //!   `capture.json`, the canonical compile commands, the object copies).
@@ -48,13 +50,53 @@
 //! single-process capture always did. It verifies the source cache again, takes
 //! the tools from the pins, hashes the committed inputs from `testbed/` and
 //! refuses a run directory whose inputs copy differs (`inputs_changed`), and
-//! recomputes the toolchain file from the pins and the configuration and compares
-//! that text with `stage/toolchain.cmake` (`toolchain_changed`). It reads the
+//! recomputes the toolchain file from the pins and the configuration
+//! (`toolchain_changed` when the file it compares differs). It reads the
 //! run directory only through [`read_run_file`], which never follows a symlink:
 //! the build record, the raw export, every object, every configure-time file and
 //! every file of the inputs copy. A refused build record is `not_proven` with the
 //! cause `no_build_record`; any other refused read is `capture_failed` with the
 //! cause `run_dir_symlink`.
+//!
+//! # The toolchain file a CMake configure read (review warnings WR-12, WR-14)
+//!
+//! What is proven, in the testbed workflow: the build cannot write the
+//! toolchain file. [`write_trusted_toolchain`] (`mt testbed toolchains`, run in a
+//! container that runs no upstream code) writes the pinned text to
+//! `<work>/toolchain/<id>/<config>/toolchain.cmake`. The build container mounts
+//! that directory read-only at `/opt/mt/toolchain`, inside its read-only root
+//! file system and outside every writable mount. The build stage
+//! ([`capture_build_with_toolchain`]), which is mt code that runs before any
+//! upstream code, refuses to configure unless the file equals the text
+//! recomputed from the pins, and configures with
+//! `-DCMAKE_TOOLCHAIN_FILE=/opt/mt/toolchain/toolchain.cmake`. So the first
+//! configure, its try-compiles and every regeneration read the pinned text.
+//! The record stage ([`capture_record_read_only`], `--read-only-toolchain`)
+//! compares the trusted copy with the recomputed text, refuses a CMake pair
+//! without the copy or with a build-written `stage/toolchain.cmake`
+//! (`toolchain_changed`), and records `toolchain_file_read_only: true`.
+//!
+//! The local fallback: in-process runs and the tests have no container, so a
+//! build that is given no trusted directory writes `stage/toolchain.cmake`,
+//! and [`capture_record`] compares the end state of that file with the pinned
+//! text, recording `toolchain_file_read_only: false`. That comparison sees a
+//! file left changed, not one changed and restored during the build.
+//!
+//! Consistency checks only, in both modes ([`configured_toolchain_findings`]):
+//! the `CMAKE_C_FLAGS:STRING=` line of `build/CMakeCache.txt` must equal the
+//! toolchain flags, and every compile command must carry them as one contiguous
+//! run (`toolchain_changed` otherwise). The build can write the cache, and the
+//! flag check cannot see flags that were added, so neither proves what
+//! configure read.
+//!
+//! What stays unproven: upstream CMake code can load other CMake files or add
+//! flags of its own, for example by rewriting build-directory files that a
+//! regeneration reads. Those flags appear in the compile commands, which the
+//! allow-list walk gates and replay re-runs.
+//!
+//! A read of a toolchain file or of `build/CMakeCache.txt` that fails with
+//! anything but a missing file is the cause `toolchain_unreadable` on its pair,
+//! never an aborted step ([`toolchain_file_finding`], WR-14).
 //!
 //! Not covered by that rule, as before: the compiler's own reads during the entry
 //! check, the defining-TU read of the include prefix (entries.rs), the
@@ -93,8 +135,14 @@
 //!   (`build_01_record_stage_refuses_a_write_outside_the_run_root_in_the_export`),
 //!   and a `-c` that is only an operand `not_compile_only`
 //!   (`build_01_record_stage_refuses_an_operand_compile_flag_in_the_export`);
-//! - it cannot change the toolchain file unnoticed (`toolchain_changed`,
-//!   `build_01_record_stage_refuses_a_changed_toolchain_file`), nor the source
+//! - in the testbed workflow it cannot change the toolchain file configure
+//!   reads, which is mounted read-only, and the record stage refuses a CMake
+//!   pair that was not built against it (`toolchain_changed`,
+//!   `build_01_record_stage_uses_the_read_only_toolchain_file`,
+//!   `build_01_record_stage_refuses_a_build_that_rewrote_the_read_only_toolchain_file`);
+//!   in the local end-state mode a toolchain file left changed is
+//!   `toolchain_changed` (`build_01_record_stage_refuses_a_changed_toolchain_file`);
+//!   nor can it change the source
 //!   verification, the tools, the inputs check, another pair's evidence
 //!   (`build_record_mismatch`, `build_01_record_stage_refuses_a_record_for_another_pair`)
 //!   or the replay comparison.
@@ -133,8 +181,19 @@ const STAGE_DIR: &str = "stage";
 const BUILD_RECORD_FILE: &str = "build-record.json";
 /// The exporter's file, in the stage directory and again in the capture directory.
 const RAW_EXPORT_FILE: &str = "compile_commands.raw.json";
-/// The CMake toolchain file, in the stage directory and again in the capture directory.
+/// The CMake toolchain file, in the stage directory, in the trusted toolchain
+/// directory and again in the capture directory.
 const TOOLCHAIN_FILE: &str = "toolchain.cmake";
+/// The directory of the work directory that holds the trusted toolchain files,
+/// `<work>/toolchain/<id>/<config>` (WR-12). It lies outside every run
+/// directory, and the testbed workflow mounts a pair's directory into its build
+/// container read-only only.
+const TRUSTED_TOOLCHAIN_DIR: &str = "toolchain";
+/// The CMake cache, relative to the run root: the consistency check reads its
+/// `CMAKE_C_FLAGS:STRING=` line.
+const CMAKE_CACHE_KEY: &str = "build/CMakeCache.txt";
+/// The line of the CMake cache that holds the C flags configure settled on.
+const CMAKE_C_FLAGS_LINE: &str = "CMAKE_C_FLAGS:STRING=";
 
 /// Version of the serialised [`BuildRecord`].
 pub const BUILD_RECORD_SCHEMA_VERSION: u32 = 1;
@@ -362,6 +421,9 @@ pub struct RunLayout {
     pub capture_dir: PathBuf,
     /// `<capture_dir>/objects`: byte copies of the original objects.
     pub objects_dir: PathBuf,
+    /// `<work>/toolchain/<id>/<config>`: the trusted toolchain directory
+    /// ([`write_trusted_toolchain`], WR-12). Outside the run directory.
+    pub trusted_toolchain_dir: PathBuf,
 }
 
 /// Everything a capture needs besides the runner configuration.
@@ -676,6 +738,7 @@ impl RunLayout {
             build: run_root.join("build"),
             inputs: run_root.join("inputs"),
             objects_dir: capture_dir.join("objects"),
+            trusted_toolchain_dir: work_dir.join(TRUSTED_TOOLCHAIN_DIR).join(id).join(config),
             run_root,
             capture_dir,
         }
@@ -715,10 +778,22 @@ impl RunLayout {
         self.capture_dir.join("compile_commands.json")
     }
 
-    /// The generated CMake toolchain file the build stage configures with.
+    /// The generated CMake toolchain file the build stage configures with when
+    /// it is given no trusted toolchain directory (the end-state mode of local
+    /// runs and tests).
     #[must_use]
     pub fn toolchain_path(&self) -> PathBuf {
         self.stage_dir().join(TOOLCHAIN_FILE)
+    }
+
+    /// The trusted toolchain file, `<work>/toolchain/<id>/<config>/toolchain.cmake`
+    /// (WR-12): written by [`write_trusted_toolchain`], which runs no upstream
+    /// code, outside the run directory. The testbed workflow mounts its
+    /// directory read-only into the build container, and the record stage
+    /// compares this file with the pinned text.
+    #[must_use]
+    pub fn trusted_toolchain_path(&self) -> PathBuf {
+        self.trusted_toolchain_dir.join(TOOLCHAIN_FILE)
     }
 
     /// The evidence copy of the toolchain file: the record stage writes the text
@@ -1005,12 +1080,8 @@ fn check_cmake_option(option: &str) -> Result<(), CaptureError> {
     Ok(())
 }
 
-/// The CMake configure command line.
-///
-/// `cmake -S src/<dir> -B build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=...
-/// -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=MinSizeRel <options>`.
-/// `MinSizeRel` gives `-Os` and does not append `-O3` after the baseline
-/// (Pitfall 3). `cflags` is used only for `{cflags}` in the options.
+/// The CMake configure command line with the stage directory's toolchain file,
+/// [`RunLayout::toolchain_path`]: [`cmake_configure_argv_with_toolchain`].
 ///
 /// # Errors
 /// [`CaptureError`] for an option the driver owns, an unknown placeholder or a
@@ -1022,6 +1093,36 @@ pub fn cmake_configure_argv(
     args: &BuildArgs,
     config: &Config,
 ) -> Result<Vec<String>, CaptureError> {
+    cmake_configure_argv_with_toolchain(
+        tools,
+        layout,
+        cflags,
+        args,
+        config,
+        &layout.toolchain_path(),
+    )
+}
+
+/// The CMake configure command line.
+///
+/// `cmake -S src/<dir> -B build -G "Unix Makefiles"
+/// -DCMAKE_TOOLCHAIN_FILE=<toolchain> -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+/// -DCMAKE_BUILD_TYPE=MinSizeRel <options>`. `MinSizeRel` gives `-Os` and does
+/// not append `-O3` after the baseline (Pitfall 3). `cflags` is used only for
+/// `{cflags}` in the options. `toolchain` is the stage directory's file, or the
+/// trusted read-only file (WR-12).
+///
+/// # Errors
+/// [`CaptureError`] for an option the driver owns, an unknown placeholder or a
+/// non-UTF-8 path.
+pub fn cmake_configure_argv_with_toolchain(
+    tools: &ToolPaths,
+    layout: &RunLayout,
+    cflags: &[String],
+    args: &BuildArgs,
+    config: &Config,
+    toolchain: &Path,
+) -> Result<Vec<String>, CaptureError> {
     let joined = cflags.join(" ");
     let values = expansion(tools, layout, &joined)?;
     let mut argv = vec![
@@ -1032,10 +1133,7 @@ pub fn cmake_configure_argv(
         path_str(&layout.build)?.to_owned(),
         "-G".to_owned(),
         "Unix Makefiles".to_owned(),
-        format!(
-            "-DCMAKE_TOOLCHAIN_FILE={}",
-            path_str(&layout.toolchain_path())?
-        ),
+        format!("-DCMAKE_TOOLCHAIN_FILE={}", path_str(toolchain)?),
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON".to_owned(),
         "-DCMAKE_BUILD_TYPE=MinSizeRel".to_owned(),
         // A cache entry: set in the toolchain file it is not honoured by CMake 3.28.
@@ -1223,6 +1321,101 @@ fn cause_of(error: &CcError) -> &'static str {
         CcError::DuplicateOutput { .. } => "duplicate_output",
         CcError::Json(_) => "invalid_compile_commands",
     }
+}
+
+/// The cause a read of a toolchain file gives, or `None` when its bytes equal
+/// `expected`, the text recomputed from the pins and the configuration (WR-12,
+/// WR-14). `key` names the file in the detail.
+///
+/// - other bytes: `toolchain_changed`, naming both sha256 values;
+/// - a missing file (`NotFound`): `toolchain_changed`;
+/// - a symlink or a file that is not regular ([`RunReadError::NotRegular`]):
+///   `run_dir_symlink`;
+/// - any other I/O error: `toolchain_unreadable`, naming the error. An
+///   unreadable file is a cause on its pair, never an aborted step (WR-14).
+#[must_use]
+pub fn toolchain_file_finding(
+    key: &str,
+    read: &Result<Vec<u8>, RunReadError>,
+    expected: &str,
+) -> Option<(&'static str, String)> {
+    match read {
+        Ok(found) if found.as_slice() == expected.as_bytes() => None,
+        Ok(found) => Some((
+            "toolchain_changed",
+            format!(
+                "{key} differs from the toolchain file recomputed from the pins and the configuration (found sha256 {}, expected {})",
+                sha256_hex(found),
+                sha256_hex(expected.as_bytes())
+            ),
+        )),
+        Err(RunReadError::Io { source, .. }) if source.kind() == io::ErrorKind::NotFound => Some((
+            "toolchain_changed",
+            format!("{key} is missing: no toolchain file the pins can be compared with"),
+        )),
+        Err(error @ RunReadError::NotRegular { .. }) => Some((
+            "run_dir_symlink",
+            format!(
+                "{key}: a symbolic link or a file that is not regular where the record stage reads ({error})"
+            ),
+        )),
+        Err(error @ RunReadError::Io { .. }) => Some((
+            "toolchain_unreadable",
+            format!("{key} cannot be read: {error}"),
+        )),
+    }
+}
+
+/// The consistency findings of a CMake build against the flags of its toolchain
+/// file (WR-12), each a `toolchain_changed` detail; at most one for the cache
+/// and one for the entries.
+///
+/// - The `CMAKE_C_FLAGS:STRING=` line of `cache` (the text of
+///   `build/CMakeCache.txt`) must equal `flags` joined by one space, the value
+///   the toolchain file's `CMAKE_C_FLAGS_INIT` gives it.
+/// - Every entry must carry `flags` as one contiguous run of arguments.
+///
+/// These are consistency checks only, not a proof of what configure read: the
+/// build can write the cache, and the flag check cannot see a flag that was
+/// added outside the run. The proof is that the build cannot write the toolchain
+/// file (the read-only trusted copy, see the module documentation).
+#[must_use]
+pub fn configured_toolchain_findings(
+    cache: &str,
+    entries: &[CcEntry],
+    flags: &[String],
+) -> Vec<String> {
+    let mut findings = Vec::new();
+    let expected = flags.join(" ");
+    match cache
+        .lines()
+        .find_map(|line| line.strip_prefix(CMAKE_C_FLAGS_LINE))
+    {
+        Some(found) if found == expected => {}
+        Some(found) => findings.push(format!(
+            "{CMAKE_CACHE_KEY} sets CMAKE_C_FLAGS to {found:?}, not the toolchain file's flags {expected:?}"
+        )),
+        None => findings.push(format!(
+            "{CMAKE_CACHE_KEY} has no {CMAKE_C_FLAGS_LINE} line, so configure did not settle on the toolchain file's flags {expected:?}"
+        )),
+    }
+    let carries = |entry: &CcEntry| {
+        flags.is_empty()
+            || entry
+                .arguments
+                .windows(flags.len())
+                .any(|window| window == flags)
+    };
+    let failing: Vec<&CcEntry> = entries.iter().filter(|entry| !carries(entry)).collect();
+    if let Some(first) = failing.first() {
+        findings.push(format!(
+            "{} of {} compile commands do not carry the toolchain file's flags {expected:?} as one contiguous run; the first is {}",
+            failing.len(),
+            entries.len(),
+            first.file
+        ));
+    }
+    findings
 }
 
 /// The last bytes of a stream as one line of text (runs of whitespace become
@@ -1481,12 +1674,16 @@ impl Session<'_> {
     }
 
     /// Run the build and leave the exporter's file at the raw path in the stage
-    /// directory (if there is one). Build stage only.
+    /// directory (if there is one). Build stage only. With `toolchain` (the
+    /// trusted file, already checked against the pins) a CMake build configures
+    /// with it and no `stage/toolchain.cmake` is written (WR-12); without it the
+    /// build stage writes `stage/toolchain.cmake` and configures with that.
     fn build(
         &mut self,
         args: &BuildArgs,
         config: &Config,
         build: BuildSystem,
+        toolchain: Option<&Path>,
     ) -> Result<Flow, CaptureError> {
         // Copy the shared reference out of `self` so the tools stay borrowable
         // while the session is borrowed mutably for each step.
@@ -1505,10 +1702,24 @@ impl Session<'_> {
                 self.build_step("build", "bear", &argv, &directory)
             }
             BuildSystem::Cmake => {
-                let text = toolchain_file(tools, &flags)?;
-                let path = self.layout.toolchain_path();
-                fs::write(&path, &text).map_err(|source| io_error("write", &path, source))?;
-                let configure = cmake_configure_argv(tools, &self.layout, &flags, args, config)?;
+                let path = match toolchain {
+                    Some(trusted) => trusted.to_path_buf(),
+                    None => {
+                        let text = toolchain_file(tools, &flags)?;
+                        let path = self.layout.toolchain_path();
+                        fs::write(&path, &text)
+                            .map_err(|source| io_error("write", &path, source))?;
+                        path
+                    }
+                };
+                let configure = cmake_configure_argv_with_toolchain(
+                    tools,
+                    &self.layout,
+                    &flags,
+                    args,
+                    config,
+                    &path,
+                )?;
                 let run_root = self.layout.run_root.clone();
                 if matches!(
                     self.build_step("cmake configure", "cmake", &configure, &run_root)?,
@@ -1787,8 +1998,19 @@ impl Session<'_> {
                 continue;
             }
             let key = format!("build/{relative}");
-            let Some(bytes) = self.read_or_refuse(&key)? else {
-                continue;
+            let bytes = if key == CMAKE_CACHE_KEY {
+                // check_configured_toolchain has read the cache already and
+                // raised its cause; an unreadable cache is not an aborted step
+                // (WR-14).
+                match read_run_file(&self.layout.run_root, &key) {
+                    Ok(bytes) => bytes,
+                    Err(_) => continue,
+                }
+            } else {
+                let Some(bytes) = self.read_or_refuse(&key)? else {
+                    continue;
+                };
+                bytes
             };
             if relative == MAKE_DRIVER {
                 normalised.insert(
@@ -1866,33 +2088,90 @@ impl Session<'_> {
         Ok(())
     }
 
-    /// Compare `stage/toolchain.cmake`, which the untrusted build could have
-    /// rewritten, byte for byte with `expected`, the text recomputed from the
-    /// pins and the configuration (WR-12). A different or missing file is the
-    /// cause `toolchain_changed`; a symlink or a file that is not regular is
-    /// `run_dir_symlink`.
-    fn check_toolchain_file(&mut self, expected: &str) -> Result<(), CaptureError> {
-        let key = format!("{STAGE_DIR}/{TOOLCHAIN_FILE}");
-        match read_run_file(&self.layout.run_root, &key) {
-            Ok(found) if found == expected.as_bytes() => {}
-            Ok(found) => self.cause(
+    /// Compare the toolchain file of a CMake pair with `expected`, the text
+    /// recomputed from the pins and the configuration (WR-12). It has no error
+    /// path: every outcome is a cause on this pair or none (WR-14).
+    ///
+    /// - With the trusted copy ([`RunLayout::trusted_toolchain_path`], outside the
+    ///   run directory and mounted read-only into the build container by the
+    ///   testbed workflow): the copy is compared through
+    ///   [`toolchain_file_finding`], `stage/toolchain.cmake` must be absent (a
+    ///   build-written one is `toolchain_changed`), and the report records
+    ///   `toolchain_file_read_only: true`.
+    /// - Without it and with `require_read_only` ([`capture_record_read_only`]):
+    ///   `toolchain_changed`.
+    /// - Without it otherwise (local runs and tests, which have no container):
+    ///   the end-state comparison of `stage/toolchain.cmake` through the same
+    ///   mapping, and `toolchain_file_read_only` stays false.
+    fn check_toolchain_file(&mut self, expected: &str, require_read_only: bool) {
+        let stage_key = format!("{STAGE_DIR}/{TOOLCHAIN_FILE}");
+        let trusted = read_run_file(&self.layout.trusted_toolchain_dir, TOOLCHAIN_FILE);
+        let trusted_missing = matches!(
+            &trusted,
+            Err(RunReadError::Io { source, .. }) if source.kind() == io::ErrorKind::NotFound
+        );
+        if !trusted_missing {
+            self.report.toolchain_file_read_only = true;
+            let key = format!(
+                "the read-only toolchain file {}",
+                self.layout.trusted_toolchain_path().display()
+            );
+            if let Some((token, detail)) = toolchain_file_finding(&key, &trusted, expected) {
+                self.cause(token, detail);
+            }
+            match read_run_file(&self.layout.run_root, &stage_key) {
+                Err(RunReadError::Io { source, .. })
+                    if source.kind() == io::ErrorKind::NotFound => {}
+                _ => self.cause(
+                    "toolchain_changed",
+                    format!(
+                        "{stage_key}: the build stage wrote its own toolchain file although a read-only one was given"
+                    ),
+                ),
+            }
+        } else if require_read_only {
+            self.cause(
                 "toolchain_changed",
                 format!(
-                    "{key} differs from the toolchain file recomputed from the pins and the configuration (found sha256 {}, expected {})",
-                    sha256_hex(&found),
-                    sha256_hex(expected.as_bytes())
+                    "no read-only toolchain file for this CMake pair: {} is missing, so nothing shows which toolchain file configure read",
+                    self.layout.trusted_toolchain_path().display()
                 ),
-            ),
+            );
+        } else {
+            let read = read_run_file(&self.layout.run_root, &stage_key);
+            if let Some((token, detail)) = toolchain_file_finding(&stage_key, &read, expected) {
+                self.cause(token, detail);
+            }
+        }
+    }
+
+    /// The consistency checks of a built CMake pair ([`configured_toolchain_findings`]
+    /// over `build/CMakeCache.txt` and the canonical entries, with the expanded
+    /// flags of the toolchain file). Consistency checks only: the build can write
+    /// the cache, and the flag check cannot see added flags. No error path: a
+    /// missing cache is `toolchain_changed`, a refused read `run_dir_symlink`, any
+    /// other I/O error `toolchain_unreadable` (WR-14).
+    fn check_configured_toolchain(&mut self, entries: &[CcEntry], flags: &[String]) {
+        match read_run_file(&self.layout.run_root, CMAKE_CACHE_KEY) {
+            Ok(bytes) => {
+                for detail in
+                    configured_toolchain_findings(&String::from_utf8_lossy(&bytes), entries, flags)
+                {
+                    self.cause("toolchain_changed", detail);
+                }
+            }
             Err(RunReadError::Io { source, .. }) if source.kind() == io::ErrorKind::NotFound => {
                 self.cause(
                     "toolchain_changed",
-                    format!("{key} is missing: the build stage writes it before cmake configure"),
+                    format!("{CMAKE_CACHE_KEY} is missing after a CMake build"),
                 );
             }
-            Err(error @ RunReadError::NotRegular { .. }) => self.refused(&key, &error),
-            Err(RunReadError::Io { path, source }) => return Err(io_error("read", &path, source)),
+            Err(error @ RunReadError::NotRegular { .. }) => self.refused(CMAKE_CACHE_KEY, &error),
+            Err(error @ RunReadError::Io { .. }) => self.cause(
+                "toolchain_unreadable",
+                format!("{CMAKE_CACHE_KEY} cannot be read: {error}"),
+            ),
         }
-        Ok(())
     }
 
     /// The build record of the build stage, read without following a symlink and
@@ -2033,8 +2312,8 @@ fn new_session<'a>(
 /// The cached source is verified again first ([`verify_cached`], no network). An
 /// existing run directory is kept and emptied (it may be a bind mount), the
 /// verified source and the committed inputs are copied into it, and the build runs
-/// there; the exporter's raw file and the CMake toolchain file are written under
-/// `stage/`. Nothing is created, read or written under `<work>/capture`,
+/// there; the exporter's raw file and the CMake toolchain file (this end-state
+/// mode only, see [`capture_build_with_toolchain`]) are written under `stage/`. Nothing is created, read or written under `<work>/capture`,
 /// `<work>/reports` or an output directory. A failing build is data in the record
 /// (`build_failed`, `not_proven`), not an error, and the record is written in every
 /// such case.
@@ -2050,11 +2329,128 @@ pub fn capture_build(
     target: &Target,
     config: &Config,
 ) -> Result<BuildRecord, CaptureError> {
+    build_stage(cfg, ctx, id, target, config, None)
+}
+
+/// [`capture_build`] against a trusted toolchain file it is given and does not
+/// write (WR-12): `<toolchain_dir>/toolchain.cmake`, which the testbed workflow
+/// writes with [`write_trusted_toolchain`] in a step that runs no upstream code
+/// and mounts read-only at `/opt/mt/toolchain`.
+///
+/// For a CMake pair, before anything is run or written, the file is read
+/// without following a symlink and must be a regular file whose bytes equal the
+/// text recomputed from the pins and the configuration; otherwise the result is
+/// [`CaptureError::InvalidInput`]. The build then writes no
+/// `stage/toolchain.cmake` and configures with
+/// `-DCMAKE_TOOLCHAIN_FILE=<toolchain_dir>/toolchain.cmake`, so the first
+/// configure, its try-compiles and every regeneration read the pinned text.
+/// A Make pair ignores the directory.
+///
+/// # Errors
+/// As [`capture_build`], and [`CaptureError::InvalidInput`] for a toolchain file
+/// that is missing, unreadable, not a regular file or not the pinned text.
+pub fn capture_build_with_toolchain(
+    cfg: &RunnerConfig,
+    ctx: &CaptureContext,
+    id: &str,
+    target: &Target,
+    config: &Config,
+    toolchain_dir: &Path,
+) -> Result<BuildRecord, CaptureError> {
+    build_stage(cfg, ctx, id, target, config, Some(toolchain_dir))
+}
+
+/// Write the trusted toolchain file of one pair (WR-12) and return its path:
+/// `<work>/toolchain/<id>/<config>/toolchain.cmake`, the text [`toolchain_file`]
+/// gives for the run layout's expanded flags. The directory is created for
+/// every pair, so the testbed workflow's mount source always exists; a Make pair
+/// gets no file and `None`. It runs no tool and no upstream code, which is why
+/// its output can be trusted: the testbed workflow runs it in a container of its
+/// own before the build container, which mounts the directory read-only.
+///
+/// # Errors
+/// [`CaptureError`] for invalid inputs (an unsafe id or configuration name, a
+/// target without a recipe, a flag that cannot be written into a toolchain
+/// file) or a file operation that fails.
+pub fn write_trusted_toolchain(
+    ctx: &CaptureContext,
+    id: &str,
+    target: &Target,
+    config: &Config,
+) -> Result<Option<PathBuf>, CaptureError> {
+    pair_args(id, target, config)?;
+    let layout = RunLayout::new(&ctx.work_dir, id, &config.name);
+    let dir = &layout.trusted_toolchain_dir;
+    fs::create_dir_all(dir).map_err(|source| io_error("create", dir, source))?;
+    if target.build != BuildSystem::Cmake {
+        return Ok(None);
+    }
+    let flags = expand_flags(
+        &effective_cflags(&ctx.baseline, config),
+        &ctx.tools,
+        &layout,
+    )?;
+    let text = toolchain_file(&ctx.tools, &flags)?;
+    let path = layout.trusted_toolchain_path();
+    // Never write through whatever is there already (a link, say).
+    match fs::symlink_metadata(&path) {
+        Ok(meta) if meta.is_dir() => {
+            return Err(invalid(format!("{} is a directory", path.display())));
+        }
+        Ok(_) => fs::remove_file(&path).map_err(|source| io_error("remove", &path, source))?,
+        Err(source) if source.kind() == io::ErrorKind::NotFound => {}
+        Err(source) => return Err(io_error("inspect", &path, source)),
+    }
+    fs::write(&path, text).map_err(|source| io_error("write", &path, source))?;
+    Ok(Some(path))
+}
+
+/// Refuse a trusted toolchain file that is not the pinned text, before the build
+/// stage runs or writes anything (WR-12).
+fn check_trusted_toolchain(
+    ctx: &CaptureContext,
+    layout: &RunLayout,
+    config: &Config,
+    toolchain_dir: &Path,
+) -> Result<PathBuf, CaptureError> {
+    let flags = expand_flags(&effective_cflags(&ctx.baseline, config), &ctx.tools, layout)?;
+    let expected = toolchain_file(&ctx.tools, &flags)?;
+    let path = toolchain_dir.join(TOOLCHAIN_FILE);
+    match read_run_file(toolchain_dir, TOOLCHAIN_FILE) {
+        Ok(found) if found == expected.as_bytes() => Ok(path),
+        Ok(found) => Err(invalid(format!(
+            "the read-only toolchain file {} differs from the toolchain file recomputed from the pins and the configuration (found sha256 {}, expected {}); nothing was built",
+            path.display(),
+            sha256_hex(&found),
+            sha256_hex(expected.as_bytes())
+        ))),
+        Err(error) => Err(invalid(format!(
+            "the read-only toolchain file {} cannot be used: {error}; nothing was built",
+            path.display()
+        ))),
+    }
+}
+
+/// The build stage behind [`capture_build`] and [`capture_build_with_toolchain`].
+fn build_stage(
+    cfg: &RunnerConfig,
+    ctx: &CaptureContext,
+    id: &str,
+    target: &Target,
+    config: &Config,
+    toolchain_dir: Option<&Path>,
+) -> Result<BuildRecord, CaptureError> {
     let args = pair_args(id, target, config)?;
     let mut session = new_session(cfg, ctx, id, config)?;
+    let trusted = match (target.build, toolchain_dir) {
+        (BuildSystem::Cmake, Some(dir)) => {
+            Some(check_trusted_toolchain(ctx, &session.layout, config, dir)?)
+        }
+        _ => None,
+    };
     let verified = session.verify(id, target)?;
     session.prepare_run(id, &verified)?;
-    let flow = session.build(args, config, target.build)?;
+    let flow = session.build(args, config, target.build, trusted.as_deref())?;
     let record = BuildRecord {
         schema_version: BUILD_RECORD_SCHEMA_VERSION,
         target: id.to_owned(),
@@ -2089,10 +2485,12 @@ pub fn capture_build(
 /// `build_record_mismatch`; a record with `built: false` that names no failure:
 /// `not_proven`, cause `build_record_inconsistent`), compares the run
 /// directory's copy of the committed inputs with `testbed/` (`inputs_changed`),
-/// recomputes the toolchain file and compares `stage/toolchain.cmake` with it
-/// (`toolchain_changed`), and then canonicalises and gates the build's outputs,
-/// checks the manifest entries and hashes the configure-time files exactly as a
-/// single-process capture does. The verdict is [`settle_verdict`]: `captured`
+/// recomputes the toolchain file and compares with it the trusted read-only copy
+/// when there is one (`toolchain_file_read_only: true`), else the end state of
+/// `stage/toolchain.cmake` (`toolchain_changed`, `toolchain_unreadable`), and
+/// then canonicalises and gates the build's outputs, checks the manifest entries,
+/// runs the toolchain consistency checks and hashes the configure-time files
+/// exactly as a single-process capture does. The verdict is [`settle_verdict`]: `captured`
 /// needs no cause, both gates passed and a non-empty object set
 /// (`gates_not_passed` otherwise). A run-directory read that is refused is the
 /// cause `run_dir_symlink`.
@@ -2108,6 +2506,38 @@ pub fn capture_record(
     id: &str,
     target: &Target,
     config: &Config,
+) -> Result<CaptureReport, CaptureError> {
+    record_stage(cfg, ctx, id, target, config, false)
+}
+
+/// [`capture_record`] that requires the read-only toolchain file (WR-12): a
+/// CMake pair without the trusted copy `<work>/toolchain/<id>/<config>/toolchain.cmake`
+/// is `toolchain_changed` ("no read-only toolchain file for this CMake pair"),
+/// never the end-state comparison. With the copy, as in [`capture_record`], it
+/// must equal the pinned text, `stage/toolchain.cmake` must be absent, and the
+/// report records `toolchain_file_read_only: true`. Every record step of the
+/// testbed workflow uses this mode.
+///
+/// # Errors
+/// As [`capture_record`].
+pub fn capture_record_read_only(
+    cfg: &RunnerConfig,
+    ctx: &CaptureContext,
+    id: &str,
+    target: &Target,
+    config: &Config,
+) -> Result<CaptureReport, CaptureError> {
+    record_stage(cfg, ctx, id, target, config, true)
+}
+
+/// The record stage behind [`capture_record`] and [`capture_record_read_only`].
+fn record_stage(
+    cfg: &RunnerConfig,
+    ctx: &CaptureContext,
+    id: &str,
+    target: &Target,
+    config: &Config,
+    require_read_only: bool,
 ) -> Result<CaptureReport, CaptureError> {
     pair_args(id, target, config)?;
     let mut session = new_session(cfg, ctx, id, config)?;
@@ -2153,6 +2583,7 @@ pub fn capture_record(
                 session.cause("build_record_inconsistent", detail);
             }
             session.check_inputs(id)?;
+            let mut cmake_flags = None;
             if target.build == BuildSystem::Cmake {
                 let flags = expand_flags(
                     &effective_cflags(&ctx.baseline, config),
@@ -2160,10 +2591,11 @@ pub fn capture_record(
                     &session.layout,
                 )?;
                 let text = toolchain_file(&ctx.tools, &flags)?;
-                session.check_toolchain_file(&text)?;
+                session.check_toolchain_file(&text, require_read_only);
                 session.report.toolchain_file_sha256 = Some(sha256_hex(text.as_bytes()));
                 let path = session.layout.toolchain_copy_path();
                 fs::write(&path, text).map_err(|source| io_error("write", &path, source))?;
+                cmake_flags = Some(flags);
             }
             if record.built
                 && matches!(session.copy_raw_export()?, Flow::Continue)
@@ -2171,7 +2603,8 @@ pub fn capture_record(
             {
                 session.gates(&entries)?;
                 session.check_entries(target, &entries)?;
-                if target.build == BuildSystem::Cmake {
+                if let Some(flags) = &cmake_flags {
+                    session.check_configured_toolchain(&entries, flags);
                     session.configure_files()?;
                 }
             }

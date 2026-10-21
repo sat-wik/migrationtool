@@ -1064,11 +1064,7 @@ fn build_01_record_stage_uses_the_read_only_toolchain_file() {
         dir.join("toolchain.cmake").display()
     );
     assert!(
-        configure
-            .run
-            .argv
-            .iter()
-            .any(|argument| *argument == wanted),
+        configure.run.argv.contains(&wanted),
         "{:?}",
         configure.run.argv
     );
