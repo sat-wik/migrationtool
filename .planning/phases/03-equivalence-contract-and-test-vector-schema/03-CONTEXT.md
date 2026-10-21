@@ -121,6 +121,33 @@ Carried forward, not re-asked:
 
   The remaining targets are attempted within the same budget. Any not done are logged with their reason rather than growing the phase. No new roadmap phase is added.
 
+### Founder decisions after research (2026-10-21)
+
+The TRACTOR format details measured in 03-RESEARCH.md (pinned corpus commit `37960ee08a7c644ee66e29855eca33903f702e67`) refine D-05, D-03, D-13 and D-20.
+
+- **D-25: Bytes go into TRACTOR's text fields as Latin-1 identity** (refines D-05).
+  - The rule: byte b becomes character U+00b. It applies to `stdin`, a JSON string, and to `stdout.pattern`, where `stdout` is TRACTOR's `{pattern, is_regex}` object and we always write `is_regex: false`.
+  - The mapping is written once in the contract.
+  - Faults follow TRACTOR's convention `rc = -signal`. The outcome class (ok / fault / abort / timeout) is still recorded in `stderr` per D-05 and D-08.
+  - **Reversibility:** costly. Every stored vector and the Phase 5 comparators decode with it.
+- **D-26: "No UB observed" means the `has_ub` key is absent** (refines D-20). TRACTOR's checker treats any present `has_ub` key, even `false`, as UB. So a vector with no observed UB omits the key, and a test enforces that `has_ub: false` is never written. "UB unchecked" provenance stays in the sidecar index (D-19). Vectors carry at most the nine fields, with `has_ub` optional as in TRACTOR.
+  - On load, TRACTOR's optional `note` key is accepted, and TRACTOR's string or integer `has_ub` labels are accepted unchanged.
+  - Our own vectors never emit `note`.
+  - When we do emit `has_ub`, its value is a label naming the source, for example `crash`.
+- **D-27: `assert()` / `abort()` in the C is outcome class `abort`, with a `has_ub` crash label** (extends D-03). It is handled the same way as a fault: excluded from output comparison, and Phase 4 may relabel it.
+- **D-28: An entry with no seeds is logged `no_seeds`** (refines D-13). Seeds are never borrowed from a sibling entry. This affects zcbor `cbor_decode_Pet`, `http_parser_parse_url` and `mbedtls_asn1_get_tag`. Phase 5's fuzzing supplies their inputs.
+- **D-29: Smaller confirmations accepted as the researcher recommended:**
+  - The policy file may carry an optional `default_change` record (same who, why, when and where fields as D-18), so that changing a module's default action is itself recorded (roadmap success criterion 1).
+  - A shared, reviewed C runtime template (startup, guard pages, signal handler, I/O) used by every generated driver is not "per-target hand-written C" under D-11.
+  - New optional manifest keys for roles do not bump the manifest `schema_version`.
+  - No new crates (no `proptest`). Struct layout comes from the pinned GCC's DWARF read by `llvm-dwarfdump` through the runner (GCC's 1-byte enums differ from clang's record-layout dump), and ELF symbols are read with the already-locked `object` crate.
+- **D-30: D-01 is confirmed as measured.** The driver is a Linux-ABI static ELF with its own `_start` and raw `svc` syscalls, run under `qemu-arm -cpu cortex-m4`.
+  - Guard pages come from `mmap`/`mprotect`.
+  - An in-guest signal handler exits with 128+signal.
+  - `-R` fixes the guest layout and doubles as the memory budget.
+  - Input is passed through a file in the fixed working directory, because `RunRequest` has no stdin.
+  - QEMU 7.2 and GCC 14.3 in the pinned image must be re-measured in CI by an early smoke step before dependent work.
+
 ### Claude's Discretion
 
 - **Executor internals:** how the driver is generated and linked (startup code, newlib with semihosting or a minimal stub). The constraints are the pinned toolchain, the shipped `.specs` names (02-21 `SHIPPED_SPECS`) and determinism.
