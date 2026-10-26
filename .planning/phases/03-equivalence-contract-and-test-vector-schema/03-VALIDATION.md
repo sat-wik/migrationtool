@@ -62,6 +62,10 @@ Task IDs are filled in by the planner and plan checker. The rows below are the r
 | 03-04-T2 | 03-04 | 4 | EQV-04 (D-07) | — | The output buffer's sentinel prefill is recorded, and the whole buffer is captured. | integration | `... eqv_04_sentinel_prefill_recorded` | ❌ W0 | ⬜ pending |
 | 03-04-T3, 03-08-T3 | 03-08 | 8 | EQV-04 (D-19, D-21) | T-03-29, T-03-31 | The provenance sidecar hashes match, and the committed sample regenerates identically. | CI | `mt vectors check` (testbed step) | ❌ W0 | ⬜ pending |
 | 03-01-T3 (extended in 03-03, 03-04, 03-05, 03-08) | 03-01 | 1 | workflow | T-03-03, T-03-12, T-03-15 | `testbed.yml` contains the new steps, and every one except the TRACTOR fetch runs with `--network none`. | static workflow test | `cargo test eqv_04_workflow_static` | ❌ W0 | ⬜ pending |
+| 03-09-Tracer | 03-09 | 1 (D-31 insertion) | EQV-04 | T-03-32, T-03-33 | The Dockerfile takes only the four qemu-source packages from bookworm-backports at the pinned snapshot (priority 990), every other backports package has priority -1, and no unsigned-source option exists. | static | `cargo test -p mt-toolchain --test container_static eqv_04_dockerfile_takes_only_qemu_from_backports` | ❌ W0 | ⬜ pending |
+| 03-09-Tracer | 03-09 | 1 (D-31 insertion) | EQV-04 | T-03-34, T-03-36 | container.yml image-a runs the cortex-m4 start probe offline, read-only and unprivileged, before `Save the gated image`; pin-discovery lists backports QEMU versions without failing the run and keeps `contents: read`. | static workflow test | `cargo test -p mt-toolchain --test container_static -- eqv_04_container_workflow_probes_cortex_m4_user_mode_start eqv_04_pin_discovery_lists_backports_qemu_versions` | ❌ W0 | ⬜ pending |
+| 03-09-Tracer, 03-09-T3 | 03-09 | 1 (D-31 insertion) | EQV-04 | T-03-32 | In the branch-built image, `qemu-arm -cpu cortex-m4 -R 0x10000000` starts the probe guest and returns its exit code 42; check-a shows the four QEMU rows OK at the discovered version. | CI | container workflow, image-a notices `qemu-mprofile` and `check-a` | ❌ W0 | ⬜ pending |
+| 03-10-T3 | 03-10 | 2 (after 03-09) | EQV-04 | T-03-38, T-03-39 | Current image names only the digest main's publish job verified; the first testbed run on it has its eight Phase 2 steps green; 02-22-CI-NOTICES.md changes from line 5 on only after the founder's `rebaseline` reply. | CI plus founder gate | testbed workflow; `diff <(sed '1,4d' 02-22-CI-NOTICES.md) <(sed '1,4d' 03-10-CI-NOTICES.md)` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -72,7 +76,7 @@ Task IDs are filled in by the planner and plan checker. The rows below are the r
 - [ ] Crates `crates/mt-contract`, `crates/mt-vectors` and the executor crate (the research names `mt-harness`), with the tests named above.
 - [ ] A fixture of `llvm-dwarfdump` text output, and synthetic runner records for the classification table.
 - [ ] The infinite-loop fixture and the overrun fixture, generated at test time from the shared runtime template, not committed as per-target C.
-- [ ] A CI QEMU smoke step that measures QEMU 7.2 and GCC 14.3 behavior in the pinned image (D-30) before the layout and adapter work depends on it.
+- [ ] A CI QEMU smoke step that measures QEMU 7.2 and GCC 14.3 behavior in the pinned image (D-30) before the layout and adapter work depends on it. Measured: QEMU 7.2 cannot start a `-cpu cortex-m4` user-mode guest, so D-31 re-pins QEMU (plans 03-09 and 03-10) and the step measures the re-pinned QEMU with GCC 14.3.
 - No framework install is needed.
 
 ---

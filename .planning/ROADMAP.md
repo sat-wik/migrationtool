@@ -155,13 +155,19 @@ Plans:
   3. At least 10 test-bed targets have an entry-point adapter declaring the function and its argument roles, so bytes in produce return code, output buffer and library state out as a vector.
   4. The C reference executor runs any vector against the target's original C build and stores the result in a schema-valid vector; running the same vector twice gives byte-identical results.
 
-**Plans:** 8 plans
+**Plans:** 10 plans
+
+**Execution order (D-31 gap insertion, binding):** 03-01 Tracer and Task 2 (done) → 03-09 → 03-10 → 03-01 Task 3 (round trip 3, the founder's `extend 1`) → Wave 2 onward. Wave numbers cannot express an insertion into a plan that is already half executed; 03-10's frontmatter `wave: 2` only encodes `depends_on: ["03-09"]` and it does not run in parallel with 03-02.
 
 Plans:
 **Wave 1**
 - [ ] 03-01-PLAN.md — Tracer: executor core (shared runtime template, link recipe, qemu-arm -cpu cortex-m4 through the runner, result frame, outcome classification) and `mt vectors selftest` measured in the pinned image before dependent work (D-30)
 
-**Wave 2** *(blocked on Wave 1 completion)*
+**Gap insertion (D-31)** *(runs between 03-01 Task 2 and 03-01 Task 3, in this order)*
+- [ ] 03-09-PLAN.md — D-31 branch side: QEMU (qemu-user, qemu-system-arm) from bookworm-backports at the pinned snapshot through a QEMU-only apt preferences file, pin discovery, an in-image `qemu-arm -cpu cortex-m4` start probe that gates the publish, pins, fixtures and docs, the two 03-01 hand-back edits; green container, pin-discovery and ci on the session branch
+- [ ] 03-10-PLAN.md — D-31 publish: image PR to main, founder merge, publish confirmed, origin/main merged back, new digest under Current image, the first testbed run on the new image, founder re-baseline of 02-22-CI-NOTICES.md; hands back to 03-01 Task 3
+
+**Wave 2** *(blocked on Wave 1 completion, including 03-09, 03-10 and 03-01 Task 3)*
 - [ ] 03-02-PLAN.md — Contract v0 (docs/specs/equivalence-contract.md 0.1.0) and the mt-contract policy loader with the UB menu, return_error default, default_change and full override records; 16 policy files (EQV-01)
 
 **Wave 3** *(blocked on Wave 2 completion)*
