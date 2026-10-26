@@ -148,6 +148,19 @@ The TRACTOR format details measured in 03-RESEARCH.md (pinned corpus commit `379
   - Input is passed through a file in the fixed working directory, because `RunRequest` has no stdin.
   - QEMU 7.2 and GCC 14.3 in the pinned image must be re-measured in CI by an early smoke step before dependent work.
 
+### Founder decision after plan 03-01's round trips (2026-10-26)
+
+- **D-31: Re-pin QEMU in the image to a release that does not map the ARM commpage for M-profile CPUs (8.2.x, as measured on the host). D-30 and D-02 stay exactly as decided.**
+  - **Cause:** the QEMU 7.2.22 source (stable-7.2, 30a6877) maps the commpage at 0xffff0000 for every ARM CPU. The calls are `linux-user/elfload.c` `init_guest_commpage` and `page_set_flags`, made before any guest code runs. M-profile caps `reserved_va` at 0x80000000 (`linux-user/arm/target_cpu.h`, `linux-user/main.c`).
+  - **Consequence:** QEMU 7.2.22 cannot start any `-cpu cortex-m4` linux-user guest on a 64-bit host, whatever the flags. Testbed runs 39687629155 and 39688983966 failed with `page_set_flags: Assertion 'end - 1 <= GUEST_ADDR_MAX'`.
+  - **Rejected alternatives:**
+    - `-cpu cortex-a15` without `-R`: it weakens Cortex-M fidelity (D-01) and the per-vector memory budget (D-02).
+    - A patched 7.2 build: more upkeep.
+    - Stopping.
+  - **Scope:** change the `qemu-user` (and `qemu-system-arm`) apt pins and the Dockerfile source to a pinned snapshot of a newer suite or backports. Rebuild and publish the image the way plans 02-01 and 02-02 did: pin discovery, a container round trip, then the founder's merge to `main` and a new digest under Current image. Then resume 03-01's round trip 3 (the founder's `extend 1`) on the new image.
+  - **Pins comment:** the `container/pins.toml` comment "user mode cannot run bare-metal Cortex-M images" may be reworded in the same change.
+  - **Reversibility:** costly. Every stored vector records the image digest (D-19).
+
 ### Claude's Discretion
 
 - **Executor internals:** how the driver is generated and linked (startup code, newlib with semihosting or a minimal stub). The constraints are the pinned toolchain, the shipped `.specs` names (02-21 `SHIPPED_SPECS`) and determinism.
