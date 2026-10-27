@@ -155,13 +155,13 @@ Plans:
   3. At least 10 test-bed targets have an entry-point adapter declaring the function and its argument roles, so bytes in produce return code, output buffer and library state out as a vector.
   4. The C reference executor runs any vector against the target's original C build and stores the result in a schema-valid vector; running the same vector twice gives byte-identical results.
 
-**Plans:** 2/10 plans executed
+**Plans:** 3/10 plans executed
 
 **Execution order (D-31 gap insertion, binding):** 03-01 Tracer and Task 2 (done) → 03-09 → 03-10 → 03-01 Task 3 (round trip 3, the founder's `extend 1`) → 03-02 → 03-03 .. 03-08. The frontmatter encodes it: 03-09 is wave 1, 03-10 wave 2 (depends on 03-09), 03-02 wave 3 (depends on 03-01 and 03-10), 03-03 .. 03-08 waves 4 .. 9. 03-01 is half executed and stays wave 1; its Task 3 precondition requires 03-10-SUMMARY.md to record the founder's merge, the approved re-baseline and the Current image digest, so it halts until 03-10 has finished.
 
 Plans:
 **Wave 1** *(03-01 Task 3 halts on its precondition until 03-10 has finished)*
-- [ ] 03-01-PLAN.md — Tracer: executor core (shared runtime template, link recipe, qemu-arm -cpu cortex-m4 through the runner, result frame, outcome classification) and `mt vectors selftest` measured in the pinned image before dependent work (D-30)
+- [x] 03-01-PLAN.md — Tracer: executor core (shared runtime template, link recipe, qemu-arm -cpu cortex-m4 through the runner, result frame, outcome classification) and `mt vectors selftest` measured in the pinned image before dependent work (D-30)
 - [x] 03-09-PLAN.md — D-31 branch side: QEMU (qemu-user, qemu-system-arm) from bookworm-backports at the pinned snapshot through a QEMU-only apt preferences file, pin discovery, an in-image `qemu-arm -cpu cortex-m4` start probe that gates the publish, pins, fixtures and docs, the two 03-01 hand-back edits; green container, pin-discovery and ci on the session branch
 
 **Wave 2** *(blocked on 03-09)*
@@ -320,7 +320,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Pinned Toolchain Container | 9/9 | Complete    | 2026-10-12 |
 | 2. Test Bed and Build Capture | 22/22 | Complete    | 2026-10-21 |
-| 3. Equivalence Contract and Test-Vector Schema | 2/10 | In Progress | - |
+| 3. Equivalence Contract and Test-Vector Schema | 3/10 | In Progress | - |
 | 4. UB Detection and Decision Log | 0/0 | Not started | - |
 | 5. Target-Matched Differential Harness | 0/0 | Not started | - |
 | 6. Symbolic Layer and Analysis Spikes | 0/0 | Not started | - |

@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 03
 current_phase_name: Equivalence Contract and Test-Vector Schema
 status: executing
-stopped_at: Completed 03-10-PLAN.md
-last_updated: "2026-10-27T04:55:55.326Z"
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-10-27T05:01:30.632Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 03 execution started
-state_head: cf7366d6af8df69a562086d3442d855dc06d7f06
+state_head: 32a8c5e926a5a69f60ac9f33c56f4a98b6761451
 progress:
   total_phases: 12
   completed_phases: 2
   total_plans: 41
-  completed_plans: 33
+  completed_plans: 34
 ---
 
 # Project State
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 03 (Equivalence Contract and Test-Vector Schema) — EXECUTING
-Plan: 03-09 and 03-10 done (D-31 QEMU re-pin published, recorded under Current image, Phase 2 notice baseline re-baselined); next 03-01 Task 3 round trip 3 (testbed run 40451139101), then 03-02 .. 03-08
-Status: Ready to resume 03-01 Task 3
+Plan: 03-01, 03-09 and 03-10 done (executor self-test passed 17 rows in the D-31 image, testbed run 40451139101 = 03-01 round trip 3 of 3; commits 32a8c5e and the summary are unpushed); next 03-02, then 03-03 .. 03-08
+Status: Ready to plan-execute 03-02
 Last activity: 2026-10-27 — Phase 03 execution started
 
 Progress: [██░░░░░░░░] 17%
@@ -81,6 +81,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 02 P22 | 30min | 3 tasks | 11 files |
 | Phase 03 P09 | 35 min | 3 tasks | 13 files |
 | Phase 03 P10 | n/a (spans founder merge) | 3 tasks | 5 files |
+| Phase 03 P01 | n/a (spans four sessions and the D-31 gap) | 3 tasks | 24 files |
 
 ## Accumulated Context
 
@@ -134,6 +135,7 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 03]: Accepted QEMU 1:10.0.2+ds-2+deb13u1~bpo12+1 (upstream 10.0.2) from bookworm-backports for qemu-user and qemu-system-arm; not 8.2.x as D-31 reads, recorded deviation shown to the founder in plan 03-10 before the merge — Pinned snapshot 20261005T000000Z offers only 10.0.2 in backports; qemu-mprofile probe exits 42 in the image; 8.2.x existed only at older timestamps (needs a new [image] key and code)
 - [Phase 03]: QEMU-only apt preferences (priority 990 for qemu-user qemu-system-arm qemu-system-common qemu-system-data, -1 for all other backports packages) in stage snapshot-sources; PROJECT.md decision D-21 — A dependency outside the QEMU set fails the build instead of entering silently; pin-discovery sees the same candidates as the image
 - [Phase 03]: 03-10: D-31 image is QEMU 10.0.2 from bookworm-backports (not the 8.2.x D-31 names), published from main as sha256:9de8bee1...; Phase 2 notice baseline re-baselined on the founder's reply
+- [Phase 03]: 03-01: C reference executor in mt-harness; qemu-arm -cpu cortex-m4 run through the runner with the runner's four base environment keys; timeout carries has_ub label 'timeout' with rc -9; self-test passed 17 rows in the D-31 image (testbed run 40451139101, round trip 3 of 3) — Founder may revisit the timeout label and the environment interpretation of D-02; D-30 CPU model and user mode unchanged
 
 ### Pending Todos
 
@@ -173,6 +175,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-27T04:55:55.168Z
-Stopped at: Completed 03-10-PLAN.md
+Last session: 2026-10-27T05:01:30.476Z
+Stopped at: Completed 03-01-PLAN.md
 Resume file: None
