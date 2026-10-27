@@ -75,3 +75,85 @@ fn eqv_04_adapters_cli_needs_a_manifest() {
         outcome.stderr
     );
 }
+
+fn write_tree(root: &Path, files: &[(&str, &str)]) {
+    for (name, text) in files {
+        let path = root.join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    }
+}
+
+#[test]
+fn eqv_04_check_cli_fails_closed() {
+    let dir = tempfile::tempdir().unwrap();
+    let first = dir.path().join("first");
+    let second = dir.path().join("second");
+    let files = [("t/c/e/index.json", "{}\n"), ("t/c/e/aaaa.json", "one\n")];
+    write_tree(&first, &files);
+    write_tree(&second, &files);
+    let run = |first: &Path, second: &Path| {
+        run_mt(&[
+            "vectors",
+            "check",
+            "--first",
+            first.to_str().unwrap(),
+            "--second",
+            second.to_str().unwrap(),
+        ])
+    };
+
+    // Identical trees: exit 0 and the count.
+    let same = run(&first, &second);
+    assert_eq!(same.code, Some(0), "stderr: {}", same.stderr);
+    assert!(
+        same.stdout.lines().any(|l| l == "identical 2 files"),
+        "{}",
+        same.stdout
+    );
+    assert!(same.stdout.contains("result: passed"), "{}", same.stdout);
+
+    // A differing byte, a missing file and an extra file each exit 1 and name
+    // the file.
+    write_tree(&second, &[("t/c/e/aaaa.json", "ONE\n")]);
+    let differing = run(&first, &second);
+    assert_eq!(differing.code, Some(1), "stdout: {}", differing.stdout);
+    assert!(
+        differing.stdout.contains("t/c/e/aaaa.json"),
+        "{}",
+        differing.stdout
+    );
+    assert!(
+        differing.stdout.contains("result: failed"),
+        "{}",
+        differing.stdout
+    );
+
+    write_tree(&second, &[("t/c/e/aaaa.json", "one\n")]);
+    std::fs::remove_file(second.join("t/c/e/index.json")).unwrap();
+    let missing = run(&first, &second);
+    assert_eq!(missing.code, Some(1), "stdout: {}", missing.stdout);
+    assert!(
+        missing.stdout.contains("t/c/e/index.json"),
+        "{}",
+        missing.stdout
+    );
+
+    write_tree(
+        &second,
+        &[("t/c/e/index.json", "{}\n"), ("t/c/e/bbbb.json", "x\n")],
+    );
+    let extra = run(&first, &second);
+    assert_eq!(extra.code, Some(1), "stdout: {}", extra.stdout);
+    assert!(extra.stdout.contains("t/c/e/bbbb.json"), "{}", extra.stdout);
+
+    // An empty pair of trees compares nothing, which is not a pass; a tree that
+    // is not there is invalid input.
+    let empty_a = dir.path().join("empty-a");
+    let empty_b = dir.path().join("empty-b");
+    std::fs::create_dir_all(&empty_a).unwrap();
+    std::fs::create_dir_all(&empty_b).unwrap();
+    assert_eq!(run(&empty_a, &empty_b).code, Some(1));
+    let absent = run(&first, &dir.path().join("absent"));
+    assert_eq!(absent.code, Some(2), "stderr: {}", absent.stderr);
+}

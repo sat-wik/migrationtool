@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use mt_capture::manifest::Manifest;
 use mt_contract::CONTRACT_VERSION;
 use mt_harness::EXECUTOR_VERSION;
-use mt_harness::replay::check_corpora;
+use mt_harness::replay::{ReplayOptions, check_corpora, replay_corpus};
 use mt_harness::run::{
     BuildOptions, BuildState, EntryRunSummary, RunOptions, RunState, Scope, build_entries,
     run_entries,
@@ -233,4 +233,190 @@ fn eqv_04_scope_selects_entries_with_roles() {
     assert!(scope.pairs.is_empty());
     let manifest = Manifest::load(&repo_root().join("testbed/manifest.toml")).unwrap();
     assert!(manifest.target.contains_key("corejson"));
+}
+
+/// Build, then run into `corpus`, and return the entry's corpus directory.
+fn build_and_run(
+    target: &str,
+    config: &str,
+    entry: &str,
+    tmp: &Path,
+    corpus: &Path,
+) -> (Scope, EntryRunSummary, PathBuf) {
+    let scope = scope_for(target, config, entry, &tmp.join("build"), &local_work_dir());
+    build_ok(&scope);
+    let summary = run_into(&scope, corpus, &tmp.join("slots"));
+    let dir = corpus.join(target).join(config).join(entry);
+    (scope, summary, dir)
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_sentinel_prefill_recorded() {
+    let tmp = tempfile::tempdir().unwrap();
+    let (_, summary, dir) = build_and_run(
+        "lz4",
+        "default",
+        "LZ4_decompress_safe",
+        tmp.path(),
+        &tmp.path().join("corpus"),
+    );
+    assert!(summary.vectors > 0, "{summary:?}");
+    let corpus = read_corpus(&dir).unwrap();
+    // seed bytes -> capacity -> (rc, recorded buffer)
+    let mut by_seed: std::collections::BTreeMap<
+        String,
+        std::collections::BTreeMap<u32, (i32, Vec<u8>)>,
+    > = std::collections::BTreeMap::new();
+    for vector in corpus.vectors.values() {
+        assert_eq!(
+            vector.argv.len(),
+            3,
+            "argv0, the input length, the capacity"
+        );
+        let cap: u32 = vector.argv[2].parse().unwrap();
+        let recorded = decode_latin1(&vector.stdout.pattern).unwrap();
+        assert_eq!(
+            recorded.len(),
+            cap as usize,
+            "D-07: the whole output buffer is recorded, capacity {cap}"
+        );
+        by_seed
+            .entry(vector.stdin.clone())
+            .or_default()
+            .insert(cap, (vector.rc, recorded));
+    }
+    let mut successes = 0usize;
+    let mut cut_short = 0usize;
+    for (seed, caps) in &by_seed {
+        assert_eq!(
+            caps.keys().copied().collect::<Vec<_>>(),
+            [16, 256, 4096],
+            "every seed runs once per capacity (seed {seed:?})"
+        );
+        let (rc_big, big) = &caps[&4096];
+        if *rc_big < 0 {
+            continue;
+        }
+        let produced = usize::try_from(*rc_big).unwrap();
+        successes += 1;
+        // With room to spare the tail is untouched sentinel.
+        assert!(
+            big[produced..].iter().all(|byte| *byte == 0xA5),
+            "the tail after {produced} produced bytes is 0xA5"
+        );
+        for cap in [16u32, 256] {
+            let (rc, recorded) = &caps[&cap];
+            if produced <= cap as usize {
+                assert_eq!(*rc, *rc_big, "capacity {cap}");
+                assert_eq!(&recorded[..produced], &big[..produced]);
+                assert!(recorded[produced..].iter().all(|byte| *byte == 0xA5));
+            } else {
+                // The block does not fit: the error path, whatever it wrote
+                // before failing is part of the vector.
+                assert!(*rc < 0, "capacity {cap} cannot hold {produced} bytes");
+                cut_short += 1;
+            }
+        }
+    }
+    println!(
+        "lz4/default/LZ4_decompress_safe sentinel: seeds={} produced_ok={successes} cut_short={cut_short}",
+        by_seed.len()
+    );
+    assert!(successes > 0, "at least one seed decompresses");
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_flat_targets_produce_vectors() {
+    let work = local_work_dir();
+    let cases = [
+        ("corejson", ["default", "depth-8"], "JSON_Validate"),
+        ("lz4", ["default", "heap-small"], "LZ4_decompress_safe"),
+        ("libfdt", ["default", "assume-valid"], "fdt_check_full"),
+    ];
+    for (target, configs, entry) in cases {
+        for config in configs {
+            let tmp = tempfile::tempdir().unwrap();
+            let scope = scope_for(target, config, entry, &tmp.path().join("build"), &work);
+            build_ok(&scope);
+            let first = run_into(&scope, &tmp.path().join("a"), &tmp.path().join("slots-a"));
+            let second = run_into(&scope, &tmp.path().join("b"), &tmp.path().join("slots-b"));
+            assert_eq!(first, second, "{target}/{config}/{entry}");
+            assert!(first.vectors > 0 && first.twice_identical, "{first:?}");
+            let comparison = check_corpora(&tmp.path().join("a"), &tmp.path().join("b")).unwrap();
+            assert!(comparison.identical(), "{:?}", comparison.problems);
+            println!(
+                "{target}/{config}/{entry} vectors={} identical",
+                first.vectors
+            );
+        }
+    }
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_replay_reproduces_stored_vectors() {
+    let tmp = tempfile::tempdir().unwrap();
+    let (scope, summary, dir) = build_and_run(
+        "corejson",
+        "default",
+        "JSON_Validate",
+        tmp.path(),
+        &tmp.path().join("corpus"),
+    );
+    let options = ReplayOptions {
+        scope,
+        tools: host_tools(),
+        cfg: runner_config(),
+        scratch_dir: tmp.path().join("replay-slots"),
+    };
+    let report = replay_corpus(&options, &dir).unwrap();
+    assert_eq!(report.vectors, summary.vectors);
+    assert_eq!(report.identical, summary.vectors);
+    assert!(report.passed(), "{}", report.render());
+    assert_eq!(
+        report.render(),
+        format!("{} identical {}", dir.display(), summary.vectors)
+    );
+
+    // A stored vector edited by one byte is reported as differing.
+    let victim = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .find(|path| {
+            path.extension().is_some_and(|ext| ext == "json")
+                && path.file_name().is_some_and(|name| name != "index.json")
+        })
+        .unwrap();
+    let sha = victim.file_stem().unwrap().to_str().unwrap().to_owned();
+    let mut bytes = std::fs::read(&victim).unwrap();
+    let text = String::from_utf8(bytes.clone()).unwrap();
+    let at = text.find("\"rc\": ").unwrap() + "\"rc\": ".len();
+    bytes[at] = if bytes[at] == b'7' { b'8' } else { b'7' };
+    std::fs::write(&victim, &bytes).unwrap();
+    let edited = replay_corpus(&options, &dir).unwrap();
+    assert!(!edited.passed());
+    assert_eq!(edited.differing, [sha.clone()]);
+    assert_eq!(edited.identical, summary.vectors - 1);
+    assert_eq!(edited.render(), format!("{} differs {sha}", dir.display()));
+
+    // A provenance record that names another driver is refused, even though
+    // the vectors still reproduce.
+    std::fs::write(&victim, text.as_bytes()).unwrap();
+    let index_path = dir.join("index.json");
+    let index = std::fs::read_to_string(&index_path).unwrap();
+    let marker = "\"driver_elf\": \"";
+    let at = index.find(marker).unwrap() + marker.len();
+    let mut changed = index.into_bytes();
+    changed[at] = if changed[at] == b'0' { b'1' } else { b'0' };
+    std::fs::write(&index_path, &changed).unwrap();
+    let mismatched = replay_corpus(&options, &dir).unwrap();
+    assert!(!mismatched.passed());
+    assert!(!mismatched.provenance_mismatch.is_empty());
+    assert!(
+        mismatched.render().contains("provenance_mismatch"),
+        "{}",
+        mismatched.render()
+    );
 }

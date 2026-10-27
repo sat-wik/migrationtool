@@ -5,7 +5,10 @@
 
 use std::path::{Path, PathBuf};
 
-use mt_harness::link::{unresolved_symbols, verify_objects};
+use mt_harness::globals::{GlobalKind, writable_globals};
+use mt_harness::link::{archive, unresolved_symbols, verify_objects};
+use mt_harness::tools::ExecTools;
+use mt_toolchain::runner::RunnerConfig;
 use mt_vectors::sha256_hex;
 
 fn repo_root() -> PathBuf {
@@ -115,4 +118,106 @@ collect2: error: ld returned 1 exit status
         ["ble_sm_alg_c1", "ble_sm_alg_s1", "quoted"]
     );
     assert!(unresolved_symbols("collect2: error: ld returned 1 exit status\n").is_empty());
+}
+
+fn fixture(name: &str) -> Vec<u8> {
+    std::fs::read(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/obj")
+            .join(name),
+    )
+    .unwrap()
+}
+
+#[test]
+fn eqv_04_globals_are_found_in_data_and_bss() {
+    // `arm-none-eabi-nm -S globals.o` lists counter (D, 4), table (d, 7),
+    // hidden_bss (b, 4), zeroed (B, 12), ro (R, read-only data) and use (T).
+    let symbols = writable_globals("globals.o", &fixture("globals.o")).unwrap();
+    let rows: Vec<(&str, GlobalKind, u64, bool)> = symbols
+        .iter()
+        .map(|symbol| (symbol.name.as_str(), symbol.kind, symbol.size, symbol.local))
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            ("counter", GlobalKind::Data, 4, false),
+            ("hidden_bss", GlobalKind::Bss, 4, true),
+            ("table", GlobalKind::Data, 7, true),
+            ("zeroed", GlobalKind::Bss, 12, false),
+        ]
+    );
+    assert!(symbols.iter().all(|symbol| symbol.object == "globals.o"));
+    // A local symbol is joined through the source file that precedes it.
+    for symbol in symbols.iter().filter(|symbol| symbol.local) {
+        assert_eq!(symbol.file.as_deref(), Some("globals.c"), "{}", symbol.name);
+    }
+    assert!(
+        symbols
+            .iter()
+            .filter(|symbol| !symbol.local)
+            .all(|symbol| symbol.file.is_none())
+    );
+
+    // The Phase 2 Arm fixture has one .bss symbol and no .data symbol.
+    let small = writable_globals(
+        "arm-small.o",
+        &std::fs::read(repo_root().join("crates/mt-capture/tests/fixtures/ci/arm-small.o"))
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(small.len(), 1);
+    assert_eq!(small[0].name, "ieee754_dummy_place_holder");
+    assert_eq!(small[0].kind, GlobalKind::Bss);
+    assert_eq!(small[0].size, 4);
+
+    // Bytes that are not an object are an error, never an empty list.
+    assert!(writable_globals("junk.o", b"not an elf file at all").is_err());
+}
+
+fn host_tools() -> Option<ExecTools> {
+    let needed = [
+        "/usr/bin/qemu-arm",
+        "/usr/bin/arm-none-eabi-gcc",
+        "/usr/bin/arm-none-eabi-ar",
+    ];
+    if let Some(missing) = needed.iter().find(|path| !Path::new(path).exists()) {
+        eprintln!("skipping: {missing} is not installed on this host");
+        return None;
+    }
+    Some(ExecTools::at(
+        Path::new("/usr/bin"),
+        Path::new("/usr/bin/qemu-arm"),
+        Path::new("/usr/bin/llvm-dwarfdump"),
+    ))
+}
+
+#[test]
+fn eqv_04_archive_keeps_members_with_the_same_name() {
+    let Some(tools) = host_tools() else {
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let objects = dir.path().join("objects");
+    for sub in ["a", "b"] {
+        std::fs::create_dir_all(objects.join(sub)).unwrap();
+        std::fs::write(objects.join(sub).join("x.o"), fixture("globals.o")).unwrap();
+    }
+    let cfg = RunnerConfig::new("/usr/bin:/bin", "1791158400");
+    let members = vec!["b/x.o".to_owned(), "a/x.o".to_owned()];
+    let first = archive(&tools, &cfg, &objects, &members, &dir.path().join("one.a")).unwrap();
+    let bytes = std::fs::read(&first.path).unwrap();
+    // Two members, both named x.o: ar keeps the base name, not the directory.
+    let named = bytes.windows(4).filter(|window| window == b"x.o/").count();
+    assert_eq!(named, 2, "both members stay in the archive");
+    assert_eq!(first.sha256, sha256_hex(&bytes));
+
+    // The archive is deterministic: the same members in another order, written
+    // again, give the same bytes (members sorted, `D` zeroes the headers).
+    let reversed: Vec<String> = members.iter().rev().cloned().collect();
+    let second = archive(&tools, &cfg, &objects, &reversed, &dir.path().join("two.a")).unwrap();
+    assert_eq!(first.sha256, second.sha256);
+    // An existing archive is replaced, not appended to.
+    let again = archive(&tools, &cfg, &objects, &members, &first.path).unwrap();
+    assert_eq!(again.sha256, first.sha256);
 }
