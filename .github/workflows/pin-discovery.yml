@@ -4,6 +4,9 @@
 # pinned snapshot timestamp, and the official Arm checksum. The result is
 # published as a job annotation titled `pin-discovery` (the Actions log and
 # artifact hosts are not reachable from cloud sessions) and in the step summary.
+# The QEMU candidates come from bookworm-backports at the same timestamp (phase
+# 03 CONTEXT D-31); an informational annotation titled `qemu-backports` lists the
+# qemu-user backports versions the snapshot archive has seen and when.
 #
 # Action commit SHAs are pinned here because GitHub resolves `uses:` before any
 # step can read container/pins.toml; every other pin comes from that file.
@@ -139,3 +142,49 @@ jobs:
 
           cat "$RUNNER_TEMP/block.txt" >> "$GITHUB_STEP_SUMMARY"
           echo "::notice title=pin-discovery::$(escape "$RUNNER_TEMP/block.txt")"
+
+      # CONTEXT D-31, informational: which qemu-user backports versions the archive
+      # has seen, with the first time each amd64 file was archived, so a version at
+      # another timestamp can be told apart from the one the pinned snapshot holds.
+      # It never fails the run: no -e and no ERR trap, and a failed lookup prints
+      # `unavailable`. The snapshot API answers are read as data by jq only.
+      - name: List qemu-user versions seen in backports (informational, D-31)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          # A text file as annotation message text: %, CR and LF escaped.
+          escape() {
+            local text
+            text=$(cat "$1")
+            text=${text//'%'/'%25'}
+            text=${text//$'\r'/'%0D'}
+            text=${text//$'\n'/'%0A'}
+            printf '%s' "$text"
+          }
+          base="https://snapshot.debian.org/mr/binary/qemu-user/"
+          block="$RUNNER_TEMP/qemu-backports.txt"
+          {
+            echo "qemu-user versions in backports on snapshot.debian.org (informational)"
+            if list=$(curl -fsS --retry 3 --max-time 60 "$base") \
+              && versions=$(jq -r '.result[].binary_version | select(contains("~bpo12"))' <<< "$list" | sort -uV); then
+              if [ -z "$versions" ]; then
+                echo "none seen"
+              else
+                while IFS= read -r version; do
+                  encoded=$(jq -rn --arg v "$version" '$v | @uri')
+                  if info=$(curl -fsS --retry 3 --max-time 60 "${base}${encoded}/binfiles?fileinfo=1") \
+                    && seen=$(jq -r '. as $d | [.result[] | select(.architecture == "amd64") | .hash] | map($d.fileinfo[.][]?.first_seen) | sort | first // empty' <<< "$info") \
+                    && [ -n "$seen" ]; then
+                    echo "${version}  first_seen ${seen}"
+                  else
+                    echo "${version}  unavailable"
+                  fi
+                done <<< "$versions"
+              fi
+            else
+              echo "unavailable: could not fetch or parse ${base}"
+            fi
+          } > "$block"
+          cat "$block" >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=qemu-backports::$(escape "$block")"

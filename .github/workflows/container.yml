@@ -5,10 +5,12 @@
 #
 # Log and artifact hosts are not reachable from cloud sessions, so each job also
 # publishes its evidence as job annotations (titles check-a, negative-pin,
-# manifest-a, manifest-b, manifest-compare, smoke, tool-outputs, pin-binding,
-# arm-specs, toolchain-ro-control, image-archive, image-digest, verified-image,
-# publish-skipped, and on failure
+# manifest-a, manifest-b, manifest-compare, smoke, qemu-mprofile, tool-outputs,
+# pin-binding, arm-specs, toolchain-ro-control, image-archive, image-digest,
+# verified-image, publish-skipped, and on failure
 # "image-a build tail", "image-b build tail", manifest-diff and tag-lookup).
+# The image-a job proves that `qemu-arm -cpu cortex-m4` starts a guest before
+# the image can be saved and published (qemu-mprofile, phase 03 CONTEXT D-31).
 # `verified-image` is the digest reference later phases use; it is announced by
 # the publish job, after the push, and only when image-a, image-b and compare all
 # succeeded (WR-04).
@@ -721,6 +723,38 @@ jobs:
             exit 1
           fi
           annotate notice smoke "$out/smoke-notice.txt"
+
+      # CONTEXT D-31: QEMU 7.2 aborts at startup for an M-profile CPU, so the image
+      # must start a `-cpu cortex-m4` linux-user guest and get its exit code back.
+      # The step carries the status function of the steps around it and the save
+      # step below has none, so an image whose QEMU cannot start such a guest is
+      # never archived or published. The guest is container/smoke/qemu-mprofile.S.
+      - name: QEMU M-profile user-mode start (D-31)
+        id: qemu-mprofile
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          script='set -uo pipefail
+          qemu-arm --version | head -n 1
+          if qemu-arm -cpu help 2>&1 | grep -qw cortex-m4; then echo "cpu list: cortex-m4 listed"; else echo "cpu list: cortex-m4 NOT listed"; fi
+          arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -nostdlib -static -o /tmp/qemu-mprofile.elf container/smoke/qemu-mprofile.S
+          timeout 60 qemu-arm -cpu cortex-m4 -R 0x10000000 /tmp/qemu-mprofile.elf
+          echo "exit code: $?"'
+          set +e
+          docker run --rm --network none --user 65534:65534 --read-only \
+            --tmpfs /tmp:rw,exec,nosuid,size=64m \
+            -v "$GITHUB_WORKSPACE:/work:ro" -w /work \
+            mt-toolchain:ci bash -c "$script" > "$out/qemu-mprofile.txt" 2>&1
+          set -e
+          cat "$out/qemu-mprofile.txt"
+          if [ "$(tail -n 1 "$out/qemu-mprofile.txt")" = "exit code: 42" ]; then
+            annotate notice qemu-mprofile "$out/qemu-mprofile.txt"
+          else
+            annotate error qemu-mprofile "$out/qemu-mprofile.txt"
+            exit 1
+          fi
 
       # CONTEXT D-24, WR-04: the image that just passed the pin-binding gate, the
       # check, the off-pin check, the manifest and the smoke steps is saved as it

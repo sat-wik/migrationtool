@@ -67,6 +67,11 @@ ARG TOOL_PATH
 # Stage snapshot-sources: the digest-pinned base with every apt source replaced
 # by snapshot.debian.org at one fixed timestamp (CONTEXT D-04). Later stages
 # install packages from here; this stage installs nothing.
+# Every apt source is snapshot.debian.org at that one timestamp. The
+# bookworm-backports suite at that timestamp supplies only the QEMU packages,
+# because QEMU 7.2 cannot start an M-profile user-mode guest (phase 03 CONTEXT
+# D-31). Every other backports package has priority -1, so a dependency outside
+# the QEMU set fails the build instead of entering silently.
 FROM --platform=${PLATFORM} ${BASE_REF}@${BASE_DIGEST} AS snapshot-sources
 ARG SNAPSHOT_TIMESTAMP
 # http on purpose: the slim base has no CA bundle, and apt verifies the signed
@@ -81,7 +86,17 @@ RUN set -eux; \
       "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/${SNAPSHOT_TIMESTAMP}/ ${VERSION_CODENAME} main" \
       "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/${SNAPSHOT_TIMESTAMP}/ ${VERSION_CODENAME}-updates main" \
       "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/${SNAPSHOT_TIMESTAMP}/ ${VERSION_CODENAME}-security main" \
+      "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/${SNAPSHOT_TIMESTAMP}/ ${VERSION_CODENAME}-backports main" \
       > /etc/apt/sources.list; \
+    printf '%s\n' \
+      'Package: qemu-user qemu-system-arm qemu-system-common qemu-system-data' \
+      "Pin: release n=${VERSION_CODENAME}-backports" \
+      'Pin-Priority: 990' \
+      '' \
+      'Package: *' \
+      "Pin: release n=${VERSION_CODENAME}-backports" \
+      'Pin-Priority: -1' \
+      > /etc/apt/preferences.d/50-qemu-backports; \
     printf '%s\n' \
       'Acquire::Check-Valid-Until "false";' \
       'Acquire::Retries "5";' \
