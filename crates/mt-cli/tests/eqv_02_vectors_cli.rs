@@ -167,3 +167,138 @@ fn eqv_02_validate_cli_corpus() {
     let broken = run_mt(&["vectors", "validate", arg]);
     assert_eq!(broken.code, Some(2), "stderr: {}", broken.stderr);
 }
+
+const COMMIT: &str = "37960ee08a7c644ee66e29855eca33903f702e67";
+
+/// Three of our own JSON files at pinned paths under a work directory's tractor
+/// tree, and a pin file naming them. `mismatch` files get a hash that is not
+/// theirs.
+fn own_tractor_setup(mismatch: usize) -> (tempfile::TempDir, PathBuf, PathBuf) {
+    use std::fmt::Write as _;
+
+    let dir = tempfile::tempdir().unwrap();
+    let work = dir.path().join("work");
+    let tree = work.join("tractor").join(COMMIT).join("tree");
+    let files = [
+        (
+            "Public-Tests/B/one/test_vectors/a.json",
+            r#"{"stdout": {"pattern": "x"}}"#,
+        ),
+        (
+            "Public-Tests/B/two/test_vectors/b.json",
+            r#"{"lib_state_in": {"a": 1}}"#,
+        ),
+        (
+            "Public-Tests/B/three/test_vectors/c.json",
+            r#"{"argv": [], "rc": -11}"#,
+        ),
+    ];
+    let mut pin = format!(
+        "schema_version = 1\nrepo = \"https://example.invalid/corpus\"\ncommit = \"{COMMIT}\"\n\
+         licence_status = \"unchecked; local use only until the Phase 12 licence check\"\n"
+    );
+    for (i, (path, content)) in files.iter().enumerate() {
+        let full = tree.join(path);
+        std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+        std::fs::write(&full, content).unwrap();
+        let hash = if i < mismatch {
+            "00".repeat(32)
+        } else {
+            sha256_of(content.as_bytes())
+        };
+        write!(pin, "\n[[file]]\npath = \"{path}\"\nsha256 = \"{hash}\"\n").unwrap();
+    }
+    let pin_path = dir.path().join("tractor-pin.toml");
+    std::fs::write(&pin_path, pin).unwrap();
+    (dir, pin_path, work)
+}
+
+fn sha256_of(bytes: &[u8]) -> String {
+    mt_vectors::sha256_hex(bytes)
+}
+
+#[test]
+fn eqv_02_tractor_check_cli_needs_three() {
+    let (_dir, pin, work) = own_tractor_setup(1);
+    let outcome = run_mt(&[
+        "vectors",
+        "tractor",
+        "check",
+        "--pin",
+        pin.to_str().unwrap(),
+        "--work-dir",
+        work.to_str().unwrap(),
+    ]);
+    assert_eq!(outcome.code, Some(1), "stderr: {}", outcome.stderr);
+    assert!(
+        outcome
+            .stdout
+            .lines()
+            .any(|l| l == "loaded: 2 of 3 (at least 3 required)"),
+        "stdout: {}",
+        outcome.stdout
+    );
+}
+
+#[test]
+fn eqv_02_tractor_check_cli_loads_pinned_files() {
+    let (_dir, pin, work) = own_tractor_setup(0);
+    let outcome = run_mt(&[
+        "vectors",
+        "tractor",
+        "check",
+        "--pin",
+        pin.to_str().unwrap(),
+        "--work-dir",
+        work.to_str().unwrap(),
+    ]);
+    assert_eq!(outcome.code, Some(0), "stderr: {}", outcome.stderr);
+    assert!(
+        outcome
+            .stdout
+            .lines()
+            .any(|l| l == "loaded: 3 of 3 (at least 3 required)"),
+        "stdout: {}",
+        outcome.stdout
+    );
+    assert_eq!(outcome.stdout.matches("round_trip=json-equal").count(), 3);
+}
+
+#[test]
+fn eqv_02_tractor_check_cli_rejects_a_bad_pin_and_a_missing_tree() {
+    let (dir, pin, work) = own_tractor_setup(0);
+    let text = std::fs::read_to_string(&pin).unwrap();
+    let bad = dir.path().join("bad.toml");
+    std::fs::write(
+        &bad,
+        text.replace("Public-Tests/B/one", "Public-Tests/../one"),
+    )
+    .unwrap();
+    let outcome = run_mt(&[
+        "vectors",
+        "tractor",
+        "check",
+        "--pin",
+        bad.to_str().unwrap(),
+        "--work-dir",
+        work.to_str().unwrap(),
+    ]);
+    assert_eq!(outcome.code, Some(2), "stderr: {}", outcome.stderr);
+
+    let empty = dir.path().join("empty");
+    let outcome = run_mt(&[
+        "vectors",
+        "tractor",
+        "check",
+        "--pin",
+        pin.to_str().unwrap(),
+        "--work-dir",
+        empty.to_str().unwrap(),
+    ]);
+    assert_eq!(outcome.code, Some(2), "stderr: {}", outcome.stderr);
+    assert!(
+        outcome.stderr.contains("tractor fetch"),
+        "{}",
+        outcome.stderr
+    );
+}

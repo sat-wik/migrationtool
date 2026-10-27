@@ -156,6 +156,7 @@ fn build_02_workflow_runs_capture_and_replay_without_network() {
             "image_tool",
             "run_build",
             "run_vectors",
+            "fetch_tractor",
         ],
     );
     assert!(

@@ -232,3 +232,134 @@ fn eqv_04_workflow_static_vectors_steps_never_publish_testbed_titles() {
         "the header comment does not list fixture vectors-selftest-dwarf"
     );
 }
+
+const TRACTOR_STEP: &str = "Fetch the TRACTOR sample and load it unchanged (local use only)";
+
+/// Every flag, limit and read-only mount of the generic networked helper.
+const HELPER_HARDENING: [&str; 12] = [
+    "--user 65534:65534",
+    "--read-only",
+    "--cap-drop ALL",
+    "no-new-privileges",
+    "--pids-limit 1024",
+    "--memory 6g",
+    "--memory-swap 6g",
+    "--cpus 2",
+    "--tmpfs /tmp:rw,exec,nosuid,size=2g",
+    "/usr/local/bin/mt:ro",
+    "/opt/mt/pins.toml:ro",
+    "/opt/mt/testbed:ro",
+];
+
+#[test]
+fn eqv_02_workflow_static_tractor_fetch_is_the_only_new_networked_step() {
+    let text = workflow();
+    let fetch = function_body(&text, "fetch_tractor");
+    let networked = function_body(&text, "run_networked");
+
+    // The same hardening as run_networked, with the network left on.
+    for needle in HELPER_HARDENING {
+        assert!(networked.contains(needle), "run_networked lacks {needle}");
+        assert!(fetch.contains(needle), "fetch_tractor lacks {needle}");
+    }
+    assert!(
+        !fetch.contains("--network"),
+        "fetch_tractor must not change the network setting"
+    );
+    for forbidden in ["--privileged", "--cap-add", "seccomp", "docker.sock"] {
+        assert!(
+            !fetch.contains(forbidden),
+            "fetch_tractor holds {forbidden}"
+        );
+    }
+    assert_eq!(
+        volume_mounts(&fetch),
+        volume_mounts(&networked),
+        "fetch_tractor must mount what run_networked mounts"
+    );
+
+    // It can run only the TRACTOR fetch.
+    let last = code_lines(&fetch)
+        .into_iter()
+        .rfind(|line| !line.trim().is_empty())
+        .unwrap();
+    assert!(
+        last.trim_end().ends_with("mt vectors tractor fetch \"$@\""),
+        "fetch_tractor must end in `mt vectors tractor fetch \"$@\"`: {last}"
+    );
+    assert_eq!(
+        code_lines(&fetch)
+            .iter()
+            .filter(|l| l.contains("docker run"))
+            .count(),
+        1
+    );
+
+    // It is called in exactly one step, the TRACTOR step.
+    let calls = Regex::new(r"\bfetch_tractor\s+\S").unwrap();
+    let call_lines: Vec<String> = code_lines(&text)
+        .into_iter()
+        .filter(|line| calls.is_match(line))
+        .collect();
+    assert_eq!(
+        call_lines.len(),
+        1,
+        "fetch_tractor is called on: {call_lines:?}"
+    );
+    let step = code_lines(&step_text(&text, TRACTOR_STEP)).join("\n");
+    assert!(
+        calls.is_match(&step),
+        "the call is not in the step {TRACTOR_STEP:?}:\n{step}"
+    );
+    assert!(step.contains("tractor.txt"), "{step}");
+    for needle in ["run_vectors tractor check", "finish_vectors tractor"] {
+        assert!(
+            step.contains(needle),
+            "the TRACTOR step lacks {needle}:\n{step}"
+        );
+    }
+    let condition = step
+        .lines()
+        .find(|line| line.trim_start().starts_with("if:"))
+        .unwrap_or_else(|| panic!("the step has no `if:`:\n{step}"));
+    assert!(
+        condition.contains("steps.image.outcome == 'success'"),
+        "{condition}"
+    );
+    assert!(!step.contains("continue-on-error"), "{step}");
+    assert!(
+        step.contains("fetch failed with exit code"),
+        "a fetch failure must be reported as such:\n{step}"
+    );
+    assert!(
+        !step.contains("testbed-"),
+        "the step publishes a testbed- title"
+    );
+
+    // The check stays offline: no run_vectors call names the fetch.
+    let offline_fetch = Regex::new(r"run_vectors\s+tractor\s+fetch").unwrap();
+    assert!(
+        !code_lines(&text).iter().any(|l| offline_fetch.is_match(l)),
+        "run_vectors must never run the TRACTOR fetch"
+    );
+    let vectors = function_body(&text, "run_vectors");
+    assert!(
+        vectors.contains("--network none"),
+        "run_vectors must stay offline"
+    );
+
+    // The header comment lists the title and the amended network policy.
+    let header: String = text
+        .lines()
+        .take_while(|line| line.starts_with('#'))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(
+        header.contains("vectors-tractor"),
+        "the header lacks vectors-tractor"
+    );
+    assert!(
+        header.contains("fetch_tractor"),
+        "the network policy paragraph does not name fetch_tractor"
+    );
+}
