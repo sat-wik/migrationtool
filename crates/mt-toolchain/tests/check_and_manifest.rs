@@ -521,8 +521,8 @@ fn tool_03_check_apt_rows_flag_missing_and_wrong_versions() {
     edit_stdout(
         &mut obs,
         "dpkg_query",
+        "qemu-user\t1:10.0.2+ds-2+deb13u1~bpo12+1",
         "qemu-user\t1:7.2+dfsg-7+deb12u18+b3",
-        "qemu-user\t1:7.2+dfsg-7+deb12u17+b3",
     );
     edit_stdout(
         &mut obs,
