@@ -349,7 +349,9 @@ name = "mt-harness"
 version = "0.1.0"
 dependencies = [
  "mt-capture",
+ "mt-contract",
  "mt-toolchain",
+ "mt-vectors",
  "regex",
  "serde_json",
  "sha2",
