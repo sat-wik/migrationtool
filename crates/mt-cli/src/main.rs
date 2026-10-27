@@ -25,6 +25,7 @@ use mt_toolchain::check::{capture_toml, run_check, run_check_observed};
 use mt_toolchain::pins::{Pins, PinsError};
 use mt_toolchain::runner::RunnerConfig;
 use mt_toolchain::{fetch, manifest};
+use mt_vectors::vector::Vector;
 
 #[derive(Debug, Parser)]
 #[command(name = "mt", about = "migrationtool", version)]
@@ -169,6 +170,17 @@ enum VectorsAction {
         manifest: Option<PathBuf>,
         /// Policy files to check.
         files: Vec<PathBuf>,
+    },
+    /// Validate vector files (EQV-02) at the reference level: the nine
+    /// fields in order, no unknown key (a merged `lib_state` and `note` are
+    /// refused), `has_ub` absent or a label, bytes through the Latin-1 codec,
+    /// `argv[0]` as `<target>/<config>/<entry>` and `outcome=<class>` in
+    /// `stderr`. Prints `<path> valid reference` per file. Exit 0 when every
+    /// file is valid, 2 for the first file that is not.
+    Validate {
+        /// Vector files to validate.
+        #[arg(required = true)]
+        paths: Vec<PathBuf>,
     },
 }
 
@@ -688,7 +700,18 @@ fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
         VectorsAction::PolicyCheck { manifest, files } => {
             policy_check_command(manifest.as_deref(), &files)
         }
+        VectorsAction::Validate { paths } => validate_command(&paths),
     }
+}
+
+/// Exit code of `mt vectors validate`: 0 every file valid. The first invalid
+/// file is an error, reported by `main` as exit 2.
+fn validate_command(paths: &[PathBuf]) -> anyhow::Result<u8> {
+    for path in paths {
+        Vector::load(path).with_context(|| format!("validating {}", path.display()))?;
+        println!("{} valid reference", path.display());
+    }
+    Ok(0)
 }
 
 /// Exit code of `mt vectors policy-check`: 0 every policy valid. Anything else
