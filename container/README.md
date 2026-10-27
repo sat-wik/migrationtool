@@ -20,7 +20,8 @@ those values only as build arguments rendered by `mt toolchain build-args`, and
 | KLEE 3.2 with klee-uclibc | `[source.klee]`, `[source.klee_uclibc]` (tag and commit, built from source against the one LLVM major) and `[source.klee_uclibc_locale]` (the locale tarball the klee-uclibc Makefile downloads, by URL and sha256) |
 | c2rust 0.22.1 | `[source.c2rust]` (crates.io checksum) |
 | cargo-mutants 27.1.0 | `[source.cargo_mutants]` |
-| Bear 3.1.1, QEMU (`qemu-user`, `qemu-system-arm`), libz3 | `[apt]` |
+| Bear 3.1.1, libz3 | `[apt]` |
+| QEMU 10.0.2 (`qemu-user`, `qemu-system-arm`) from bookworm-backports at the pinned snapshot timestamp; an apt preferences file takes only the qemu-source packages from backports and refuses every other backports package (phase 03 CONTEXT D-31, PROJECT.md decision D-21) | `[apt]` and the `[tool.qemu_arm]` and `[tool.qemu_system_arm]` rows |
 | git, cmake, curl, bzip2 and make (Phase 2 test bed: fetch by commit, CMake builds, the Mbed TLS archive; make was installed since Phase 1 and is now pinned) | `[apt]` and the `[tool.git]`, `[tool.cmake]`, `[tool.curl]`, `[tool.bzip2]` and `[tool.make]` rows (PROJECT.md decision D-17) |
 | Arm GNU Toolchain 14.3.rel1 (`arm-none-eabi-gcc`) | `[source.arm_gnu]` (archive checksum) |
 | rustup 1.29.1 | `[source.rustup]` |
@@ -153,7 +154,13 @@ D-20). There is no Renovate or Dependabot.
    snapshot timestamp, the official Arm checksum and the computed checksum of
    the locale tarball as a `pin-discovery` annotation, and fails when a pinned
    checksum differs from the computed one. (`www.uclibc.org` is not reachable
-   from cloud sessions, only from runners.)
+   from cloud sessions, only from runners.) The QEMU candidates come from
+   bookworm-backports at the same snapshot timestamp, through
+   `/etc/apt/preferences.d/50-qemu-backports` in stage `snapshot-sources` of the
+   Dockerfile. The same workflow publishes a `qemu-backports` annotation that
+   lists the qemu-user backports versions the snapshot archive has seen, with the
+   time each was first archived. A backports timestamp different from
+   `snapshot_timestamp` would need a new `[image]` key.
 3. Keep `rust-toolchain.toml` equal to `[rust.tool]`; `cargo test` checks it.
 4. CI rebuilds the image twice and diffs the manifests (the `container`
    workflow), and runs the check against the live image and against an off-pin
@@ -183,8 +190,12 @@ projects' own files, not recalled:
   `v7.2.0` says the QEMU emulator as a whole is released under the GNU General
   Public License, version 2, with some parts under other licences compatible
   with it, stated per source file, and that its firmware files are separate
-  programs with separate licences. The Debian package is `7.2+dfsg`; its own
-  copyright file in the image is the authority for the packaged files.
+  programs with separate licences. That is what was read then. The image now
+  installs QEMU 10.0.2 from bookworm-backports (phase 03 CONTEXT D-31); the
+  `LICENSE` at that release's tag was **not read** from the session that wrote
+  this (the QEMU sources are not reachable from cloud sessions), so
+  `/usr/share/doc/qemu-user/copyright` in the image is the authority for the
+  packaged files. The Debian package upstream is `10.0.2+ds`.
 - **Arm GNU Toolchain 14.3.rel1**: the toolchain bundles GCC, binutils and
   other components under GPL and other licences. This was **not read** from the
   session that wrote this file (the archive host is not reachable from it), so
