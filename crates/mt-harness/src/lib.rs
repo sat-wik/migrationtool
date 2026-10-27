@@ -17,6 +17,9 @@
 //!   the scalar combinations,
 //! - [`link`] checks the captured objects and links the driver against them,
 //! - [`globals`] finds the writable globals of the objects and their addresses,
+//! - [`layout`] reads a type's layout from the pinned GCC's DWARF text,
+//! - [`probe`] compiles the probes that DWARF comes from,
+//! - [`decode`] turns the bytes of a state object into typed values,
 //! - [`exec`] runs a driver under `qemu-arm` through the runner,
 //! - [`frame`] parses the result frame the driver writes,
 //! - [`classify`] maps a finished run to exactly one outcome,
@@ -29,11 +32,14 @@
 pub mod adapter;
 pub mod budget;
 pub mod classify;
+pub mod decode;
 pub mod driver;
 pub mod exec;
 pub mod frame;
 pub mod globals;
+pub mod layout;
 pub mod link;
+pub mod probe;
 pub mod replay;
 pub mod run;
 pub mod runtime;
@@ -112,6 +118,15 @@ pub enum HarnessError {
         expected: String,
         /// The recomputed hash.
         actual: String,
+    },
+    /// A type's layout could not be read from the compiler's DWARF.
+    #[error("layout of {what}: {source}")]
+    Layout {
+        /// What was being laid out.
+        what: String,
+        /// Why it cannot be.
+        #[source]
+        source: layout::LayoutError,
     },
     /// A manifest, policy, seed index or build record could not be used.
     #[error("{what}: {detail}")]

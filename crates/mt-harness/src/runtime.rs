@@ -13,13 +13,14 @@ use crate::budget::Budgets;
 pub const RUNTIME_TEMPLATE: &str = include_str!("runtime.c");
 
 /// The names of the closed placeholder set, in the order they are replaced.
-pub const PLACEHOLDER_NAMES: [&str; 8] = [
+pub const PLACEHOLDER_NAMES: [&str; 9] = [
     "MT_RESERVED_VA",
     "MT_HEAP_ARENA",
     "MT_SENTINEL",
     "MT_SLACK_FILL",
     "MT_MAX_INPUT",
     "MT_INCLUDES",
+    "MT_STATES",
     "MT_CASES",
     "MT_CALL",
 ];
@@ -27,6 +28,10 @@ pub const PLACEHOLDER_NAMES: [&str; 8] = [
 /// The call expression of the self-test, which dispatches on the request's
 /// selector word.
 pub const SELFTEST_CALL: &str = "mt_call(selector, mt_in, mt_in_len, mt_out, mt_out_cap)";
+
+/// The states fragment of a driver with no state.
+pub const NO_STATES: &str =
+    "#define MT_STATE_COUNT 0u\nstatic const u32 mt_state_sizes[MT_STATE_COUNT + 1u] = { 0u };";
 
 /// The values written into the template.
 #[derive(Debug, Clone)]
@@ -44,6 +49,9 @@ pub struct Placeholders {
     /// The `#include`, `#define` and `#undef` lines an entry driver starts
     /// with, one per line; empty for the self-test.
     pub includes: String,
+    /// The entry's states: `#define MT_STATE_COUNT <n>u` and the array
+    /// `mt_state_sizes`, `sizeof` of each state type followed by `0u`.
+    pub states: String,
     /// C source of `static u32 mt_call(u32, u8 *, u32, u8 *, u32)`, the cases.
     pub cases: String,
     /// The C expression of the call, of a type convertible to `u32`. It may
@@ -64,17 +72,19 @@ impl Placeholders {
             slack_fill: budgets.slack_fill,
             max_input: budgets.max_input,
             includes: String::new(),
+            states: NO_STATES.to_owned(),
             cases,
             call: SELFTEST_CALL.to_owned(),
         }
     }
 
-    /// The placeholders of an entry driver: the entry's include lines and
-    /// call expression, and no cases.
+    /// The placeholders of an entry driver: the entry's include lines, states
+    /// and call expression, and no cases.
     #[must_use]
-    pub fn for_entry(budgets: &Budgets, includes: String, call: String) -> Self {
+    pub fn for_entry(budgets: &Budgets, includes: String, states: String, call: String) -> Self {
         Self {
             includes,
+            states,
             call,
             ..Self::from_budgets(budgets, String::new())
         }
@@ -88,6 +98,7 @@ impl Placeholders {
             "MT_SLACK_FILL" => self.slack_fill.to_string(),
             "MT_MAX_INPUT" => self.max_input.to_string(),
             "MT_INCLUDES" => self.includes.clone(),
+            "MT_STATES" => self.states.clone(),
             "MT_CALL" => self.call.clone(),
             _ => self.cases.clone(),
         }
@@ -124,6 +135,7 @@ pub fn render_template(template: &str, values: &Placeholders) -> Result<String, 
     // A generated fragment never carries a token of its own.
     for (what, text) in [
         ("includes", &values.includes),
+        ("states", &values.states),
         ("cases", &values.cases),
         ("call", &values.call),
     ] {

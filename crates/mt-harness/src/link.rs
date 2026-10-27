@@ -171,7 +171,7 @@ pub struct ArchiveBuild {
     pub record: runner::RunRecord,
 }
 
-fn healthy(output: &RunOutput) -> bool {
+pub(crate) fn healthy(output: &RunOutput) -> bool {
     let record = &output.record;
     record.exit.code == Some(0)
         && !record.exit.timed_out
@@ -187,7 +187,7 @@ fn excerpt(bytes: &[u8]) -> String {
         .collect()
 }
 
-fn failure(step: &str, output: &RunOutput) -> HarnessError {
+pub(crate) fn failure(step: &str, output: &RunOutput) -> HarnessError {
     let record = &output.record;
     HarnessError::Build {
         step: step.to_owned(),
@@ -301,7 +301,7 @@ pub enum LinkOutcome {
     Unresolved(Vec<String>),
 }
 
-fn gcc_request(tools: &ExecTools, argv: Vec<OsString>, cwd: &Path) -> RunRequest {
+pub(crate) fn gcc_request(tools: &ExecTools, argv: Vec<OsString>, cwd: &Path) -> RunRequest {
     RunRequest {
         tool_name: "arm_gcc".to_owned(),
         argv,

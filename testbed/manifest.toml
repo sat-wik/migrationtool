@@ -544,6 +544,20 @@ source = "coap.c"
 form = "direct"
 signature = "int (coap_packet_t *, const uint8_t *, size_t)"
 
+# Argument roles (Phase 3 CONTEXT D-09, D-11): the packet is a state, zero-filled
+# in its own guarded mapping and recorded field by field before and after the
+# call (its option and payload pointers point into the input, recorded as
+# {buffer: in, offset}); the buffer is the input bytes and the size_t their length.
+[[target.microcoap.entry.arg]]
+role = "state"
+name = "pkt"
+
+[[target.microcoap.entry.arg]]
+role = "in_buf"
+
+[[target.microcoap.entry.arg]]
+role = "in_len"
+
 [[target.microcoap.config]]
 name = "default"
 

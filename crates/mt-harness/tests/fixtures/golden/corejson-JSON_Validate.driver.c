@@ -27,9 +27,16 @@
  * Result frame (little-endian), written after the call: "MTRS", version 1,
  * status, raw return value, bytes the C code wrote through libc (discarded),
  * slack check result, region count, then per region an id, a length and the
- * bytes, then "MTRE". Region 1 is the whole output buffer; region 0x1000 + i
- * is dump range i before the call and region 0x2000 + i the same range after
- * it.
+ * bytes, then "MTRE". Region 1 is the whole output buffer; region 2 holds the
+ * addresses of the driver's own objects (input and output buffer, the heap
+ * arena in use, each state), as words, so the host can classify pointers;
+ * region 0x1000 + i is dump range i before the call and region 0x2000 + i the
+ * same range after it; region 0x3000 + i is state i before the call and region
+ * 0x4000 + i the same state after it.
+ *
+ * Each state of an entry (a pointer parameter the harness fills in) lives in its
+ * own guarded, zero-filled mapping at a fixed base. The set of states and their
+ * sizes come from the generated placeholder at-sign, MT_, STATES, at-sign.
  */
 #include <errno.h>
 #include <stddef.h>
@@ -48,6 +55,11 @@
 typedef uint8_t u8;
 typedef uint32_t u32;
 
+/* The states of the entry: MT_STATE_COUNT and mt_state_sizes, which holds
+ * sizeof of each state type followed by a zero. None for the self-test. */
+#define MT_STATE_COUNT 0u
+static const u32 mt_state_sizes[MT_STATE_COUNT + 1u] = { 0u };
+
 #define MT_RESERVED_VA 0x10000000u
 #define MT_HEAP_ARENA 1048576u
 #define MT_SENTINEL 165u
@@ -63,8 +75,15 @@ typedef uint32_t u32;
 #define MT_DUMP_MAX_RANGES 4096u
 #define MT_DUMP_TOTAL (512u * 1024u)
 #define MT_REGION_OUT 1u
+#define MT_REGION_ADDRESSES 2u
 #define MT_REGION_BEFORE 0x1000u
 #define MT_REGION_AFTER 0x2000u
+#define MT_REGION_STATE_BEFORE 0x3000u
+#define MT_REGION_STATE_AFTER 0x4000u
+#define MT_MAX_STATES 8u
+#define MT_STATE_BASE 0x06000000u
+#define MT_STATE_STRIDE 0x00100000u
+#define MT_STATE_MAX_BYTES 65536u
 #define MT_REQ_MAX (MT_MAX_INPUT + 4096u)
 
 #define MT_EXIT_CALLED 95
@@ -76,8 +95,13 @@ typedef uint32_t u32;
 /* Every mapping must lie below the reserved address space (qemu-arm -R). */
 _Static_assert(MT_STACK_BASE + (MT_STACK_PAGES + 1u) * MT_PAGE <= MT_RESERVED_VA,
                "the stack mapping must lie below the reserved address space");
-_Static_assert(MT_OUT_BASE + (MT_MAX_INPUT / MT_PAGE + 3u) * MT_PAGE <= MT_STACK_BASE,
-               "the output mapping must end below the stack mapping");
+_Static_assert(MT_OUT_BASE + (MT_MAX_INPUT / MT_PAGE + 3u) * MT_PAGE <= MT_STATE_BASE,
+               "the output mapping must end below the state mappings");
+_Static_assert(MT_STATE_BASE + MT_MAX_STATES * MT_STATE_STRIDE <= MT_STACK_BASE,
+               "the state mappings must end below the stack mapping");
+_Static_assert(MT_STATE_COUNT <= MT_MAX_STATES, "too many states");
+_Static_assert(MT_STATE_MAX_BYTES + 3u * MT_PAGE <= MT_STATE_STRIDE,
+               "a state mapping must fit its stride");
 
 /* ---- raw Linux ARM EABI system calls: svc #0, r7 holds the number ---- */
 
@@ -167,6 +191,53 @@ static u32 mt_slack_changed(const struct guarded *g)
         }
     }
     return 0u;
+}
+
+/* ---- the states of an entry: each in its own guarded, zero-filled mapping ---- */
+
+static struct guarded mt_state_map[MT_STATE_COUNT + 1u];
+static u8 mt_state_snapshot[MT_MAX_STATES * MT_STATE_MAX_BYTES];
+
+static void mt_states_alloc(void)
+{
+    u32 i;
+    for (i = 0; i < MT_STATE_COUNT; i++) {
+        u32 size = mt_state_sizes[i];
+        if (size == 0u || size > MT_STATE_MAX_BYTES) {
+            mt_exit(MT_EXIT_SETUP);
+        }
+        mt_guard_alloc(&mt_state_map[i], MT_STATE_BASE + i * MT_STATE_STRIDE, size);
+        memset(mt_state_map[i].buf, 0, size);
+    }
+}
+
+/* The i-th state's object, for the call expression. */
+static void *mt_state(u32 index) __attribute__((unused));
+static void *mt_state(u32 index)
+{
+    if (index >= MT_STATE_COUNT) {
+        mt_exit(MT_EXIT_REQUEST_BAD);
+    }
+    return mt_state_map[index].buf;
+}
+
+static u32 mt_states_slack_changed(void)
+{
+    u32 i;
+    u32 changed = 0u;
+    for (i = 0; i < MT_STATE_COUNT; i++) {
+        changed |= mt_slack_changed(&mt_state_map[i]);
+    }
+    return changed;
+}
+
+static void mt_states_snapshot(void)
+{
+    u32 i;
+    for (i = 0; i < MT_STATE_COUNT; i++) {
+        memcpy(mt_state_snapshot + (size_t)i * MT_STATE_MAX_BYTES, mt_state_map[i].buf,
+               mt_state_sizes[i]);
+    }
 }
 
 /* ---- fault handlers: exit 128 + signal on an alternate stack, no core file ---- */
@@ -468,9 +539,32 @@ static void mt_write_region(u32 id, const u8 *data, u32 len)
     mt_write_all(data, len);
 }
 
+/* The addresses of the driver's own objects, as words: the input buffer and its
+ * length, the output buffer and its capacity, the heap arena in use, then each
+ * state's address and size. The host builds its pointer regions from them. */
+static void mt_write_addresses(const struct guarded *in_buf, const struct guarded *out_buf)
+{
+    u8 words[(6u + 2u * MT_MAX_STATES) * 4u];
+    u32 n = 0u;
+    u32 i;
+    mt_put32(words + 4u * n++, (u32)(size_t)in_buf->buf);
+    mt_put32(words + 4u * n++, in_buf->len);
+    mt_put32(words + 4u * n++, (u32)(size_t)out_buf->buf);
+    mt_put32(words + 4u * n++, out_buf->len);
+    mt_put32(words + 4u * n++, (u32)(size_t)mt_heap_arena);
+    mt_put32(words + 4u * n++, mt_heap_used);
+    for (i = 0; i < MT_STATE_COUNT; i++) {
+        mt_put32(words + 4u * n++, (u32)(size_t)mt_state_map[i].buf);
+        mt_put32(words + 4u * n++, mt_state_sizes[i]);
+    }
+    mt_write_region(MT_REGION_ADDRESSES, words, 4u * n);
+}
+
 /* The frame is written in pieces straight from the buffers: a header, the output
- * region, the before and after region of each dump range, the end marker. */
-static void mt_emit_frame(u32 status, u32 ret, u32 slack, const u8 *out, u32 out_len)
+ * region, the addresses, the before and after region of each dump range and of
+ * each state, the end marker. */
+static void mt_emit_frame(u32 status, u32 ret, u32 slack, const struct guarded *in_buf,
+                          const struct guarded *out_buf)
 {
     u8 head[28];
     u32 i;
@@ -484,15 +578,23 @@ static void mt_emit_frame(u32 status, u32 ret, u32 slack, const u8 *out, u32 out
     mt_put32(head + 12, ret);
     mt_put32(head + 16, mt_discarded);
     mt_put32(head + 20, slack);
-    mt_put32(head + 24, 1u + 2u * mt_range_count);
+    mt_put32(head + 24, 2u + 2u * mt_range_count + 2u * MT_STATE_COUNT);
     mt_write_all(head, 28u);
-    mt_write_region(MT_REGION_OUT, out, out_len);
+    mt_write_region(MT_REGION_OUT, out_buf->buf, out_buf->len);
+    mt_write_addresses(in_buf, out_buf);
     for (i = 0; i < mt_range_count; i++) {
         mt_write_region(MT_REGION_BEFORE + i, mt_dump_before + off, mt_ranges[i].size);
         off += mt_ranges[i].size;
     }
     for (i = 0; i < mt_range_count; i++) {
         mt_write_region(MT_REGION_AFTER + i, (const u8 *)mt_ranges[i].address, mt_ranges[i].size);
+    }
+    for (i = 0; i < MT_STATE_COUNT; i++) {
+        mt_write_region(MT_REGION_STATE_BEFORE + i, mt_state_snapshot + (size_t)i * MT_STATE_MAX_BYTES,
+                        mt_state_sizes[i]);
+    }
+    for (i = 0; i < MT_STATE_COUNT; i++) {
+        mt_write_region(MT_REGION_STATE_AFTER + i, mt_state_map[i].buf, mt_state_sizes[i]);
     }
     mt_write_all((const u8 *)"MTRE", 4u);
 }
@@ -547,11 +649,13 @@ void mt_main(const char *path)
     (void)mt_in_len;
     (void)mt_out;
     (void)mt_out_cap;
+    mt_states_alloc();
     mt_snapshot_before();
+    mt_states_snapshot();
     ret = (u32)((int32_t)(JSON_Validate((const char *)mt_in, (size_t)mt_in_len)));
     fflush(NULL);
-    slack = mt_slack_changed(&in_buf) | mt_slack_changed(&out_buf);
-    mt_emit_frame(0u, ret, slack, out_buf.buf, out_cap);
+    slack = mt_slack_changed(&in_buf) | mt_slack_changed(&out_buf) | mt_states_slack_changed();
+    mt_emit_frame(0u, ret, slack, &in_buf, &out_buf);
     mt_exit(0);
 }
 

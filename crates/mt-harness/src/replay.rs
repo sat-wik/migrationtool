@@ -211,7 +211,7 @@ fn combination_of(
                         .map_err(|_| format!("argv value {text:?} is not a decimal integer"))?,
                 );
             }
-            Role::InBuf | Role::OutBuf => {}
+            Role::InBuf | Role::OutBuf | Role::State => {}
         }
     }
     if texts.next().is_some() {

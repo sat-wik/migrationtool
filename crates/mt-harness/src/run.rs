@@ -31,11 +31,14 @@ use serde::{Deserialize, Serialize};
 use crate::adapter::{Adapter, AdapterError, Combination, combinations, driver_flags};
 use crate::budget::Budgets;
 use crate::classify::{Outcome, classify};
+use crate::decode::{Regions, decode_value};
 use crate::driver::render_entry_driver;
 use crate::exec::{Request, Slot, run_driver};
-use crate::frame::parse_frame;
+use crate::frame::{Frame, parse_frame};
 use crate::globals::{DumpRange, locate_globals, writable_globals};
+use crate::layout::CType;
 use crate::link::{LinkOutcome, LinkRequest, archive, link_driver, verify_objects};
+use crate::probe::{LayoutRequest, layout_for_entry};
 use crate::tools::ExecTools;
 use crate::{EXECUTOR_VERSION, HarnessError};
 
@@ -54,6 +57,18 @@ const DUMP_BEFORE_REGION: u32 = 0x1000;
 
 /// See [`DUMP_BEFORE_REGION`].
 const DUMP_AFTER_REGION: u32 = 0x2000;
+
+/// The region of the addresses of the driver's own objects: the input and output
+/// buffers (address, length), the heap arena in use (address, used bytes), then
+/// each state (address, size), all as 32-bit words.
+const ADDRESSES_REGION: u32 = 2;
+
+/// State `i` before the call is this plus `i`; after the call,
+/// [`STATE_AFTER_REGION`] plus `i`.
+const STATE_BEFORE_REGION: u32 = 0x3000;
+
+/// See [`STATE_BEFORE_REGION`].
+const STATE_AFTER_REGION: u32 = 0x4000;
 
 /// Which entries to build or run, and where things are.
 #[derive(Debug, Clone)]
@@ -285,6 +300,10 @@ pub struct BuildRecord {
     /// (CONTEXT D-10).
     #[serde(default)]
     pub globals: Vec<GlobalRecord>,
+    /// The layout of each state of the entry, by name, from the pinned GCC's
+    /// DWARF (CONTEXT D-09).
+    #[serde(default)]
+    pub layouts: BTreeMap<String, CType>,
 }
 
 /// One writable global of the dump plan, as `build.json` records it.
@@ -512,6 +531,28 @@ fn build_entry(
         .scope
         .entry_dir(&item.target, &item.config, &item.entry.name);
     std::fs::create_dir_all(&dir).map_err(|e| io("cannot create", &dir, e))?;
+    let states: Vec<(String, String)> = adapter
+        .states()
+        .into_iter()
+        .map(|state| (state.name, state.type_text))
+        .collect();
+    let layouts = match layout_for_entry(
+        &opts.tools,
+        &opts.cfg,
+        &LayoutRequest {
+            dir: &dir,
+            compile_cwd: Path::new(&unit.directory),
+            include_lines: &lines,
+            flags: &flags,
+            states: &states,
+        },
+    ) {
+        Ok(layouts) => layouts,
+        Err(error @ (HarnessError::Layout { .. } | HarnessError::Build { .. })) => {
+            return Ok(BuildState::Refused(error.to_string()));
+        }
+        Err(error) => return Err(error),
+    };
     let members: Vec<String> = pair.verified.objects.keys().cloned().collect();
     let archived = archive(
         &opts.tools,
@@ -551,6 +592,7 @@ fn build_entry(
                 driver_flags: flags,
                 steps,
                 globals: plan.iter().map(GlobalRecord::from_range).collect(),
+                layouts,
             };
             let path = dir.join(BUILD_JSON);
             let mut text = serde_json::to_string_pretty(&record)
@@ -699,13 +741,15 @@ impl RunRow {
     }
 }
 
-/// A linked driver and its dump plan, ready to run.
-#[derive(Debug, Clone)]
+/// A linked driver, its dump plan and its state layouts, ready to run.
+#[derive(Debug, Clone, Default)]
 pub struct PreparedDriver {
     /// The linked `driver.elf`.
     pub elf_path: PathBuf,
     /// The writable globals to snapshot around each call.
     pub plan: Vec<DumpRange>,
+    /// The layout of each state of the entry, by name.
+    pub layouts: BTreeMap<String, CType>,
 }
 
 /// One run of one request, turned into the vector it would store.
@@ -738,24 +782,25 @@ fn observe(
     adapter: &Adapter,
     combination: &Combination,
     seed: &[u8],
-    plan: &[DumpRange],
+    driver: &PreparedDriver,
     output: &RunOutput,
 ) -> Result<Observed, String> {
     let outcome = classify(output);
     if let Outcome::ExecutorError { reason } = &outcome {
         return Err(format!("executor_error: {reason}"));
     }
-    let (out_bytes, discarded) = match &outcome {
+    let (out_bytes, discarded, lib_state_in, lib_state_out) = match &outcome {
         Outcome::Ok { .. } | Outcome::Fault { signal: None, .. } => {
             let frame = parse_frame(&output.stdout).map_err(|e| format!("result frame: {e}"))?;
             let out = frame
                 .region(OUT_REGION)
                 .map(|region| region.bytes.clone())
                 .ok_or_else(|| "the result frame has no output region".to_owned())?;
-            check_globals(plan, &frame)?;
-            (out, frame.discarded)
+            check_globals(&driver.plan, &frame)?;
+            let (before, after) = record_states(adapter, driver, &frame)?;
+            (out, frame.discarded, before, after)
         }
-        _ => (Vec::new(), 0),
+        _ => (Vec::new(), 0, LibState::default(), LibState::default()),
     };
     let has_ub = outcome
         .has_ub_label()
@@ -775,8 +820,8 @@ fn observe(
             is_regex: false,
         },
         rc: outcome.rc().unwrap_or(0),
-        lib_state_in: LibState::default(),
-        lib_state_out: LibState::default(),
+        lib_state_in,
+        lib_state_out,
         has_ub,
     };
     Ok(Observed {
@@ -835,7 +880,7 @@ pub fn run_vector_twice(
             &slot,
             &request,
         )?;
-        match observe(adapter, combination, seed, &driver.plan, &output) {
+        match observe(adapter, combination, seed, driver, &output) {
             Ok(done) => observed.push(done),
             Err(reason) => return Ok(Err(reason)),
         }
@@ -855,6 +900,90 @@ pub fn run_vector_twice(
     } else {
         Ok(Err("the two runs differ".to_owned()))
     }
+}
+
+/// The words of the addresses region.
+fn address_words(frame: &Frame) -> Result<Vec<u32>, String> {
+    let region = frame
+        .region(ADDRESSES_REGION)
+        .ok_or_else(|| "the result frame has no address region".to_owned())?;
+    if region.bytes.len() % 4 != 0 {
+        return Err("the address region is not whole words".to_owned());
+    }
+    Ok(region
+        .bytes
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|word| u32::from_le_bytes(*word))
+        .collect())
+}
+
+/// The regions a pointer of the states can point into: the input and output
+/// buffers, and each state by its name (CONTEXT D-06). The addresses come from
+/// the driver's own frame, so no address is assumed.
+fn regions_of(words: &[u32], states: &[crate::adapter::StateParam]) -> Result<Regions, String> {
+    let word = |index: usize| {
+        words
+            .get(index)
+            .copied()
+            .ok_or_else(|| "the address region is too short".to_owned())
+    };
+    let mut regions = Regions::new()
+        .with_region("in", word(0)?, word(1)?)
+        .with_region("out", word(2)?, word(3)?);
+    for (index, state) in states.iter().enumerate() {
+        regions = regions.with_region(&state.name, word(6 + 2 * index)?, word(7 + 2 * index)?);
+    }
+    Ok(regions)
+}
+
+/// Decode every state of the entry before and after the call.
+fn record_states(
+    adapter: &Adapter,
+    driver: &PreparedDriver,
+    frame: &Frame,
+) -> Result<(LibState, LibState), String> {
+    let states = adapter.states();
+    if states.is_empty() {
+        return Ok((LibState::default(), LibState::default()));
+    }
+    let words = address_words(frame)?;
+    let regions = regions_of(&words, &states)?;
+    let mut before = BTreeMap::new();
+    let mut after = BTreeMap::new();
+    for (index, state) in states.iter().enumerate() {
+        let ty = driver
+            .layouts
+            .get(&state.name)
+            .ok_or_else(|| format!("state {} has no layout in build.json", state.name))?;
+        let index = u32::try_from(index).map_err(|_| "too many states".to_owned())?;
+        for (base, target) in [
+            (STATE_BEFORE_REGION, &mut before),
+            (STATE_AFTER_REGION, &mut after),
+        ] {
+            let bytes = frame
+                .region(base + index)
+                .map(|region| region.bytes.as_slice())
+                .ok_or_else(|| {
+                    format!("the result frame has no region for state {}", state.name)
+                })?;
+            if bytes.len() != ty.size as usize {
+                return Err(format!(
+                    "executor_error: state {} is {} bytes in the driver but {} in the DWARF layout",
+                    state.name,
+                    bytes.len(),
+                    ty.size
+                ));
+            }
+            let value = decode_value(ty, bytes, &regions)
+                .map_err(|e| format!("state {}: {e}", state.name))?;
+            target.insert(state.name.clone(), value);
+        }
+    }
+    let before = LibState::new(before).map_err(|e| e.to_string())?;
+    let after = LibState::new(after).map_err(|e| e.to_string())?;
+    Ok((before, after))
 }
 
 /// A writable global whose bytes differ from the image's initial bytes, before
@@ -990,10 +1119,23 @@ pub(crate) fn load_driver(
             Err(reason) => return Err(RunState::NotBuilt(format!("{key}: build.json: {reason}"))),
         }
     }
+    let layouts = build.layouts.clone();
+    for state in adapter.states() {
+        if !layouts.contains_key(&state.name) {
+            return Err(RunState::NotBuilt(format!(
+                "{key}: build.json has no layout for state {}",
+                state.name
+            )));
+        }
+    }
     Ok(LoadedDriver {
         adapter,
         build,
-        driver: PreparedDriver { elf_path, plan },
+        driver: PreparedDriver {
+            elf_path,
+            plan,
+            layouts,
+        },
     })
 }
 
@@ -1128,7 +1270,9 @@ fn run_entry(opts: &RunOptions, item: &Selected) -> Result<RunState, HarnessErro
                 budgets: budgets_record(&budgets),
                 outcome: outcome.class_word().to_owned(),
                 has_ub_source: has_ub_source(outcome),
-                unobserved: 0,
+                unobserved: (first.vector.lib_state_in.unobserved_count()
+                    + first.vector.lib_state_out.unobserved_count())
+                    as u64,
                 discarded_output_bytes: u64::from(first.discarded),
                 replay: build.replay.clone(),
             };

@@ -567,7 +567,7 @@ fn eqv_04_state_is_recorded_field_by_field() {
             panic!("opts must be an array of structs");
         };
         assert!(!items.is_empty());
-        let numopts = int_field(&fields, "numopts");
+        let numopts = int_field(fields, "numopts");
         let mut with_buffer = 0i64;
         for (index, option) in items.iter().enumerate() {
             let StateValue::Struct { fields: option, .. } = option else {

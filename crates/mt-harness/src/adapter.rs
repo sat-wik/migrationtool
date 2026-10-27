@@ -9,9 +9,12 @@
 
 use std::collections::BTreeMap;
 
-use mt_capture::manifest::{BASELINE_CFLAGS, Entry, MAX_SCALAR_COMBOS, Role, split_parameters};
+use mt_capture::manifest::{
+    BASELINE_CFLAGS, Entry, MAX_SCALAR_COMBOS, Role, split_parameters, state_pointee_type,
+};
 
 use crate::budget::Budgets;
+use crate::runtime::NO_STATES;
 
 /// Why an entry cannot be driven, or a compile flag cannot be handled.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -49,8 +52,11 @@ pub struct Param {
     pub c_type: String,
     /// What the parameter is.
     pub role: Role,
-    /// The name an `out_cap` or `scalar` value is recorded under.
+    /// The name an `out_cap` or `scalar` value, or a `state`, is recorded under.
     pub name: Option<String>,
+    /// For a `state`, the type its pointer points at (a plain type name, checked
+    /// by [`state_pointee_type`]).
+    pub state_type: Option<String>,
     /// The first value of an `out_cap` or `scalar`.
     pub default: Option<i64>,
     /// The values after the default.
@@ -65,6 +71,15 @@ pub struct Param {
 pub struct Combination {
     /// The values.
     pub values: Vec<i64>,
+}
+
+/// A state of an entry: the object the library fills in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StateParam {
+    /// The name its fields are recorded under in `lib_state_in` and `lib_state_out`.
+    pub name: String,
+    /// The type text of the object (the pointee of the parameter).
+    pub type_text: String,
 }
 
 /// An entry ready to be driven.
@@ -164,13 +179,26 @@ impl Adapter {
             }
             let name = match arg.role {
                 Role::OutCap => Some(arg.name.clone().unwrap_or_else(|| "out_cap".to_owned())),
-                Role::Scalar => arg.name.clone(),
+                Role::Scalar | Role::State => arg.name.clone(),
                 _ => None,
+            };
+            let state_type = if arg.role == Role::State {
+                if name.is_none() {
+                    return Err(AdapterError::Invalid("a state needs a name".to_owned()));
+                }
+                Some(state_pointee_type(text).ok_or_else(|| {
+                    AdapterError::Invalid(format!(
+                        "state parameter {text:?} does not point at a plain type name"
+                    ))
+                })?)
+            } else {
+                None
             };
             params.push(Param {
                 c_type: text.clone(),
                 role: arg.role,
                 name,
+                state_type,
                 default: arg.default,
                 sweep: arg.sweep.clone(),
                 max: arg.max,
@@ -214,6 +242,7 @@ impl Adapter {
     #[must_use]
     pub fn call_expression(&self) -> String {
         let mut scalar_index = 0usize;
+        let mut state_index = 0usize;
         let mut args = Vec::new();
         for param in &self.params {
             let value = match param.role {
@@ -224,6 +253,11 @@ impl Adapter {
                 Role::Scalar => {
                     let text = format!("mt_scalar({scalar_index})");
                     scalar_index += 1;
+                    text
+                }
+                Role::State => {
+                    let text = format!("mt_state({state_index})");
+                    state_index += 1;
                     text
                 }
             };
@@ -252,10 +286,43 @@ impl Adapter {
                     dimension += 1;
                     argv.push(value.to_string());
                 }
-                Role::InBuf | Role::OutBuf => {}
+                Role::InBuf | Role::OutBuf | Role::State => {}
             }
         }
         argv
+    }
+
+    /// The states, in parameter order.
+    #[must_use]
+    pub fn states(&self) -> Vec<StateParam> {
+        self.params
+            .iter()
+            .filter(|param| param.role == Role::State)
+            .filter_map(|param| {
+                Some(StateParam {
+                    name: param.name.clone()?,
+                    type_text: param.state_type.clone()?,
+                })
+            })
+            .collect()
+    }
+
+    /// The C text that declares the states of the driver: their count and the
+    /// `sizeof` of each type, in parameter order.
+    #[must_use]
+    pub fn states_fragment(&self) -> String {
+        let states = self.states();
+        if states.is_empty() {
+            return NO_STATES.to_owned();
+        }
+        let sizes: String = states
+            .iter()
+            .map(|state| format!("(u32)sizeof({}), ", state.type_text))
+            .collect();
+        format!(
+            "#define MT_STATE_COUNT {}u\nstatic const u32 mt_state_sizes[MT_STATE_COUNT + 1u] = {{ {sizes}0u }};",
+            states.len()
+        )
     }
 
     /// The output capacity of a combination, 0 without an output buffer.

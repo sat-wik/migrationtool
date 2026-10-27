@@ -331,6 +331,10 @@ pub enum Role {
     OutCap,
     /// A value with a default and an optional sweep.
     Scalar,
+    /// A pointer to a struct or union the library fills in (Phase 3, CONTEXT
+    /// D-09). The driver passes a zero-filled object in its own guarded mapping
+    /// and records every field it has before and after the call.
+    State,
 }
 
 impl Role {
@@ -343,13 +347,14 @@ impl Role {
             Self::OutBuf => "out_buf",
             Self::OutCap => "out_cap",
             Self::Scalar => "scalar",
+            Self::State => "state",
         }
     }
 
     /// True for the roles whose parameter is a pointer.
     #[must_use]
     pub const fn is_pointer_role(self) -> bool {
-        matches!(self, Self::InBuf | Self::OutBuf)
+        matches!(self, Self::InBuf | Self::OutBuf | Self::State)
     }
 }
 
@@ -361,7 +366,7 @@ impl Role {
 pub struct ArgRole {
     /// What the parameter is.
     pub role: Role,
-    /// The name a `scalar` is recorded under (a C identifier).
+    /// The name a `scalar` or a `state` is recorded under (a C identifier).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     /// The value used first; required by `out_cap` and `scalar`.
@@ -446,6 +451,32 @@ pub fn split_parameters(signature: &str) -> Result<(String, Vec<String>), Manife
 /// True when a parameter's text names a pointer type.
 fn is_pointer_parameter(text: &str) -> bool {
     text.contains('*')
+}
+
+/// The type a `state` parameter points at: the parameter text with its one
+/// top-level `*` and any `const` removed. It is the only manifest-derived text
+/// that becomes a type in the generated driver and in the layout probe, so it must
+/// be `^(struct |union |enum )?[A-Za-z_][A-Za-z0-9_]*$` and not `void` (CONTEXT
+/// D-09, D-11). `None` for anything else: the entry is then not expressible.
+#[must_use]
+pub fn state_pointee_type(parameter: &str) -> Option<String> {
+    let spaced = parameter.replace('*', " * ");
+    let mut tokens: Vec<&str> = spaced
+        .split_whitespace()
+        .filter(|token| *token != "const")
+        .collect();
+    if tokens.iter().filter(|token| **token == "*").count() != 1 || tokens.last() != Some(&"*") {
+        return None;
+    }
+    tokens.pop();
+    let plain =
+        |name: &str| is_c_identifier(name) && !matches!(name, "void" | "struct" | "union" | "enum");
+    let acceptable = match tokens.as_slice() {
+        [name] => plain(name),
+        [keyword, name] => matches!(*keyword, "struct" | "union" | "enum") && plain(name),
+        _ => false,
+    };
+    acceptable.then(|| tokens.join(" "))
 }
 
 /// One named build configuration: macro and flag sets on top of the baseline.
@@ -1085,6 +1116,11 @@ fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
                 "{h}: role {word} needs a value parameter, found the pointer {param:?} (D-11)"
             ));
         }
+        if arg.role == Role::State && pointer && state_pointee_type(param).is_none() {
+            issues.push(format!(
+                "{h}: the pointee of a state parameter must be a plain type name, optionally after struct, union or enum, and not void; found {param:?} (D-09)"
+            ));
+        }
         arg_key_issues(&h, arg, param, issues);
     }
     let count = |role: Role| entry.arg.iter().filter(|arg| arg.role == role).count();
@@ -1131,8 +1167,8 @@ fn arg_key_issues(h: &str, arg: &ArgRole, param: &str, issues: &mut Vec<String>)
                 issues.push(format!("{h}: role {word} takes no name (D-11)"));
             }
         }
-        Role::Scalar => match &arg.name {
-            None => issues.push(format!("{h}: role scalar needs a name (D-11)")),
+        Role::Scalar | Role::State => match &arg.name {
+            None => issues.push(format!("{h}: role {word} needs a name (D-11)")),
             Some(name) if !is_c_identifier(name) => {
                 issues.push(format!("{h}: name {name:?} is not a C identifier (D-11)"));
             }
@@ -1193,7 +1229,7 @@ fn name_issues(f: &str, entry: &Entry, issues: &mut Vec<String>) {
     for (index, arg) in entry.arg.iter().enumerate() {
         let name = match (arg.role, &arg.name) {
             (Role::OutCap, None) => "out_cap".to_owned(),
-            (Role::OutCap | Role::Scalar, Some(name)) => name.clone(),
+            (Role::OutCap | Role::Scalar | Role::State, Some(name)) => name.clone(),
             _ => continue,
         };
         if RESERVED_ARG_NAMES.contains(&name.as_str()) {

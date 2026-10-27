@@ -146,6 +146,7 @@ fn build(tools: &ExecTools, sources: &[(&str, &str)]) -> Result<Built, String> {
         driver: PreparedDriver {
             elf_path: linked.elf_path.clone(),
             plan,
+            ..PreparedDriver::default()
         },
     })
 }
