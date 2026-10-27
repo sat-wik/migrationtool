@@ -1,12 +1,12 @@
-# Plan 02-22 round trip 1: testbed notices
+# Plan 02-22 round trip 1: testbed notices, re-baselined by plan 03-10 (D-31)
 
-Run 39528941371 (testbed), head 9273ef82979df478d7e7bba80bd27a8345b0dff0, job 118990405406, read from the job annotations with `gh api` (parts joined in order, final newline dropped as the workflow's annotate helper specifies).
+Run 40451139101 (testbed), head 892f03dcda2d78979e511b7815969ef57dcffc0d, job 122014198632, read from the job annotations with `gh api` (parts joined in order, final newline dropped as the workflow's annotate helper specifies). Re-baselined on the founder's reply `rebaseline` after the D-31 image change; the sections of run 39528941371 are in git history at commit 7c55dbe.
 
 ## testbed-image (1 annotation part(s))
 
 ```text
-image: ghcr.io/sat-wik/migrationtool-toolchain@sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9
-id: sha256:1267a6230e171d711a7d056cd7a129fbdf0753339c92af22dac69afc806eac44
+image: ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565
+id: sha256:24ebba9e468a17e3503722b6085121a0802886372e75eef1b51ef268e675a5a6
 architecture: linux/amd64
 ```
 
