@@ -13,4 +13,17 @@ pub mod bytes;
 pub mod compare;
 pub mod corpus;
 pub mod state;
+pub mod tractor;
 pub mod vector;
+
+use sha2::{Digest, Sha256};
+
+/// Lower-case hex sha256 of `bytes`: the form used for file names, pins and
+/// provenance.
+#[must_use]
+pub fn sha256_hex(bytes: &[u8]) -> String {
+    Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}

@@ -1,0 +1,44 @@
+# The pinned TRACTOR public test-vector sample (EQV-02, CONTEXT D-23).
+#
+# This file records the repository, one commit, six file paths and the sha256 of
+# each file, and nothing else. No TRACTOR content is copied into this repository:
+# `mt vectors tractor fetch` fetches exactly these paths by commit into the
+# gitignored work directory (<work>/tractor/<commit>/tree), and `mt vectors
+# tractor check` verifies every sha256 before loading the file at the
+# TRACTOR-compatible level and re-serializing it JSON-equal.
+#
+# Licence status, as found and not legal advice: the repository root carries an
+# MIT LICENSE, the README carries a distribution statement and rights text, and
+# some bundles contain third-party code under their own licences. None of this
+# has been checked. Phase 12 decides. Until then the sample is for local use
+# only: it is fetched into a working directory to prove that its vectors load,
+# never copied into the repository, never redistributed. Never put corpus
+# content here or anywhere else in the repository.
+schema_version = 1
+repo = "https://github.com/DARPA-TRACTOR-Program/PUBLIC-Test-Corpus"
+commit = "37960ee08a7c644ee66e29855eca33903f702e67"
+licence_status = "unchecked; local use only until the Phase 12 licence check"
+
+[[file]]
+path = "Public-Tests/B01_synthetic/001_helloworld_lib/test_vectors/test1.json"
+sha256 = "bb2fb76152cf022ea508ceb16d77a710223dd73dab8ef0d58f6ed52b9fb42447"
+
+[[file]]
+path = "Public-Tests/B01_synthetic/007_errno_pow_lib/test_vectors/test11.json"
+sha256 = "64afaa619c399ec9220f562bd44efe92a66236fe43c0ca0ea712a1040182a331"
+
+[[file]]
+path = "Public-Tests/B01_synthetic/030_mutable_buffer_overlap_extrahard_lib/test_vectors/test04.json"
+sha256 = "9329bb5aeb230a860f2ddd96a249eeb1c7a2acbbb024fd42455eb3055d5a6531"
+
+[[file]]
+path = "Public-Tests/B01_synthetic/009_stack_buffer_overflow_lib/test_vectors/test09_overflow_int2.json"
+sha256 = "c86028ad8ef42b5df95d10aae7965ffd28ebcdcb04c98d8f162f9f7735e5e701"
+
+[[file]]
+path = "Public-Tests/B01_synthetic/002_stdin_echo/test_vectors/nul.json"
+sha256 = "b8fbd77226a3b179f58a20b2ef7766393a0c708980dbeb4cf14c94cd51ec785c"
+
+[[file]]
+path = "Public-Tests/B02_synthetic/strcpy/test_vectors/41.json"
+sha256 = "65b1e40ba3503b17536a9c2ff2faa2e830de8b937f07c86ca8e171afcd53fb21"

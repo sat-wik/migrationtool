@@ -55,7 +55,7 @@ fn eqv_02_tractor_pin_has_no_content() {
         "{} files",
         pin.file.len()
     );
-    assert!(MIN_TRACTOR_LOADED >= 3);
+    const { assert!(MIN_TRACTOR_LOADED >= 3) };
     for file in &pin.file {
         assert!(file.path.starts_with("Public-Tests/"), "{}", file.path);
         assert!(

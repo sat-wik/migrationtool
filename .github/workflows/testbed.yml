@@ -16,15 +16,26 @@
 # `qemu-arm -cpu cortex-m4`. It publishes the titles vectors-selftest and
 # fixture vectors-selftest-dwarf (the pinned compiler's DWARF text for its probe,
 # kept as a test fixture). It runs only the template's own cases, no captured
-# upstream code, and its helper (run_vectors) has no network: no step other than
-# fetch has network access.
+# upstream code, and its helper (run_vectors) has no network.
 #
-# Network policy (D-12): fetch is the only step with network access. Validate,
-# seeds, pairs, record, replay and compare go through run_offline, which adds
-# `--network none`; a test (build_02_workflow_runs_capture_and_replay_without_network)
-# fails if any step other than fetch goes through run_networked.
+# The TRACTOR sample step (EQV-02, plan 03-03, CONTEXT D-23) fetches six public
+# test vectors of the DARPA TRACTOR corpus by their pinned commit into the work
+# directory (never into the repository; licence unchecked, local use only) and
+# loads them unchanged. It publishes vectors-tractor. Its fetch goes through
+# fetch_tractor, the one networked helper this phase adds, which can run only
+# `mt vectors tractor fetch`; the check that follows goes through run_vectors and
+# has no network. A fetch failure is published as an error whose first line says
+# the fetch failed and with which exit code.
 #
-# Trust split (WR-04): only fetch is networked, and only run_build runs upstream
+# Network policy (D-12): fetch and the TRACTOR fetch (fetch_tractor) are the only
+# steps with network access. Validate, seeds, pairs, record, replay and compare go
+# through run_offline, which adds `--network none`; a test
+# (build_02_workflow_runs_capture_and_replay_without_network) fails if any step
+# other than fetch goes through run_networked, and a test
+# (eqv_02_workflow_static_tractor_fetch_is_the_only_new_networked_step) pins
+# fetch_tractor to one call site and to `mt vectors tractor fetch`.
+#
+# Trust split (WR-04): only fetch (and the TRACTOR fetch) is networked, and only run_build runs upstream
 # build code. run_build starts one container per retained pair; the only places it
 # can write are a fresh scratch /work that is discarded and that pair's own run
 # directory. The source cache is mounted read-only, and /out, the capture artifacts
@@ -268,6 +279,22 @@ jobs:
               -v "$GITHUB_WORKSPACE/testbed:/opt/mt/testbed:ro" \
               -v "${WORK_HOST:-$RUNNER_TEMP/work}:/work" -v "${OUT_HOST:-$RUNNER_TEMP/out}:/out" \
               "$IMAGE" mt vectors "$@"
+          }
+          # fetch_tractor ARGS...: `mt vectors tractor fetch` in the image WITH the default
+          # network, the one networked helper this phase adds (EQV-02, D-23). It can run
+          # only the TRACTOR fetch, which writes only into the gitignored work directory
+          # (/work/tractor/<commit>/tree). Same unprivileged, read-only, capability-free
+          # container, resource limits and read-only mounts as run_networked; only /work
+          # and /out are writable. The offline check that follows goes through run_vectors.
+          fetch_tractor() {
+            docker run --rm --platform linux/amd64 --user 65534:65534 --read-only --cap-drop ALL \
+              --pids-limit 1024 --memory 6g --memory-swap 6g --cpus 2 \
+              --security-opt no-new-privileges --tmpfs /tmp:rw,exec,nosuid,size=2g \
+              -v "$RUNNER_TEMP/bundle/mt:/usr/local/bin/mt:ro" \
+              -v "$GITHUB_WORKSPACE/container/pins.toml:/opt/mt/pins.toml:ro" \
+              -v "$GITHUB_WORKSPACE/testbed:/opt/mt/testbed:ro" \
+              -v "${WORK_HOST:-$RUNNER_TEMP/work}:/work" -v "${OUT_HOST:-$RUNNER_TEMP/out}:/out" \
+              "$IMAGE" mt vectors tractor fetch "$@"
           }
           # evidence STEP: lines read from the step's reports, appended to its notice.
           evidence() {
@@ -744,6 +771,37 @@ jobs:
             annotate notice "fixture vectors-selftest-dwarf" "$probe"
           fi
           finish_vectors selftest "$rc"
+
+      # EQV-02 (plan 03-03, CONTEXT D-23): the pinned TRACTOR sample. The fetch is the
+      # only networked part: `mt vectors tractor fetch` takes the six files named by
+      # testbed/tractor-pin.toml from the pinned commit into /work/tractor (the
+      # gitignored work directory, never the repository; the licence is unchecked, so the
+      # sample is for local use only until Phase 12). The check then runs offline: every
+      # file's sha256 must equal the pin and it must load unchanged and re-serialize
+      # JSON-equal. A failed fetch writes `fetch failed with exit code N` as the first
+      # line of the notice and fails the step; nothing is continue-on-error.
+      - name: Fetch the TRACTOR sample and load it unchanged (local use only)
+        id: tractor
+        if: ${{ !cancelled() && steps.image.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          fetch_tractor --pin /opt/mt/testbed/tractor-pin.toml --pins /opt/mt/pins.toml --work-dir /work > "$out/tractor-fetch.txt" 2> "$out/tractor.err"
+          fetch_rc=$?
+          if [ "$fetch_rc" -ne 0 ]; then
+            echo "fetch failed with exit code $fetch_rc" > "$out/tractor.txt"
+          else
+            : > "$out/tractor.txt"
+          fi
+          cat "$out/tractor-fetch.txt" >> "$out/tractor.txt"
+          run_vectors tractor check --pin /opt/mt/testbed/tractor-pin.toml --work-dir /work >> "$out/tractor.txt" 2>> "$out/tractor.err"
+          check_rc=$?
+          set -e
+          rc=$check_rc
+          if [ "$fetch_rc" -gt "$rc" ]; then rc=$fetch_rc; fi
+          finish_vectors tractor "$rc"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}

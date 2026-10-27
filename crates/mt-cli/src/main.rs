@@ -9,6 +9,7 @@ use anyhow::Context;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use mt_capture::capture::CaptureError;
 use mt_capture::compare::{DETERMINISM_EXCLUSIONS, compare_capture_dirs};
+use mt_capture::fetch::{FetchContext, fetch_sparse};
 use mt_capture::manifest::{Manifest, ManifestError};
 use mt_capture::seeding::run_seeds_detailed;
 use mt_capture::testbed::{
@@ -26,6 +27,7 @@ use mt_toolchain::pins::{Pins, PinsError};
 use mt_toolchain::runner::RunnerConfig;
 use mt_toolchain::{fetch, manifest};
 use mt_vectors::corpus::read_corpus;
+use mt_vectors::tractor::{TractorPin, check_tree};
 use mt_vectors::vector::{TractorVector, Vector, read_capped};
 
 #[derive(Debug, Parser)]
@@ -191,6 +193,48 @@ enum VectorsAction {
         /// Vector files or corpus directories to validate.
         #[arg(required = true)]
         paths: Vec<PathBuf>,
+    },
+    /// The pinned TRACTOR public test-vector sample (D-23): local use only,
+    /// never copied into the repository.
+    Tractor {
+        #[command(subcommand)]
+        action: TractorAction,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum TractorAction {
+    /// Fetch the files named by the pin, by the pinned commit, into
+    /// `<work-dir>/tractor/<commit>/tree` (a sparse, blobless fetch through the
+    /// runner), then verify every sha256 against the pin. The only networked
+    /// vectors command. A tree that is already there is kept only when every
+    /// pinned hash verifies, otherwise it is removed and fetched again once.
+    /// Prints one row per step. Exit 0 when the tree is fetched (or reused) and
+    /// verified, 1 when a fetched file does not match the pin, 2 for invalid
+    /// input or a failed step.
+    Fetch {
+        /// The pin file (`testbed/tractor-pin.toml`).
+        #[arg(long)]
+        pin: PathBuf,
+        /// The pins file; git and curl come from it.
+        #[arg(long)]
+        pins: PathBuf,
+        /// The work directory. Defaults to $MT_WORK_DIR, else `.mt-work`.
+        #[arg(long)]
+        work_dir: Option<PathBuf>,
+    },
+    /// Offline: check the fetched tree against the pin. Every file's sha256
+    /// must equal the pin, and it must load at the TRACTOR-compatible level and
+    /// re-serialize JSON-equal. Prints a row per file and `loaded: <n> of <m>
+    /// (at least 3 required)`. Exit 0 when every file loaded and at least 3 did,
+    /// 1 otherwise, 2 for an invalid pin or a missing tree.
+    Check {
+        /// The pin file (`testbed/tractor-pin.toml`).
+        #[arg(long)]
+        pin: PathBuf,
+        /// The work directory. Defaults to $MT_WORK_DIR, else `.mt-work`.
+        #[arg(long)]
+        work_dir: Option<PathBuf>,
     },
 }
 
@@ -711,6 +755,14 @@ fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
             policy_check_command(manifest.as_deref(), &files)
         }
         VectorsAction::Validate { tractor, paths } => validate_command(tractor, &paths),
+        VectorsAction::Tractor { action } => match action {
+            TractorAction::Fetch {
+                pin,
+                pins,
+                work_dir,
+            } => tractor_fetch_command(&pin, &pins, work_dir),
+            TractorAction::Check { pin, work_dir } => tractor_check_command(&pin, work_dir),
+        },
     }
 }
 
@@ -741,6 +793,78 @@ fn validate_command(tractor: bool, paths: &[PathBuf]) -> anyhow::Result<u8> {
         }
     }
     Ok(0)
+}
+
+/// The work directory: `--work-dir`, else `$MT_WORK_DIR`, else `.mt-work`,
+/// made absolute.
+fn vectors_work_dir(work_dir: Option<PathBuf>) -> PathBuf {
+    let chosen = work_dir
+        .or_else(|| std::env::var_os("MT_WORK_DIR").map(PathBuf::from))
+        .unwrap_or_else(|| PathBuf::from(".mt-work"));
+    std::path::absolute(&chosen).unwrap_or(chosen)
+}
+
+/// Exit code of `mt vectors tractor fetch`: 0 fetched (or reused) and verified,
+/// 1 a fetched file does not match the pin. Anything else is an error, reported
+/// by `main` as exit 2.
+fn tractor_fetch_command(
+    pin_path: &Path,
+    pins_path: &Path,
+    work_dir: Option<PathBuf>,
+) -> anyhow::Result<u8> {
+    let pin = TractorPin::load(pin_path)
+        .with_context(|| format!("loading the pin {}", pin_path.display()))?;
+    let pins = Pins::load(pins_path).context("loading the pins file")?;
+    pins.validate().context("validating the pins file")?;
+    let work = vectors_work_dir(work_dir);
+    let ctx = FetchContext::from_pins(&pins, &work).context("preparing the fetch")?;
+    let cfg = RunnerConfig::new(
+        pins.image.tool_path.clone(),
+        pins.image.source_date_epoch.clone(),
+    );
+    let tree = pin.tree_dir(&work);
+    if std::fs::symlink_metadata(&tree).is_ok() {
+        if check_tree(&pin, &tree).is_ok_and(|report| report.passed()) {
+            println!(
+                "tractor tree {} reused: every pinned sha256 verified",
+                tree.display()
+            );
+            return Ok(0);
+        }
+        println!(
+            "tractor tree {} does not match the pin; fetching it again",
+            tree.display()
+        );
+        std::fs::remove_dir_all(&tree).with_context(|| format!("removing {}", tree.display()))?;
+    }
+    let steps = fetch_sparse(&cfg, &ctx, &pin.repo, &pin.commit, &pin.paths(), &tree)
+        .context("fetching the pinned TRACTOR files")?;
+    for step in &steps {
+        println!("{} ok", step.name);
+    }
+    let report = check_tree(&pin, &tree).context("checking the fetched tree")?;
+    if !report.passed() {
+        print!("{}", report.render());
+        return Ok(1);
+    }
+    println!(
+        "fetched {} pinned files into {}",
+        report.total,
+        tree.display()
+    );
+    Ok(0)
+}
+
+/// Exit code of `mt vectors tractor check`: 0 every pinned file loaded and at
+/// least 3 did, 1 otherwise. A missing tree or an invalid pin is an error
+/// (exit 2).
+fn tractor_check_command(pin_path: &Path, work_dir: Option<PathBuf>) -> anyhow::Result<u8> {
+    let pin = TractorPin::load(pin_path)
+        .with_context(|| format!("loading the pin {}", pin_path.display()))?;
+    let tree = pin.tree_dir(&vectors_work_dir(work_dir));
+    let report = check_tree(&pin, &tree).context("checking the TRACTOR tree")?;
+    print!("{}", report.render());
+    Ok(u8::from(!report.passed()))
 }
 
 /// Exit code of `mt vectors policy-check`: 0 every policy valid. Anything else

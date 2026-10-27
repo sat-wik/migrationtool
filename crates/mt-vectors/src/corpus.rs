@@ -16,7 +16,6 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 
 use crate::vector::{MAX_VECTOR_BYTES, OutcomeClass, Vector, VectorError};
 
@@ -206,10 +205,6 @@ fn io_error(action: &'static str, path: &Path, source: io::Error) -> CorpusError
         path: path.to_path_buf(),
         source,
     }
-}
-
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 fn is_sha256(text: &str) -> bool {
@@ -468,7 +463,7 @@ pub fn read_corpus(dir: &Path) -> Result<Corpus, CorpusError> {
         };
         let path = dir.join(name);
         let bytes = fs::read(&path).map_err(|e| io_error("reading", &path, e))?;
-        let actual = hex(&Sha256::digest(&bytes));
+        let actual = crate::sha256_hex(&bytes);
         if actual != stem {
             return Err(CorpusError::ShaMismatch {
                 name: name.clone(),

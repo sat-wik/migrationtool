@@ -17,7 +17,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Deserializer, Serialize};
-use sha2::{Digest, Sha256};
 
 use crate::bytes::decode_latin1;
 use crate::state::LibState;
@@ -255,10 +254,6 @@ pub fn read_capped(path: &Path) -> Result<Vec<u8>, VectorError> {
     fs::read(path).map_err(io_error)
 }
 
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
-}
-
 impl Vector {
     /// Read a vector from JSON text: the size cap first, then a strict parse,
     /// then every reference-level rule.
@@ -354,7 +349,7 @@ impl Vector {
     /// vector.
     #[must_use]
     pub fn sha256(&self) -> String {
-        hex(&Sha256::digest(self.render()))
+        crate::sha256_hex(&self.render())
     }
 
     /// True exactly when `has_ub` is present: output comparison skips the

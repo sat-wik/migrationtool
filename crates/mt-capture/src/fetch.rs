@@ -510,6 +510,164 @@ pub fn fetch(
     Ok(report)
 }
 
+/// Check that `git rev-parse HEAD` printed the commit that was asked for.
+///
+/// # Errors
+/// [`FetchError::CommitMismatch`] naming both commits.
+pub fn verify_head(expected: &str, rev_parse_output: &[u8]) -> Result<(), FetchError> {
+    let found = String::from_utf8_lossy(rev_parse_output).trim().to_owned();
+    if found == expected {
+        Ok(())
+    } else {
+        Err(FetchError::CommitMismatch {
+            expected: expected.to_owned(),
+            found,
+        })
+    }
+}
+
+/// Fetch only `paths` of one pinned commit into the new directory `dest`
+/// (EQV-02, D-23).
+///
+/// The commit is fetched by its 40-hex name with `--depth 1 --no-tags
+/// --filter=blob:none`, `git sparse-checkout set --no-cone` limits the work
+/// tree to exactly the named files, and the checkout is accepted only when
+/// `git rev-parse HEAD` equals the commit. A path is a relative path of safe
+/// components (letters, digits, `.`, `_`, `-`, no leading `.` or `-`), so no
+/// path can be read as an option or a sparse-checkout pattern. The tree is
+/// built in `<dest>.partial` and renamed only after every step passed; `dest`
+/// must not exist. Verifying the files themselves is the caller's job (the
+/// TRACTOR check hashes each one against the pin).
+///
+/// # Errors
+/// [`FetchError`]: invalid input (including an existing `dest`), a failed,
+/// timed-out or incomplete step, or a head that is not the commit.
+pub fn fetch_sparse(
+    cfg: &RunnerConfig,
+    ctx: &FetchContext,
+    url: &str,
+    commit: &str,
+    paths: &[String],
+    dest: &Path,
+) -> Result<Vec<Step>, FetchError> {
+    check_url(url)?;
+    if !is_hex(commit, 40) {
+        return Err(invalid(format!(
+            "commit {commit:?} must be 40 lowercase hex digits"
+        )));
+    }
+    if paths.is_empty() {
+        return Err(invalid("a sparse fetch needs at least one path"));
+    }
+    if let Some(bad) = paths
+        .iter()
+        .find(|path| !path.split('/').all(is_safe_component))
+    {
+        return Err(invalid(format!(
+            "path {bad:?} must be relative, with components of letters, digits, '.', '_' and '-' \
+             that do not start with '.' or '-'"
+        )));
+    }
+    match fs::symlink_metadata(dest) {
+        Ok(_) => {
+            return Err(invalid(format!(
+                "{} exists; a sparse tree is fetched into a new directory",
+                dest.display()
+            )));
+        }
+        Err(source) if source.kind() == io::ErrorKind::NotFound => {}
+        Err(source) => return Err(io_error("inspect", dest, source)),
+    }
+    let (Some(parent), Some(name)) = (dest.parent(), dest.file_name()) else {
+        return Err(invalid(format!(
+            "{} has no parent directory or name",
+            dest.display()
+        )));
+    };
+    fs::create_dir_all(parent).map_err(|source| io_error("create", parent, source))?;
+    let mut partial_name = name.to_os_string();
+    partial_name.push(".partial");
+    let partial = parent.join(partial_name);
+    remove_dir_if_present(&partial)?;
+    let mut stepper = Stepper::new(cfg, ctx, parent, true)?;
+    if let Err(error) = sparse_steps(ctx, &mut stepper, url, commit, paths, &partial) {
+        // Best effort: a rejected tree must not stay where a later run could
+        // mistake it for a fetched one.
+        let _ = fs::remove_dir_all(&partial);
+        return Err(error);
+    }
+    fs::rename(&partial, dest).map_err(|source| io_error("rename", &partial, source))?;
+    Ok(stepper.steps)
+}
+
+fn sparse_steps(
+    ctx: &FetchContext,
+    stepper: &mut Stepper,
+    url: &str,
+    commit: &str,
+    paths: &[String],
+    partial: &Path,
+) -> Result<(), FetchError> {
+    let git = ctx.git.clone().into_os_string();
+    let partial_arg = partial.as_os_str().to_owned();
+    stepper.run(
+        "git init",
+        "git",
+        vec![git.clone(), os("init"), os("--quiet"), partial_arg.clone()],
+        None,
+    )?;
+    stepper.run(
+        "git fetch",
+        "git",
+        vec![
+            git.clone(),
+            os("-C"),
+            partial_arg.clone(),
+            os("fetch"),
+            os("--quiet"),
+            os("--depth"),
+            os("1"),
+            os("--no-tags"),
+            os("--filter=blob:none"),
+            os("--no-recurse-submodules"),
+            os(url),
+            os(commit),
+        ],
+        None,
+    )?;
+    let mut sparse = vec![
+        git.clone(),
+        os("-C"),
+        partial_arg.clone(),
+        os("sparse-checkout"),
+        os("set"),
+        os("--no-cone"),
+    ];
+    sparse.extend(paths.iter().map(|path| os(path)));
+    stepper.run("git sparse-checkout", "git", sparse, None)?;
+    stepper.run(
+        "git checkout",
+        "git",
+        vec![
+            git.clone(),
+            os("-C"),
+            partial_arg.clone(),
+            os("checkout"),
+            os("--quiet"),
+            os("--detach"),
+            os("FETCH_HEAD"),
+        ],
+        None,
+    )?;
+    let head = stepper.run(
+        "git rev-parse",
+        "git",
+        vec![git, os("-C"), partial_arg, os("rev-parse"), os("HEAD")],
+        None,
+    )?;
+    verify_head(commit, &head)
+}
+
 fn check_tree(partial: &Path, expected: &str) -> Result<(), FetchError> {
     let found = tree_sha256(partial)?;
     if found != expected {
