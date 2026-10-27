@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
+use mt_capture::manifest::Manifest;
 use mt_toolchain::runner::{self, RunRequest, RunnerConfig};
 
 struct Outcome {
@@ -75,4 +76,95 @@ fn eqv_01_policy_check_cli_rejects_a_bad_policy() {
         "the subcommand must exist: {}",
         outcome.stderr
     );
+}
+
+/// The ids of the manifest's targets, in id order.
+fn manifest_ids() -> Vec<String> {
+    Manifest::load(&repo_root().join("testbed/manifest.toml"))
+        .unwrap()
+        .target
+        .keys()
+        .cloned()
+        .collect()
+}
+
+/// A tempdir holding a copy of the manifest and of `testbed/policy`.
+fn testbed_copy() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    let src = repo_root().join("testbed");
+    std::fs::copy(src.join("manifest.toml"), dir.path().join("manifest.toml")).unwrap();
+    std::fs::create_dir(dir.path().join("policy")).unwrap();
+    for entry in std::fs::read_dir(src.join("policy")).unwrap() {
+        let path = entry.unwrap().path();
+        std::fs::copy(
+            &path,
+            dir.path().join("policy").join(path.file_name().unwrap()),
+        )
+        .unwrap();
+    }
+    dir
+}
+
+#[test]
+fn eqv_01_policy_check_cli_checks_every_target() {
+    let ids = manifest_ids();
+    assert_eq!(ids.len(), 16);
+    let outcome = run_mt(&[
+        "vectors",
+        "policy-check",
+        "--manifest",
+        "testbed/manifest.toml",
+    ]);
+    assert_eq!(outcome.code, Some(0), "stderr: {}", outcome.stderr);
+    let rows: Vec<&str> = outcome.stdout.lines().collect();
+    assert_eq!(rows.len(), 16, "stdout: {}", outcome.stdout);
+    for (row, id) in rows.iter().zip(&ids) {
+        assert_eq!(
+            *row,
+            format!("{id} valid default=return_error overrides=0 error_codes=0")
+        );
+    }
+
+    // A target without a policy.
+    let missing = testbed_copy();
+    std::fs::remove_file(missing.path().join("policy/zlib.toml")).unwrap();
+    let manifest = missing.path().join("manifest.toml");
+    let outcome = run_mt(&[
+        "vectors",
+        "policy-check",
+        "--manifest",
+        manifest.to_str().unwrap(),
+    ]);
+    assert_eq!(outcome.code, Some(2), "stderr: {}", outcome.stderr);
+    assert!(
+        outcome.stderr.contains("zlib"),
+        "must name the target: {}",
+        outcome.stderr
+    );
+
+    // A policy that names no target.
+    let stray = testbed_copy();
+    let text = std::fs::read_to_string(stray.path().join("policy/corejson.toml")).unwrap();
+    std::fs::write(
+        stray.path().join("policy/stray.toml"),
+        text.replace("module = \"corejson\"", "module = \"stray\""),
+    )
+    .unwrap();
+    let manifest = stray.path().join("manifest.toml");
+    let outcome = run_mt(&[
+        "vectors",
+        "policy-check",
+        "--manifest",
+        manifest.to_str().unwrap(),
+    ]);
+    assert_eq!(outcome.code, Some(2), "stderr: {}", outcome.stderr);
+    assert!(
+        outcome.stderr.contains("stray"),
+        "must name the file: {}",
+        outcome.stderr
+    );
+
+    // Neither a manifest nor a file.
+    let outcome = run_mt(&["vectors", "policy-check"]);
+    assert_eq!(outcome.code, Some(2), "stderr: {}", outcome.stderr);
 }
