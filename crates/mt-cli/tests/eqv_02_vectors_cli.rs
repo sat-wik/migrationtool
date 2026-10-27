@@ -81,3 +81,89 @@ fn eqv_02_validate_cli_rejects_a_merged_lib_state() {
         outcome.stderr
     );
 }
+
+#[test]
+fn eqv_02_validate_cli_tractor_level() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("lib_case.json");
+    std::fs::write(
+        &path,
+        r#"{"lib_state_in": {"x": 1}, "lib_state_out": {"returns": 2}, "has_ub": 7, "note": "free text"}"#,
+    )
+    .unwrap();
+    let arg = path.to_str().unwrap();
+
+    let outcome = run_mt(&["vectors", "validate", "--tractor", arg]);
+    assert_eq!(outcome.code, Some(0), "stderr: {}", outcome.stderr);
+    let row = format!("{arg} valid tractor");
+    assert!(
+        outcome.stdout.lines().any(|l| l == row),
+        "stdout: {}",
+        outcome.stdout
+    );
+
+    // The same file is not a reference vector.
+    let strict = run_mt(&["vectors", "validate", arg]);
+    assert_eq!(strict.code, Some(2), "stderr: {}", strict.stderr);
+}
+
+#[test]
+fn eqv_02_validate_cli_corpus() {
+    use mt_vectors::corpus::{HasUbSource, Provenance, ProvenanceBudgets, write_corpus};
+    use mt_vectors::vector::Vector;
+
+    let hash = "ab".repeat(32);
+    let mut set = Vec::new();
+    for rc in 0..3 {
+        let text = format!(
+            r#"{{"argv": ["corejson/default/JSON_Validate"], "stdin": "", "env": {{}},
+              "stdout": {{"pattern": "", "is_regex": false}},
+              "stderr": {{"pattern": "outcome=ok", "is_regex": false}},
+              "rc": {rc}, "lib_state_in": {{}}, "lib_state_out": {{}}}}"#
+        );
+        let vector = Vector::from_json_bytes(text.as_bytes()).unwrap();
+        let provenance = Provenance {
+            seed: hash.clone(),
+            scalars: BTreeMap::new(),
+            objects: BTreeMap::new(),
+            archive: hash.clone(),
+            driver_source: hash.clone(),
+            driver_elf: hash.clone(),
+            image: "ghcr.io/example/toolchain@sha256:0000".to_owned(),
+            executor_version: "0.1.0".to_owned(),
+            contract_version: "0.1.0".to_owned(),
+            policy_sha256: hash.clone(),
+            budgets: ProvenanceBudgets {
+                timeout_ms: 10_000,
+                reserved_va: 0x1000_0000,
+                heap_arena: 1 << 20,
+                sentinel: 0xA5,
+                slack_fill: 0x5A,
+                max_input: 65_536,
+            },
+            outcome: "ok".to_owned(),
+            has_ub_source: HasUbSource::Unchecked,
+            unobserved: 0,
+            discarded_output_bytes: 0,
+            replay: "not_checked".to_owned(),
+        };
+        set.push((vector, provenance));
+    }
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("corpus");
+    write_corpus(&dir, &set).unwrap();
+    let arg = dir.to_str().unwrap();
+
+    let outcome = run_mt(&["vectors", "validate", arg]);
+    assert_eq!(outcome.code, Some(0), "stderr: {}", outcome.stderr);
+    let row = format!("{arg} valid corpus 3 vectors");
+    assert!(
+        outcome.stdout.lines().any(|l| l == row),
+        "stdout: {}",
+        outcome.stdout
+    );
+
+    std::fs::write(dir.join("stray.txt"), b"x").unwrap();
+    let broken = run_mt(&["vectors", "validate", arg]);
+    assert_eq!(broken.code, Some(2), "stderr: {}", broken.stderr);
+}

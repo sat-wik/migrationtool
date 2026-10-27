@@ -4,7 +4,7 @@
 
 use mt_vectors::bytes::decode_latin1;
 use mt_vectors::vector::{
-    HasUbLabel, MAX_VECTOR_BYTES, OUTCOME_CLASSES, OutcomeClass, Vector, VectorError,
+    HasUbLabel, MAX_VECTOR_BYTES, OUTCOME_CLASSES, OutcomeClass, TractorVector, Vector, VectorError,
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -221,4 +221,75 @@ fn eqv_02_rejects_a_file_above_the_size_cap() {
     let big = vec![b' '; MAX_VECTOR_BYTES + 1];
     let text = Vector::from_json_bytes(&big).unwrap_err().to_string();
     assert!(text.contains("above"), "{text}");
+}
+
+// ---- the TRACTOR-compatible level (built from literals we write, shaped like
+// the research's field survey; no TRACTOR content) ----
+
+fn load_tractor(value: &Value) -> (TractorVector, Value) {
+    TractorVector::load_unchanged(&serde_json::to_vec(value).unwrap()).unwrap()
+}
+
+#[test]
+fn eqv_02_tractor_level_accepts_every_optional_shape() {
+    let shapes = [
+        json!({}),
+        json!({
+            "lib_state_in": {"x": 1, "f": 1.5, "s": "text", "n": null, "a": [1, 2], "o": {"k": true}},
+            "lib_state_out": {"returns": 0}
+        }),
+        json!({
+            "argv": [],
+            "stdin": "a\u{0000}b",
+            "stdout": {"pattern": "hello"},
+            "stderr": {"pattern": ".*fault", "is_regex": true},
+            "rc": -11
+        }),
+        json!({"argv": ["1", "2"], "env": {"A": "b"}, "stdout": {"pattern": "x", "is_regex": false}, "note": "free text"}),
+        json!({"lib_state_in": {}, "lib_state_out": {}, "stdout": {"pattern": ""}, "rc": 0}),
+    ];
+    for shape in &shapes {
+        let (vector, parsed) = load_tractor(shape);
+        assert_eq!(&parsed, shape, "the parsed value is the file's value");
+        assert_eq!(
+            serde_json::to_value(&vector).unwrap(),
+            parsed,
+            "re-serialization must be JSON-equal for {shape}"
+        );
+    }
+    let (with_note, _) = load_tractor(&shapes[3]);
+    assert_eq!(with_note.note.as_deref(), Some("free text"));
+}
+
+#[test]
+fn eqv_02_tractor_has_ub_presence_means_ub() {
+    for present in [json!("crash:SIGSEGV"), json!(7), json!(false), json!(null)] {
+        let shape = json!({"stdout": {"pattern": "x"}, "has_ub": present});
+        let (vector, parsed) = load_tractor(&shape);
+        assert!(vector.has_ub_present(), "has_ub {present} is present");
+        assert_eq!(serde_json::to_value(&vector).unwrap(), parsed);
+        assert!(parsed.as_object().unwrap().contains_key("has_ub"));
+    }
+    let (absent, _) = load_tractor(&json!({"stdout": {"pattern": "x"}}));
+    assert!(!absent.has_ub_present());
+}
+
+#[test]
+fn eqv_02_tractor_level_rejects_unknown_keys() {
+    let top = serde_json::to_vec(&json!({"stdout": {"pattern": "x"}, "extra": 1})).unwrap();
+    let text = TractorVector::load_unchanged(&top).unwrap_err().to_string();
+    assert!(text.contains("extra"), "{text}");
+
+    let inner = serde_json::to_vec(&json!({"stdout": {"pattern": "x", "flags": "i"}})).unwrap();
+    let text = TractorVector::load_unchanged(&inner)
+        .unwrap_err()
+        .to_string();
+    assert!(text.contains("flags"), "{text}");
+
+    // The merged key is unknown at this level too.
+    let merged = serde_json::to_vec(&json!({"lib_state": {}})).unwrap();
+    assert!(TractorVector::load_unchanged(&merged).is_err());
+
+    let big = vec![b' '; MAX_VECTOR_BYTES + 1];
+    assert!(TractorVector::load_unchanged(&big).is_err());
 }
