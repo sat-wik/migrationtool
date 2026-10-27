@@ -7,16 +7,21 @@
 //! driver snapshots each range before and after the call. A global whose bytes
 //! differ from the image's initial bytes needs a typed layout to be recorded;
 //! until a type is available the executor stops with `untyped_global_changed`
-//! and never stores raw bytes (D-06).
+//! and never stores raw bytes (D-06). [`record_globals`] decodes a changed global
+//! with the type the build gave it, and [`function_symbols`] lists the driver's
+//! functions so a function pointer in state is recorded by name.
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use mt_vectors::state::StateValue;
 use object::read::elf::ElfFile32;
 use object::{
     Endianness, Object, ObjectSection, ObjectSymbol, SectionKind, SymbolKind, SymbolSection,
 };
 
 use crate::HarnessError;
+use crate::decode::{Regions, decode_value};
+use crate::probe::GlobalType;
 
 /// Which kind of section a global lives in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -274,4 +279,105 @@ pub fn locate_globals(
     }
     ranges.sort_by(|a, b| a.key.cmp(&b.key));
     Ok(ranges)
+}
+
+/// The functions of the linked driver: address with the Thumb bit cleared to
+/// name. Only symbols whose name is a C identifier are listed; when two names
+/// share an address the smaller name is kept, so the map is the same on every
+/// run.
+///
+/// # Errors
+/// [`HarnessError::Input`] when `elf` is not a 32-bit ELF file.
+pub fn function_symbols(elf: &[u8]) -> Result<BTreeMap<u32, String>, HarnessError> {
+    let image = parse(elf).map_err(|e| input("driver.elf", e.to_string()))?;
+    let mut names: Vec<(String, u32)> = Vec::new();
+    for symbol in image.symbols() {
+        if symbol.kind() != SymbolKind::Text || !symbol.is_definition() {
+            continue;
+        }
+        let Ok(name) = symbol.name() else {
+            continue;
+        };
+        let is_identifier = name
+            .bytes()
+            .next()
+            .is_some_and(|b| b.is_ascii_alphabetic() || b == b'_')
+            && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_');
+        if !is_identifier {
+            continue;
+        }
+        if let Ok(address) = u32::try_from(symbol.address()) {
+            names.push((name.to_owned(), address & !1));
+        }
+    }
+    names.sort();
+    let mut functions = BTreeMap::new();
+    for (name, address) in names {
+        functions.entry(address).or_insert(name);
+    }
+    Ok(functions)
+}
+
+/// The writable globals that changed, recorded with their types (CONTEXT D-10).
+///
+/// `before` and `after` are the bytes of each range of `plan`, in plan order. A
+/// global whose bytes differ from the image's initial bytes before or after the
+/// call has changed: it is decoded with its type from `types` and recorded under
+/// its key, in the value for `lib_state_in.globals` (the bytes before the call)
+/// and in the value for `lib_state_out.globals` (the bytes after). `None` when no
+/// global changed.
+///
+/// # Errors
+/// A message starting `executor_error: untyped_global_changed` and naming the
+/// global when a changed global has no type; other messages for ranges or types
+/// that do not fit.
+pub fn record_globals(
+    plan: &[DumpRange],
+    types: &BTreeMap<String, GlobalType>,
+    before: &[&[u8]],
+    after: &[&[u8]],
+    regions: &Regions,
+) -> Result<Option<(StateValue, StateValue)>, String> {
+    if before.len() != plan.len() || after.len() != plan.len() {
+        return Err("the global snapshots do not match the dump plan".to_owned());
+    }
+    let mut recorded_before = BTreeMap::new();
+    let mut recorded_after = BTreeMap::new();
+    for (index, range) in plan.iter().enumerate() {
+        let (Some(b), Some(a)) = (before.get(index), after.get(index)) else {
+            return Err("the global snapshots do not match the dump plan".to_owned());
+        };
+        let size = range.size as usize;
+        if b.len() != size || a.len() != size {
+            return Err(format!("{}: a snapshot does not match the size", range.key));
+        }
+        if *b == range.initial.as_slice() && *a == range.initial.as_slice() {
+            continue;
+        }
+        let Some(GlobalType::Typed { ty }) = types.get(&range.key) else {
+            return Err(format!(
+                "executor_error: untyped_global_changed ({}): the bytes differ from the image and no layout types them",
+                range.key
+            ));
+        };
+        if ty.size != range.size {
+            return Err(format!(
+                "executor_error: {} is {} bytes in the image but {} in its DWARF type",
+                range.key, range.size, ty.size
+            ));
+        }
+        let decode = |bytes: &[u8]| {
+            decode_value(ty, bytes, regions).map_err(|e| format!("{}: {e}", range.key))
+        };
+        recorded_before.insert(range.key.clone(), decode(b)?);
+        recorded_after.insert(range.key.clone(), decode(a)?);
+    }
+    if recorded_after.is_empty() {
+        return Ok(None);
+    }
+    let wrap = |fields| StateValue::Struct {
+        c_type: "globals".to_owned(),
+        fields,
+    };
+    Ok(Some((wrap(recorded_before), wrap(recorded_after))))
 }

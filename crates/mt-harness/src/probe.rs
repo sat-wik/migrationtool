@@ -7,20 +7,24 @@
 //! runner and [`crate::layout`] reads the text. Optimisation does not change a
 //! type's DWARF, so `-O0` only keeps every variable.
 //!
-//! [`layout_for_entry`] compiles the entry's include lines and one used global
-//! per state type, and gives each state's [`CType`].
+//! - [`layout_for_entry`] compiles the entry's include lines and one used global
+//!   per state type, and gives each state's [`CType`].
+//! - [`layout_for_globals`] recompiles the defining unit of each writable global
+//!   with that unit's own flags and types the global from that unit's DWARF.
 
 use std::collections::BTreeMap;
 use std::ffi::OsString;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use mt_capture::cc::CcEntry;
 use mt_capture::manifest::BASELINE_CFLAGS;
 use mt_toolchain::runner::{self, RunnerConfig};
+use serde::{Deserialize, Serialize};
 
-use crate::HarnessError;
 use crate::layout::{CType, LayoutError, parse_dwarfdump};
 use crate::link::{failure, gcc_request, healthy};
 use crate::tools::ExecTools;
+use crate::{HarnessError, sha256_hex};
 
 /// The largest state object the driver snapshots, in bytes. A larger type is not
 /// expressible (`runtime.c` holds a fixed snapshot buffer).
@@ -181,4 +185,133 @@ pub fn layout_for_entry(
         layouts.insert(name.clone(), ty);
     }
     Ok(layouts)
+}
+
+/// The type of one writable global, or why it has none (CONTEXT D-10).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum GlobalType {
+    /// Typed from the DWARF of its defining unit.
+    Typed {
+        /// The type.
+        ty: CType,
+    },
+    /// Not typed; a change in its bytes stops the run (`untyped_global_changed`).
+    Untyped {
+        /// Why.
+        reason: String,
+    },
+}
+
+/// One global to type: the key it is recorded under, its symbol name and the
+/// compile command whose output is its object.
+#[derive(Debug, Clone)]
+pub struct GlobalTarget {
+    /// `<object path>:<symbol>`.
+    pub key: String,
+    /// The symbol name in the object.
+    pub symbol: String,
+    /// The compile command of the defining unit.
+    pub unit: CcEntry,
+}
+
+/// The arguments that recompile `unit` with debug information into `scratch`:
+/// the unit's own arguments with `-o`, dependency-file options and `-O*`/`-g*`
+/// options removed, then `-g -gdwarf-5 -O0`, `-c` if it was missing and
+/// `-o <scratch>`. Every other option is kept as the unit had it, because the
+/// layout must come from the flags the object was built with.
+#[must_use]
+pub fn recompile_arguments(compiler: &Path, arguments: &[String], scratch: &Path) -> Vec<OsString> {
+    let mut argv: Vec<OsString> = vec![compiler.as_os_str().to_owned()];
+    let mut remaining = arguments.iter().skip(1);
+    let mut has_compile_only = false;
+    while let Some(argument) = remaining.next() {
+        let text = argument.as_str();
+        if matches!(text, "-o" | "-MF" | "-MT" | "-MQ") {
+            remaining.next();
+        } else if text.starts_with("-o")
+            || text.starts_with("-M")
+            || text.starts_with("-O")
+            || text.starts_with("-g")
+        {
+            // Joined operand, dependency flags, optimisation and debug options.
+        } else {
+            has_compile_only |= text == "-c";
+            argv.push(OsString::from(argument));
+        }
+    }
+    for flag in ["-g", "-gdwarf-5", "-O0"] {
+        argv.push(OsString::from(flag));
+    }
+    if !has_compile_only {
+        argv.push(OsString::from("-c"));
+    }
+    argv.push(OsString::from("-o"));
+    argv.push(scratch.as_os_str().to_owned());
+    argv
+}
+
+/// Type every global of `targets` from the DWARF of its defining unit, compiled
+/// with that unit's own flags into a scratch object under `dir/globals/`. A
+/// global that cannot be typed (no unique variable, an unsupported type, a unit
+/// that does not recompile) is [`GlobalType::Untyped`] with the reason.
+///
+/// # Errors
+/// [`HarnessError`] when a file cannot be written or a tool cannot run.
+pub fn layout_for_globals(
+    tools: &ExecTools,
+    cfg: &RunnerConfig,
+    dir: &Path,
+    targets: &[GlobalTarget],
+) -> Result<BTreeMap<String, GlobalType>, HarnessError> {
+    let scratch_dir: PathBuf = dir.join("globals");
+    let mut result = BTreeMap::new();
+    let mut by_unit: BTreeMap<String, Vec<&GlobalTarget>> = BTreeMap::new();
+    for target in targets {
+        by_unit
+            .entry(target.unit.output.clone())
+            .or_default()
+            .push(target);
+    }
+    if by_unit.is_empty() {
+        return Ok(result);
+    }
+    std::fs::create_dir_all(&scratch_dir).map_err(|e| io("cannot create", &scratch_dir, e))?;
+    for group in by_unit.values() {
+        let Some(first) = group.first() else {
+            continue;
+        };
+        let unit = &first.unit;
+        let stem = &sha256_hex(unit.output.as_bytes())[..16];
+        let object = scratch_dir.join(format!("{stem}.o"));
+        if object.exists() {
+            std::fs::remove_file(&object).map_err(|e| io("cannot remove", &object, e))?;
+        }
+        let argv = recompile_arguments(&tools.arm_gcc, &unit.arguments, &object);
+        let compiled = runner::run(cfg, &gcc_request(tools, argv, Path::new(&unit.directory)))?;
+        let model = if healthy(&compiled) {
+            let text = dump_object(tools, cfg, &scratch_dir, &object)?;
+            parse_dwarfdump(&text).map_err(|e| e.to_string())
+        } else {
+            Err("the defining unit does not recompile with debug information".to_owned())
+        };
+        for target in group {
+            let typed = match &model {
+                Err(reason) => GlobalType::Untyped {
+                    reason: reason.clone(),
+                },
+                Ok(model) => match model.type_of_global(&target.symbol) {
+                    Ok(Some(ty)) => GlobalType::Typed { ty },
+                    Ok(None) => GlobalType::Untyped {
+                        reason: "no unique variable of that name in the unit's DWARF".to_owned(),
+                    },
+                    Err(error) => GlobalType::Untyped {
+                        reason: error.to_string(),
+                    },
+                },
+            };
+            result.insert(target.key.clone(), typed);
+        }
+    }
+    Ok(result)
 }

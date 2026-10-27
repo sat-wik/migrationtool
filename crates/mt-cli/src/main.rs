@@ -21,7 +21,8 @@ use mt_contract::Policy;
 use mt_contract::policy;
 use mt_harness::replay::{ReplayOptions, check_corpora, replay_corpus};
 use mt_harness::run::{
-    BuildOptions, RunOptions, Scope as VectorsScope, build_entries, list_adapters, run_entries,
+    BuildOptions, RunOptions, Scope as VectorsScope, build_entries, layout_lines, list_adapters,
+    run_entries,
 };
 use mt_harness::selftest::run_selftest;
 use mt_harness::tools::ExecTools;
@@ -276,6 +277,19 @@ enum VectorsAction {
         /// The directory of Phase 2's replay reports (`<dir>/<id>/<config>.json`).
         #[arg(long)]
         replay_dir: Option<PathBuf>,
+    },
+    /// Print the layout of every state of every built entry (EQV-04, D-09): one
+    /// `<t>/<c>/<e> <state> <type> size=<n> <member>@<offset>:<size>...` line per
+    /// state, read from the `build.json` files under `<work-dir>/vectors-build`
+    /// in target, configuration, entry and state order. A bitfield adds
+    /// `:<bit offset>:<bit size>`. The layouts come from the pinned compiler's
+    /// DWARF, so two runs on two compiler versions can be compared line for line.
+    /// Ends with `result: passed (<n> rows)`; no row is `result: failed`. Exit 0
+    /// when there is a row, 1 otherwise, 2 for a `build.json` that cannot be read.
+    Layouts {
+        /// The work directory. Defaults to $MT_WORK_DIR, else `.mt-work`.
+        #[arg(long)]
+        work_dir: Option<PathBuf>,
     },
     /// Run the committed seeds of every built entry through its driver under
     /// qemu-arm, twice, and store the vectors (EQV-04, D-02, D-19): the policy of
@@ -861,6 +875,7 @@ fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
             corpus_dirs,
         } => replay_command(&manifest, &pins, work_dir, scratch_dir, &corpus_dirs),
         VectorsAction::Check { first, second } => check_command(&first, &second),
+        VectorsAction::Layouts { work_dir } => layouts_command(work_dir),
         VectorsAction::Build { args, replay_dir } => build_command(args, replay_dir),
         VectorsAction::Run {
             args,
@@ -967,6 +982,16 @@ fn check_command(first: &Path, second: &Path) -> anyhow::Result<u8> {
         );
         Ok(print_result(1, true))
     }
+}
+
+/// Exit code of `mt vectors layouts`: 0 at least one layout printed, 1 none.
+fn layouts_command(work_dir: Option<PathBuf>) -> anyhow::Result<u8> {
+    let build_root = vectors_work_dir(work_dir).join("vectors-build");
+    let lines = layout_lines(&build_root).context("reading the state layouts")?;
+    for line in &lines {
+        println!("{line}");
+    }
+    Ok(print_result(lines.len(), lines.is_empty()))
 }
 
 /// Exit code of `mt vectors build`: 0 no row failed, 1 a row failed.

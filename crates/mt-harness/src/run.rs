@@ -31,14 +31,16 @@ use serde::{Deserialize, Serialize};
 use crate::adapter::{Adapter, AdapterError, Combination, combinations, driver_flags};
 use crate::budget::Budgets;
 use crate::classify::{Outcome, classify};
-use crate::decode::{Regions, decode_value};
+use crate::decode::{Regions, apply_marks, check_marks, decode_value};
 use crate::driver::render_entry_driver;
 use crate::exec::{Request, Slot, run_driver};
 use crate::frame::{Frame, parse_frame};
-use crate::globals::{DumpRange, locate_globals, writable_globals};
-use crate::layout::CType;
+use crate::globals::{
+    DumpRange, function_symbols, locate_globals, record_globals, writable_globals,
+};
+use crate::layout::{CType, layout_summary};
 use crate::link::{LinkOutcome, LinkRequest, archive, link_driver, verify_objects};
-use crate::probe::{LayoutRequest, layout_for_entry};
+use crate::probe::{GlobalTarget, GlobalType, LayoutRequest, layout_for_entry, layout_for_globals};
 use crate::tools::ExecTools;
 use crate::{EXECUTOR_VERSION, HarnessError};
 
@@ -304,6 +306,10 @@ pub struct BuildRecord {
     /// DWARF (CONTEXT D-09).
     #[serde(default)]
     pub layouts: BTreeMap<String, CType>,
+    /// The type of each writable global of the dump plan, by key, from the DWARF
+    /// of its defining unit, or the reason it has none (CONTEXT D-10).
+    #[serde(default)]
+    pub global_types: BTreeMap<String, GlobalType>,
 }
 
 /// One writable global of the dump plan, as `build.json` records it.
@@ -553,6 +559,9 @@ fn build_entry(
         }
         Err(error) => return Err(error),
     };
+    if let Err(reason) = check_marks(&layouts, adapter.marks()) {
+        return Ok(BuildState::Refused(format!("unobserved mark {reason}")));
+    }
     let members: Vec<String> = pair.verified.objects.keys().cloned().collect();
     let archived = archive(
         &opts.tools,
@@ -575,6 +584,13 @@ fn build_entry(
                 Ok(plan) => plan,
                 Err(reason) => return Ok(BuildState::Refused(reason)),
             };
+            let global_types = match global_types_of(opts, pair, &dir, &plan) {
+                Ok(types) => types,
+                Err(error @ (HarnessError::Layout { .. } | HarnessError::Build { .. })) => {
+                    return Ok(BuildState::Refused(error.to_string()));
+                }
+                Err(error) => return Err(error),
+            };
             let mut steps = vec![archived.record.clone()];
             steps.extend(build.records.iter().cloned());
             let record = BuildRecord {
@@ -593,6 +609,7 @@ fn build_entry(
                 steps,
                 globals: plan.iter().map(GlobalRecord::from_range).collect(),
                 layouts,
+                global_types,
             };
             let path = dir.join(BUILD_JSON);
             let mut text = serde_json::to_string_pretty(&record)
@@ -621,6 +638,53 @@ fn dump_plan(pair: &PairInputs, elf_path: &Path) -> Result<Vec<DumpRange>, Strin
     }
     let elf = std::fs::read(elf_path).map_err(|e| format!("cannot read driver.elf: {e}"))?;
     locate_globals(&symbols, &elf).map_err(|e| e.to_string())
+}
+
+/// Type each global of the dump plan from the DWARF of the unit that defines it:
+/// the canonical compile command whose output is the global's object is run
+/// again with `-g -gdwarf-5 -O0` into a scratch object (CONTEXT D-10). A global
+/// whose object no canonical command writes is untyped.
+fn global_types_of(
+    opts: &BuildOptions,
+    pair: &PairInputs,
+    dir: &Path,
+    plan: &[DumpRange],
+) -> Result<BTreeMap<String, GlobalType>, HarnessError> {
+    let mut targets = Vec::new();
+    let mut types = BTreeMap::new();
+    for range in plan {
+        let Some((object, symbol)) = range.key.rsplit_once(':') else {
+            types.insert(
+                range.key.clone(),
+                GlobalType::Untyped {
+                    reason: "the key is not <object>:<symbol>".to_owned(),
+                },
+            );
+            continue;
+        };
+        let wanted = lexical(&pair.layout.run_root.join(object));
+        match pair
+            .canonical
+            .iter()
+            .find(|candidate| lexical(Path::new(&candidate.output)) == wanted)
+        {
+            Some(unit) => targets.push(GlobalTarget {
+                key: range.key.clone(),
+                symbol: symbol.to_owned(),
+                unit: unit.clone(),
+            }),
+            None => {
+                types.insert(
+                    range.key.clone(),
+                    GlobalType::Untyped {
+                        reason: "no canonical compile command writes that object".to_owned(),
+                    },
+                );
+            }
+        }
+    }
+    types.extend(layout_for_globals(&opts.tools, &opts.cfg, dir, &targets)?);
+    Ok(types)
 }
 
 // ---------------------------------------------------------------------------
@@ -750,6 +814,11 @@ pub struct PreparedDriver {
     pub plan: Vec<DumpRange>,
     /// The layout of each state of the entry, by name.
     pub layouts: BTreeMap<String, CType>,
+    /// The type of each writable global of `plan`, by key.
+    pub global_types: BTreeMap<String, GlobalType>,
+    /// The functions of the linked driver: address with the Thumb bit cleared
+    /// to name.
+    pub functions: BTreeMap<u32, String>,
 }
 
 /// One run of one request, turned into the vector it would store.
@@ -796,8 +865,7 @@ fn observe(
                 .region(OUT_REGION)
                 .map(|region| region.bytes.clone())
                 .ok_or_else(|| "the result frame has no output region".to_owned())?;
-            check_globals(&driver.plan, &frame)?;
-            let (before, after) = record_states(adapter, driver, &frame)?;
+            let (before, after) = record_state(adapter, driver, &frame)?;
             (out, frame.discarded, before, after)
         }
         _ => (Vec::new(), 0, LibState::default(), LibState::default()),
@@ -919,10 +987,16 @@ fn address_words(frame: &Frame) -> Result<Vec<u32>, String> {
         .collect())
 }
 
-/// The regions a pointer of the states can point into: the input and output
-/// buffers, and each state by its name (CONTEXT D-06). The addresses come from
-/// the driver's own frame, so no address is assumed.
-fn regions_of(words: &[u32], states: &[crate::adapter::StateParam]) -> Result<Regions, String> {
+/// The regions a pointer of the state can point into (CONTEXT D-06): the input
+/// and output buffers, each state by its name, the heap arena in use, each
+/// dumped global as `global:<object>:<symbol>`, and the functions of the driver.
+/// The addresses come from the driver's own frame and its symbol table, so no
+/// address is assumed.
+fn regions_of(
+    words: &[u32],
+    states: &[crate::adapter::StateParam],
+    driver: &PreparedDriver,
+) -> Result<Regions, String> {
     let word = |index: usize| {
         words
             .get(index)
@@ -931,25 +1005,37 @@ fn regions_of(words: &[u32], states: &[crate::adapter::StateParam]) -> Result<Re
     };
     let mut regions = Regions::new()
         .with_region("in", word(0)?, word(1)?)
-        .with_region("out", word(2)?, word(3)?);
+        .with_region("out", word(2)?, word(3)?)
+        .with_region("heap", word(4)?, word(5)?);
     for (index, state) in states.iter().enumerate() {
         regions = regions.with_region(&state.name, word(6 + 2 * index)?, word(7 + 2 * index)?);
     }
-    Ok(regions)
+    for range in &driver.plan {
+        regions = regions.with_region(&format!("global:{}", range.key), range.address, range.size);
+    }
+    Ok(regions.with_functions(&driver.functions))
 }
 
-/// Decode every state of the entry before and after the call.
-fn record_states(
+/// The bytes of region `base + index`.
+fn region_bytes(frame: &Frame, base: u32, index: usize, what: &str) -> Result<Vec<u8>, String> {
+    let index = u32::try_from(index).map_err(|_| "too many regions".to_owned())?;
+    frame
+        .region(base + index)
+        .map(|region| region.bytes.clone())
+        .ok_or_else(|| format!("the result frame has no region for {what}"))
+}
+
+/// Decode every state of the entry and every changed global, before and after the
+/// call, apply the entry's unobserved marks and return `lib_state_in` and
+/// `lib_state_out` (CONTEXT D-06, D-09, D-10).
+fn record_state(
     adapter: &Adapter,
     driver: &PreparedDriver,
     frame: &Frame,
 ) -> Result<(LibState, LibState), String> {
     let states = adapter.states();
-    if states.is_empty() {
-        return Ok((LibState::default(), LibState::default()));
-    }
     let words = address_words(frame)?;
-    let regions = regions_of(&words, &states)?;
+    let regions = regions_of(&words, &states, driver)?;
     let mut before = BTreeMap::new();
     let mut after = BTreeMap::new();
     for (index, state) in states.iter().enumerate() {
@@ -957,17 +1043,11 @@ fn record_states(
             .layouts
             .get(&state.name)
             .ok_or_else(|| format!("state {} has no layout in build.json", state.name))?;
-        let index = u32::try_from(index).map_err(|_| "too many states".to_owned())?;
         for (base, target) in [
             (STATE_BEFORE_REGION, &mut before),
             (STATE_AFTER_REGION, &mut after),
         ] {
-            let bytes = frame
-                .region(base + index)
-                .map(|region| region.bytes.as_slice())
-                .ok_or_else(|| {
-                    format!("the result frame has no region for state {}", state.name)
-                })?;
+            let bytes = region_bytes(frame, base, index, &format!("state {}", state.name))?;
             if bytes.len() != ty.size as usize {
                 return Err(format!(
                     "executor_error: state {} is {} bytes in the driver but {} in the DWARF layout",
@@ -976,39 +1056,34 @@ fn record_states(
                     ty.size
                 ));
             }
-            let value = decode_value(ty, bytes, &regions)
+            let value = decode_value(ty, &bytes, &regions)
+                .map_err(|e| format!("state {}: {e}", state.name))?;
+            let value = apply_marks(&state.name, value, adapter.marks())
                 .map_err(|e| format!("state {}: {e}", state.name))?;
             target.insert(state.name.clone(), value);
         }
     }
+    let mut before_bytes = Vec::new();
+    let mut after_bytes = Vec::new();
+    for (index, range) in driver.plan.iter().enumerate() {
+        before_bytes.push(region_bytes(frame, DUMP_BEFORE_REGION, index, &range.key)?);
+        after_bytes.push(region_bytes(frame, DUMP_AFTER_REGION, index, &range.key)?);
+    }
+    let before_refs: Vec<&[u8]> = before_bytes.iter().map(Vec::as_slice).collect();
+    let after_refs: Vec<&[u8]> = after_bytes.iter().map(Vec::as_slice).collect();
+    if let Some((globals_before, globals_after)) = record_globals(
+        &driver.plan,
+        &driver.global_types,
+        &before_refs,
+        &after_refs,
+        &regions,
+    )? {
+        before.insert("globals".to_owned(), globals_before);
+        after.insert("globals".to_owned(), globals_after);
+    }
     let before = LibState::new(before).map_err(|e| e.to_string())?;
     let after = LibState::new(after).map_err(|e| e.to_string())?;
     Ok((before, after))
-}
-
-/// A writable global whose bytes differ from the image's initial bytes, before
-/// or after the call, is state the vector must record; recording needs a typed
-/// layout (plan 03-05), and raw bytes are never stored (CONTEXT D-06, D-10).
-fn check_globals(plan: &[DumpRange], frame: &crate::frame::Frame) -> Result<(), String> {
-    for (index, range) in plan.iter().enumerate() {
-        let index = u32::try_from(index).map_err(|_| "too many dump ranges".to_owned())?;
-        let region = |base: u32| {
-            frame
-                .region(base + index)
-                .map(|region| region.bytes.as_slice())
-                .filter(|bytes| bytes.len() == range.size as usize)
-                .ok_or_else(|| format!("the result frame has no region for {}", range.key))
-        };
-        let before = region(DUMP_BEFORE_REGION)?;
-        let after = region(DUMP_AFTER_REGION)?;
-        if before != range.initial.as_slice() || after != range.initial.as_slice() {
-            return Err(format!(
-                "executor_error: untyped_global_changed ({}): the bytes differ from the image and no layout types them",
-                range.key
-            ));
-        }
-    }
-    Ok(())
 }
 
 fn policy_of(scope: &Scope, target: &str) -> Result<String, String> {
@@ -1097,8 +1172,11 @@ pub(crate) fn load_driver(
         }
     };
     let elf_path = dir.join("driver.elf");
-    let elf_hash = match std::fs::read(&elf_path) {
-        Ok(bytes) => sha256_hex(&bytes),
+    let (elf_hash, functions) = match std::fs::read(&elf_path) {
+        Ok(bytes) => match function_symbols(&bytes) {
+            Ok(functions) => (sha256_hex(&bytes), functions),
+            Err(error) => return Err(RunState::NotBuilt(format!("{key}: {error}"))),
+        },
         Err(error) => {
             return Err(RunState::NotBuilt(format!(
                 "{key}: no {}: {error}",
@@ -1120,6 +1198,7 @@ pub(crate) fn load_driver(
         }
     }
     let layouts = build.layouts.clone();
+    let global_types = build.global_types.clone();
     for state in adapter.states() {
         if !layouts.contains_key(&state.name) {
             return Err(RunState::NotBuilt(format!(
@@ -1135,6 +1214,8 @@ pub(crate) fn load_driver(
             elf_path,
             plan,
             layouts,
+            global_types,
+            functions,
         },
     })
 }
@@ -1295,6 +1376,57 @@ fn run_entry(opts: &RunOptions, item: &Selected) -> Result<RunState, HarnessErro
         return Ok(RunState::Failed(format!("{key}: {error}")));
     }
     Ok(RunState::Ran(summary))
+}
+
+// ---------------------------------------------------------------------------
+// Layouts
+// ---------------------------------------------------------------------------
+
+/// The layouts of every built entry under `build_root`, one line per state:
+/// `<target>/<config>/<entry> <state> <type> size=<n> <member>@<offset>:<size>...`
+/// (see [`layout_summary`]), in target, configuration, entry and state-name order.
+/// A missing build root gives no line.
+///
+/// # Errors
+/// [`HarnessError`] when a directory or a `build.json` cannot be read.
+pub fn layout_lines(build_root: &Path) -> Result<Vec<String>, HarnessError> {
+    fn sorted_dirs(dir: &Path) -> Result<Vec<PathBuf>, HarnessError> {
+        let mut paths = Vec::new();
+        for item in std::fs::read_dir(dir).map_err(|e| io("cannot read", dir, e))? {
+            let item = item.map_err(|e| io("cannot read", dir, e))?;
+            if item.file_type().is_ok_and(|kind| kind.is_dir()) {
+                paths.push(item.path());
+            }
+        }
+        paths.sort();
+        Ok(paths)
+    }
+    let mut lines = Vec::new();
+    if !build_root.is_dir() {
+        return Ok(lines);
+    }
+    for target in sorted_dirs(build_root)? {
+        for config in sorted_dirs(&target)? {
+            for entry in sorted_dirs(&config)? {
+                let path = entry.join(BUILD_JSON);
+                let Ok(bytes) = std::fs::read(&path) else {
+                    continue;
+                };
+                let record: BuildRecord = serde_json::from_slice(&bytes)
+                    .map_err(|e| input(path.display().to_string(), e.to_string()))?;
+                for (name, ty) in &record.layouts {
+                    lines.push(format!(
+                        "{}/{}/{} {name} {}",
+                        record.target,
+                        record.config,
+                        record.entry,
+                        layout_summary(ty)
+                    ));
+                }
+            }
+        }
+    }
+    Ok(lines)
 }
 
 // ---------------------------------------------------------------------------

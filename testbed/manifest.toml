@@ -79,6 +79,33 @@ source = "src/cborparser.c"
 form = "direct"
 signature = "CborError (const uint8_t *, size_t, uint32_t, CborParser *, CborValue *)"
 
+# Argument roles (Phase 3 CONTEXT D-09, D-11, D-14): the buffer is the input bytes
+# and the size_t their length; the parser and the iterator are two states, each in
+# its own guarded mapping and recorded field by field (the iterator's pointers into
+# the parser and the input are {buffer: parser} and {buffer: in}). `flags` is a
+# scalar with the one default 0 and no sweep: the only documented flag,
+# CborParserFlag_ExternalSource (0x01), makes the parser call through source.ops,
+# which a buffer entry sets to a data pointer, so sweeping it would be undefined
+# behavior and not a second configuration of the same call.
+[[target.tinycbor.entry.arg]]
+role = "in_buf"
+
+[[target.tinycbor.entry.arg]]
+role = "in_len"
+
+[[target.tinycbor.entry.arg]]
+role = "scalar"
+name = "flags"
+default = 0
+
+[[target.tinycbor.entry.arg]]
+role = "state"
+name = "parser"
+
+[[target.tinycbor.entry.arg]]
+role = "state"
+name = "it"
+
 [[target.tinycbor.entry]]
 name = "cbor_value_validate"
 header = "src/cbor.h"
@@ -731,6 +758,20 @@ header = "nimble/host/include/host/ble_uuid.h"
 source = "nimble/host/src/ble_uuid.c"
 form = "direct"
 signature = "int (ble_uuid_any_t *, const void *, size_t)"
+
+# Argument roles (Phase 3 CONTEXT D-09, D-11): the UUID is a state, a union that is
+# zero-filled in its own guarded mapping and recorded with every member decoded
+# from the same bytes before and after the call; the buffer is the input bytes
+# and the size_t their length.
+[[target.nimble.entry.arg]]
+role = "state"
+name = "uuid"
+
+[[target.nimble.entry.arg]]
+role = "in_buf"
+
+[[target.nimble.entry.arg]]
+role = "in_len"
 
 [[target.nimble.config]]
 name = "default"

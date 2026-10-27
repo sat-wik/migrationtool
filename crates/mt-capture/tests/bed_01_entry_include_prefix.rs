@@ -324,6 +324,7 @@ fn entry(name: &str, header: &str, source: &str, signature: &str) -> Entry {
         signature: signature.to_owned(),
         accepted_wrapped: false,
         arg: Vec::new(),
+        unobserved: Vec::new(),
     }
 }
 

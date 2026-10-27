@@ -310,6 +310,70 @@ pub struct Entry {
     /// from the serialised form, so such an entry reads as it did in Phase 2.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub arg: Vec<ArgRole>,
+    /// Fields of the entry's states the harness does not compare, each with the
+    /// reason (Phase 3, CONTEXT D-09). Absent when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unobserved: Vec<UnobservedMark>,
+}
+
+/// One `[[target.X.entry.unobserved]]` table: a field of a state that is recorded
+/// as unobserved and never compared (CONTEXT D-09). The reason is required and
+/// the number of marks is counted in the provenance of the corpus.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UnobservedMark {
+    /// `<state name>(.<member>|[<index>])+`, in C identifiers and decimal
+    /// indices.
+    pub field: String,
+    /// Why the field is not observed; not empty.
+    pub reason: String,
+}
+
+/// One step of an unobserved mark's path.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MarkStep {
+    /// `.member`
+    Member(String),
+    /// `[index]`
+    Index(u64),
+}
+
+/// Split a mark's `field` into the state name and its steps, or `None` when it is
+/// not `<state name>(.<member>|[<index>])+` in C identifiers and decimal indices
+/// (no sign, no leading zero).
+#[must_use]
+pub fn parse_mark_path(field: &str) -> Option<(String, Vec<MarkStep>)> {
+    let name_end = field.find(['.', '[']).unwrap_or(field.len());
+    let name = &field[..name_end];
+    if !is_c_identifier(name) {
+        return None;
+    }
+    let mut rest = &field[name_end..];
+    let mut steps = Vec::new();
+    while !rest.is_empty() {
+        if let Some(after) = rest.strip_prefix('.') {
+            let end = after.find(['.', '[']).unwrap_or(after.len());
+            let member = &after[..end];
+            if !is_c_identifier(member) {
+                return None;
+            }
+            steps.push(MarkStep::Member(member.to_owned()));
+            rest = &after[end..];
+        } else {
+            let after = rest.strip_prefix('[')?;
+            let close = after.find(']')?;
+            let digits = &after[..close];
+            let canonical = !digits.is_empty()
+                && digits.bytes().all(|b| b.is_ascii_digit())
+                && (digits == "0" || !digits.starts_with('0'));
+            if !canonical {
+                return None;
+            }
+            steps.push(MarkStep::Index(digits.parse().ok()?));
+            rest = &after[close + 1..];
+        }
+    }
+    (!steps.is_empty()).then(|| (name.to_owned(), steps))
 }
 
 /// The most scalar combinations one entry may declare (CONTEXT D-14): the
@@ -1051,6 +1115,7 @@ fn entry_issues(f: &str, entries: &[Entry], issues: &mut Vec<String>) {
             _ => {}
         }
         role_issues(&g, entry, issues);
+        mark_issues(&g, entry, issues);
     }
 }
 
@@ -1154,6 +1219,47 @@ fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
         issues.push(format!(
             "{f}: {combinations} scalar combinations exceed the limit of {MAX_SCALAR_COMBOS} (D-14)"
         ));
+    }
+}
+
+/// The rules for an entry's unobserved marks (CONTEXT D-09): a reason that is
+/// not blank, a path of the form `<state name>(.<member>|[<index>])+`, a state
+/// that a `state` role of the same entry declares, and no field marked twice. The
+/// members themselves are checked against the layout when the driver is built.
+fn mark_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
+    let states: Vec<&str> = entry
+        .arg
+        .iter()
+        .filter(|arg| arg.role == Role::State)
+        .filter_map(|arg| arg.name.as_deref())
+        .collect();
+    let mut seen: Vec<&str> = Vec::new();
+    for (index, mark) in entry.unobserved.iter().enumerate() {
+        let h = format!("{g}.unobserved[{index}]");
+        if mark.reason.trim().is_empty() {
+            issues.push(format!(
+                "{h}: an unobserved mark needs a reason, found {:?} (D-09)",
+                mark.reason
+            ));
+        }
+        match parse_mark_path(&mark.field) {
+            None => issues.push(format!(
+                "{h}: field {:?} must be <state name>(.<member>|[<index>])+ in C identifiers and decimal indices (D-09)",
+                mark.field
+            )),
+            Some((state, _)) if !states.contains(&state.as_str()) => issues.push(format!(
+                "{h}: field {:?} names no state declared by a state role of this entry (D-09)",
+                mark.field
+            )),
+            Some(_) => {}
+        }
+        if seen.contains(&mark.field.as_str()) {
+            issues.push(format!(
+                "{h}: duplicate mark on field {:?}; mark a field once (D-09)",
+                mark.field
+            ));
+        }
+        seen.push(&mark.field);
     }
 }
 

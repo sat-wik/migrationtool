@@ -15,10 +15,13 @@ use mt_harness::adapter::{Adapter, combinations};
 use mt_harness::budget::Budgets;
 use mt_harness::driver::render_entry_driver;
 use mt_harness::globals::{locate_globals, writable_globals};
+use mt_harness::layout::{CType, Kind};
 use mt_harness::link::{LinkOutcome, LinkRequest, archive, link_driver};
+use mt_harness::probe::GlobalType;
 use mt_harness::run::{Exec, PreparedDriver, run_vector_twice};
 use mt_harness::tools::ExecTools;
 use mt_toolchain::runner::{self, RunRequest, RunnerConfig};
+use mt_vectors::state::StateValue;
 
 fn host_tools() -> Option<ExecTools> {
     let needed = [
@@ -122,6 +125,7 @@ fn build(tools: &ExecTools, sources: &[(&str, &str)]) -> Result<Built, String> {
         signature: "int (const char *, size_t)".to_owned(),
         accepted_wrapped: false,
         arg: vec![arm_role(Role::InBuf), arm_role(Role::InLen)],
+        unobserved: Vec::new(),
     };
     let adapter = Adapter::from_entry("synthetic", "default", &entry).unwrap();
     let include = format!("#include \"{}\"", root.join("x.h").display());
@@ -230,6 +234,39 @@ fn eqv_04_changed_global_is_untyped_global_changed() {
     let reason = run(&tools, &built, b"abc").unwrap_err();
     assert!(reason.contains("untyped_global_changed"), "{reason}");
     assert!(reason.contains("x.o:counter"), "{reason}");
+}
+
+#[test]
+fn eqv_04_changed_global_with_a_type_is_recorded_in_both_states() {
+    let Some(tools) = host_tools() else {
+        return;
+    };
+    let mut built = build(&tools, &[("x.c", WRITES_GLOBAL)]).unwrap();
+    built.driver.global_types.insert(
+        "x.o:counter".to_owned(),
+        GlobalType::Typed {
+            ty: CType {
+                text: "int".to_owned(),
+                size: 4,
+                kind: Kind::Int { signed: true },
+            },
+        },
+    );
+    // An unchanged global leaves lib_state empty even though it has a type.
+    let quiet = run(&tools, &built, b"").unwrap();
+    assert!(quiet.vector.lib_state_in.is_empty() && quiet.vector.lib_state_out.is_empty());
+    // The call adds the input length (3) to the counter: 5 before, 8 after.
+    let observed = run(&tools, &built, b"abc").unwrap();
+    assert_eq!(observed.vector.rc, 8);
+    let value = |state: &mt_vectors::state::LibState| match state.get("globals") {
+        Some(StateValue::Struct { fields, .. }) => match fields.get("x.o:counter") {
+            Some(StateValue::Int { c_type, value }) => (c_type.clone(), *value),
+            other => panic!("{other:?}"),
+        },
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(value(&observed.vector.lib_state_in), ("int".to_owned(), 5));
+    assert_eq!(value(&observed.vector.lib_state_out), ("int".to_owned(), 8));
 }
 
 #[test]

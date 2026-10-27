@@ -10,7 +10,8 @@
 use std::collections::BTreeMap;
 
 use mt_capture::manifest::{
-    BASELINE_CFLAGS, Entry, MAX_SCALAR_COMBOS, Role, split_parameters, state_pointee_type,
+    BASELINE_CFLAGS, Entry, MAX_SCALAR_COMBOS, Role, UnobservedMark, split_parameters,
+    state_pointee_type,
 };
 
 use crate::budget::Budgets;
@@ -90,6 +91,7 @@ pub struct Adapter {
     entry: String,
     ret: ReturnKind,
     params: Vec<Param>,
+    marks: Vec<UnobservedMark>,
 }
 
 /// `[A-Za-z_][A-Za-z0-9_]*`.
@@ -210,6 +212,7 @@ impl Adapter {
             entry: entry.name.clone(),
             ret,
             params,
+            marks: entry.unobserved.clone(),
         })
     }
 
@@ -290,6 +293,12 @@ impl Adapter {
             }
         }
         argv
+    }
+
+    /// The unobserved marks of the entry (CONTEXT D-09).
+    #[must_use]
+    pub fn marks(&self) -> &[UnobservedMark] {
+        &self.marks
     }
 
     /// The states, in parameter order.
