@@ -564,16 +564,82 @@ fn eqv_04_workflow_static_captured_code_runs_only_in_run_guest() {
         }
     }
     assert_eq!(calls, 2, "run_guest is called twice, once per corpus");
-    // Only the self-test, the TRACTOR check, the build and the comparison go
-    // through run_vectors.
+    // Only the self-test, the TRACTOR check, the build, the layout listing and
+    // the comparison go through run_vectors.
     let allowed = Regex::new(r"\brun_vectors\s+(\S+)").unwrap();
     for line in &code {
         for call in allowed.captures_iter(line) {
             assert!(
-                matches!(&call[1], "selftest" | "tractor" | "build" | "check"),
+                matches!(
+                    &call[1],
+                    "selftest" | "tractor" | "build" | "check" | "layouts"
+                ),
                 "unexpected run_vectors subcommand {} on: {line}",
                 &call[1]
             );
         }
     }
+}
+
+const LAYOUT_STEP: &str = "Publish the state layouts";
+
+#[test]
+fn eqv_04_workflow_static_layout_step_follows_the_build() {
+    let text = workflow();
+    let build_at = text
+        .find(&format!("- name: {BUILD_STEP}"))
+        .expect("the build step exists");
+    let layout_at = text
+        .find(&format!("- name: {LAYOUT_STEP}"))
+        .unwrap_or_else(|| panic!("{WORKFLOW} has no step {LAYOUT_STEP:?}"));
+    assert!(layout_at > build_at, "the layouts come after the build");
+    let run_at = text
+        .find(&format!("- name: {RUN_STEP}"))
+        .expect("the run step exists");
+    assert!(
+        layout_at < run_at,
+        "the layouts are published before the run"
+    );
+
+    let step = step_text(&text, LAYOUT_STEP);
+    let code = code_lines(&step).join("\n");
+    assert!(
+        code.contains("run_vectors layouts --work-dir /work"),
+        "the step never runs `run_vectors layouts --work-dir /work`:\n{code}"
+    );
+    assert!(
+        code.contains("finish_vectors layout"),
+        "the step never calls `finish_vectors layout`:\n{code}"
+    );
+    let condition = code
+        .lines()
+        .find(|line| line.trim_start().starts_with("if:"))
+        .unwrap_or_else(|| panic!("the step has no `if:`:\n{code}"));
+    assert!(
+        condition.contains("steps.vbuild.outcome == 'success'"),
+        "the step does not require the build step: {condition}"
+    );
+    assert!(!code.contains("continue-on-error"), "{code}");
+    assert!(
+        !code.contains("testbed-"),
+        "the step publishes a testbed- title"
+    );
+    assert!(
+        !code.contains("docker run"),
+        "the step starts a container outside a helper"
+    );
+    assert!(
+        !code.contains("run_guest"),
+        "the layouts read build.json only and run nothing from upstream"
+    );
+
+    let header: String = text
+        .lines()
+        .take_while(|line| line.starts_with('#'))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(
+        header.contains("vectors-layout"),
+        "the header comment does not list vectors-layout"
+    );
 }
