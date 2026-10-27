@@ -193,7 +193,15 @@ fn eqv_03_driver_flags_fail_closed_on_an_unhandled_option() {
         );
     }
     // The operand of an option that takes one is never read as an option.
-    let arguments = strings(&["gcc", "-D", "-ffreestanding", "-o", "-fno-builtin", "-c", "x.c"]);
+    let arguments = strings(&[
+        "gcc",
+        "-D",
+        "-ffreestanding",
+        "-o",
+        "-fno-builtin",
+        "-c",
+        "x.c",
+    ]);
     assert_eq!(
         driver_flags(&arguments).unwrap(),
         strings(&["-D", "-ffreestanding"])
