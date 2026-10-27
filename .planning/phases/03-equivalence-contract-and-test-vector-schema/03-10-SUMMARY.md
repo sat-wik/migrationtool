@@ -8,18 +8,28 @@ requires:
   - phase: 03-equivalence-contract-and-test-vector-schema
     provides: plan 03-09, the QEMU bookworm-backports re-pin, green on the session branch
 provides:
-  - "PR #6 from claude/gsd-discuss-phase-1-mzdw5v to main carrying plan 03-09's green re-pin, with green container and ci checks (Task 1 done)"
+  - "PR #6 merged by the founder; main published the QEMU 10.0.2 image sha256:9de8bee1..., recorded as the only pullable digest under Current image in container/README.md"
+  - "03-10-CI-NOTICES.md: the eight testbed-* notices of the first testbed run (40451139101) on the new image"
+  - "02-22-CI-NOTICES.md re-baselined on the founder's reply, so every Phase 3 plan compares its testbed notices with the D-31 image baseline"
 affects: [03-01 Task 3, 03-02]
 
 founder_merge: merged 970755559b91110faa84126efe2a6c4c2ac5c1bb
+rebaseline: approved
 current_image: ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565
 
-status: in progress, Task 3 stopped at the re-baseline gate awaiting the founder's reply (rebaseline or stop); the rebaseline key is deliberately not written yet
+status: complete
+commits: 6
+plan_head_before: 76dcebd61c6fc442c8d21d25ad48746a71a24b75
+plan_head_after: cf7366d6af8df69a562086d3442d855dc06d7f06
+actuals:
+  tokens: 13337
+  tasks: 3
+  commits: 6
 ---
 
-# Phase 03 Plan 10: QEMU image PR to main Summary (partial)
+# Phase 03 Plan 10: QEMU image PR to main Summary
 
-**Tasks 1 and 2 are done and Task 3 is done up to the re-baseline gate: PR #6 was merged by the founder (merge commit 970755559b91110faa84126efe2a6c4c2ac5c1bb), main published `sha256:9de8bee1...` with QEMU 10.0.2, origin/main is merged back, `## Current image` records the new digest, and testbed ran green once on it. The plan now waits for the founder's `rebaseline` or `stop` reply on the changed Phase 2 notice sections. The `rebaseline` frontmatter key is deliberately not written yet, so 03-01 Task 3 stays halted.**
+**PR #6 was merged by the founder (merge commit 970755559b91110faa84126efe2a6c4c2ac5c1bb), main published `sha256:9de8bee1...` with QEMU 10.0.2 (proven by the in-image `qemu-mprofile` probe, `exit code: 42`), origin/main is merged back, `## Current image` records the new digest as its only pullable reference, testbed ran green once on it, and the Phase 2 notice baseline was re-baselined on the founder's reply `Rebaseline`. 03-01 Task 3 can resume.**
 
 ## Task 1 result
 
@@ -318,7 +328,13 @@ probe.o:	file format elf32-littlearm
 > id: sha256:24ebba9e468a17e3503722b6085121a0802886372e75eef1b51ef268e675a5a6
 ```
 
-The other seven sections (`testbed-validate`, `-fetch`, `-seeds`, `-build`, `-capture`, `-replay`, `-determinism`) are byte-identical. The `architecture: linux/amd64` line is unchanged. Status: awaiting the founder's reply, `rebaseline` or `stop`. 02-22-CI-NOTICES.md is untouched.
+The other seven sections (`testbed-validate`, `-fetch`, `-seeds`, `-build`, `-capture`, `-replay`, `-determinism`) are byte-identical. The `architecture: linux/amd64` line is unchanged. Status at the gate: the founder was shown this list and the single expected change, and asked to reply `rebaseline` or `stop`.
+
+### Re-baseline applied
+
+Founder's reply at the gate, verbatim: `Rebaseline`
+
+02-22-CI-NOTICES.md now keeps four header lines (line 1 `# Plan 02-22 round trip 1: testbed notices, re-baselined by plan 03-10 (D-31)`; line 3 the 03-10 run line followed by: Re-baselined on the founder's reply `rebaseline` after the D-31 image change; the sections of run 39528941371 are in git history at commit 7c55dbe) and takes 03-10-CI-NOTICES.md from line 5 on. All changed sections moved together (only `testbed-image`). Fifth automated verify (header lines present; `diff` of the two files from line 5 on empty): exit 0. Commit `cf7366d6af8df69a562086d3442d855dc06d7f06` (`docs(03-10): re-baseline the Phase 2 testbed notices for the D-31 image`), local only, not pushed (planning files; the orchestrator pushes).
 
 ## Deviations from Plan
 
@@ -328,10 +344,25 @@ The other seven sections (`testbed-validate`, `-fetch`, `-seeds`, `-build`, `-ca
 
 **3. [Minor] Merge commit message amended before the push** to carry the commit trailers; parents unchanged (414f3bb, parents b9ad755 and 970755559b91).
 
-**Total deviations:** 3 (1 pre-decided, 1 Rule 3, 1 minor). One CI round trip of 3 used (testbed and ci on 892f03d, both green).
+**4. [Minor] Commit count and plan head.** No per-plan commit ledger file was created for 03-10 because the first plan commit (b9ad755) was made by the orchestrator. `plan_head_before` is the parent of b9ad755 (76dcebd, the PR head), `plan_head_after` is the head when this SUMMARY was written (cf7366d), and `commits: 6` is `git rev-list --count 76dcebd..cf7366d`. It counts four plan commits (b9ad755, 892f03d, 7dd3c84, cf7366d) plus the founder's merge of PR #6 (9707555) and the merge-back (414f3bb). The final metadata commit (this SUMMARY, STATE, ROADMAP) is not in the count. `actuals.tokens` is chars/4 over the added and removed lines of the four non-merge commits.
+
+**Total deviations:** 4 (1 pre-decided, 1 Rule 3, 2 minor). One CI round trip of 3 used (testbed and ci on 892f03d, both green).
+
+## Known Stubs
+
+None. This plan writes no code stubs.
 
 ## Next Phase Readiness
 
-- **Founder (blocking, re-baseline gate):** reply `rebaseline` (rewrite `02-22-CI-NOTICES.md` from `03-10-CI-NOTICES.md` line 5 on, with the header lines the plan specifies, and commit both notice files locally) or `stop`. Until then the `rebaseline` frontmatter key is absent and 03-01 Task 3 stays halted.
-- After `rebaseline`: write `rebaseline: approved` (quote the reply), run the fifth verify, finish the SUMMARY (actuals, self-check), update STATE and ROADMAP, and hand back to 03-01 Task 3. This plan's testbed run 40451139101 on head 892f03d is the first run on the new image and the run 03-01 Task 3 evaluates as its round trip 3; any fix there is 03-01's under its own escalation.
+- **Hand back to 03-01 Task 3.** Its precondition command (in 03-01-PLAN.md Task 3 `<precondition>`: `founder_merge: merged <40hex>`, `rebaseline: approved`, `current_image` equal to the single README digest) was run against this SUMMARY and container/README.md and exits 0.
+- Testbed run 40451139101 (head 892f03d, job 122014198632) is the first run on the new image and is the run 03-01 Task 3 evaluates as its round trip 3; 03-01 has no commit of its own to push for it. The self-test step concluded success and its `vectors-selftest` notices are recorded verbatim above; judging them is 03-01's. A fix, if 03-01 finds one needed, is 03-01's under its own escalation.
+- Every Phase 3 plan now compares its testbed notices with 02-22-CI-NOTICES.md from line 5 on (`sed '1,4d'`); that file equals 03-10-CI-NOTICES.md from line 5 on.
+- 03-02 (wave 3, `depends_on: ["03-01", "03-10"]`) follows 03-01, then 03-03 .. 03-08.
 - Testbed on main still pulls the QEMU 7.2 digest in main's README until the Current-image record (commit 892f03d) reaches main with a later PR.
+- The commits cf7366d and the final metadata commit are unpushed; the orchestrator pushes.
+
+## Self-Check: PASSED
+
+- Files found: container/README.md, testbed/manifest.toml, crates/mt-cli/tests/bed_01_testbed_cli.rs, 03-10-CI-NOTICES.md, 02-22-CI-NOTICES.md.
+- Commits found as ancestors of HEAD: b9ad755, 414f3bb, 892f03d, 7dd3c84, cf7366d, merge commit 970755559b91110faa84126efe2a6c4c2ac5c1bb.
+- `git reflog -n 40` has no rebase entry. No forbidden claim word in the README or the notices files. Commit 7c55dbe exists.
