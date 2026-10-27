@@ -1,0 +1,12 @@
+# UB policy of the test-bed target corejson (CONTEXT D-15, D-16).
+# Rules: docs/specs/equivalence-contract.md. Loaded by mt_contract::Policy::load;
+# unknown keys are rejected.
+schema_version = 1
+contract_version = "0.1.0"
+module = "corejson"
+
+[ub]
+default_action = "return_error"
+
+# The override table is defined and validated but empty in Phase 3 (D-16): an
+# override must name a site Phase 4's UB log recorded, and there is no log yet.

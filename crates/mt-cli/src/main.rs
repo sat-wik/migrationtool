@@ -16,6 +16,7 @@ use mt_capture::testbed::{
     run_capture_record, run_capture_record_read_only, run_fetch, run_pairs, run_replay,
     run_toolchains, run_validate,
 };
+use mt_contract::Policy;
 use mt_harness::selftest::run_selftest;
 use mt_harness::tools::ExecTools;
 use mt_toolchain::build_args::{self, Scope};
@@ -152,6 +153,14 @@ enum VectorsAction {
         /// `.mt-work`.
         #[arg(long)]
         work_dir: Option<PathBuf>,
+    },
+    /// Load and validate per-module UB policy files (EQV-01) with no logged UB
+    /// site, and print one `<module> valid default=<action> overrides=<n>
+    /// error_codes=<n>` row per file. Exit 0 when every policy is valid, 2
+    /// when one cannot be read, is invalid, or names an override.
+    PolicyCheck {
+        /// The policy files to check.
+        files: Vec<PathBuf>,
     },
 }
 
@@ -668,7 +677,23 @@ fn main() -> ExitCode {
 fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
     match action {
         VectorsAction::Selftest { pins, work_dir } => selftest_command(&pins, work_dir),
+        VectorsAction::PolicyCheck { files } => policy_check_command(&files),
     }
+}
+
+/// Exit code of `mt vectors policy-check`: 0 every policy valid. Anything else
+/// is an error, reported by `main` as exit 2.
+fn policy_check_command(files: &[PathBuf]) -> anyhow::Result<u8> {
+    anyhow::ensure!(!files.is_empty(), "name at least one policy file");
+    for path in files {
+        let policy = Policy::load(path).with_context(|| format!("loading {}", path.display()))?;
+        // Phase 3 has no UB log, so no override can name a logged site (D-16).
+        policy
+            .validate(&[])
+            .with_context(|| format!("checking {}", path.display()))?;
+        println!("{}", policy.summary_row());
+    }
+    Ok(0)
 }
 
 /// Exit code of `mt vectors selftest`: 0 passed, 1 a row failed.

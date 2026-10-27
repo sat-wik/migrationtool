@@ -94,11 +94,9 @@ fn eqv_01_rejects_unknown_key() {
 
 #[test]
 fn eqv_01_rejects_other_schema_version() {
-    let text = format!(
-        "schema_version = 2\ncontract_version = \"0.1.0\"\nmodule = \"corejson\"\n\n\
-         [ub]\ndefault_action = \"return_error\"\n"
-    );
-    let err = verdict(&text).unwrap_err();
+    let text = "schema_version = 2\ncontract_version = \"0.1.0\"\nmodule = \"corejson\"\n\n\
+         [ub]\ndefault_action = \"return_error\"\n";
+    let err = verdict(text).unwrap_err();
     assert!(err.contains("schema_version"), "{err}");
     // The same text with version 1 is fine.
     verdict(&text.replace("schema_version = 2", "schema_version = 1")).unwrap();
