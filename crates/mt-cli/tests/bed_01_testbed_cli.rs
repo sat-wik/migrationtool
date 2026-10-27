@@ -85,10 +85,19 @@ fn bed_01_testbed_validate_accepts_the_committed_manifest() {
 fn bed_01_testbed_validate_rejects_an_invalid_manifest_with_exit_two() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("manifest.toml");
-    let good = "sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9";
     let text = committed_manifest();
+    // The image digest moves with each published image (README `## Current
+    // image`), so read it from the committed manifest instead of naming it here.
+    let good = text
+        .lines()
+        .find_map(|line| {
+            line.strip_prefix("digest = \"")
+                .and_then(|rest| rest.strip_suffix('"'))
+        })
+        .filter(|digest| digest.starts_with("sha256:"))
+        .unwrap_or_default();
     assert!(
-        text.contains(good),
+        !good.is_empty() && text.contains(good),
         "the committed manifest names the image"
     );
     std::fs::write(&path, text.replace(good, "sha256:not-a-digest")).unwrap();

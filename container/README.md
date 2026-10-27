@@ -224,17 +224,19 @@ is legal advice.
 ## Current image
 
 The verified image, published by the `publish` job of `container` workflow run
-38342425433 on a push to `main` (merge commit
-69b5b7f4fae92d0c3ec99d4e798609c0606b4213, pull request #4) and announced as
-verified by that job. It adds git, cmake, curl and bzip2 to the image and pins
-make (Phase 2, D-30). `publish` ran only after `image-a`, `image-b` and
-`compare` had all succeeded, so the two manifests had been found
-manifest-identical. It pushed the docker-save archive that `image-a` saved after
-its own gates (the pin-binding gate, check, off-pin check, manifest and smoke
-steps), not a rebuild: the archive sha256
-(`d2b5c1fac92d6771d1d49b9409be4d864431c887fed783cb80e8fd34259814f9`) was
+40449127238 on a push to `main` (merge commit
+970755559b91110faa84126efe2a6c4c2ac5c1bb, pull request #6) and announced as
+verified by that job. This image installs QEMU 10.0.2 from bookworm-backports
+so `qemu-arm -cpu cortex-m4` starts M-profile user-mode guests, proven by
+`image-a`'s `qemu-mprofile` probe, which ended `exit code: 42` on that run
+(phase 03 D-31). `publish` ran only after `image-a`, `image-b` and `compare`
+had all succeeded, so the two manifests had been found manifest-identical. It
+pushed the docker-save archive that `image-a` saved after its own gates (the
+pin-binding gate, check, off-pin check, manifest, smoke and QEMU M-profile
+probe steps), not a rebuild: the archive sha256
+(`73bba2278bcfea4a141549eb97d907ab2cd0a327d7fdce8243f3825e2a9bcffd`) was
 checked before `docker load`, and the loaded image id
-(`sha256:1267a6230e171d711a7d056cd7a129fbdf0753339c92af22dac69afc806eac44`)
+(`sha256:24ebba9e468a17e3503722b6085121a0802886372e75eef1b51ef268e675a5a6`)
 equalled the id `image-a` recorded. Both Rust toolchains are installed only from
 the sha256-checked channel manifests and the archives they list, and c2rust and
 cargo-mutants only from their sha256-checked `.crate` files; those installs, the
@@ -247,36 +249,47 @@ RUN that clones klee-uclibc, so a different tarball fails the build; it is not
 a line of the `pin-binding` record, which covers the Rust toolchains and crates:
 
 ```
-ghcr.io/sat-wik/migrationtool-toolchain@sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9
+ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565
 ```
 
-- Run id: 38342425433, a `push` to `main` (jobs `mt`, `image-a`, `image-b`,
+- Run id: 40449127238, a `push` to `main` (jobs `mt`, `image-a`, `image-b`,
   `compare` and `publish` all concluded `success`)
-- Commit: 69b5b7f4fae92d0c3ec99d4e798609c0606b4213, pull request #4, pushed
-  under the tag `sha-69b5b7f4fae92d0c3ec99d4e798609c0606b4213` (a tag is never a
+- Commit: 970755559b91110faa84126efe2a6c4c2ac5c1bb, pull request #6, pushed
+  under the tag `sha-970755559b91110faa84126efe2a6c4c2ac5c1bb` (a tag is never a
   reference to use; see Reproducibility guarantee)
 - Manifest sha256 (identical for both builds):
-  1a405da68aca4c97fba29acb57186403b022c6859ed22c45cb56e019bb59ae75
-- Superseded: the image before this one, published from `main` by run
+  9f382c31c09adfc0a19ebb247b8fb7d51ea013f44255c048f99036cb82257b68
+- Superseded: the image before this one, the last one recorded here, was
+  `sha256:e83006c0a7e37f788afcbd1c95554e8c4dfc61c3b68da3ff964caf47fb3851b9`
+  (run 38342425433, pull request #4, merge commit
+  69b5b7f4fae92d0c3ec99d4e798609c0606b4213). It has the manifest sha256
+  1a405da68aca4c97fba29acb57186403b022c6859ed22c45cb56e019bb59ae75 and QEMU
+  7.2; the manifest above differs from it because this image installs QEMU
+  10.0.2 from bookworm-backports in place of QEMU 7.2. Main's run 39538036371
+  (pull request #5, merge commit 841ac040) also published
+  `sha256:84b1f9a718ef90a2b910c5a297a795be3da3bad48dc138bb072c99ea66ac69ef`
+  with the same manifest sha256 and was never recorded here; it has QEMU 7.2
+  too.
+- Superseded earlier: the image before those, published from `main` by run
   38202499776 at merge commit 67467607c52acb52ff5bdebc11e81d9fb31ccfb1 (pull
   request #3), was
   `sha256:42c7fb0e00e90e946b5a21e598517fb7189a0de5492fa1d4d6f18e2e9c39e13d`. It
   has the manifest sha256
   d70029186639d0030fc6cf22b284b3b849ce0680656fecfe06623f6ffdc44142; the manifest
-  above differs from it because this image installs git, cmake, curl and bzip2
-  and pins make.
+  of the image recorded before this one differs from it because that image
+  installs git, cmake, curl and bzip2 and pins make.
 
 The founder's Phase 1 check (UAT) was run on a branch-built image,
 `sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee`
 (run 38198934488, commit defbe68309b4e1fc3a517ca49a11fed0087a2fd8), which has
-the manifest of the superseded image above; it has not been repeated on the
-current image.
+the manifest of the earlier superseded image above (run 38202499776); it has not
+been repeated on the current image.
 
 Only a push to `main` publishes (WR-09). A run for a pull request, another
 branch, a manual dispatch or the weekly schedule still builds both images,
 gates them and compares the manifests, but its `publish` job is skipped, so it
 announces no `verified-image` and pushes nothing to GHCR. The pull request
-checks of pull request #4 (container run 38339937976) showed this: `publish`
+checks of pull request #6 (container run 40447523176) showed this: `publish`
 was skipped there and the image above came only from the run on `main`. The
 earliest image was published by a run on the phase branch
 (`claude/gsd-discuss-phase-1-mzdw5v`) while that branch still held publish
