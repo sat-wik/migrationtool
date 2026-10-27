@@ -25,7 +25,8 @@ use mt_toolchain::check::{capture_toml, run_check, run_check_observed};
 use mt_toolchain::pins::{Pins, PinsError};
 use mt_toolchain::runner::RunnerConfig;
 use mt_toolchain::{fetch, manifest};
-use mt_vectors::vector::Vector;
+use mt_vectors::corpus::read_corpus;
+use mt_vectors::vector::{TractorVector, Vector, read_capped};
 
 #[derive(Debug, Parser)]
 #[command(name = "mt", about = "migrationtool", version)]
@@ -171,14 +172,23 @@ enum VectorsAction {
         /// Policy files to check.
         files: Vec<PathBuf>,
     },
-    /// Validate vector files (EQV-02) at the reference level: the nine
-    /// fields in order, no unknown key (a merged `lib_state` and `note` are
-    /// refused), `has_ub` absent or a label, bytes through the Latin-1 codec,
-    /// `argv[0]` as `<target>/<config>/<entry>` and `outcome=<class>` in
-    /// `stderr`. Prints `<path> valid reference` per file. Exit 0 when every
-    /// file is valid, 2 for the first file that is not.
+    /// Validate vector files and corpus directories (EQV-02). A file is checked
+    /// at the reference level: the nine fields in order, no unknown key (a
+    /// merged `lib_state` and `note` are refused), `has_ub` absent or a label,
+    /// bytes through the Latin-1 codec, `argv[0]` as `<target>/<config>/<entry>`
+    /// and `outcome=<class>` in `stderr`; with --tractor it is checked at the
+    /// TRACTOR-compatible level (every field optional, `note` accepted, any
+    /// present `has_ub` read as UB) and must re-serialize JSON-equal. A
+    /// directory is read as a corpus: only `<sha256>.json` vectors and
+    /// `index.json`, each file's sha256 its name, the index equal to the file
+    /// set. Prints `<path> valid reference`, `<path> valid tractor` or `<path>
+    /// valid corpus <n> vectors`. Exit 0 when every path is valid, 2 for the
+    /// first that is not.
     Validate {
-        /// Vector files to validate.
+        /// Check files at the TRACTOR-compatible level.
+        #[arg(long)]
+        tractor: bool,
+        /// Vector files or corpus directories to validate.
         #[arg(required = true)]
         paths: Vec<PathBuf>,
     },
@@ -700,16 +710,35 @@ fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
         VectorsAction::PolicyCheck { manifest, files } => {
             policy_check_command(manifest.as_deref(), &files)
         }
-        VectorsAction::Validate { paths } => validate_command(&paths),
+        VectorsAction::Validate { tractor, paths } => validate_command(tractor, &paths),
     }
 }
 
-/// Exit code of `mt vectors validate`: 0 every file valid. The first invalid
-/// file is an error, reported by `main` as exit 2.
-fn validate_command(paths: &[PathBuf]) -> anyhow::Result<u8> {
+/// Exit code of `mt vectors validate`: 0 every path valid. The first invalid
+/// path is an error, reported by `main` as exit 2.
+fn validate_command(tractor: bool, paths: &[PathBuf]) -> anyhow::Result<u8> {
     for path in paths {
-        Vector::load(path).with_context(|| format!("validating {}", path.display()))?;
-        println!("{} valid reference", path.display());
+        let context = || format!("validating {}", path.display());
+        if std::fs::metadata(path).with_context(context)?.is_dir() {
+            anyhow::ensure!(
+                !tractor,
+                "{} is a directory; --tractor applies to files",
+                path.display()
+            );
+            let corpus = read_corpus(path).with_context(context)?;
+            println!(
+                "{} valid corpus {} vectors",
+                path.display(),
+                corpus.vectors.len()
+            );
+        } else if tractor {
+            let bytes = read_capped(path).with_context(context)?;
+            TractorVector::load_unchanged(&bytes).with_context(context)?;
+            println!("{} valid tractor", path.display());
+        } else {
+            Vector::load(path).with_context(context)?;
+            println!("{} valid reference", path.display());
+        }
     }
     Ok(0)
 }

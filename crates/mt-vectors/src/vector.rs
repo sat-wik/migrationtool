@@ -20,6 +20,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::bytes::decode_latin1;
+use crate::state::LibState;
 
 /// A vector file above this size is refused before it is parsed (T-03-10).
 pub const MAX_VECTOR_BYTES: usize = 16 * 1024 * 1024;
@@ -194,9 +195,9 @@ pub struct Vector {
     /// The C return value, or `-signal` on a fault.
     pub rc: i32,
     /// The library state before the entry.
-    pub lib_state_in: BTreeMap<String, serde_json::Value>,
+    pub lib_state_in: LibState,
     /// The library state after the entry.
-    pub lib_state_out: BTreeMap<String, serde_json::Value>,
+    pub lib_state_out: LibState,
     /// Absent when no UB was observed; never `false`.
     #[serde(
         default,
@@ -237,6 +238,23 @@ fn class_word(pattern: &str) -> Option<&str> {
     Some(rest.split(' ').next().unwrap_or(rest))
 }
 
+/// Read a regular file of at most [`MAX_VECTOR_BYTES`], checking the size
+/// before reading.
+pub fn read_capped(path: &Path) -> Result<Vec<u8>, VectorError> {
+    let io_error = |source| VectorError::Io {
+        path: path.to_path_buf(),
+        source,
+    };
+    let len = fs::metadata(path).map_err(io_error)?.len();
+    if len > u64::try_from(MAX_VECTOR_BYTES).unwrap_or(u64::MAX) {
+        return Err(VectorError::TooLarge {
+            what: path.display().to_string(),
+            len,
+        });
+    }
+    fs::read(path).map_err(io_error)
+}
+
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
@@ -260,18 +278,7 @@ impl Vector {
     /// Read a vector file, refusing one above [`MAX_VECTOR_BYTES`] before
     /// reading it.
     pub fn load(path: &Path) -> Result<Self, VectorError> {
-        let io_error = |source| VectorError::Io {
-            path: path.to_path_buf(),
-            source,
-        };
-        let len = fs::metadata(path).map_err(io_error)?.len();
-        if len > u64::try_from(MAX_VECTOR_BYTES).unwrap_or(u64::MAX) {
-            return Err(VectorError::TooLarge {
-                what: path.display().to_string(),
-                len,
-            });
-        }
-        Self::from_json_bytes(&fs::read(path).map_err(io_error)?)
+        Self::from_json_bytes(&read_capped(path)?)
     }
 
     /// Check every reference-level rule, collecting all issues.
@@ -288,6 +295,14 @@ impl Vector {
         }
         if let Err(e) = decode_latin1(&self.stdin) {
             issues.push(format!("stdin: {e}"));
+        }
+        for (name, state) in [
+            ("lib_state_in", &self.lib_state_in),
+            ("lib_state_out", &self.lib_state_out),
+        ] {
+            if let Err(e) = state.validate() {
+                issues.push(format!("{name}: {e}"));
+            }
         }
         if !self.env.is_empty() {
             issues.push(format!(
@@ -359,5 +374,105 @@ impl Vector {
                     self.stderr.pattern
                 )],
             })
+    }
+}
+
+/// A present `has_ub` of any JSON value (string, integer, `false`, `null`) is
+/// kept as present, as TRACTOR's checker reads it.
+fn present_value<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<serde_json::Value>, D::Error> {
+    serde_json::Value::deserialize(deserializer).map(Some)
+}
+
+/// `stdout` or `stderr` of a TRACTOR vector.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TractorOutput {
+    /// The expected text.
+    pub pattern: String,
+    /// Whether the pattern is a regular expression; absent means exact.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_regex: Option<bool>,
+}
+
+/// A vector at the TRACTOR-compatible level: every field optional, as in
+/// TRACTOR's own test-vector type, plus its free-text `note`.
+///
+/// Any present `has_ub` reads as UB, whatever its value
+/// ([`TractorVector::has_ub_present`]). A key that is not one of the ten is
+/// refused. A field written as `null` is read as absent, as TRACTOR's loader
+/// does, and so does not load unchanged.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TractorVector {
+    /// Arguments after the driver path.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub argv: Option<Vec<String>>,
+    /// Standard input text.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stdin: Option<String>,
+    /// Environment variables.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub env: Option<BTreeMap<String, String>>,
+    /// Expected standard output.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stdout: Option<TractorOutput>,
+    /// Expected standard error.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stderr: Option<TractorOutput>,
+    /// Expected exit code.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rc: Option<i32>,
+    /// Library state before the call: free-form JSON.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lib_state_in: Option<serde_json::Value>,
+    /// Library state after the call: free-form JSON.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lib_state_out: Option<serde_json::Value>,
+    /// Present for a vector TRACTOR's tools treat as UB; any value.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present_value"
+    )]
+    pub has_ub: Option<serde_json::Value>,
+    /// Free text; accepted on load and never emitted by this tool.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
+impl TractorVector {
+    /// Parse `bytes` with no preprocessing, and succeed only when the parsed
+    /// type re-serializes to a `serde_json::Value` equal to the file's own.
+    ///
+    /// The file's bytes and key order are not preserved (serde_json maps are
+    /// sorted), so byte equality is never promised for these files.
+    pub fn load_unchanged(bytes: &[u8]) -> Result<(Self, serde_json::Value), VectorError> {
+        if bytes.len() > MAX_VECTOR_BYTES {
+            return Err(VectorError::TooLarge {
+                what: "the vector".to_owned(),
+                len: u64::try_from(bytes.len()).unwrap_or(u64::MAX),
+            });
+        }
+        let parsed: serde_json::Value =
+            serde_json::from_slice(bytes).map_err(|e| VectorError::Parse(e.to_string()))?;
+        let vector: Self =
+            serde_json::from_slice(bytes).map_err(|e| VectorError::Parse(e.to_string()))?;
+        let again = serde_json::to_value(&vector).map_err(|e| VectorError::Parse(e.to_string()))?;
+        if again == parsed {
+            Ok((vector, parsed))
+        } else {
+            Err(VectorError::Invalid {
+                issues: vec!["the vector does not re-serialize JSON-equal to the file".to_owned()],
+            })
+        }
+    }
+
+    /// True when the file carried a `has_ub` key of any value: TRACTOR's
+    /// tools treat the vector as UB.
+    #[must_use]
+    pub const fn has_ub_present(&self) -> bool {
+        self.has_ub.is_some()
     }
 }

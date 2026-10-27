@@ -10,4 +10,7 @@
 //! TRACTOR-compatible level (`TractorVector`).
 
 pub mod bytes;
+pub mod compare;
+pub mod corpus;
+pub mod state;
 pub mod vector;
