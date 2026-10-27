@@ -16,6 +16,7 @@ path = "src/main.rs"
 anyhow.workspace = true
 clap.workspace = true
 mt-capture = { path = "../mt-capture" }
+mt-harness = { path = "../mt-harness" }
 mt-toolchain = { path = "../mt-toolchain" }
 
 [dev-dependencies]

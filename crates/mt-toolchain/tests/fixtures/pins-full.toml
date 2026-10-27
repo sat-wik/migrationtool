@@ -92,8 +92,8 @@ commit = "d393c16f3eb30d0c47e6f9d92db62272f0ec4dc7"
 "llvm-16" = "1:16.0.6-15~deb12u1"
 "llvm-16-dev" = "1:16.0.6-15~deb12u1"
 "make" = "4.3-4.1"
-"qemu-system-arm" = "1:7.2+dfsg-7+deb12u18+b3"
-"qemu-user" = "1:7.2+dfsg-7+deb12u18+b3"
+"qemu-system-arm" = "1:10.0.2+ds-2+deb13u1~bpo12+1"
+"qemu-user" = "1:10.0.2+ds-2+deb13u1~bpo12+1"
 
 [ci]
 cargo_deny_version = "0.20.2"
@@ -201,13 +201,13 @@ expect = "4.3"
 bin = "/usr/bin/qemu-arm"
 version_args = ["--version"]
 version_regex = '\(Debian (?P<version>[^)]+)\)'
-expect = "1:7.2+dfsg-7+deb12u18+b3"
+expect = "1:10.0.2+ds-2+deb13u1~bpo12+1"
 
 [tool.qemu_system_arm]
 bin = "/usr/bin/qemu-system-arm"
 version_args = ["--version"]
 version_regex = '\(Debian (?P<version>[^)]+)\)'
-expect = "1:7.2+dfsg-7+deb12u18+b3"
+expect = "1:10.0.2+ds-2+deb13u1~bpo12+1"
 
 [tool.rustup]
 bin = "/opt/cargo/bin/rustup"

@@ -2792,3 +2792,291 @@ fn tool_03_workflow_gates_each_recorded_archive_on_the_pinned_manifest() {
     // The assertions of the existing pin-binding test still hold.
     assert!(image_a.contains("annotate error pin-binding"));
 }
+
+// ---------------------------------------------------------------------------
+// QEMU from bookworm-backports (plan 03-09, CONTEXT D-31, EQV-04): QEMU 7.2
+// cannot start an M-profile user-mode guest, so the image takes the QEMU
+// packages, and only those, from bookworm-backports at the pinned timestamp.
+// ---------------------------------------------------------------------------
+
+/// The names of the stages of a Dockerfile, in order.
+fn stage_names(text: &str) -> Vec<String> {
+    dockerfile_instructions(text)
+        .into_iter()
+        .filter(|(keyword, _)| keyword == "FROM")
+        .filter_map(|(_, rest)| {
+            let tokens: Vec<&str> = rest.split_whitespace().collect();
+            tokens
+                .iter()
+                .position(|t| t.eq_ignore_ascii_case("as"))
+                .and_then(|at| tokens.get(at + 1))
+                .map(|name| (*name).to_owned())
+        })
+        .collect()
+}
+
+/// The quoted words of a shell command, quotes removed, in order.
+fn quoted_words(command: &str) -> Vec<String> {
+    let word = regex::Regex::new(r#""[^"]*"|'[^']*'"#).unwrap();
+    word.find_iter(command)
+        .map(|found| {
+            let text = found.as_str();
+            text[1..text.len() - 1].to_owned()
+        })
+        .collect()
+}
+
+/// The text of the step of `job` that starts at `- name: <name>`: up to the next
+/// step of the job. Panics naming a missing step.
+fn workflow_step_text<'a>(job: &'a str, name: &str) -> &'a str {
+    let key = format!("      - name: {name}\n");
+    let start = job
+        .find(&key)
+        .unwrap_or_else(|| panic!("no step named `{name}`"));
+    let rest = &job[start + key.len()..];
+    let end = rest
+        .find("\n      - ")
+        .map_or(job.len(), |at| start + key.len() + at);
+    &job[start..end]
+}
+
+#[test]
+fn eqv_04_dockerfile_takes_only_qemu_from_backports() {
+    let dockerfile = read_repo_file("container/Dockerfile");
+    let runs = stage_runs(&dockerfile, "snapshot-sources");
+    assert_eq!(
+        runs.len(),
+        1,
+        "stage snapshot-sources must have exactly one RUN"
+    );
+    let body = &runs[0].1;
+
+    // Four apt sources, all snapshot.debian.org at the pinned timestamp, one of
+    // them bookworm-backports (the codename comes from /etc/os-release).
+    let source =
+        regex::Regex::new(r#"deb \[check-valid-until=no\] http://snapshot\.debian\.org/[^"]+"#)
+            .unwrap();
+    let sources: Vec<&str> = source.find_iter(body).map(|found| found.as_str()).collect();
+    assert_eq!(
+        sources.len(),
+        4,
+        "stage snapshot-sources must write exactly four snapshot apt sources: {sources:?}"
+    );
+    for line in &sources {
+        assert!(
+            line.contains("/${SNAPSHOT_TIMESTAMP}/ "),
+            "every apt source must use the pinned timestamp: {line}"
+        );
+    }
+    let backports = "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/${SNAPSHOT_TIMESTAMP}/ ${VERSION_CODENAME}-backports main";
+    assert_eq!(
+        sources.iter().filter(|line| **line == backports).count(),
+        1,
+        "exactly one apt source must be bookworm-backports at the pinned timestamp: {sources:?}"
+    );
+
+    // The preferences file: the four qemu-source packages at 990, every other
+    // backports package at -1.
+    let target = "/etc/apt/preferences.d/";
+    assert_eq!(
+        body.matches(target).count(),
+        1,
+        "stage snapshot-sources must write exactly one file under {target}"
+    );
+    let writer = run_segments(body)
+        .into_iter()
+        .find(|segment| segment.contains(target))
+        .expect("a segment writes the preferences file");
+    let (command, destination) = writer
+        .split_once('>')
+        .expect("the preferences file is written by a redirect");
+    assert!(
+        destination.trim().starts_with("/etc/apt/preferences.d/")
+            && destination.trim().len() > target.len(),
+        "the preferences file needs a name: {destination}"
+    );
+    let pin = "Pin: release n=${VERSION_CODENAME}-backports";
+    let want: Vec<String> = [
+        "%s\\n",
+        "Package: qemu-user qemu-system-arm qemu-system-common qemu-system-data",
+        pin,
+        "Pin-Priority: 990",
+        "",
+        "Package: *",
+        pin,
+        "Pin-Priority: -1",
+    ]
+    .iter()
+    .map(|line| (*line).to_owned())
+    .collect();
+    assert_eq!(
+        quoted_words(command),
+        want,
+        "the preferences stanzas are not the QEMU-only backports pin"
+    );
+
+    // No other stage writes an apt source or a preferences file.
+    for stage in stage_names(&dockerfile) {
+        if stage == "snapshot-sources" {
+            continue;
+        }
+        for (_, run) in stage_runs(&dockerfile, &stage) {
+            for needle in ["sources.list", "/etc/apt/preferences", "/etc/apt/sources"] {
+                assert!(
+                    !run.contains(needle),
+                    "stage {stage} must not touch apt sources or preferences ({needle}): {run}"
+                );
+            }
+        }
+    }
+
+    // No unsigned or insecure source option anywhere.
+    for forbidden in [
+        "trusted=yes",
+        "allow-insecure",
+        "allow-downgrade-to-insecure",
+        "AllowInsecureRepositories",
+        "AllowDowngradeToInsecureRepositories",
+    ] {
+        assert!(
+            !dockerfile.contains(forbidden),
+            "the Dockerfile must not contain `{forbidden}`"
+        );
+    }
+
+    // The install list keeps plain package names (tool_03_dockerfile_installs_every_apt_pin
+    // matches whole words, so a `name/suite` spelling would break it).
+    let installs = stage_apt_installs(&dockerfile, "apt-base");
+    let words: BTreeSet<&str> = installs
+        .iter()
+        .flat_map(|run| run.split_whitespace())
+        .map(|word| word.trim_end_matches(';'))
+        .collect();
+    for name in ["qemu-user", "qemu-system-arm"] {
+        assert!(
+            words.contains(name),
+            "the apt-base install command must name `{name}` as a plain word"
+        );
+    }
+    assert!(
+        !words
+            .iter()
+            .any(|word| word.starts_with("qemu") && word.contains('/')),
+        "a QEMU package must not carry a `/suite` suffix in the install command: {words:?}"
+    );
+}
+
+#[test]
+fn eqv_04_container_workflow_probes_cortex_m4_user_mode_start() {
+    let workflow = read_repo_file(".github/workflows/container.yml");
+    let image_a = workflow_job_text(&workflow, "image-a");
+    let name = "QEMU M-profile user-mode start (D-31)";
+    let step = workflow_step_text(image_a, name);
+    assert!(
+        step.contains("\n        id: qemu-mprofile\n"),
+        "the probe step needs the id `qemu-mprofile`"
+    );
+
+    // Between the smoke build and the save step, so a failed probe means no archive.
+    let at = positions(
+        image_a,
+        "job image-a",
+        &[
+            "- name: Smoke build for thumbv7em-none-eabihf",
+            "- name: QEMU M-profile user-mode start (D-31)",
+            "- name: Save the gated image",
+        ],
+    );
+    assert!(
+        at[0] < at[1] && at[1] < at[2],
+        "the probe must follow the smoke build and precede the save step: {at:?}"
+    );
+
+    let conditions: Vec<&str> = step
+        .lines()
+        .map(str::trim)
+        .filter(|line| line.starts_with("if:"))
+        .collect();
+    assert_eq!(
+        conditions,
+        vec!["if: ${{ !cancelled() && steps.build.outcome == 'success' }}"],
+        "the probe runs whenever the build succeeded, and only then"
+    );
+    assert!(
+        !step.contains("continue-on-error"),
+        "the probe must not continue on error"
+    );
+    for needle in [
+        "--network none",
+        "--read-only",
+        "--user 65534:65534",
+        "container/smoke/qemu-mprofile.S",
+        "-cpu cortex-m4",
+        "-R 0x10000000",
+        "annotate notice qemu-mprofile",
+        "annotate error qemu-mprofile",
+        "exit code: 42",
+    ] {
+        assert!(step.contains(needle), "the probe step lacks `{needle}`");
+    }
+    for forbidden in ["--privileged", "--cap-add", "docker.sock"] {
+        assert!(
+            !step.contains(forbidden),
+            "the probe step must not contain `{forbidden}`"
+        );
+    }
+
+    // The header comment lists the annotation title.
+    let header = workflow
+        .split("\nname: container\n")
+        .next()
+        .expect("the workflow has a header");
+    assert!(
+        header.contains("qemu-mprofile"),
+        "the header comment's title list must name qemu-mprofile"
+    );
+
+    // The guest: a raw supervisor call with exit code 42, no semihosting.
+    let guest = read_repo_file("container/smoke/qemu-mprofile.S").to_lowercase();
+    assert!(guest.contains("svc"), "the guest exits through a raw svc");
+    assert!(guest.contains("#42"), "the guest exits with code 42");
+    assert!(
+        !guest.contains("bkpt"),
+        "the guest makes no semihosting call"
+    );
+}
+
+#[test]
+fn eqv_04_pin_discovery_lists_backports_qemu_versions() {
+    let workflow = read_repo_file(".github/workflows/pin-discovery.yml");
+    let job = workflow_job_text(&workflow, "discover");
+    let step = workflow_step_text(
+        job,
+        "List qemu-user versions seen in backports (informational, D-31)",
+    );
+    for needle in [
+        "title=qemu-backports",
+        "https://snapshot.debian.org/mr/binary/qemu-user/",
+        "~bpo12",
+        "unavailable",
+    ] {
+        assert!(step.contains(needle), "the listing step lacks `{needle}`");
+    }
+    assert_eq!(
+        workflow.matches("permissions:").count(),
+        1,
+        "pin-discovery must keep one permissions block"
+    );
+    assert!(
+        workflow.contains("\npermissions:\n  contents: read\n\njobs:"),
+        "the workflow-level permissions must stay exactly `contents: read`"
+    );
+    let header = workflow
+        .split("\nname: pin-discovery\n")
+        .next()
+        .expect("the workflow has a header");
+    assert!(
+        header.contains("qemu-backports"),
+        "the header comment must name qemu-backports"
+    );
+}
