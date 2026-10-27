@@ -11,19 +11,29 @@
 //! - [`budget`] holds the fixed run budgets,
 //! - [`tools`] the pinned tool paths,
 //! - [`runtime`] renders the template,
-//! - [`driver`] compiles and links a rendered driver through the runner,
+//! - [`driver`] compiles and links a rendered driver through the runner and
+//!   renders an entry's driver,
+//! - [`adapter`] turns an entry's manifest roles into the call, the `argv` and
+//!   the scalar combinations,
+//! - [`link`] checks the captured objects and links the driver against them,
 //! - [`exec`] runs a driver under `qemu-arm` through the runner,
 //! - [`frame`] parses the result frame the driver writes,
 //! - [`classify`] maps a finished run to exactly one outcome,
+//! - [`run`] builds the drivers of a selection and runs the seeds into corpora,
+//! - [`replay`] compares corpora,
 //! - [`selftest`] runs the executor's own cases in the pinned image.
 //!
 //! Every external program runs only through `mt_toolchain::runner`.
 
+pub mod adapter;
 pub mod budget;
 pub mod classify;
 pub mod driver;
 pub mod exec;
 pub mod frame;
+pub mod link;
+pub mod replay;
+pub mod run;
 pub mod runtime;
 pub mod selftest;
 pub mod tools;
@@ -78,6 +88,37 @@ pub enum HarnessError {
     /// A result frame is malformed.
     #[error(transparent)]
     Frame(#[from] frame::FrameError),
+    /// A capture directory cannot be used as the code under test.
+    #[error("capture {}: {detail}", path.display())]
+    Capture {
+        /// The capture directory or file.
+        path: PathBuf,
+        /// What is wrong.
+        detail: String,
+    },
+    /// An object differs from the hash its capture recorded (CONTEXT D-19).
+    #[error(
+        "object {object} of {}: capture.json records sha256 {expected}, the file has {actual}",
+        capture.display()
+    )]
+    ObjectMismatch {
+        /// The capture directory.
+        capture: PathBuf,
+        /// The object's path relative to the objects directory.
+        object: String,
+        /// The recorded hash.
+        expected: String,
+        /// The recomputed hash.
+        actual: String,
+    },
+    /// A manifest, policy, seed index or build record could not be used.
+    #[error("{what}: {detail}")]
+    Input {
+        /// What was being read.
+        what: String,
+        /// Why it cannot be used.
+        detail: String,
+    },
 }
 
 fn describe_missing(tools: &[(String, PathBuf)]) -> String {

@@ -10,13 +10,15 @@ workspace = true
 
 [dependencies]
 mt-capture = { path = "../mt-capture" }
+mt-contract = { path = "../mt-contract" }
+mt-seeds = { path = "../mt-seeds" }
 mt-toolchain = { path = "../mt-toolchain" }
+mt-vectors = { path = "../mt-vectors" }
+serde.workspace = true
+serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-mt-contract = { path = "../mt-contract" }
-mt-vectors = { path = "../mt-vectors" }
 regex.workspace = true
-serde_json.workspace = true
 tempfile.workspace = true

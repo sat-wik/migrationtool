@@ -63,6 +63,26 @@ pub struct Request {
 }
 
 impl Request {
+    /// The request of an entry driver: an unused selector word, the input
+    /// bytes, the output capacity, the scalar arguments (eight bytes each,
+    /// two's complement) and an empty dump plan (CONTEXT D-05, D-07).
+    #[must_use]
+    pub fn entry(input: &[u8], out_cap: u32, scalars: &[i64]) -> Self {
+        let mut block = Vec::with_capacity(scalars.len() * 8);
+        for value in scalars {
+            block.extend_from_slice(&value.to_le_bytes());
+        }
+        Self {
+            fields: vec![
+                0u32.to_le_bytes().to_vec(),
+                input.to_vec(),
+                out_cap.to_le_bytes().to_vec(),
+                block,
+                Vec::new(),
+            ],
+        }
+    }
+
     /// The bytes of `req.bin`: magic, version, field count, then each field with
     /// its length.
     #[must_use]

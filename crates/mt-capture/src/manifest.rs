@@ -305,6 +305,147 @@ pub struct Entry {
     /// Set on, and only on, `wrapped` entries the founder accepted (CONTEXT D-28).
     #[serde(default)]
     pub accepted_wrapped: bool,
+    /// The argument roles, one table per C parameter in order (Phase 3, CONTEXT
+    /// D-11). Empty for an entry the harness cannot drive yet, and then absent
+    /// from the serialised form, so such an entry reads as it did in Phase 2.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub arg: Vec<ArgRole>,
+}
+
+/// The most scalar combinations one entry may declare (CONTEXT D-14): the
+/// product of `[default] + sweep` over its `out_cap` and `scalar` arguments.
+pub const MAX_SCALAR_COMBOS: usize = 16;
+
+/// What one C parameter of an entry is for (CONTEXT D-11). The set is closed;
+/// later plans add variants. Written in lower snake case in the manifest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Role {
+    /// A pointer to the input bytes (the vector's `stdin`).
+    InBuf,
+    /// The length of the input, in the parameter's C type.
+    InLen,
+    /// A pointer to the output buffer (the vector's `stdout`).
+    OutBuf,
+    /// The capacity of the output buffer, in the parameter's C type.
+    OutCap,
+    /// A value with a default and an optional sweep.
+    Scalar,
+}
+
+impl Role {
+    /// The word written in the manifest.
+    #[must_use]
+    pub const fn word(self) -> &'static str {
+        match self {
+            Self::InBuf => "in_buf",
+            Self::InLen => "in_len",
+            Self::OutBuf => "out_buf",
+            Self::OutCap => "out_cap",
+            Self::Scalar => "scalar",
+        }
+    }
+
+    /// True for the roles whose parameter is a pointer.
+    #[must_use]
+    pub const fn is_pointer_role(self) -> bool {
+        matches!(self, Self::InBuf | Self::OutBuf)
+    }
+}
+
+/// One `[[target.X.entry.arg]]` table: the role of the C parameter at its
+/// position (CONTEXT D-11). Values are decimal integers only, so nothing but
+/// digits from the manifest ever reaches `argv` or the generated C.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ArgRole {
+    /// What the parameter is.
+    pub role: Role,
+    /// The name a `scalar` is recorded under (a C identifier).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// The value used first; required by `out_cap` and `scalar`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<i64>,
+    /// The further values to try after the default (CONTEXT D-14).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sweep: Vec<i64>,
+    /// The largest input length an `in_len` accepts; required when its C type
+    /// is narrower than 32 bits.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max: Option<u64>,
+}
+
+fn invalid_signature(message: String) -> ManifestError {
+    ManifestError::Invalid {
+        issues: vec![message],
+    }
+}
+
+/// Split the `type.qualType` text clang prints for a function into its return
+/// type text and the text of each top-level parameter, splitting on commas
+/// outside parentheses. Runs of white space collapse to one space; `(void)` and
+/// `()` are zero parameters.
+///
+/// # Errors
+/// [`ManifestError::Invalid`] when the text is not `<return type> (<parameters>)`
+/// with balanced parentheses and no empty parameter.
+pub fn split_parameters(signature: &str) -> Result<(String, Vec<String>), ManifestError> {
+    let text = signature.split_whitespace().collect::<Vec<_>>().join(" ");
+    let fail = |why: &str| invalid_signature(format!("signature {text:?}: {why}"));
+    if !text.ends_with(')') {
+        return Err(fail("does not end with a parameter list"));
+    }
+    let mut depth = 0usize;
+    let mut open = None;
+    for (index, byte) in text.bytes().enumerate().rev() {
+        match byte {
+            b')' => depth += 1,
+            b'(' => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    open = Some(index);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    let Some(open) = open else {
+        return Err(fail("has unbalanced parentheses"));
+    };
+    let ret = text[..open].trim();
+    if ret.is_empty() {
+        return Err(fail("has no return type"));
+    }
+    let inner = text[open + 1..text.len() - 1].trim();
+    if inner.is_empty() || inner == "void" {
+        return Ok((ret.to_owned(), Vec::new()));
+    }
+    let mut params = Vec::new();
+    let mut nesting = 0usize;
+    let mut start = 0usize;
+    for (index, byte) in inner.bytes().enumerate() {
+        match byte {
+            b'(' => nesting += 1,
+            b')' => nesting = nesting.saturating_sub(1),
+            b',' if nesting == 0 => {
+                params.push(inner[start..index].trim().to_owned());
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+    params.push(inner[start..].trim().to_owned());
+    if params.iter().any(String::is_empty) {
+        return Err(fail("has an empty parameter"));
+    }
+    Ok((ret.to_owned(), params))
+}
+
+/// True when a parameter's text names a pointer type.
+fn is_pointer_parameter(text: &str) -> bool {
+    text.contains('*')
 }
 
 /// One named build configuration: macro and flag sets on top of the baseline.
@@ -878,6 +1019,62 @@ fn entry_issues(f: &str, entries: &[Entry], issues: &mut Vec<String>) {
             )),
             _ => {}
         }
+        role_issues(&g, entry, issues);
+    }
+}
+
+/// The rules for an entry's `arg` tables (CONTEXT D-11): one table per
+/// parameter, a pointer role only on a pointer parameter and a value role only
+/// on a value parameter, and every input buffer paired with its length. An
+/// entry without tables is not checked, so Phase 2's manifests validate as
+/// before.
+fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
+    if entry.arg.is_empty() {
+        return;
+    }
+    let f = format!("{g}.arg");
+    let params = match split_parameters(&entry.signature) {
+        Ok((_, params)) => params,
+        Err(error) => {
+            issues.push(format!("{f}: {error} (D-11)"));
+            return;
+        }
+    };
+    if params.len() != entry.arg.len() {
+        issues.push(format!(
+            "{f}: {} arg tables but the signature has {} parameters (D-11)",
+            entry.arg.len(),
+            params.len()
+        ));
+        return;
+    }
+    for (index, (arg, param)) in entry.arg.iter().zip(&params).enumerate() {
+        let pointer = is_pointer_parameter(param);
+        if arg.role.is_pointer_role() && !pointer {
+            issues.push(format!(
+                "{f}[{index}]: role {} needs a pointer parameter, found {param:?} (D-11)",
+                arg.role.word()
+            ));
+        } else if !arg.role.is_pointer_role() && pointer {
+            issues.push(format!(
+                "{f}[{index}]: role {} needs a value parameter, found the pointer {param:?} (D-11)",
+                arg.role.word()
+            ));
+        }
+    }
+    let count = |role: Role| entry.arg.iter().filter(|arg| arg.role == role).count();
+    let (bufs, lens) = (count(Role::InBuf), count(Role::InLen));
+    if bufs > 1 {
+        issues.push(format!("{f}: {bufs} in_buf tables; at most one (D-11)"));
+    }
+    if bufs > lens {
+        issues.push(format!(
+            "{f}: an in_buf needs its in_len, found {lens} in_len for {bufs} in_buf (D-11)"
+        ));
+    } else if lens > bufs {
+        issues.push(format!(
+            "{f}: an in_len needs an in_buf, found {lens} in_len for {bufs} in_buf (D-11)"
+        ));
     }
 }
 

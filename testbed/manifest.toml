@@ -371,6 +371,14 @@ header = "source/include/core_json.h"
 source = "source/core_json.c"
 form = "direct"
 signature = "JSONStatus_t (const char *, size_t)"
+# Argument roles (Phase 3 CONTEXT D-11): one table per C parameter, in order.
+# The buffer is the input bytes and the size_t is their length; JSON_Validate
+# has no output buffer and no scalar, so there is nothing to sweep (D-14).
+[[target.corejson.entry.arg]]
+role = "in_buf"
+
+[[target.corejson.entry.arg]]
+role = "in_len"
 
 [[target.corejson.entry]]
 name = "JSON_SearchT"

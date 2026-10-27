@@ -19,6 +19,9 @@ use mt_capture::testbed::{
 };
 use mt_contract::Policy;
 use mt_contract::policy;
+use mt_harness::run::{
+    BuildOptions, RunOptions, Scope as VectorsScope, build_entries, list_adapters, run_entries,
+};
 use mt_harness::selftest::run_selftest;
 use mt_harness::tools::ExecTools;
 use mt_toolchain::build_args::{self, Scope};
@@ -199,6 +202,57 @@ enum VectorsAction {
     Tractor {
         #[command(subcommand)]
         action: TractorAction,
+    },
+    /// List the entries of a test-bed manifest with their argument roles
+    /// (EQV-03, D-11): one `<target>/<entry> roles=<n> seeds=<n> drivable` row
+    /// per entry with valid roles and at least one seed that lists it,
+    /// `<target>/<entry> no_roles seeds=<n>` for an entry without roles,
+    /// `no_seeds` or `invalid (<reason>)` otherwise, and a closing `result:
+    /// passed (<n> rows)` or `result: failed`. Exit 0 when no entry is
+    /// invalid, 1 otherwise, 2 for a manifest that cannot be read or is
+    /// invalid.
+    Adapters {
+        /// The test-bed manifest; the seed indexes are read from `seeds` next
+        /// to it.
+        #[arg(long)]
+        manifest: PathBuf,
+    },
+    /// Build the reference driver of every entry with roles in the selected
+    /// pairs (EQV-04, D-01): the generated driver is compiled with the pinned
+    /// compiler and linked with a deterministic archive of exactly the pair's
+    /// captured objects, after every object's sha256 is recomputed and equals
+    /// capture.json, the capture verdict is `captured` and, with --replay-dir, the
+    /// pair's replay report starts `identical`. Prints `<t>/<c>/<e> built
+    /// driver_sha256=<hex>`, `link_unresolved (<names>)`, `unhandled_flag
+    /// (<flag>)`, `no_roles` or `refused (<reason>)` per entry, then `result:
+    /// passed (<n> rows)` or `result: failed`. Exit 0 when no row failed, 1
+    /// otherwise, 2 for invalid input.
+    Build {
+        #[command(flatten)]
+        args: TestbedArgs,
+        /// The directory of Phase 2's replay reports (`<dir>/<id>/<config>.json`).
+        #[arg(long)]
+        replay_dir: Option<PathBuf>,
+    },
+    /// Run the committed seeds of every built entry through its driver under
+    /// qemu-arm, twice, and store the vectors (EQV-04, D-02, D-19): the policy of
+    /// the target is loaded first, every (seed, scalar combination) is run
+    /// twice and must give byte-identical vectors, and the corpus of an entry
+    /// is written once, with its provenance, into `<corpus-dir>/<t>/<c>/<e>`.
+    /// Captured object code runs here. Prints `<t>/<c>/<e> vectors=<n> ok=<n>
+    /// fault=<n> abort=<n> timeout=<n> setup_failed=<n> skipped=<n>
+    /// twice=identical`, then `result: passed (<n> rows)` or `result: failed`.
+    /// Exit 0 when no row failed, 1 otherwise, 2 for invalid input.
+    Run {
+        #[command(flatten)]
+        args: TestbedArgs,
+        /// Where the corpora go. Defaults to `<work-dir>/vectors`.
+        #[arg(long)]
+        corpus_dir: Option<PathBuf>,
+        /// Where the run's scratch slots go. Defaults to
+        /// `<work-dir>/tmp/vectors-slots`.
+        #[arg(long)]
+        scratch_dir: Option<PathBuf>,
     },
 }
 
@@ -755,6 +809,13 @@ fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
             policy_check_command(manifest.as_deref(), &files)
         }
         VectorsAction::Validate { tractor, paths } => validate_command(tractor, &paths),
+        VectorsAction::Adapters { manifest } => adapters_command(&manifest),
+        VectorsAction::Build { args, replay_dir } => build_command(args, replay_dir),
+        VectorsAction::Run {
+            args,
+            corpus_dir,
+            scratch_dir,
+        } => run_command(args, corpus_dir, scratch_dir),
         VectorsAction::Tractor { action } => match action {
             TractorAction::Fetch {
                 pin,
@@ -764,6 +825,100 @@ fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
             TractorAction::Check { pin, work_dir } => tractor_check_command(&pin, work_dir),
         },
     }
+}
+
+/// The closing line of an adapters, build or run listing.
+fn print_result(rows: usize, failed: bool) -> u8 {
+    if failed {
+        println!("result: failed");
+        1
+    } else {
+        println!("result: passed ({rows} rows)");
+        0
+    }
+}
+
+/// Exit code of `mt vectors adapters`: 0 no entry invalid, 1 an invalid entry.
+fn adapters_command(manifest: &Path) -> anyhow::Result<u8> {
+    let rows = list_adapters(manifest).context("listing the adapters")?;
+    for row in &rows {
+        println!("{}", row.render());
+    }
+    Ok(print_result(
+        rows.len(),
+        rows.iter().any(|row| row.is_failure()),
+    ))
+}
+
+/// The scope of a build or run: the retained pairs of the selected targets.
+fn vectors_scope(args: TestbedArgs) -> anyhow::Result<(VectorsScope, PathBuf, PathBuf)> {
+    let pins_path = args.pins.clone();
+    let opts = testbed_options(args, None);
+    let pairs = run_pairs(&opts).map_err(|error| {
+        print_issues(&error);
+        anyhow::Error::from(error)
+    })?;
+    let mut scope = VectorsScope::new(opts.manifest_path.clone(), opts.work_dir.clone());
+    scope.pairs = pairs;
+    Ok((scope, pins_path, opts.work_dir))
+}
+
+fn exec_context(pins_path: &Path) -> anyhow::Result<(ExecTools, RunnerConfig)> {
+    let pins = Pins::load(pins_path).context("loading the pins file")?;
+    pins.validate().context("validating the pins file")?;
+    let tools = ExecTools::from_pins(&pins)?;
+    let cfg = RunnerConfig::new(
+        pins.image.tool_path.clone(),
+        pins.image.source_date_epoch.clone(),
+    );
+    Ok((tools, cfg))
+}
+
+/// Exit code of `mt vectors build`: 0 no row failed, 1 a row failed.
+fn build_command(args: TestbedArgs, replay_dir: Option<PathBuf>) -> anyhow::Result<u8> {
+    let (scope, pins_path, _) = vectors_scope(args)?;
+    let (tools, cfg) = exec_context(&pins_path)?;
+    let rows = build_entries(&BuildOptions {
+        scope,
+        tools,
+        cfg,
+        replay_dir,
+    })
+    .context("building the reference drivers")?;
+    for row in &rows {
+        println!("{}", row.render());
+    }
+    Ok(print_result(
+        rows.len(),
+        rows.iter().any(|row| row.is_failure()),
+    ))
+}
+
+/// Exit code of `mt vectors run`: 0 no row failed, 1 a row failed.
+fn run_command(
+    args: TestbedArgs,
+    corpus_dir: Option<PathBuf>,
+    scratch_dir: Option<PathBuf>,
+) -> anyhow::Result<u8> {
+    let (scope, pins_path, work_dir) = vectors_scope(args)?;
+    let (tools, cfg) = exec_context(&pins_path)?;
+    let corpus_dir = corpus_dir.unwrap_or_else(|| work_dir.join("vectors"));
+    let scratch_dir = scratch_dir.unwrap_or_else(|| work_dir.join("tmp").join("vectors-slots"));
+    let rows = run_entries(&RunOptions {
+        scope,
+        tools,
+        cfg,
+        corpus_dir,
+        scratch_dir,
+    })
+    .context("running the reference vectors")?;
+    for row in &rows {
+        println!("{}", row.render());
+    }
+    Ok(print_result(
+        rows.len(),
+        rows.iter().any(|row| row.is_failure()),
+    ))
 }
 
 /// Exit code of `mt vectors validate`: 0 every path valid. The first invalid

@@ -470,6 +470,7 @@ fn bed_01_entry_mismatch_fails_the_capture() {
         form: EntryForm::Direct,
         signature: signature.to_owned(),
         accepted_wrapped: false,
+        arg: Vec::new(),
     };
     let mut target = git_target(&upstream, BuildSystem::Make);
     target.build_args = Some(BuildArgs {
@@ -620,6 +621,7 @@ impl World {
             form: EntryForm::Direct,
             signature: signature.to_owned(),
             accepted_wrapped: false,
+            arg: Vec::new(),
         };
         check_entry(
             &cfg,

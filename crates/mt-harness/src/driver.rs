@@ -10,6 +10,9 @@ use std::path::{Path, PathBuf};
 use mt_capture::manifest::BASELINE_CFLAGS;
 use mt_toolchain::runner::{self, RunRecord, RunRequest, RunnerConfig};
 
+use crate::adapter::Adapter;
+use crate::budget::Budgets;
+use crate::runtime::{Placeholders, render};
 use crate::tools::ExecTools;
 use crate::{HarnessError, sha256_hex};
 
@@ -109,4 +112,52 @@ pub fn build_driver(
         elf_sha256: sha256_hex(&elf),
         records: vec![output.record],
     })
+}
+
+/// True for one line of the entry driver's include prefix: a single
+/// `#include`, `#define` or `#undef` directive with no control character but a
+/// tab. The lines come from Phase 2's probe builder, which checks them the same
+/// way; this is the second check, at the point they enter C source.
+fn is_prefix_line(line: &str) -> bool {
+    let Some(directive) = line.strip_prefix('#').map(str::trim_start) else {
+        return false;
+    };
+    let known = ["include", "define", "undef"].iter().any(|name| {
+        directive.strip_prefix(name).is_some_and(|after| {
+            !after.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_')
+        })
+    });
+    known && !line.chars().any(|c| c.is_control() && c != '\t')
+}
+
+/// Render the driver of one entry from the shared template: the include lines
+/// of the defining unit and the entry header, and the call the adapter builds.
+/// No other text from the manifest reaches the source (CONTEXT D-11, T-03-14).
+///
+/// # Errors
+/// [`HarnessError::Render`] for an include line that is not a single directive,
+/// an entry name that is not a C identifier, or a template that fails to render.
+pub fn render_entry_driver(
+    adapter: &Adapter,
+    include_lines: &[String],
+) -> Result<String, HarnessError> {
+    if let Some(bad) = include_lines.iter().find(|line| !is_prefix_line(line)) {
+        return Err(HarnessError::Render(format!(
+            "{bad:?} is not a single #include, #define or #undef line"
+        )));
+    }
+    let name = adapter.entry_name();
+    if name.is_empty()
+        || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+        || name.starts_with(|c: char| c.is_ascii_digit())
+    {
+        return Err(HarnessError::Render(format!(
+            "entry name {name:?} is not a C identifier"
+        )));
+    }
+    render(&Placeholders::for_entry(
+        &Budgets::DEFAULT,
+        include_lines.join("\n"),
+        adapter.call_expression(),
+    ))
 }

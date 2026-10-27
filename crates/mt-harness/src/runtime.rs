@@ -13,14 +13,20 @@ use crate::budget::Budgets;
 pub const RUNTIME_TEMPLATE: &str = include_str!("runtime.c");
 
 /// The names of the closed placeholder set, in the order they are replaced.
-pub const PLACEHOLDER_NAMES: [&str; 6] = [
+pub const PLACEHOLDER_NAMES: [&str; 8] = [
     "MT_RESERVED_VA",
     "MT_HEAP_ARENA",
     "MT_SENTINEL",
     "MT_SLACK_FILL",
     "MT_MAX_INPUT",
+    "MT_INCLUDES",
     "MT_CASES",
+    "MT_CALL",
 ];
+
+/// The call expression of the self-test, which dispatches on the request's
+/// selector word.
+pub const SELFTEST_CALL: &str = "mt_call(selector, mt_in, mt_in_len, mt_out, mt_out_cap)";
 
 /// The values written into the template.
 #[derive(Debug, Clone)]
@@ -35,12 +41,20 @@ pub struct Placeholders {
     pub slack_fill: u8,
     /// Largest request input in bytes.
     pub max_input: u32,
+    /// The `#include`, `#define` and `#undef` lines an entry driver starts
+    /// with, one per line; empty for the self-test.
+    pub includes: String,
     /// C source of `static u32 mt_call(u32, u8 *, u32, u8 *, u32)`, the cases.
     pub cases: String,
+    /// The C expression of the call, of a type convertible to `u32`. It may
+    /// read `selector`, `mt_in`, `mt_in_len`, `mt_out`, `mt_out_cap` and
+    /// `mt_scalar(index)`.
+    pub call: String,
 }
 
 impl Placeholders {
-    /// The placeholders for `budgets` and a generated cases fragment.
+    /// The placeholders for `budgets` and a generated cases fragment: the
+    /// self-test's, with no entry includes and the selector-dispatch call.
     #[must_use]
     pub fn from_budgets(budgets: &Budgets, cases: String) -> Self {
         Self {
@@ -49,7 +63,20 @@ impl Placeholders {
             sentinel: budgets.sentinel,
             slack_fill: budgets.slack_fill,
             max_input: budgets.max_input,
+            includes: String::new(),
             cases,
+            call: SELFTEST_CALL.to_owned(),
+        }
+    }
+
+    /// The placeholders of an entry driver: the entry's include lines and
+    /// call expression, and no cases.
+    #[must_use]
+    pub fn for_entry(budgets: &Budgets, includes: String, call: String) -> Self {
+        Self {
+            includes,
+            call,
+            ..Self::from_budgets(budgets, String::new())
         }
     }
 
@@ -60,6 +87,8 @@ impl Placeholders {
             "MT_SENTINEL" => self.sentinel.to_string(),
             "MT_SLACK_FILL" => self.slack_fill.to_string(),
             "MT_MAX_INPUT" => self.max_input.to_string(),
+            "MT_INCLUDES" => self.includes.clone(),
+            "MT_CALL" => self.call.clone(),
             _ => self.cases.clone(),
         }
     }
@@ -92,6 +121,18 @@ fn tokens(text: &str) -> Vec<&str> {
 /// # Errors
 /// [`HarnessError::Render`] naming the offending token.
 pub fn render_template(template: &str, values: &Placeholders) -> Result<String, HarnessError> {
+    // A generated fragment never carries a token of its own.
+    for (what, text) in [
+        ("includes", &values.includes),
+        ("cases", &values.cases),
+        ("call", &values.call),
+    ] {
+        if text.contains("@MT_") {
+            return Err(HarnessError::Render(format!(
+                "the {what} fragment contains a placeholder token"
+            )));
+        }
+    }
     for token in tokens(template) {
         if !PLACEHOLDER_NAMES.contains(&token) {
             return Err(HarnessError::Render(format!(

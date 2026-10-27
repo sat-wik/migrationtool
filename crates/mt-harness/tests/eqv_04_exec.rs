@@ -71,14 +71,11 @@ fn runner_config() -> RunnerConfig {
     RunnerConfig::new("/usr/bin:/bin", "1791158400")
 }
 
-fn scope_for(
-    target: &str,
-    config: &str,
-    entry: &str,
-    build_root: &Path,
-    work: &Path,
-) -> Scope {
-    let mut scope = Scope::new(repo_root().join("testbed/manifest.toml"), work.to_path_buf());
+fn scope_for(target: &str, config: &str, entry: &str, build_root: &Path, work: &Path) -> Scope {
+    let mut scope = Scope::new(
+        repo_root().join("testbed/manifest.toml"),
+        work.to_path_buf(),
+    );
     scope.pairs = vec![(target.to_owned(), config.to_owned())];
     scope.entries = Some(vec![entry.to_owned()]);
     scope.build_root = build_root.to_path_buf();
@@ -144,14 +141,15 @@ fn eqv_04_run_twice_is_byte_identical() {
 
     let policy_bytes = std::fs::read(repo_root().join("testbed/policy/corejson.toml")).unwrap();
     let policy_sha = sha256_hex(&policy_bytes);
-    let corpus = read_corpus(&corpus_a).unwrap();
+    let entry_a = corpus_a.join("corejson/default/JSON_Validate");
+    let corpus = read_corpus(&entry_a).unwrap();
     assert_eq!(corpus.index.target, "corejson");
     assert_eq!(corpus.index.config, "default");
     assert_eq!(corpus.index.entry, "JSON_Validate");
     assert_eq!(corpus.vectors.len(), first.vectors);
     for (sha, vector) in &corpus.vectors {
         // The stored file parses at the reference level and is its own hash.
-        let bytes = std::fs::read(corpus_a.join(format!("{sha}.json"))).unwrap();
+        let bytes = std::fs::read(entry_a.join(format!("{sha}.json"))).unwrap();
         assert_eq!(&Vector::from_json_bytes(&bytes).unwrap(), vector);
         assert_eq!(&sha256_hex(&bytes), sha);
 
@@ -165,7 +163,10 @@ fn eqv_04_run_twice_is_byte_identical() {
             "D-05: argv[0] names the entry, argv[1] is the input length"
         );
         assert!(vector.env.is_empty());
-        assert_eq!(vector.stdout.pattern, "", "no output buffer: stdout is empty");
+        assert_eq!(
+            vector.stdout.pattern, "",
+            "no output buffer: stdout is empty"
+        );
 
         let class = vector.outcome_class().unwrap().word();
         let provenance = &corpus.index.vectors[sha];
@@ -191,6 +192,7 @@ fn eqv_04_run_twice_is_byte_identical() {
         assert!(!provenance.objects.is_empty());
         assert!(provenance.scalars.is_empty(), "JSON_Validate has no scalar");
     }
+    println!("corejson/default/JSON_Validate {}", first.render());
     println!(
         "corejson/default/JSON_Validate vectors={} identical",
         first.vectors

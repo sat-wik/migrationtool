@@ -323,6 +323,7 @@ fn entry(name: &str, header: &str, source: &str, signature: &str) -> Entry {
         form: EntryForm::Direct,
         signature: signature.to_owned(),
         accepted_wrapped: false,
+        arg: Vec::new(),
     }
 }
 
