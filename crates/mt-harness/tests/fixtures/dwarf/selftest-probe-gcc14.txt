@@ -1,0 +1,146 @@
+probe.o:	file format elf32-littlearm
+
+.debug_info contents:
+0x00000000: Compile Unit: length = 0x000000e9, format = DWARF32, version = 0x0005, unit_type = DW_UT_compile, abbr_offset = 0x0000, addr_size = 0x04 (next unit at 0x000000ed)
+
+0x0000000c: DW_TAG_compile_unit
+              DW_AT_producer	("GNU C17 14.3.1 20250623 -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -march=armv7e-m+fp -g -gdwarf-5 -Os -O0")
+              DW_AT_language	(DW_LANG_C11)
+              DW_AT_name	("probe.c")
+              DW_AT_comp_dir	("/work/vectors-selftest/dwarf")
+              DW_AT_stmt_list	(0x00000000)
+
+0x0000001e:   DW_TAG_enumeration_type
+                DW_AT_name	("probe_kind")
+                DW_AT_encoding	(DW_ATE_unsigned)
+                DW_AT_byte_size	(0x01)
+                DW_AT_type	(0x0000003d "unsigned char")
+                DW_AT_decl_file	("/work/vectors-selftest/dwarf/probe.c")
+                DW_AT_decl_line	(1)
+                DW_AT_decl_column	(0x06)
+                DW_AT_sibling	(0x0000003d)
+
+0x00000030:     DW_TAG_enumerator
+                  DW_AT_name	("PROBE_A")
+                  DW_AT_const_value	(0x00)
+
+0x00000036:     DW_TAG_enumerator
+                  DW_AT_name	("PROBE_B")
+                  DW_AT_const_value	(0x01)
+
+0x0000003c:     NULL
+
+0x0000003d:   DW_TAG_base_type
+                DW_AT_byte_size	(0x01)
+                DW_AT_encoding	(DW_ATE_unsigned_char)
+                DW_AT_name	("unsigned char")
+
+0x00000044:   DW_TAG_union_type
+                DW_AT_name	("probe_value")
+                DW_AT_byte_size	(0x04)
+                DW_AT_decl_file	("/work/vectors-selftest/dwarf/probe.c")
+                DW_AT_decl_line	(2)
+                DW_AT_decl_column	(0x07)
+                DW_AT_sibling	(0x00000066)
+
+0x00000051:     DW_TAG_member
+                  DW_AT_name	("word")
+                  DW_AT_decl_file	("/work/vectors-selftest/dwarf/probe.c")
+                  DW_AT_decl_line	(2)
+                  DW_AT_decl_column	(0x22)
+                  DW_AT_type	(0x00000066 "unsigned int")
+
+0x0000005b:     DW_TAG_member
+                  DW_AT_name	("bytes")
+                  DW_AT_decl_file	("/work/vectors-selftest/dwarf/probe.c")
+                  DW_AT_decl_line	(2)
+                  DW_AT_decl_column	(0x36)
+                  DW_AT_type	(0x0000006d "unsigned char[4]")
+
+0x00000065:     NULL
+
+0x00000066:   DW_TAG_base_type
+                DW_AT_byte_size	(0x04)
+                DW_AT_encoding	(DW_ATE_unsigned)
+                DW_AT_name	("unsigned int")
+
+0x0000006d:   DW_TAG_array_type
+                DW_AT_type	(0x0000003d "unsigned char")
+                DW_AT_sibling	(0x0000007d)
+
+0x00000076:     DW_TAG_subrange_type
+                  DW_AT_type	(0x00000066 "unsigned int")
+                  DW_AT_upper_bound	(0x03)
+
+0x0000007c:     NULL
+
+0x0000007d:   DW_TAG_structure_type
+                DW_AT_name	("probe_record")
+                DW_AT_byte_size	(0x0c)
+                DW_AT_decl_file	("/work/vectors-selftest/dwarf/probe.c")
+                DW_AT_decl_line	(3)
+                DW_AT_decl_column	(0x10)
+                DW_AT_sibling	(0x000000be)
+
+0x0000008a:     DW_TAG_member
+                  DW_AT_name	("kind")
+                  DW_AT_decl_file	("/work/vectors-selftest/dwarf/probe.c")
+                  DW_AT_decl_line	(4)
+                  DW_AT_decl_column	(0x15)
+                  DW_AT_type	(0x0000001e "probe_kind")
+                  DW_AT_data_member_location	(0x00)
+
+0x00000096:     DW_TAG_member
+                  DW_AT_name	("flags")
+                  DW_AT_decl_file	("/work/vectors-selftest/dwarf/probe.c")
+                  DW_AT_decl_line	(5)
+                  DW_AT_decl_column	(0x12)
+                  DW_AT_type	(0x00000066 "unsigned int")
+                  DW_AT_bit_size	(0x03)
+                  DW_AT_data_bit_offset	(0x08)
+
+0x000000a4:     DW_TAG_member
+                  DW_AT_name	("tag")
+                  DW_AT_decl_file	("/work/vectors-selftest/dwarf/probe.c")
+                  DW_AT_decl_line	(6)
+                  DW_AT_decl_column	(0x13)
+                  DW_AT_type	(0x000000be "unsigned char[5]")
+                  DW_AT_data_member_location	(0x02)
+
+0x000000b1:     DW_TAG_member
+                  DW_AT_name	("value")
+                  DW_AT_decl_file	("/work/vectors-selftest/dwarf/probe.c")
+                  DW_AT_decl_line	(7)
+                  DW_AT_decl_column	(0x17)
+                  DW_AT_type	(0x00000044 "probe_value")
+                  DW_AT_data_member_location	(0x08)
+
+0x000000bd:     NULL
+
+0x000000be:   DW_TAG_array_type
+                DW_AT_type	(0x0000003d "unsigned char")
+                DW_AT_sibling	(0x000000ce)
+
+0x000000c7:     DW_TAG_subrange_type
+                  DW_AT_type	(0x00000066 "unsigned int")
+                  DW_AT_upper_bound	(0x04)
+
+0x000000cd:     NULL
+
+0x000000ce:   DW_TAG_typedef
+                DW_AT_name	("probe_record_t")
+                DW_AT_decl_file	("/work/vectors-selftest/dwarf/probe.c")
+                DW_AT_decl_line	(8)
+                DW_AT_decl_column	(0x03)
+                DW_AT_type	(0x0000007d "probe_record")
+
+0x000000da:   DW_TAG_variable
+                DW_AT_name	("probe_global")
+                DW_AT_decl_file	("/work/vectors-selftest/dwarf/probe.c")
+                DW_AT_decl_line	(9)
+                DW_AT_decl_column	(0x10)
+                DW_AT_type	(0x000000ce "probe_record_t")
+                DW_AT_external	(true)
+                DW_AT_location	(DW_OP_addr 0x0)
+
+0x000000ec:   NULL
