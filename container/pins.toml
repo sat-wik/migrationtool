@@ -108,8 +108,10 @@ commit = "d393c16f3eb30d0c47e6f9d92db62272f0ec4dc7"
 # Exact candidate versions at the pinned snapshot timestamp, taken from the
 # pin-discovery workflow annotation of the run for commit 6916bb2 (the original
 # nine) and of the run for commit c9b3c74 (bzip2, cmake, curl, git and make, phase
-# 02 D-30), and re-checked live by `mt toolchain check`. The package list is the
-# one pin-discovery.yml resolves (tool_03_discovery_package_list_matches_apt_pins).
+# 02 D-30) and of the run for commit 9770902 (qemu-system-arm and qemu-user from
+# bookworm-backports at the same snapshot timestamp, phase 03 D-31), and
+# re-checked live by `mt toolchain check`. The package list is the one
+# pin-discovery.yml resolves (tool_03_discovery_package_list_matches_apt_pins).
 [apt]
 "bear" = "3.1.1-1"
 "bzip2" = "1.0.8-5+b1"
@@ -123,8 +125,8 @@ commit = "d393c16f3eb30d0c47e6f9d92db62272f0ec4dc7"
 "llvm-16" = "1:16.0.6-15~deb12u1"
 "llvm-16-dev" = "1:16.0.6-15~deb12u1"
 "make" = "4.3-4.1"
-"qemu-system-arm" = "1:7.2+dfsg-7+deb12u18+b3"
-"qemu-user" = "1:7.2+dfsg-7+deb12u18+b3"
+"qemu-system-arm" = "1:10.0.2+ds-2+deb13u1~bpo12+1"
+"qemu-user" = "1:10.0.2+ds-2+deb13u1~bpo12+1"
 
 [ci]
 cargo_deny_version = "0.20.2"
@@ -242,20 +244,24 @@ version_args = ["--version"]
 version_regex = 'GNU Make (?P<version>\d+\.\d+(?:\.\d+)?)'
 expect = "4.3"
 
-# Both QEMU binaries are installed: user mode cannot run bare-metal Cortex-M
-# images (RESEARCH correction 1, CONTEXT D-11). The expected version is the full
-# Debian package version the banner prints.
+# Both QEMU binaries are installed and both come from bookworm-backports (phase
+# 03 CONTEXT D-31). User mode runs the executor's Linux-ABI drivers under
+# `-cpu cortex-m4` (phase 03 D-30), which needs a release that does not map the
+# ARM commpage for M-profile CPUs (7.2 does). System mode runs unmodified
+# bare-metal images, which user mode cannot (RESEARCH correction 1, CONTEXT
+# D-11). The expected version is the full Debian package version the banner
+# prints.
 [tool.qemu_arm]
 bin = "/usr/bin/qemu-arm"
 version_args = ["--version"]
 version_regex = '\(Debian (?P<version>[^)]+)\)'
-expect = "1:7.2+dfsg-7+deb12u18+b3"
+expect = "1:10.0.2+ds-2+deb13u1~bpo12+1"
 
 [tool.qemu_system_arm]
 bin = "/usr/bin/qemu-system-arm"
 version_args = ["--version"]
 version_regex = '\(Debian (?P<version>[^)]+)\)'
-expect = "1:7.2+dfsg-7+deb12u18+b3"
+expect = "1:10.0.2+ds-2+deb13u1~bpo12+1"
 
 [tool.rustup]
 bin = "/opt/cargo/bin/rustup"
