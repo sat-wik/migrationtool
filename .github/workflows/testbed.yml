@@ -40,6 +40,13 @@
 # container reads /work and can write only its own output directory and /tmp; both
 # helpers have no network.
 #
+# The state layouts (EQV-04, plan 03-05, CONTEXT D-09, D-29) are the layout of every
+# state type of the built entries as the pinned GCC lays it out, read from its DWARF
+# by llvm-dwarfdump while the drivers are built. `mt vectors layouts` prints them
+# from the build records (it reads build.json only and runs nothing from upstream)
+# and publishes vectors-layout, so the layouts of this compiler version can be
+# compared line for line with those of another.
+#
 # Network policy (D-12): fetch and the TRACTOR fetch (fetch_tractor) are the only
 # steps with network access. Validate, seeds, pairs, record, replay and compare go
 # through run_offline, which adds `--network none`; a test
@@ -860,6 +867,23 @@ jobs:
           rc=$?
           set -e
           finish_vectors build "$rc" vectors-build
+
+      # EQV-04 (plan 03-05, CONTEXT D-09, D-29): the layout of every state type of the
+      # built entries, one line per state, from the build records of the step above.
+      # It reads build.json only and executes nothing from upstream, so it goes
+      # through run_vectors.
+      - name: Publish the state layouts
+        id: vlayout
+        if: ${{ !cancelled() && steps.vbuild.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          run_vectors layouts --work-dir /work > "$out/vectors-layout.txt" 2> "$out/vectors-layout.err"
+          rc=$?
+          set -e
+          finish_vectors layout "$rc" vectors-layout
 
       # The seeds of every drivable entry run through its driver under qemu-arm, each
       # vector twice and byte-identical, and the corpus is written once with its
