@@ -9,7 +9,7 @@ use anyhow::Context;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use mt_capture::capture::CaptureError;
 use mt_capture::compare::{DETERMINISM_EXCLUSIONS, compare_capture_dirs};
-use mt_capture::manifest::ManifestError;
+use mt_capture::manifest::{Manifest, ManifestError};
 use mt_capture::seeding::run_seeds_detailed;
 use mt_capture::testbed::{
     Selection, StepSummary, TestbedError, TestbedOptions, run_capture, run_capture_build,
@@ -17,6 +17,7 @@ use mt_capture::testbed::{
     run_toolchains, run_validate,
 };
 use mt_contract::Policy;
+use mt_contract::policy;
 use mt_harness::selftest::run_selftest;
 use mt_harness::tools::ExecTools;
 use mt_toolchain::build_args::{self, Scope};
@@ -156,10 +157,17 @@ enum VectorsAction {
     },
     /// Load and validate per-module UB policy files (EQV-01) with no logged UB
     /// site, and print one `<module> valid default=<action> overrides=<n>
-    /// error_codes=<n>` row per file. Exit 0 when every policy is valid, 2
-    /// when one cannot be read, is invalid, or names an override.
+    /// error_codes=<n>` row per policy. With --manifest, the policies are the
+    /// `policy` directory next to the manifest: one `<id>.toml` per target and
+    /// no other, rows in id order. Exit 0 when every policy is valid, 2 when
+    /// one cannot be read, is invalid or names an override, or a target has no
+    /// policy.
     PolicyCheck {
-        /// The policy files to check.
+        /// The test-bed manifest; its targets name the policies expected in
+        /// `<manifest dir>/policy`.
+        #[arg(long)]
+        manifest: Option<PathBuf>,
+        /// Policy files to check.
         files: Vec<PathBuf>,
     },
 }
@@ -677,14 +685,33 @@ fn main() -> ExitCode {
 fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
     match action {
         VectorsAction::Selftest { pins, work_dir } => selftest_command(&pins, work_dir),
-        VectorsAction::PolicyCheck { files } => policy_check_command(&files),
+        VectorsAction::PolicyCheck { manifest, files } => {
+            policy_check_command(manifest.as_deref(), &files)
+        }
     }
 }
 
 /// Exit code of `mt vectors policy-check`: 0 every policy valid. Anything else
 /// is an error, reported by `main` as exit 2.
-fn policy_check_command(files: &[PathBuf]) -> anyhow::Result<u8> {
-    anyhow::ensure!(!files.is_empty(), "name at least one policy file");
+fn policy_check_command(manifest: Option<&Path>, files: &[PathBuf]) -> anyhow::Result<u8> {
+    anyhow::ensure!(
+        manifest.is_some() || !files.is_empty(),
+        "name --manifest <PATH> or at least one policy file"
+    );
+    if let Some(manifest) = manifest {
+        let loaded = Manifest::load(manifest)
+            .with_context(|| format!("loading the manifest {}", manifest.display()))?;
+        let ids: Vec<String> = loaded.target.keys().cloned().collect();
+        let dir = match manifest.parent() {
+            Some(parent) if !parent.as_os_str().is_empty() => parent.join("policy"),
+            _ => PathBuf::from("policy"),
+        };
+        for policy in policy::load_dir(&dir, &ids)
+            .with_context(|| format!("checking the policies in {}", dir.display()))?
+        {
+            println!("{}", policy.summary_row());
+        }
+    }
     for path in files {
         let policy = Policy::load(path).with_context(|| format!("loading {}", path.display()))?;
         // Phase 3 has no UB log, so no override can name a logged site (D-16).

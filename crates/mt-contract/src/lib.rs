@@ -7,8 +7,8 @@
 //! rules ([`policy`]). [`CONTRACT_VERSION`] must equal the `**Version:**` line
 //! of that document (a test in this crate enforces it).
 //!
-//! The crate does data validation only: it starts no process and reads no
-//! file except the policy file it is asked to load.
+//! The crate does data validation only: it starts no process and reads only
+//! the policy files it is asked to load.
 
 pub mod policy;
 
