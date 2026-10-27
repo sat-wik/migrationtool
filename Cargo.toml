@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/mt-toolchain", "crates/mt-capture", "crates/mt-cli", "crates/mt-seeds", "crates/mt-harness", "crates/mt-contract"]
+members = ["crates/mt-toolchain", "crates/mt-capture", "crates/mt-cli", "crates/mt-seeds", "crates/mt-harness", "crates/mt-contract", "crates/mt-vectors"]
 # The no_std smoke crate (plan 01-04) is its own workspace root and must never
 # become part of the tool workspace.
 exclude = ["container/smoke"]

@@ -331,6 +331,7 @@ dependencies = [
  "mt-contract",
  "mt-harness",
  "mt-toolchain",
+ "mt-vectors",
  "tempfile",
 ]
 
@@ -381,6 +382,17 @@ dependencies = [
  "tempfile",
  "thiserror",
  "toml",
+]
+
+[[package]]
+name = "mt-vectors"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
 ]
 
 [[package]]

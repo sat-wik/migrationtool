@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "corejson/default/JSON_Validate"
+  ],
+  "stdin": "\u0000\"\\ÿok",
+  "env": {},
+  "stdout": {
+    "pattern": "",
+    "is_regex": false
+  },
+  "stderr": {
+    "pattern": "outcome=ok",
+    "is_regex": false
+  },
+  "rc": 1,
+  "lib_state_in": {},
+  "lib_state_out": {}
+}

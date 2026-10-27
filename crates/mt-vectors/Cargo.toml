@@ -1,0 +1,18 @@
+[package]
+name = "mt-vectors"
+description = "Test vector schema: the nine-field TRACTOR-shaped vector, its byte codec, the comparison rule and the sha256-named corpus"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

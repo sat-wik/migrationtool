@@ -19,6 +19,7 @@ mt-capture = { path = "../mt-capture" }
 mt-contract = { path = "../mt-contract" }
 mt-harness = { path = "../mt-harness" }
 mt-toolchain = { path = "../mt-toolchain" }
+mt-vectors = { path = "../mt-vectors" }
 
 [dev-dependencies]
 mt-toolchain = { path = "../mt-toolchain" }
