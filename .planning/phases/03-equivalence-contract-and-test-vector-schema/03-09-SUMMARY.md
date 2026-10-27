@@ -238,7 +238,7 @@ base digest pinned:      sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595d
 base digest today:       sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587
 ```
 
-`qemu-mprofile` notice of image-a job 121993148181 (RT1), verbatim. The second line is wrong because of a probe bug fixed afterwards (see Deviations 2); the exit code line is the gate:
+`qemu-mprofile` notice of image-a job 121993148181 (RT1), verbatim. The second line is wrong because of a probe bug fixed afterwards (see Deviations, item 1); the exit code line is the gate:
 
 ```
 qemu-arm version 10.0.2 (Debian 1:10.0.2+ds-2+deb13u1~bpo12+1)

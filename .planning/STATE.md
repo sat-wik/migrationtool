@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 03
 current_phase_name: Equivalence Contract and Test-Vector Schema
 status: executing
-stopped_at: Phase 3 context gathered
-last_updated: "2026-10-27T03:22:22.114Z"
+stopped_at: Completed 03-09-PLAN.md
+last_updated: "2026-10-27T03:59:40.132Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 03 execution started
-state_head: b4e5d3bb557fa04fa98c52deb2d179167176d2b3
+state_head: 3b1b462479cc266e3dde2950e822ee0292ce5a40
 progress:
   total_phases: 12
   completed_phases: 2
   total_plans: 41
-  completed_plans: 31
+  completed_plans: 32
 ---
 
 # Project State
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 03 (Equivalence Contract and Test-Vector Schema) — EXECUTING
-Plan: 1 of 10
-Status: Executing Phase 03
+Plan: 03-09 done (branch side of the D-31 QEMU re-pin); next 03-10, then 03-01 Task 3 round trip 3, then 03-02 .. 03-08
+Status: Ready to execute 03-10
 Last activity: 2026-10-27 — Phase 03 execution started
 
 Progress: [██░░░░░░░░] 17%
@@ -79,6 +79,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 02 P20 | 20 min | 3 tasks | 8 files |
 | Phase 02 P21 | 45min | 3 tasks | 10 files |
 | Phase 02 P22 | 30min | 3 tasks | 11 files |
+| Phase 03 P09 | 35 min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -129,6 +130,8 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 02]: 02-22: WR-12 proven by a read-only toolchain file: mt testbed toolchains (no upstream code) writes <work>/toolchain/<id>/<cfg>/toolchain.cmake, run_build mounts it read-only at /opt/mt/toolchain, the build stage checks it against the pins before configure, and every record step requires it (--read-only-toolchain)
 - [Phase 02]: 02-22: the CMakeCache.txt line and contiguous-flag checks are consistency checks only (toolchain_changed); the local in-process fallback is the end-state comparison with toolchain_file_read_only false
 - [Phase 02]: 02-22: WR-14: an unreadable toolchain file or build/CMakeCache.txt is the cause toolchain_unreadable on its pair; check_toolchain_file and check_configured_toolchain have no error path
+- [Phase 03]: Accepted QEMU 1:10.0.2+ds-2+deb13u1~bpo12+1 (upstream 10.0.2) from bookworm-backports for qemu-user and qemu-system-arm; not 8.2.x as D-31 reads, recorded deviation shown to the founder in plan 03-10 before the merge — Pinned snapshot 20261005T000000Z offers only 10.0.2 in backports; qemu-mprofile probe exits 42 in the image; 8.2.x existed only at older timestamps (needs a new [image] key and code)
+- [Phase 03]: QEMU-only apt preferences (priority 990 for qemu-user qemu-system-arm qemu-system-common qemu-system-data, -1 for all other backports packages) in stage snapshot-sources; PROJECT.md decision D-21 — A dependency outside the QEMU set fails the build instead of entering silently; pin-discovery sees the same candidates as the image
 
 ### Pending Todos
 
@@ -168,6 +171,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T04:20:49.867Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-equivalence-contract-and-test-vector-schema/03-CONTEXT.md
+Last session: 2026-10-27T03:59:40.005Z
+Stopped at: Completed 03-09-PLAN.md
+Resume file: None
