@@ -363,3 +363,217 @@ fn eqv_02_workflow_static_tractor_fetch_is_the_only_new_networked_step() {
         "the network policy paragraph does not name fetch_tractor"
     );
 }
+
+const BUILD_STEP: &str = "Build the reference drivers";
+const RUN_STEP: &str = "Run the reference vectors twice";
+const DETERMINISM_STEP: &str = "Run the vectors again and compare (vectors determinism)";
+const REPLAY_STEP: &str = "Replay the captured builds";
+
+#[test]
+fn eqv_04_workflow_static_run_guest_cannot_write_the_evidence() {
+    let text = workflow();
+    let body = function_body(&text, "run_guest");
+    let vectors = function_body(&text, "run_vectors");
+
+    // The same flags, limits and read-only mounts as run_vectors, and no network.
+    for needle in HELPER_HARDENING {
+        assert!(vectors.contains(needle), "run_vectors lacks {needle}");
+        assert!(body.contains(needle), "run_guest lacks {needle}");
+    }
+    assert!(
+        body.contains("--network none"),
+        "run_guest needs no network"
+    );
+    for forbidden in ["--privileged", "--cap-add", "seccomp", "docker.sock"] {
+        assert!(
+            !body.contains(forbidden),
+            "run_guest must not hold {forbidden}"
+        );
+    }
+
+    // /work is read-only; the one writable mount is the run's own output
+    // directory under $RUNNER_TEMP/out, at /vectors.
+    let mounts = volume_mounts(&body);
+    assert!(
+        mounts.iter().any(|m| m.ends_with(":/work:ro")),
+        "run_guest must mount /work read-only: {mounts:?}"
+    );
+    assert!(
+        !mounts.iter().any(|m| m.ends_with(":/out")),
+        "run_guest must not mount /out: {mounts:?}"
+    );
+    let writable: Vec<&String> = mounts.iter().filter(|m| !m.ends_with(":ro")).collect();
+    assert_eq!(
+        writable.len(),
+        1,
+        "run_guest must have exactly one writable bind mount: {writable:?}"
+    );
+    assert!(writable[0].ends_with(":/vectors"), "{writable:?}");
+    assert!(
+        writable[0].starts_with("$RUNNER_TEMP/out/"),
+        "the writable source must lie under $RUNNER_TEMP/out/: {writable:?}"
+    );
+
+    // The slots live in a tmpfs at /tmp, the only tmpfs.
+    let tmpfs: Vec<String> = code_lines(&body)
+        .into_iter()
+        .filter(|line| line.contains("--tmpfs"))
+        .collect();
+    assert_eq!(tmpfs.len(), 1, "{tmpfs:?}");
+    assert!(tmpfs[0].contains("--tmpfs /tmp:"), "{tmpfs:?}");
+
+    // It takes the output name first and ends in `mt vectors "$@"`.
+    let code = code_lines(&body);
+    assert!(
+        code.iter().any(|line| line.contains("shift")),
+        "run_guest must take the output name and shift it away:\n{body}"
+    );
+    let last = code
+        .into_iter()
+        .rfind(|line| !line.trim().is_empty())
+        .unwrap();
+    assert!(
+        last.trim_end().ends_with("mt vectors \"$@\""),
+        "run_guest must end in `mt vectors \"$@\"`: {last}"
+    );
+    // The comment above it says what it is for.
+    assert!(
+        text.contains("QEMU user mode passes guest syscalls"),
+        "the run_guest comment must state the syscall boundary"
+    );
+}
+
+#[test]
+fn eqv_04_workflow_static_vectors_steps_run_in_order() {
+    let text = workflow();
+    let replay_at = text
+        .find(&format!("- name: {REPLAY_STEP}"))
+        .expect("the replay step exists");
+    let mut last = replay_at;
+    for name in [BUILD_STEP, RUN_STEP, DETERMINISM_STEP] {
+        let at = text
+            .find(&format!("- name: {name}"))
+            .unwrap_or_else(|| panic!("{WORKFLOW} has no step {name:?}"));
+        assert!(at > last, "{name:?} must come after the previous step");
+        last = at;
+    }
+    let tractor_at = text
+        .find(&format!("- name: {TRACTOR_STEP}"))
+        .expect("the TRACTOR step exists");
+    assert!(
+        tractor_at < text.find(&format!("- name: {BUILD_STEP}")).unwrap(),
+        "the vectors steps come after the TRACTOR step"
+    );
+
+    let build = code_lines(&step_text(&text, BUILD_STEP)).join("\n");
+    assert!(build.contains("run_vectors build"), "{build}");
+    assert!(build.contains("--replay-dir /out/replay"), "{build}");
+    assert!(build.contains("finish_vectors build"), "{build}");
+
+    let run = code_lines(&step_text(&text, RUN_STEP)).join("\n");
+    assert!(run.contains("run_guest vectors-run run"), "{run}");
+    assert!(run.contains("finish_vectors run"), "{run}");
+
+    let determinism = code_lines(&step_text(&text, DETERMINISM_STEP)).join("\n");
+    assert!(
+        determinism.contains("run_guest vectors-rerun run"),
+        "{determinism}"
+    );
+    assert!(
+        determinism
+            .contains("run_vectors check --first /out/vectors-run --second /out/vectors-rerun"),
+        "{determinism}"
+    );
+    assert!(
+        determinism.contains("finish_vectors determinism"),
+        "{determinism}"
+    );
+
+    for (name, step) in [
+        (BUILD_STEP, &build),
+        (RUN_STEP, &run),
+        (DETERMINISM_STEP, &determinism),
+    ] {
+        let condition = step
+            .lines()
+            .find(|line| line.trim_start().starts_with("if:"))
+            .unwrap_or_else(|| panic!("{name:?} has no `if:`:\n{step}"));
+        assert!(
+            condition.contains("steps.replay.outcome == 'success'"),
+            "{name:?} must require the replay step: {condition}"
+        );
+        assert!(!step.contains("continue-on-error"), "{name:?}: {step}");
+        assert!(
+            !step.contains("testbed-"),
+            "{name:?} publishes a testbed- title"
+        );
+        // The rerun and the output directories exist, writable by the
+        // container user, before they are mounted.
+        assert!(
+            !step.contains("docker run"),
+            "{name:?} starts a container outside a helper"
+        );
+    }
+    assert!(
+        run.contains("chmod 0777") && determinism.contains("chmod 0777"),
+        "the output directories are created for the container user"
+    );
+
+    let header: String = text
+        .lines()
+        .take_while(|line| line.starts_with('#'))
+        .collect::<Vec<_>>()
+        .join("\n");
+    for needle in [
+        "vectors-build",
+        "vectors-run",
+        "vectors-determinism",
+        "run_guest",
+    ] {
+        assert!(header.contains(needle), "the header lacks {needle}");
+    }
+}
+
+#[test]
+fn eqv_04_workflow_static_captured_code_runs_only_in_run_guest() {
+    let text = workflow();
+    let code = code_lines(&text);
+    // No run_vectors call names a subcommand that runs captured object code.
+    let captured = Regex::new(r"\brun_vectors\s+(run|replay)\b").unwrap();
+    let offending: Vec<&String> = code.iter().filter(|l| captured.is_match(l)).collect();
+    assert!(
+        offending.is_empty(),
+        "captured object code runs only in run_guest: {offending:?}"
+    );
+    // run_guest runs nothing but `run` and `replay`.
+    let guest = Regex::new(r"\brun_guest\s+(\S+)\s+(\S+)").unwrap();
+    let mut calls = 0;
+    for line in &code {
+        for call in guest.captures_iter(line) {
+            calls += 1;
+            assert!(
+                matches!(&call[2], "run" | "replay"),
+                "run_guest is called with {} on: {line}",
+                &call[2]
+            );
+            assert!(
+                matches!(&call[1], "vectors-run" | "vectors-rerun"),
+                "run_guest writes to {} on: {line}",
+                &call[1]
+            );
+        }
+    }
+    assert_eq!(calls, 2, "run_guest is called twice, once per corpus");
+    // Only the self-test, the TRACTOR check, the build and the comparison go
+    // through run_vectors.
+    let allowed = Regex::new(r"\brun_vectors\s+(\S+)").unwrap();
+    for line in &code {
+        for call in allowed.captures_iter(line) {
+            assert!(
+                matches!(&call[1], "selftest" | "tractor" | "build" | "check"),
+                "unexpected run_vectors subcommand {} on: {line}",
+                &call[1]
+            );
+        }
+    }
+}
