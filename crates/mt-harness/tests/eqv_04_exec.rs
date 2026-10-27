@@ -14,8 +14,8 @@ use mt_contract::CONTRACT_VERSION;
 use mt_harness::EXECUTOR_VERSION;
 use mt_harness::replay::{ReplayOptions, check_corpora, replay_corpus};
 use mt_harness::run::{
-    BuildOptions, BuildState, EntryRunSummary, RunOptions, RunState, Scope, build_entries,
-    run_entries,
+    BUILD_JSON, BuildOptions, BuildRecord, BuildState, EntryRunSummary, RunOptions, RunState,
+    Scope, build_entries, layout_lines, run_entries,
 };
 use mt_harness::tools::ExecTools;
 use mt_toolchain::runner::RunnerConfig;
@@ -606,4 +606,140 @@ fn eqv_04_state_is_recorded_field_by_field() {
         "microcoap/default/coap_parse vectors={} identical",
         first.vectors
     );
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_union_state_is_recorded() {
+    let work = local_work_dir();
+    for config in ["default", "peripheral"] {
+        let tmp = tempfile::tempdir().unwrap();
+        let scope = scope_for(
+            "nimble",
+            config,
+            "ble_uuid_init_from_buf",
+            &tmp.path().join("build"),
+            &work,
+        );
+        build_ok(&scope);
+        let first = run_into(&scope, &tmp.path().join("a"), &tmp.path().join("slots-a"));
+        let second = run_into(&scope, &tmp.path().join("b"), &tmp.path().join("slots-b"));
+        assert_eq!(first, second, "nimble/{config}");
+        assert!(first.vectors > 0 && first.twice_identical, "{first:?}");
+        let comparison = check_corpora(&tmp.path().join("a"), &tmp.path().join("b")).unwrap();
+        assert!(comparison.identical(), "{:?}", comparison.problems);
+
+        let dir = tmp
+            .path()
+            .join(format!("a/nimble/{config}/ble_uuid_init_from_buf"));
+        let corpus = read_corpus(&dir).unwrap();
+        let mut parsed = 0usize;
+        for (sha, vector) in &corpus.vectors {
+            let after = vector
+                .lib_state_out
+                .get("uuid")
+                .expect("lib_state_out.uuid");
+            let before = vector.lib_state_in.get("uuid").expect("lib_state_in.uuid");
+            assert!(is_all_zero(before), "{sha}: the union starts zero-filled");
+            let StateValue::Struct { c_type, fields } = after else {
+                panic!("{sha}: a union is recorded as a struct-shaped value: {after:?}");
+            };
+            assert_eq!(c_type, "ble_uuid_any_t");
+            let names: Vec<&str> = fields.keys().map(String::as_str).collect();
+            assert_eq!(
+                names,
+                ["u", "u128", "u16", "u32"],
+                "every member of the union is recorded, decoded from the same bytes"
+            );
+            let input = decode_latin1(&vector.stdin).unwrap();
+            if vector.rc == 0 && input.len() == 2 {
+                parsed += 1;
+                let StateValue::Struct {
+                    fields: u16_fields, ..
+                } = &fields["u16"]
+                else {
+                    panic!("u16 must be a struct");
+                };
+                let want = i64::from(input[0]) | (i64::from(input[1]) << 8);
+                assert_eq!(
+                    int_field(u16_fields, "value"),
+                    want,
+                    "{sha}: the 16-bit UUID"
+                );
+            }
+        }
+        assert!(
+            parsed > 0,
+            "nimble/{config}: at least one 16-bit UUID parses"
+        );
+        println!(
+            "nimble/{config}/ble_uuid_init_from_buf vectors={} identical",
+            first.vectors
+        );
+    }
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_globals_are_typed_at_build_time() {
+    let work = local_work_dir();
+    let tmp = tempfile::tempdir().unwrap();
+    let scope = scope_for(
+        "microcoap",
+        "default",
+        "coap_parse",
+        &tmp.path().join("build"),
+        &work,
+    );
+    build_ok(&scope);
+    let path = tmp
+        .path()
+        .join("build/microcoap/default/coap_parse")
+        .join(BUILD_JSON);
+    let record: BuildRecord = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    let keys: Vec<&str> = record.globals.iter().map(|g| g.key.as_str()).collect();
+    assert_eq!(keys, ["src/endpoints.o:light", "src/endpoints.o:rsp"]);
+    // Every writable global of the pair has a type or a reason it has none.
+    let typed: Vec<&str> = record.global_types.keys().map(String::as_str).collect();
+    assert_eq!(typed, keys);
+    for (key, global_type) in &record.global_types {
+        assert!(
+            matches!(global_type, mt_harness::probe::GlobalType::Typed { .. }),
+            "{key} must be typed from its unit's DWARF: {global_type:?}"
+        );
+    }
+    println!(
+        "microcoap/default/coap_parse globals typed: {}",
+        keys.join(" ")
+    );
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_print_local_layouts() {
+    let work = local_work_dir();
+    let tmp = tempfile::tempdir().unwrap();
+    let build_root = tmp.path().join("build");
+    for (target, configs, entry) in [
+        ("microcoap", ["default", "release"], "coap_parse"),
+        (
+            "nimble",
+            ["default", "peripheral"],
+            "ble_uuid_init_from_buf",
+        ),
+    ] {
+        for config in configs {
+            let scope = scope_for(target, config, entry, &build_root, &work);
+            build_ok(&scope);
+        }
+    }
+    let lines = layout_lines(&build_root).unwrap();
+    assert!(
+        lines.len() >= 4,
+        "one line per built entry and state: {lines:?}"
+    );
+    for line in &lines {
+        // The same text `mt vectors layouts` prints, for the CI cross-check.
+        println!("layout {line}");
+    }
 }

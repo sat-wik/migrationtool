@@ -8,8 +8,8 @@
 use std::path::PathBuf;
 
 use mt_capture::manifest::{
-    ArgRole, MANIFEST_SCHEMA_VERSION, Manifest, ManifestError, Role, split_parameters,
-    state_pointee_type,
+    ArgRole, MANIFEST_SCHEMA_VERSION, Manifest, ManifestError, Role, UnobservedMark,
+    split_parameters, state_pointee_type,
 };
 
 fn repo_file(relative: &str) -> PathBuf {
@@ -586,4 +586,115 @@ fn eqv_03_state_pointee_type() {
     ] {
         assert_eq!(state_pointee_type(bad), None, "{bad}");
     }
+}
+
+fn mark(field: &str, reason: &str) -> UnobservedMark {
+    UnobservedMark {
+        field: field.to_owned(),
+        reason: reason.to_owned(),
+    }
+}
+
+/// The corejson entry as a packet parser with a state called `pkt` and `marks`.
+fn with_marks(marks: Vec<UnobservedMark>) -> Manifest {
+    let signature = "int (coap_packet_t *, const uint8_t *, size_t)";
+    let mut manifest = with_entry(
+        signature,
+        vec![state(Some("pkt")), role(Role::InBuf), role(Role::InLen)],
+    );
+    let target = manifest.target.get_mut("corejson").unwrap();
+    let entry = target
+        .entry
+        .iter_mut()
+        .find(|entry| entry.name == "JSON_Validate")
+        .unwrap();
+    entry.unobserved = marks;
+    manifest
+}
+
+#[test]
+fn eqv_03_unobserved_marks_need_a_reason_and_a_declared_state() {
+    // D-09: a field may be marked unobserved only with a recorded reason.
+    with_marks(vec![
+        mark("pkt.payload", "points at a buffer the caller owns"),
+        mark("pkt.opts[0].buf.p", "internal"),
+        mark("pkt[3]", "an index straight after the state name"),
+    ])
+    .validate()
+    .unwrap();
+    with_marks(Vec::new()).validate().unwrap();
+
+    for reason in ["", "   ", "\t"] {
+        let manifest = with_marks(vec![mark("pkt.payload", reason)]);
+        assert!(
+            has_issue(&manifest, &["unobserved", "reason"]),
+            "reason {reason:?}"
+        );
+    }
+    // The state must be declared by a `state` role of the same entry.
+    let manifest = with_marks(vec![mark("other.payload", "r")]);
+    assert!(has_issue(&manifest, &["unobserved", "declared"]));
+    // The path is `<state>(.<member>|[<index>])+` in C identifiers and decimals.
+    for bad in [
+        "pkt",
+        "pkt.",
+        "pkt..x",
+        "pkt.pay load",
+        "pkt.1x",
+        "pkt.a-b",
+        "pkt[x]",
+        "pkt[]",
+        "pkt[0",
+        "pkt[-1]",
+        "pkt.x[01a]",
+        ".pkt.x",
+        "",
+    ] {
+        let manifest = with_marks(vec![mark(bad, "r")]);
+        assert!(
+            has_issue(&manifest, &["unobserved", "field"]),
+            "field {bad:?} must be refused"
+        );
+    }
+    // The same field is marked once.
+    let manifest = with_marks(vec![mark("pkt.payload", "a"), mark("pkt.payload", "b")]);
+    assert!(has_issue(&manifest, &["unobserved", "duplicate"]));
+    // An entry with marks but no state has nothing to mark.
+    let mut stateless = committed();
+    let target = stateless.target.get_mut("corejson").unwrap();
+    let entry = target
+        .entry
+        .iter_mut()
+        .find(|entry| entry.name == "JSON_Validate")
+        .unwrap();
+    entry.unobserved = vec![mark("pkt.payload", "r")];
+    assert!(has_issue(&stateless, &["unobserved", "declared"]));
+}
+
+#[test]
+fn eqv_03_unobserved_marks_parse_from_toml_and_stay_absent_otherwise() {
+    let text = committed_text();
+    let marker = "[[target.microcoap.config]]";
+    let edited = text.replacen(
+        marker,
+        "[[target.microcoap.entry.unobserved]]\nfield = \"pkt.payload\"\nreason = \"the payload is checked through the input\"\n\n[[target.microcoap.config]]",
+        1,
+    );
+    assert_ne!(edited, text);
+    let manifest = Manifest::parse(&edited).unwrap();
+    manifest.validate().unwrap();
+    let entry = &manifest.target["microcoap"].entry[0];
+    assert_eq!(
+        entry.unobserved,
+        [mark(
+            "pkt.payload",
+            "the payload is checked through the input"
+        )]
+    );
+    // Entries without marks serialize without the key, as before.
+    let plain = serde_json::to_value(&committed().target["corejson"].entry[0]).unwrap();
+    assert!(plain.get("unobserved").is_none(), "{plain}");
+    // An unknown key in a mark is refused.
+    let unknown = edited.replacen("reason = ", "why = ", 1);
+    assert!(Manifest::parse(&unknown).is_err());
 }

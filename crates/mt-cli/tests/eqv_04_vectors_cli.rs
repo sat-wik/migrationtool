@@ -157,3 +157,58 @@ fn eqv_04_check_cli_fails_closed() {
     let absent = run(&first, &dir.path().join("absent"));
     assert_eq!(absent.code, Some(2), "stderr: {}", absent.stderr);
 }
+
+#[test]
+fn eqv_04_layouts_cli_prints_the_layouts_of_built_entries() {
+    let work = tempfile::tempdir().unwrap();
+    // A minimal build.json: the states' layouts are all `mt vectors layouts` reads.
+    let one = |target: &str, config: &str, entry: &str, name: &str, size: u32| {
+        let text = format!(
+            r#"{{"schema_version":1,"target":"{target}","config":"{config}","entry":"{entry}","image":"local","replay":"not_checked","objects":{{}},"archive_sha256":"","driver_source_sha256":"","driver_elf_sha256":"","include_lines":[],"driver_flags":[],"steps":[],"layouts":{{"{name}":{{"text":"struct pair","size":{size},"kind":{{"kind":"struct","members":[{{"name":"a","ty":{{"text":"uint8_t","size":1,"kind":{{"kind":"int","signed":false}}}},"offset":0,"bits":null}}]}}}}}}}}"#
+        );
+        let dir = work
+            .path()
+            .join("vectors-build")
+            .join(target)
+            .join(config)
+            .join(entry);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("build.json"), text).unwrap();
+    };
+    one("t2", "default", "g", "st", 8);
+    one("t1", "default", "f", "state", 4);
+    let outcome = run_mt(&[
+        "vectors",
+        "layouts",
+        "--work-dir",
+        work.path().to_str().unwrap(),
+    ]);
+    assert_eq!(outcome.code, Some(0), "stderr: {}", outcome.stderr);
+    let rows: Vec<&str> = outcome.stdout.lines().collect();
+    assert_eq!(
+        rows,
+        [
+            "t1/default/f state struct pair size=4 a@0:1",
+            "t2/default/g st struct pair size=8 a@0:1",
+            "result: passed (2 rows)",
+        ],
+        "rows are in target, configuration and entry order"
+    );
+}
+
+#[test]
+fn eqv_04_layouts_cli_fails_closed_without_a_build() {
+    let work = tempfile::tempdir().unwrap();
+    let outcome = run_mt(&[
+        "vectors",
+        "layouts",
+        "--work-dir",
+        work.path().to_str().unwrap(),
+    ]);
+    assert_eq!(outcome.code, Some(1), "stderr: {}", outcome.stderr);
+    assert!(
+        outcome.stdout.lines().last() == Some("result: failed"),
+        "a missing layer is never green: {}",
+        outcome.stdout
+    );
+}
