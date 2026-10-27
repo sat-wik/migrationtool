@@ -22,6 +22,7 @@ use mt_toolchain::runner::RunnerConfig;
 use mt_vectors::bytes::decode_latin1;
 use mt_vectors::corpus::{HasUbSource, read_corpus};
 use mt_vectors::sha256_hex;
+use mt_vectors::state::{Pointer, StateValue};
 use mt_vectors::vector::Vector;
 
 fn repo_root() -> PathBuf {
@@ -446,5 +447,163 @@ fn eqv_04_replay_reproduces_stored_vectors() {
         mismatched.render().contains("provenance_mismatch"),
         "{}",
         mismatched.render()
+    );
+}
+
+/// True when every byte and pointer of `value` is zero or null.
+fn is_all_zero(value: &StateValue) -> bool {
+    match value {
+        StateValue::Int { value, .. } => *value == 0,
+        StateValue::Wide { value, .. } => value == "0",
+        StateValue::Float { bits, .. } => bits.bytes().all(|b| b == b'0'),
+        StateValue::Bytes { hex, .. } => hex.bytes().all(|b| b == b'0'),
+        StateValue::Items { items, .. } => items.iter().all(is_all_zero),
+        StateValue::Struct { fields, .. } => fields.values().all(is_all_zero),
+        StateValue::Pointer { pointer, .. } => *pointer == Pointer::Null,
+        StateValue::Unobserved { .. } => false,
+    }
+}
+
+/// Every pointer in `value`, in field order.
+fn pointers_of<'a>(value: &'a StateValue, found: &mut Vec<&'a Pointer>) {
+    match value {
+        StateValue::Pointer { pointer, .. } => found.push(pointer),
+        StateValue::Items { items, .. } => items.iter().for_each(|item| pointers_of(item, found)),
+        StateValue::Struct { fields, .. } => {
+            fields.values().for_each(|field| pointers_of(field, found));
+        }
+        _ => {}
+    }
+}
+
+fn int_field(fields: &std::collections::BTreeMap<String, StateValue>, name: &str) -> i64 {
+    match fields.get(name) {
+        Some(StateValue::Int { value, .. }) => *value,
+        other => panic!("field {name} must be an integer, found {other:?}"),
+    }
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_state_is_recorded_field_by_field() {
+    let work = local_work_dir();
+    let tmp = tempfile::tempdir().unwrap();
+    let scope = scope_for(
+        "microcoap",
+        "default",
+        "coap_parse",
+        &tmp.path().join("build"),
+        &work,
+    );
+    build_ok(&scope);
+    let first = run_into(&scope, &tmp.path().join("a"), &tmp.path().join("slots-a"));
+    let second = run_into(&scope, &tmp.path().join("b"), &tmp.path().join("slots-b"));
+    assert_eq!(first, second, "two full runs give the same summary");
+    assert!(first.vectors > 0 && first.twice_identical, "{first:?}");
+    let comparison = check_corpora(&tmp.path().join("a"), &tmp.path().join("b")).unwrap();
+    assert!(comparison.identical(), "{:?}", comparison.problems);
+
+    let dir = tmp.path().join("a/microcoap/default/coap_parse");
+    let corpus = read_corpus(&dir).unwrap();
+    let mut parsed = 0usize;
+    let mut with_pointers = 0usize;
+    for (sha, vector) in &corpus.vectors {
+        let input_len = decode_latin1(&vector.stdin).unwrap().len() as u64;
+        let before = vector.lib_state_in.get("pkt").expect("lib_state_in.pkt");
+        assert!(
+            is_all_zero(before),
+            "the state starts zero-filled: {before:?}"
+        );
+        let after = vector.lib_state_out.get("pkt").expect("lib_state_out.pkt");
+
+        // No raw address: every pointer is null or a byte offset into `in`.
+        let mut pointers = Vec::new();
+        pointers_of(after, &mut pointers);
+        for pointer in &pointers {
+            match pointer {
+                Pointer::Null => {}
+                Pointer::Buffer { region, offset } => {
+                    assert_eq!(region, "in", "{sha}");
+                    assert!(
+                        *offset <= input_len,
+                        "{sha}: offset {offset} of {input_len}"
+                    );
+                }
+                Pointer::Symbol(_) => panic!("{sha}: coap_packet_t holds no function pointer"),
+            }
+        }
+        assert_eq!(
+            corpus.index.vectors[sha].unobserved,
+            u64::try_from(
+                vector.lib_state_in.unobserved_count() + vector.lib_state_out.unobserved_count()
+            )
+            .unwrap(),
+            "the provenance counts the marks"
+        );
+
+        if vector.rc != 0 {
+            continue;
+        }
+        parsed += 1;
+        let StateValue::Struct { c_type, fields } = after else {
+            panic!("pkt must be a struct: {after:?}");
+        };
+        assert_eq!(c_type, "coap_packet_t");
+        let names: Vec<&str> = fields.keys().map(String::as_str).collect();
+        assert_eq!(names, ["hdr", "numopts", "opts", "payload", "tok"]);
+        let StateValue::Struct { fields: hdr, .. } = &fields["hdr"] else {
+            panic!("hdr must be a struct");
+        };
+        assert_eq!(
+            int_field(hdr, "ver"),
+            1,
+            "{sha}: a parsed packet is version 1"
+        );
+        for name in ["t", "tkl", "code"] {
+            let _ = int_field(hdr, name);
+        }
+        assert!(matches!(&hdr["id"], StateValue::Bytes { hex, .. } if hex.len() == 4));
+        let StateValue::Items { items, .. } = &fields["opts"] else {
+            panic!("opts must be an array of structs");
+        };
+        assert!(!items.is_empty());
+        let numopts = int_field(&fields, "numopts");
+        let mut with_buffer = 0i64;
+        for (index, option) in items.iter().enumerate() {
+            let StateValue::Struct { fields: option, .. } = option else {
+                panic!("opts[{index}] must be a struct");
+            };
+            let StateValue::Struct { fields: buf, .. } = &option["buf"] else {
+                panic!("opts[{index}].buf must be a struct");
+            };
+            if let StateValue::Pointer {
+                pointer: Pointer::Buffer { .. },
+                ..
+            } = &buf["p"]
+            {
+                with_buffer += 1;
+            }
+        }
+        assert!(with_buffer >= numopts.min(i64::try_from(items.len()).unwrap()) || numopts == 0);
+        let StateValue::Struct {
+            fields: payload, ..
+        } = &fields["payload"]
+        else {
+            panic!("payload must be a struct");
+        };
+        if int_field(payload, "len") > 0 {
+            with_pointers += 1;
+            assert!(
+                matches!(&payload["p"], StateValue::Pointer { pointer: Pointer::Buffer { region, .. }, .. } if region == "in"),
+                "{sha}: a payload points into the input"
+            );
+        }
+    }
+    assert!(parsed > 0, "at least one seed parses");
+    assert!(with_pointers > 0, "at least one seed carries a payload");
+    println!("microcoap/default/coap_parse {}", first.render());
+    println!(
+        "microcoap/default/coap_parse vectors={} identical",
+        first.vectors
     );
 }

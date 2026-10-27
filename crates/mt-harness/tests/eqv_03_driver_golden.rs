@@ -59,6 +59,16 @@ fn eqv_03_driver_golden() {
             "lz4-LZ4_decompress_safe.driver.c",
             lines(&["#include \"/fixed/lib/lz4.h\""]),
         ),
+        (
+            "microcoap",
+            "coap_parse",
+            "microcoap-coap_parse.driver.c",
+            lines(&[
+                "#include <stddef.h>",
+                "#include <stdint.h>",
+                "#include \"/fixed/coap.h\"",
+            ]),
+        ),
     ];
     for (target, entry, file, include_lines) in cases {
         let source = render_entry_driver(&adapter_of(target, entry), &include_lines).unwrap();

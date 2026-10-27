@@ -9,6 +9,7 @@ use std::path::PathBuf;
 
 use mt_capture::manifest::{
     ArgRole, MANIFEST_SCHEMA_VERSION, Manifest, ManifestError, Role, split_parameters,
+    state_pointee_type,
 };
 
 fn repo_file(relative: &str) -> PathBuf {
@@ -474,4 +475,115 @@ fn eqv_03_roles_reject_out_buf_without_capacity() {
     )
     .validate()
     .unwrap();
+}
+
+fn state(name: Option<&str>) -> ArgRole {
+    ArgRole {
+        role: Role::State,
+        name: name.map(str::to_owned),
+        default: None,
+        sweep: Vec::new(),
+        max: None,
+    }
+}
+
+#[test]
+fn eqv_03_roles_state_needs_a_pointer_and_a_name() {
+    // D-09, D-11: a `state` is a named pointer to a struct, union or enum type.
+    let signature = "int (coap_packet_t *, const uint8_t *, size_t)";
+    let roles = |first: ArgRole| vec![first, role(Role::InBuf), role(Role::InLen)];
+    with_entry(signature, roles(state(Some("pkt"))))
+        .validate()
+        .unwrap();
+
+    // A name is required, and it is a C identifier.
+    let nameless = with_entry(signature, roles(state(None)));
+    assert!(has_issue(&nameless, &["state", "name"]));
+    let bad_name = with_entry(signature, roles(state(Some("p kt"))));
+    assert!(has_issue(&bad_name, &["identifier"]));
+
+    // It needs a pointer parameter.
+    let value = with_entry(
+        "int (int, const uint8_t *, size_t)",
+        roles(state(Some("pkt"))),
+    );
+    assert!(has_issue(&value, &["state", "pointer"]));
+
+    // It takes no default, sweep or max.
+    let mut with_default = state(Some("pkt"));
+    with_default.default = Some(1);
+    assert!(has_issue(
+        &with_entry(signature, roles(with_default)),
+        &["default", "state"]
+    ));
+    let mut with_max = state(Some("pkt"));
+    with_max.max = Some(4);
+    assert!(has_issue(&with_entry(signature, roles(with_max)), &["max"]));
+
+    // The pointee must be a plain type name before it is written into C.
+    for bad in [
+        "void *",
+        "coap_packet_t **",
+        "unsigned char *",
+        "int (*)(void) *",
+    ] {
+        let manifest = with_entry(
+            &format!("int ({bad}, const uint8_t *, size_t)"),
+            roles(state(Some("pkt"))),
+        );
+        assert!(has_issue(&manifest, &["state", "pointee"]), "{bad}");
+    }
+    // A const qualifier and a tag keyword are accepted.
+    for good in [
+        "const coap_packet_t *",
+        "struct item *",
+        "union u *",
+        "enum e *",
+    ] {
+        with_entry(
+            &format!("int ({good}, const uint8_t *, size_t)"),
+            roles(state(Some("pkt"))),
+        )
+        .validate()
+        .unwrap();
+    }
+
+    // The name is not a reserved one and is not repeated.
+    let reserved = with_entry(signature, roles(state(Some("in"))));
+    assert!(has_issue(&reserved, &["reserved"]));
+    let twice = with_entry(
+        "int (coap_packet_t *, const uint8_t *, size_t, coap_packet_t *)",
+        vec![
+            state(Some("pkt")),
+            role(Role::InBuf),
+            role(Role::InLen),
+            state(Some("pkt")),
+        ],
+    );
+    assert!(has_issue(&twice, &["duplicate"]));
+}
+
+#[test]
+fn eqv_03_state_pointee_type() {
+    assert_eq!(
+        state_pointee_type("coap_packet_t *").as_deref(),
+        Some("coap_packet_t")
+    );
+    assert_eq!(
+        state_pointee_type("const struct foo *").as_deref(),
+        Some("struct foo")
+    );
+    assert_eq!(state_pointee_type("union u*").as_deref(), Some("union u"));
+    assert_eq!(state_pointee_type("T * const").as_deref(), Some("T"));
+    for bad in [
+        "T **",
+        "void *",
+        "unsigned char *",
+        "int",
+        "T",
+        "struct *",
+        "1T *",
+    ] {
+        assert_eq!(state_pointee_type(bad), None, "{bad}");
+    }
 }
