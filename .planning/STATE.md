@@ -5,16 +5,16 @@ milestone_name: MVP
 current_phase: 03
 current_phase_name: Equivalence Contract and Test-Vector Schema
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-10-27T05:01:30.632Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-10-27T05:15:27.161Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 03 execution started
-state_head: 32a8c5e926a5a69f60ac9f33c56f4a98b6761451
+state_head: 632fa822ecca209973dbc0e71c993f0a2564e273
 progress:
   total_phases: 12
   completed_phases: 2
   total_plans: 41
-  completed_plans: 34
+  completed_plans: 35
 ---
 
 # Project State
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 03 (Equivalence Contract and Test-Vector Schema) — EXECUTING
-Plan: 03-01, 03-09 and 03-10 done (executor self-test passed 17 rows in the D-31 image, testbed run 40451139101 = 03-01 round trip 3 of 3; commits 32a8c5e and the summary are unpushed); next 03-02, then 03-03 .. 03-08
-Status: Ready to plan-execute 03-02
+Plan: 03-01, 03-02, 03-09 and 03-10 done (03-01: executor self-test passed 17 rows in the D-31 image, testbed run 40451139101 = round trip 3 of 3; 03-02: mt-contract, 16 policies, contract v0.1.0); the 03-01 and 03-02 commits are unpushed and ride with 03-03's first push; next 03-03, then 03-04 .. 03-08
+Status: Ready to plan-execute 03-03
 Last activity: 2026-10-27 — Phase 03 execution started
 
 Progress: [██░░░░░░░░] 17%
@@ -82,6 +82,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 03 P09 | 35 min | 3 tasks | 13 files |
 | Phase 03 P10 | n/a (spans founder merge) | 3 tasks | 5 files |
 | Phase 03 P01 | n/a (spans four sessions and the D-31 gap) | 3 tasks | 24 files |
+| Phase 03 P02 | 12 min | 3 tasks | 28 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,7 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 03]: QEMU-only apt preferences (priority 990 for qemu-user qemu-system-arm qemu-system-common qemu-system-data, -1 for all other backports packages) in stage snapshot-sources; PROJECT.md decision D-21 — A dependency outside the QEMU set fails the build instead of entering silently; pin-discovery sees the same candidates as the image
 - [Phase 03]: 03-10: D-31 image is QEMU 10.0.2 from bookworm-backports (not the 8.2.x D-31 names), published from main as sha256:9de8bee1...; Phase 2 notice baseline re-baselined on the founder's reply
 - [Phase 03]: 03-01: C reference executor in mt-harness; qemu-arm -cpu cortex-m4 run through the runner with the runner's four base environment keys; timeout carries has_ub label 'timeout' with rc -9; self-test passed 17 rows in the D-31 image (testbed run 40451139101, round trip 3 of 3) — Founder may revisit the timeout label and the environment interpretation of D-02; D-30 CPU model and user mode unchanged
+- [Phase 03]: 03-02: mt-contract holds the per-module UB policy (strict TOML, deny_unknown_fields, validate takes a known-site list that Phase 3 passes empty); docs/specs/equivalence-contract.md is version 0.1.0; the 16 policies under testbed/policy are all return_error with empty tables — The [[ub.error_code]] table is defined and syntax-checked but empty everywhere until Phase 4's UB decisions log fills it; override kind and location are free text until Phase 4 constrains them; the contract states the user-mode distinction itself instead of editing container/pins.toml. Founder may revisit.
 
 ### Pending Todos
 
@@ -175,6 +177,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-27T05:01:30.476Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-10-27T05:15:21.857Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
