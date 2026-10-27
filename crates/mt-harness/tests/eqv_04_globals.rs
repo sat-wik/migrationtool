@@ -16,7 +16,7 @@ use mt_harness::budget::Budgets;
 use mt_harness::driver::render_entry_driver;
 use mt_harness::globals::{locate_globals, writable_globals};
 use mt_harness::link::{LinkOutcome, LinkRequest, archive, link_driver};
-use mt_harness::run::{PreparedDriver, run_vector_twice};
+use mt_harness::run::{Exec, PreparedDriver, run_vector_twice};
 use mt_harness::tools::ExecTools;
 use mt_toolchain::runner::{self, RunRequest, RunnerConfig};
 
@@ -162,9 +162,11 @@ fn object_name(path: &str) -> String {
 fn run(tools: &ExecTools, built: &Built, seed: &[u8]) -> Result<mt_harness::run::Observed, String> {
     let combos = combinations(&built.adapter).unwrap();
     run_vector_twice(
-        tools,
-        &cfg(),
-        &Budgets::DEFAULT,
+        &Exec {
+            tools,
+            cfg: &cfg(),
+            budgets: &Budgets::DEFAULT,
+        },
         &built.adapter,
         &built.driver,
         &built.root.join("slots"),
@@ -176,7 +178,7 @@ fn run(tools: &ExecTools, built: &Built, seed: &[u8]) -> Result<mt_harness::run:
 
 const READ_ONLY_USE: &str = "#include <stddef.h>\n\
     int counter = 5;\n\
-    static int secret = 7;\n\
+    static volatile int secret = 7;\n\
     int peek(const char *p, size_t n) { (void)p; return counter + secret + (int)n; }\n";
 
 const WRITES_GLOBAL: &str = "#include <stddef.h>\n\
@@ -238,9 +240,9 @@ fn eqv_04_ambiguous_local_global_join_is_an_error() {
     // called secret: the linked image cannot say which is which.
     let first = "#include <stddef.h>\n\
         int other(void);\n\
-        static int secret = 1;\n\
+        static volatile int secret = 1;\n\
         int peek(const char *p, size_t n) { (void)p; return secret + other() + (int)n; }\n";
-    let second = "static int secret = 2;\nint other(void) { return secret; }\n";
+    let second = "static volatile int secret = 2;\nint other(void) { return secret; }\n";
     let error = build(&tools, &[("a/x.c", first), ("b/x.c", second)])
         .err()
         .expect("the join is ambiguous");

@@ -34,6 +34,7 @@ use crate::classify::{Outcome, classify};
 use crate::driver::render_entry_driver;
 use crate::exec::{Request, Slot, run_driver};
 use crate::frame::parse_frame;
+use crate::globals::{DumpRange, locate_globals, writable_globals};
 use crate::link::{LinkOutcome, LinkRequest, archive, link_driver, verify_objects};
 use crate::tools::ExecTools;
 use crate::{EXECUTOR_VERSION, HarnessError};
@@ -46,6 +47,13 @@ pub const BUILD_SCHEMA_VERSION: u32 = 1;
 
 /// The region id of the whole output buffer in the result frame.
 const OUT_REGION: u32 = 1;
+
+/// The region id of dump range `i` before the call is this plus `i`; after the
+/// call, [`DUMP_AFTER_REGION`] plus `i` (the numbers `runtime.c` writes).
+const DUMP_BEFORE_REGION: u32 = 0x1000;
+
+/// See [`DUMP_BEFORE_REGION`].
+const DUMP_AFTER_REGION: u32 = 0x2000;
 
 /// Which entries to build or run, and where things are.
 #[derive(Debug, Clone)]
@@ -273,6 +281,69 @@ pub struct BuildRecord {
     pub driver_flags: Vec<String>,
     /// The run record of each build step: `ar`, the compile and the link.
     pub steps: Vec<RunRecord>,
+    /// The writable globals present in the linked driver: the dump plan
+    /// (CONTEXT D-10).
+    #[serde(default)]
+    pub globals: Vec<GlobalRecord>,
+}
+
+/// One writable global of the dump plan, as `build.json` records it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GlobalRecord {
+    /// `<object path>:<symbol>`.
+    pub key: String,
+    /// The address in the linked driver.
+    pub address: u32,
+    /// Size in bytes.
+    pub size: u32,
+    /// The image's initial bytes, lowercase hex.
+    pub initial: String,
+}
+
+impl GlobalRecord {
+    fn from_range(range: &DumpRange) -> Self {
+        Self {
+            key: range.key.clone(),
+            address: range.address,
+            size: range.size,
+            initial: crate::hex(&range.initial),
+        }
+    }
+
+    fn to_range(&self) -> Result<DumpRange, String> {
+        let digits = self.initial.as_bytes();
+        let nibble = |byte: u8| match byte {
+            b'0'..=b'9' => Some(byte - b'0'),
+            b'a'..=b'f' => Some(byte - b'a' + 10),
+            _ => None,
+        };
+        let mut initial = Vec::with_capacity(digits.len() / 2);
+        for pair in digits.chunks(2) {
+            let [high, low] = pair else {
+                return Err(format!(
+                    "{}: the initial bytes are not whole bytes",
+                    self.key
+                ));
+            };
+            match (nibble(*high), nibble(*low)) {
+                (Some(h), Some(l)) => initial.push(h << 4 | l),
+                _ => return Err(format!("{}: the initial bytes are not hex", self.key)),
+            }
+        }
+        if initial.len() != self.size as usize {
+            return Err(format!(
+                "{}: the initial bytes do not match the size",
+                self.key
+            ));
+        }
+        Ok(DumpRange {
+            key: self.key.clone(),
+            address: self.address,
+            size: self.size,
+            initial,
+        })
+    }
 }
 
 /// What a build needs.
@@ -459,6 +530,10 @@ fn build_entry(
     match link_driver(&opts.tools, &opts.cfg, &request)? {
         LinkOutcome::Unresolved(names) => Ok(BuildState::LinkUnresolved(names)),
         LinkOutcome::Linked(build) => {
+            let plan = match dump_plan(pair, &build.elf_path) {
+                Ok(plan) => plan,
+                Err(reason) => return Ok(BuildState::Refused(reason)),
+            };
             let mut steps = vec![archived.record.clone()];
             steps.extend(build.records.iter().cloned());
             let record = BuildRecord {
@@ -475,6 +550,7 @@ fn build_entry(
                 include_lines: lines,
                 driver_flags: flags,
                 steps,
+                globals: plan.iter().map(GlobalRecord::from_range).collect(),
             };
             let path = dir.join(BUILD_JSON);
             let mut text = serde_json::to_string_pretty(&record)
@@ -486,6 +562,23 @@ fn build_entry(
             })
         }
     }
+}
+
+/// The writable globals of the pair's objects that are present in the linked
+/// driver, with their addresses and initial bytes (CONTEXT D-10). The objects
+/// are read again and checked against the verified hashes.
+fn dump_plan(pair: &PairInputs, elf_path: &Path) -> Result<Vec<DumpRange>, String> {
+    let mut symbols = Vec::new();
+    for (relative, expected) in &pair.verified.objects {
+        let path = pair.verified.objects_dir.join(relative);
+        let bytes = std::fs::read(&path).map_err(|e| format!("cannot read {relative}: {e}"))?;
+        if &sha256_hex(&bytes) != expected {
+            return Err(format!("{relative} changed while the driver was built"));
+        }
+        symbols.extend(writable_globals(relative, &bytes).map_err(|e| e.to_string())?);
+    }
+    let elf = std::fs::read(elf_path).map_err(|e| format!("cannot read driver.elf: {e}"))?;
+    locate_globals(&symbols, &elf).map_err(|e| e.to_string())
 }
 
 // ---------------------------------------------------------------------------
@@ -606,11 +699,24 @@ impl RunRow {
     }
 }
 
+/// A linked driver and its dump plan, ready to run.
+#[derive(Debug, Clone)]
+pub struct PreparedDriver {
+    /// The linked `driver.elf`.
+    pub elf_path: PathBuf,
+    /// The writable globals to snapshot around each call.
+    pub plan: Vec<DumpRange>,
+}
+
 /// One run of one request, turned into the vector it would store.
-struct Observed {
-    vector: Vector,
-    discarded: u32,
-    outcome: Outcome,
+#[derive(Debug, Clone)]
+pub struct Observed {
+    /// The vector.
+    pub vector: Vector,
+    /// Bytes the C code wrote through libc and the driver discarded.
+    pub discarded: u32,
+    /// How the run ended.
+    pub outcome: Outcome,
 }
 
 fn has_ub_source(outcome: &Outcome) -> HasUbSource {
@@ -632,6 +738,7 @@ fn observe(
     adapter: &Adapter,
     combination: &Combination,
     seed: &[u8],
+    plan: &[DumpRange],
     output: &RunOutput,
 ) -> Result<Observed, String> {
     let outcome = classify(output);
@@ -645,6 +752,7 @@ fn observe(
                 .region(OUT_REGION)
                 .map(|region| region.bytes.clone())
                 .ok_or_else(|| "the result frame has no output region".to_owned())?;
+            check_globals(plan, &frame)?;
             (out, frame.discarded)
         }
         _ => (Vec::new(), 0),
@@ -678,6 +786,102 @@ fn observe(
     })
 }
 
+/// What one run needs besides the driver and the request.
+#[derive(Debug, Clone, Copy)]
+pub struct Exec<'a> {
+    /// The pinned tools.
+    pub tools: &'a ExecTools,
+    /// The runner configuration.
+    pub cfg: &'a RunnerConfig,
+    /// The budgets of the run.
+    pub budgets: &'a Budgets,
+}
+
+/// Run one seed with one scalar combination twice through the driver, judge both
+/// runs and require the two vectors to be byte-identical (CONTEXT D-02). The
+/// inner `Err` says why no vector can be stored: an executor error, an
+/// `untyped_global_changed`, or two runs that differ. Nothing is retried.
+///
+/// # Errors
+/// [`HarnessError`] when the request cannot be written or `qemu-arm` cannot be
+/// started.
+pub fn run_vector_twice(
+    exec: &Exec<'_>,
+    adapter: &Adapter,
+    driver: &PreparedDriver,
+    slot_dir: &Path,
+    seed: &[u8],
+    combination: &Combination,
+) -> Result<Result<Observed, String>, HarnessError> {
+    let ranges: Vec<(u32, u32)> = driver
+        .plan
+        .iter()
+        .map(|range| (range.address, range.size))
+        .collect();
+    let request = Request::entry(
+        seed,
+        adapter.output_capacity(combination),
+        &adapter.scalar_words(combination),
+    )
+    .with_dump_plan(&ranges);
+    let mut observed = Vec::with_capacity(2);
+    for _ in 0..2 {
+        let slot = Slot::create(slot_dir)?;
+        let output = run_driver(
+            exec.tools,
+            exec.cfg,
+            exec.budgets,
+            &driver.elf_path,
+            &slot,
+            &request,
+        )?;
+        match observe(adapter, combination, seed, &driver.plan, &output) {
+            Ok(done) => observed.push(done),
+            Err(reason) => return Ok(Err(reason)),
+        }
+    }
+    let (Some(second), Some(first)) = (observed.pop(), observed.pop()) else {
+        return Ok(Err("fewer than two runs were observed".to_owned()));
+    };
+    let same = match (
+        first.vector.to_canonical_json(),
+        second.vector.to_canonical_json(),
+    ) {
+        (Ok(a), Ok(b)) => a == b && first.discarded == second.discarded,
+        _ => false,
+    };
+    if same {
+        Ok(Ok(first))
+    } else {
+        Ok(Err("the two runs differ".to_owned()))
+    }
+}
+
+/// A writable global whose bytes differ from the image's initial bytes, before
+/// or after the call, is state the vector must record; recording needs a typed
+/// layout (plan 03-05), and raw bytes are never stored (CONTEXT D-06, D-10).
+fn check_globals(plan: &[DumpRange], frame: &crate::frame::Frame) -> Result<(), String> {
+    for (index, range) in plan.iter().enumerate() {
+        let index = u32::try_from(index).map_err(|_| "too many dump ranges".to_owned())?;
+        let region = |base: u32| {
+            frame
+                .region(base + index)
+                .map(|region| region.bytes.as_slice())
+                .filter(|bytes| bytes.len() == range.size as usize)
+                .ok_or_else(|| format!("the result frame has no region for {}", range.key))
+        };
+        let before = region(DUMP_BEFORE_REGION)?;
+        let after = region(DUMP_AFTER_REGION)?;
+        if before != range.initial.as_slice() || after != range.initial.as_slice() {
+            return Err(format!(
+                "executor_error: untyped_global_changed ({}): the bytes differ from the image and no layout types them",
+                range.key
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn policy_of(scope: &Scope, target: &str) -> Result<String, String> {
     let path = scope
         .testbed_dir()
@@ -691,7 +895,9 @@ fn policy_of(scope: &Scope, target: &str) -> Result<String, String> {
     Ok(sha256_hex(&bytes))
 }
 
-fn budgets_record(budgets: &Budgets) -> ProvenanceBudgets {
+/// The budgets of a run as the provenance records them (CONTEXT D-19).
+#[must_use]
+pub fn budgets_record(budgets: &Budgets) -> ProvenanceBudgets {
     ProvenanceBudgets {
         timeout_ms: budgets.timeout_ms,
         reserved_va: u64::from(budgets.reserved_va),
@@ -724,24 +930,38 @@ pub fn run_entries(opts: &RunOptions) -> Result<Vec<RunRow>, HarnessError> {
     Ok(rows)
 }
 
-fn run_entry(opts: &RunOptions, item: &Selected) -> Result<RunState, HarnessError> {
-    let adapter = match Adapter::from_entry(&item.target, &item.config, &item.entry) {
+/// A built entry: its adapter, its build record and the driver ready to run.
+#[derive(Debug, Clone)]
+pub(crate) struct LoadedDriver {
+    pub adapter: Adapter,
+    pub build: BuildRecord,
+    pub driver: PreparedDriver,
+}
+
+/// Load the build of `entry` from `scope.build_root` and check `driver.elf`
+/// against the hash `build.json` records. The error is the [`RunState`] the row
+/// takes.
+pub(crate) fn load_driver(
+    scope: &Scope,
+    target: &str,
+    config: &str,
+    entry: &Entry,
+) -> Result<LoadedDriver, RunState> {
+    let adapter = match Adapter::from_entry(target, config, entry) {
         Ok(adapter) => adapter,
-        Err(AdapterError::NoRoles) => return Ok(RunState::NoRoles),
-        Err(error) => return Ok(RunState::Failed(error.to_string())),
+        Err(AdapterError::NoRoles) => return Err(RunState::NoRoles),
+        Err(error) => return Err(RunState::Failed(error.to_string())),
     };
     let key = adapter.argv0();
-    let dir = opts
-        .scope
-        .entry_dir(&item.target, &item.config, &item.entry.name);
+    let dir = scope.entry_dir(target, config, &entry.name);
     let build_path = dir.join(BUILD_JSON);
     let build: BuildRecord = match std::fs::read(&build_path) {
         Ok(bytes) => match serde_json::from_slice(&bytes) {
             Ok(build) => build,
-            Err(error) => return Ok(RunState::NotBuilt(format!("{key}: build.json: {error}"))),
+            Err(error) => return Err(RunState::NotBuilt(format!("{key}: build.json: {error}"))),
         },
         Err(error) => {
-            return Ok(RunState::NotBuilt(format!(
+            return Err(RunState::NotBuilt(format!(
                 "{key}: no {}: {error}",
                 build_path.display()
             )));
@@ -751,18 +971,43 @@ fn run_entry(opts: &RunOptions, item: &Selected) -> Result<RunState, HarnessErro
     let elf_hash = match std::fs::read(&elf_path) {
         Ok(bytes) => sha256_hex(&bytes),
         Err(error) => {
-            return Ok(RunState::NotBuilt(format!(
+            return Err(RunState::NotBuilt(format!(
                 "{key}: no {}: {error}",
                 elf_path.display()
             )));
         }
     };
     if elf_hash != build.driver_elf_sha256 {
-        return Ok(RunState::NotBuilt(format!(
+        return Err(RunState::NotBuilt(format!(
             "{key}: driver.elf has sha256 {elf_hash}, build.json records {}",
             build.driver_elf_sha256
         )));
     }
+    let mut plan = Vec::new();
+    for record in &build.globals {
+        match record.to_range() {
+            Ok(range) => plan.push(range),
+            Err(reason) => return Err(RunState::NotBuilt(format!("{key}: build.json: {reason}"))),
+        }
+    }
+    Ok(LoadedDriver {
+        adapter,
+        build,
+        driver: PreparedDriver { elf_path, plan },
+    })
+}
+
+fn run_entry(opts: &RunOptions, item: &Selected) -> Result<RunState, HarnessError> {
+    let loaded = match load_driver(&opts.scope, &item.target, &item.config, &item.entry) {
+        Ok(loaded) => loaded,
+        Err(state) => return Ok(state),
+    };
+    let LoadedDriver {
+        adapter,
+        build,
+        driver,
+    } = loaded;
+    let key = adapter.argv0();
     let policy_sha256 = match policy_of(&opts.scope, &item.target) {
         Ok(sha) => sha,
         Err(reason) => return Ok(RunState::Failed(format!("{key}: {reason}"))),
@@ -804,6 +1049,11 @@ fn run_entry(opts: &RunOptions, item: &Selected) -> Result<RunState, HarnessErro
     }
 
     let budgets = Budgets::DEFAULT;
+    let exec = Exec {
+        tools: &opts.tools,
+        cfg: &opts.cfg,
+        budgets: &budgets,
+    };
     let slot_dir = opts.scratch_dir.join(format!(
         "{}-{}-{}",
         item.target, item.config, item.entry.name
@@ -845,40 +1095,16 @@ fn run_entry(opts: &RunOptions, item: &Selected) -> Result<RunState, HarnessErro
             continue;
         }
         for combo in &combos {
-            let request = Request::entry(
-                &bytes,
-                adapter.output_capacity(combo),
-                &adapter.scalar_words(combo),
-            );
-            let mut observed = Vec::new();
-            for _ in 0..2 {
-                let slot = Slot::create(&slot_dir)?;
-                let output =
-                    run_driver(&opts.tools, &opts.cfg, &budgets, &elf_path, &slot, &request)?;
-                match observe(&adapter, combo, &bytes, &output) {
-                    Ok(done) => observed.push(done),
-                    Err(reason) => {
-                        return Ok(RunState::Failed(format!(
-                            "{key} seed {} combination {:?}: {reason}",
-                            seed.sha256, combo.values
-                        )));
-                    }
+            let first = match run_vector_twice(&exec, &adapter, &driver, &slot_dir, &bytes, combo)?
+            {
+                Ok(first) => first,
+                Err(reason) => {
+                    return Ok(RunState::Failed(format!(
+                        "{key} seed {} combination {:?}: {reason}",
+                        seed.sha256, combo.values
+                    )));
                 }
-            }
-            let (first, second) = (&observed[0], &observed[1]);
-            let same = match (
-                first.vector.to_canonical_json(),
-                second.vector.to_canonical_json(),
-            ) {
-                (Ok(a), Ok(b)) => a == b && first.discarded == second.discarded,
-                _ => false,
             };
-            if !same {
-                return Ok(RunState::Failed(format!(
-                    "{key} seed {} combination {:?}: the two runs differ",
-                    seed.sha256, combo.values
-                )));
-            }
             let outcome = &first.outcome;
             match outcome {
                 Outcome::Ok { .. } => summary.ok += 1,

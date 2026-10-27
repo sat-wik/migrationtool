@@ -1023,11 +1023,35 @@ fn entry_issues(f: &str, entries: &[Entry], issues: &mut Vec<String>) {
     }
 }
 
-/// The rules for an entry's `arg` tables (CONTEXT D-11): one table per
+/// The largest output capacity an `out_cap` may take: the executor's largest
+/// input (a test in `mt-harness` ties the two), so every combination can run.
+pub const MAX_OUT_CAP: u64 = 65_536;
+
+/// Names a `scalar` (or a named `out_cap`) may not take: the top-level names of
+/// a vector's library state and the regions of a pointer.
+pub const RESERVED_ARG_NAMES: [&str; 5] = ["in", "out", "globals", "heap", "ret"];
+
+/// Parameter types narrower than 32 bits: an `in_len` of one of these needs a
+/// `max`, because a longer seed would wrap in the call.
+const NARROW_LENGTH_TYPES: [&str; 9] = [
+    "uint8_t",
+    "int8_t",
+    "unsigned char",
+    "char",
+    "signed char",
+    "uint16_t",
+    "int16_t",
+    "unsigned short",
+    "short",
+];
+
+/// The rules for an entry's `arg` tables (CONTEXT D-11, D-14): one table per
 /// parameter, a pointer role only on a pointer parameter and a value role only
-/// on a value parameter, and every input buffer paired with its length. An
-/// entry without tables is not checked, so Phase 2's manifests validate as
-/// before.
+/// on a value parameter, every input buffer paired with its length and every
+/// output buffer with its capacity, the keys each role takes, names that are C
+/// identifiers, not reserved and not repeated, and at most
+/// [`MAX_SCALAR_COMBOS`] combinations. An entry without tables is not checked,
+/// so Phase 2's manifests validate as before.
 fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
     if entry.arg.is_empty() {
         return;
@@ -1049,32 +1073,139 @@ fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
         return;
     }
     for (index, (arg, param)) in entry.arg.iter().zip(&params).enumerate() {
+        let h = format!("{f}[{index}]");
+        let word = arg.role.word();
         let pointer = is_pointer_parameter(param);
         if arg.role.is_pointer_role() && !pointer {
             issues.push(format!(
-                "{f}[{index}]: role {} needs a pointer parameter, found {param:?} (D-11)",
-                arg.role.word()
+                "{h}: role {word} needs a pointer parameter, found {param:?} (D-11)"
             ));
         } else if !arg.role.is_pointer_role() && pointer {
             issues.push(format!(
-                "{f}[{index}]: role {} needs a value parameter, found the pointer {param:?} (D-11)",
-                arg.role.word()
+                "{h}: role {word} needs a value parameter, found the pointer {param:?} (D-11)"
+            ));
+        }
+        arg_key_issues(&h, arg, param, issues);
+    }
+    let count = |role: Role| entry.arg.iter().filter(|arg| arg.role == role).count();
+    for (buf, len, buf_word, len_word) in [
+        (Role::InBuf, Role::InLen, "in_buf", "in_len"),
+        (Role::OutBuf, Role::OutCap, "out_buf", "out_cap"),
+    ] {
+        let (bufs, lens) = (count(buf), count(len));
+        if bufs > 1 {
+            issues.push(format!("{f}: {bufs} {buf_word} tables; at most one (D-11)"));
+        }
+        if bufs > lens {
+            issues.push(format!(
+                "{f}: an {buf_word} needs its {len_word}, found {lens} {len_word} for {bufs} {buf_word} (D-11)"
+            ));
+        } else if lens > bufs {
+            issues.push(format!(
+                "{f}: an {len_word} needs an {buf_word}, found {lens} {len_word} for {bufs} {buf_word} (D-11)"
             ));
         }
     }
-    let count = |role: Role| entry.arg.iter().filter(|arg| arg.role == role).count();
-    let (bufs, lens) = (count(Role::InBuf), count(Role::InLen));
-    if bufs > 1 {
-        issues.push(format!("{f}: {bufs} in_buf tables; at most one (D-11)"));
+    name_issues(&f, entry, issues);
+    let combinations: usize = entry
+        .arg
+        .iter()
+        .filter(|arg| matches!(arg.role, Role::OutCap | Role::Scalar))
+        .map(|arg| 1 + arg.sweep.len())
+        .try_fold(1usize, usize::checked_mul)
+        .unwrap_or(usize::MAX);
+    if combinations > MAX_SCALAR_COMBOS {
+        issues.push(format!(
+            "{f}: {combinations} scalar combinations exceed the limit of {MAX_SCALAR_COMBOS} (D-14)"
+        ));
     }
-    if bufs > lens {
+}
+
+/// The keys one role takes and the values they may have.
+fn arg_key_issues(h: &str, arg: &ArgRole, param: &str, issues: &mut Vec<String>) {
+    let word = arg.role.word();
+    let takes_value = matches!(arg.role, Role::OutCap | Role::Scalar);
+    match arg.role {
+        Role::InBuf | Role::OutBuf | Role::InLen => {
+            if arg.name.is_some() {
+                issues.push(format!("{h}: role {word} takes no name (D-11)"));
+            }
+        }
+        Role::Scalar => match &arg.name {
+            None => issues.push(format!("{h}: role scalar needs a name (D-11)")),
+            Some(name) if !is_c_identifier(name) => {
+                issues.push(format!("{h}: name {name:?} is not a C identifier (D-11)"));
+            }
+            Some(_) => {}
+        },
+        Role::OutCap => {
+            if let Some(name) = &arg.name
+                && !is_c_identifier(name)
+            {
+                issues.push(format!("{h}: name {name:?} is not a C identifier (D-11)"));
+            }
+        }
+    }
+    if takes_value {
+        match arg.default {
+            None => issues.push(format!("{h}: role {word} needs a default (D-14)")),
+            Some(default) => {
+                let mut seen = vec![default];
+                for value in &arg.sweep {
+                    if seen.contains(value) {
+                        issues.push(format!(
+                            "{h}: the sweep repeats the value {value}; every combination must differ (D-14)"
+                        ));
+                    }
+                    seen.push(*value);
+                }
+            }
+        }
+        if arg.role == Role::OutCap {
+            let limit = i64::try_from(MAX_OUT_CAP).unwrap_or(i64::MAX);
+            for value in arg.default.iter().chain(&arg.sweep) {
+                if !(0..=limit).contains(value) {
+                    issues.push(format!(
+                        "{h}: out_cap value {value} is outside 0..={MAX_OUT_CAP} (D-14)"
+                    ));
+                }
+            }
+        }
+    } else if arg.default.is_some() || !arg.sweep.is_empty() {
         issues.push(format!(
-            "{f}: an in_buf needs its in_len, found {lens} in_len for {bufs} in_buf (D-11)"
+            "{h}: default and sweep belong to out_cap and scalar, not {word} (D-14)"
         ));
-    } else if lens > bufs {
-        issues.push(format!(
-            "{f}: an in_len needs an in_buf, found {lens} in_len for {bufs} in_buf (D-11)"
-        ));
+    }
+    match (arg.role, arg.max) {
+        (Role::InLen, None) if NARROW_LENGTH_TYPES.contains(&param) => issues.push(format!(
+            "{h}: role in_len on a {param:?} parameter needs a max, because a longer input would wrap (D-11)"
+        )),
+        (Role::InLen, Some(0)) => issues.push(format!("{h}: max must be above zero (D-11)")),
+        (Role::InLen, _) | (_, None) => {}
+        (_, Some(_)) => issues.push(format!("{h}: max is only allowed on in_len (D-11)")),
+    }
+}
+
+/// Names recorded for `out_cap` and `scalar` values: not reserved, not repeated.
+/// An unnamed `out_cap` is recorded as `out_cap`.
+fn name_issues(f: &str, entry: &Entry, issues: &mut Vec<String>) {
+    let mut seen: Vec<String> = Vec::new();
+    for (index, arg) in entry.arg.iter().enumerate() {
+        let name = match (arg.role, &arg.name) {
+            (Role::OutCap, None) => "out_cap".to_owned(),
+            (Role::OutCap | Role::Scalar, Some(name)) => name.clone(),
+            _ => continue,
+        };
+        if RESERVED_ARG_NAMES.contains(&name.as_str()) {
+            issues.push(format!(
+                "{f}[{index}]: name {name:?} is reserved ({}) (D-11)",
+                RESERVED_ARG_NAMES.join(", ")
+            ));
+        }
+        if seen.contains(&name) {
+            issues.push(format!("{f}[{index}]: duplicate name {name:?} (D-11)"));
+        }
+        seen.push(name);
     }
 }
 

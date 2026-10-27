@@ -353,6 +353,7 @@ dependencies = [
  "mt-seeds",
  "mt-toolchain",
  "mt-vectors",
+ "object",
  "regex",
  "serde",
  "serde_json",

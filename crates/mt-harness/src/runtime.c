@@ -21,12 +21,15 @@
  * a length and the bytes. The fields are: 0 a selector word (self-test only),
  * 1 the input bytes, 2 the output capacity word, and for an entry driver also
  * 3 the scalar arguments (eight bytes each, two's complement) and 4 a dump
- * plan (empty until the plan describes ranges). A request has 3 or 5 fields.
+ * plan: pairs of an address and a size (eight bytes each) of the writable
+ * globals to snapshot. A request has 3 or 5 fields.
  *
- * Result frame (little-endian), written once with a raw write after the call:
- * "MTRS", version 1, status, raw return value, bytes the C code wrote through
- * libc (discarded), slack check result, region count, then per region an id,
- * a length and the bytes, then "MTRE".
+ * Result frame (little-endian), written after the call: "MTRS", version 1,
+ * status, raw return value, bytes the C code wrote through libc (discarded),
+ * slack check result, region count, then per region an id, a length and the
+ * bytes, then "MTRE". Region 1 is the whole output buffer; region 0x1000 + i
+ * is dump range i before the call and region 0x2000 + i the same range after
+ * it.
  */
 #include <errno.h>
 #include <stddef.h>
@@ -55,6 +58,11 @@ typedef uint32_t u32;
 #define MT_STACK_BASE 0x07000000u
 #define MT_STACK_PAGES 64u
 #define MT_MAX_FIELDS 8u
+#define MT_DUMP_MAX_RANGES 4096u
+#define MT_DUMP_TOTAL (512u * 1024u)
+#define MT_REGION_OUT 1u
+#define MT_REGION_BEFORE 0x1000u
+#define MT_REGION_AFTER 0x2000u
 #define MT_REQ_MAX (MT_MAX_INPUT + 4096u)
 
 #define MT_EXIT_CALLED 95
@@ -315,6 +323,16 @@ static u32 mt_field_count;
 static const u8 *mt_scalars;
 static u32 mt_scalar_count;
 
+/* The dump plan: writable globals snapshotted before and after the call. */
+struct mt_range {
+    u32 address;
+    u32 size;
+};
+
+static struct mt_range mt_ranges[MT_DUMP_MAX_RANGES];
+static u32 mt_range_count;
+static u8 mt_dump_before[MT_DUMP_TOTAL];
+
 static u32 mt_get32(const u8 *p)
 {
     return (u32)p[0] | ((u32)p[1] << 8) | ((u32)p[2] << 16) | ((u32)p[3] << 24);
@@ -379,6 +397,35 @@ static void mt_load_request(const char *path)
     }
 }
 
+/* Read the dump plan and snapshot the ranges as they are before the call. */
+static void mt_load_plan(const u8 *plan, u32 count)
+{
+    u32 i;
+    u32 total = 0;
+    if (count > MT_DUMP_MAX_RANGES) {
+        mt_exit(MT_EXIT_REQUEST_BAD);
+    }
+    for (i = 0; i < count; i++) {
+        mt_ranges[i].address = mt_get32(plan + (size_t)i * 8u);
+        mt_ranges[i].size = mt_get32(plan + (size_t)i * 8u + 4u);
+        if (mt_ranges[i].size > MT_DUMP_TOTAL - total) {
+            mt_exit(MT_EXIT_REQUEST_BAD);
+        }
+        total += mt_ranges[i].size;
+    }
+    mt_range_count = count;
+}
+
+static void mt_snapshot_before(void)
+{
+    u32 i;
+    u32 off = 0;
+    for (i = 0; i < mt_range_count; i++) {
+        memcpy(mt_dump_before + off, (const void *)mt_ranges[i].address, mt_ranges[i].size);
+        off += mt_ranges[i].size;
+    }
+}
+
 /* The index-th scalar argument as a signed 64-bit value. */
 static long long mt_scalar(u32 index)
 {
@@ -398,38 +445,54 @@ static long long mt_scalar(u32 index)
 
 /* ---- the result frame ---- */
 
-static u8 mt_frame_buf[MT_MAX_INPUT + 256u];
-
-static void mt_emit_frame(u32 status, u32 ret, u32 slack, const u8 *out, u32 out_len)
+static void mt_write_all(const u8 *data, u32 len)
 {
-    u8 *p = mt_frame_buf;
-    u32 total;
     u32 off = 0;
-    p[0] = 'M';
-    p[1] = 'T';
-    p[2] = 'R';
-    p[3] = 'S';
-    mt_put32(p + 4, 1u);
-    mt_put32(p + 8, status);
-    mt_put32(p + 12, ret);
-    mt_put32(p + 16, mt_discarded);
-    mt_put32(p + 20, slack);
-    mt_put32(p + 24, 1u); /* one region: the whole output buffer */
-    mt_put32(p + 28, 1u);
-    mt_put32(p + 32, out_len);
-    memcpy(p + 36, out, out_len);
-    p[36 + out_len] = 'M';
-    p[37 + out_len] = 'T';
-    p[38 + out_len] = 'R';
-    p[39 + out_len] = 'E';
-    total = 40u + out_len;
-    while (off < total) {
-        long w = sc(SYS_WRITE, 1, (long)(mt_frame_buf + off), (long)(total - off), 0, 0, 0);
+    while (off < len) {
+        long w = sc(SYS_WRITE, 1, (long)(data + off), (long)(len - off), 0, 0, 0);
         if (w <= 0) {
             mt_exit(MT_EXIT_SETUP);
         }
         off += (u32)w;
     }
+}
+
+static void mt_write_region(u32 id, const u8 *data, u32 len)
+{
+    u8 head[8];
+    mt_put32(head, id);
+    mt_put32(head + 4, len);
+    mt_write_all(head, 8u);
+    mt_write_all(data, len);
+}
+
+/* The frame is written in pieces straight from the buffers: a header, the output
+ * region, the before and after region of each dump range, the end marker. */
+static void mt_emit_frame(u32 status, u32 ret, u32 slack, const u8 *out, u32 out_len)
+{
+    u8 head[28];
+    u32 i;
+    u32 off = 0;
+    head[0] = 'M';
+    head[1] = 'T';
+    head[2] = 'R';
+    head[3] = 'S';
+    mt_put32(head + 4, 1u);
+    mt_put32(head + 8, status);
+    mt_put32(head + 12, ret);
+    mt_put32(head + 16, mt_discarded);
+    mt_put32(head + 20, slack);
+    mt_put32(head + 24, 1u + 2u * mt_range_count);
+    mt_write_all(head, 28u);
+    mt_write_region(MT_REGION_OUT, out, out_len);
+    for (i = 0; i < mt_range_count; i++) {
+        mt_write_region(MT_REGION_BEFORE + i, mt_dump_before + off, mt_ranges[i].size);
+        off += mt_ranges[i].size;
+    }
+    for (i = 0; i < mt_range_count; i++) {
+        mt_write_region(MT_REGION_AFTER + i, (const u8 *)mt_ranges[i].address, mt_ranges[i].size);
+    }
+    mt_write_all((const u8 *)"MTRE", 4u);
 }
 
 /* ---- the run: on the driver's own stack ---- */
@@ -457,11 +520,12 @@ void mt_main(const char *path)
         mt_exit(MT_EXIT_REQUEST_BAD);
     }
     if (mt_field_count == 5u) {
-        if (mt_fields[3].len % 8u != 0u || mt_fields[4].len != 0u) {
+        if (mt_fields[3].len % 8u != 0u || mt_fields[4].len % 8u != 0u) {
             mt_exit(MT_EXIT_REQUEST_BAD);
         }
         mt_scalars = mt_fields[3].data;
         mt_scalar_count = mt_fields[3].len / 8u;
+        mt_load_plan(mt_fields[4].data, mt_fields[4].len / 8u);
     }
     selector = mt_get32(mt_fields[0].data);
     out_cap = mt_get32(mt_fields[2].data);
@@ -481,6 +545,7 @@ void mt_main(const char *path)
     (void)mt_in_len;
     (void)mt_out;
     (void)mt_out_cap;
+    mt_snapshot_before();
     ret = (u32)(@MT_CALL@);
     fflush(NULL);
     slack = mt_slack_changed(&in_buf) | mt_slack_changed(&out_buf);

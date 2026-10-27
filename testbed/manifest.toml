@@ -765,6 +765,13 @@ header = "libfdt/libfdt.h"
 source = "libfdt/fdt_check.c"
 form = "direct"
 signature = "int (const void *, size_t)"
+# Argument roles (Phase 3 CONTEXT D-11): the blob and its size. fdt_check_full
+# writes nothing, so there is no output buffer and no scalar to sweep (D-14).
+[[target.libfdt.entry.arg]]
+role = "in_buf"
+
+[[target.libfdt.entry.arg]]
+role = "in_len"
 
 [[target.libfdt.config]]
 name = "default"
@@ -905,6 +912,24 @@ header = "lib/lz4.h"
 source = "lib/lz4.c"
 form = "direct"
 signature = "int (const char *, char *, int, int)"
+# Argument roles (Phase 3 CONTEXT D-11): source, destination, compressed size and
+# destination capacity, in parameter order. The destination is prefilled with the
+# sentinel and recorded whole after the call, partial writes on the error path
+# included (D-07). The capacity is swept (D-14): 256 first, a small 16 that makes
+# a longer block fail part-way, and 4096 that leaves a long tail of sentinel.
+[[target.lz4.entry.arg]]
+role = "in_buf"
+
+[[target.lz4.entry.arg]]
+role = "out_buf"
+
+[[target.lz4.entry.arg]]
+role = "in_len"
+
+[[target.lz4.entry.arg]]
+role = "out_cap"
+default = 256
+sweep = [16, 4096]
 
 [[target.lz4.entry]]
 name = "LZ4F_getFrameInfo"

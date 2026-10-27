@@ -286,31 +286,51 @@ fn eqv_04_sentinel_prefill_recorded() {
             .or_default()
             .insert(cap, (vector.rc, recorded));
     }
+    // LZ4's decoder copies in wide steps, so it can write a few bytes past the
+    // length it returns. The contract records the whole buffer exactly because
+    // of this; the test pins how far it goes (measured: 3) with a margin.
+    const OVERSHOOT_MARGIN: usize = 16;
     let mut successes = 0usize;
     let mut cut_short = 0usize;
+    let mut partial_writes = 0usize;
+    let mut overshoot = 0usize;
     for (seed, caps) in &by_seed {
         assert_eq!(
             caps.keys().copied().collect::<Vec<_>>(),
             [16, 256, 4096],
             "every seed runs once per capacity (seed {seed:?})"
         );
+        // An error path may have written part of the output before failing.
+        for cap in [16u32, 256, 4096] {
+            let (rc, recorded) = &caps[&cap];
+            if *rc < 0 && recorded.iter().any(|byte| *byte != 0xA5) {
+                partial_writes += 1;
+            }
+        }
         let (rc_big, big) = &caps[&4096];
         if *rc_big < 0 {
             continue;
         }
         let produced = usize::try_from(*rc_big).unwrap();
         successes += 1;
-        // With room to spare the tail is untouched sentinel.
+        let last = big
+            .iter()
+            .rposition(|byte| *byte != 0xA5)
+            .map_or(0, |at| at + 1);
+        overshoot = overshoot.max(last.saturating_sub(produced));
+        // With room to spare, everything beyond the decoder's overshoot is
+        // untouched sentinel.
         assert!(
-            big[produced..].iter().all(|byte| *byte == 0xA5),
-            "the tail after {produced} produced bytes is 0xA5"
+            big[produced + OVERSHOOT_MARGIN..]
+                .iter()
+                .all(|byte| *byte == 0xA5),
+            "bytes after {produced} produced bytes and the margin are 0xA5"
         );
         for cap in [16u32, 256] {
             let (rc, recorded) = &caps[&cap];
             if produced <= cap as usize {
                 assert_eq!(*rc, *rc_big, "capacity {cap}");
                 assert_eq!(&recorded[..produced], &big[..produced]);
-                assert!(recorded[produced..].iter().all(|byte| *byte == 0xA5));
             } else {
                 // The block does not fit: the error path, whatever it wrote
                 // before failing is part of the vector.
@@ -320,10 +340,18 @@ fn eqv_04_sentinel_prefill_recorded() {
         }
     }
     println!(
-        "lz4/default/LZ4_decompress_safe sentinel: seeds={} produced_ok={successes} cut_short={cut_short}",
+        "lz4/default/LZ4_decompress_safe sentinel: seeds={} produced_ok={successes} cut_short={cut_short} partial_writes={partial_writes} max_overshoot={overshoot}",
         by_seed.len()
     );
     assert!(successes > 0, "at least one seed decompresses");
+    assert!(
+        cut_short > 0,
+        "the small capacity cuts at least one block short"
+    );
+    assert!(
+        partial_writes > 0,
+        "an error path leaves a partial write in the recorded buffer (D-07)"
+    );
 }
 
 #[test]
@@ -397,7 +425,7 @@ fn eqv_04_replay_reproduces_stored_vectors() {
     std::fs::write(&victim, &bytes).unwrap();
     let edited = replay_corpus(&options, &dir).unwrap();
     assert!(!edited.passed());
-    assert_eq!(edited.differing, [sha.clone()]);
+    assert_eq!(edited.differing, std::slice::from_ref(&sha));
     assert_eq!(edited.identical, summary.vectors - 1);
     assert_eq!(edited.render(), format!("{} differs {sha}", dir.display()));
 

@@ -8,7 +8,17 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use mt_capture::manifest::{Manifest, Role};
+use mt_toolchain::runner::RunnerConfig;
+use mt_vectors::bytes::decode_latin1;
+use mt_vectors::corpus::CorpusIndex;
+use mt_vectors::vector::Vector;
+
 use crate::HarnessError;
+use crate::adapter::{Adapter, Combination};
+use crate::budget::Budgets;
+use crate::run::{Exec, Scope, load_driver, run_vector_twice};
+use crate::tools::ExecTools;
 
 /// The result of comparing two corpus trees.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -104,4 +114,218 @@ pub fn check_corpora(first: &Path, second: &Path) -> Result<CorpusComparison, Ha
     }
     problems.sort();
     Ok(CorpusComparison { files, problems })
+}
+
+// ---------------------------------------------------------------------------
+// Replaying a stored corpus
+// ---------------------------------------------------------------------------
+
+/// What a replay needs.
+#[derive(Debug, Clone)]
+pub struct ReplayOptions {
+    /// The manifest and the build root: the driver of the corpus's entry is
+    /// loaded from `<build root>/<target>/<config>/<entry>`.
+    pub scope: Scope,
+    /// The pinned tools.
+    pub tools: ExecTools,
+    /// The runner configuration.
+    pub cfg: RunnerConfig,
+    /// Where the replay's scratch slots go.
+    pub scratch_dir: PathBuf,
+}
+
+/// The result of replaying one entry's corpus.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReplayReport {
+    /// The corpus directory.
+    pub dir: PathBuf,
+    /// The vectors the index lists.
+    pub vectors: usize,
+    /// Vectors that were re-run and reproduced byte for byte.
+    pub identical: usize,
+    /// sha256 of each vector that did not reproduce (or could not be read or
+    /// re-run), in index order.
+    pub differing: Vec<String>,
+    /// What differs between a provenance record and the current build, as
+    /// `<sha256> <field>`.
+    pub provenance_mismatch: Vec<String>,
+}
+
+impl ReplayReport {
+    /// True when every vector reproduced and every provenance record names the
+    /// current build.
+    #[must_use]
+    pub fn passed(&self) -> bool {
+        self.vectors > 0 && self.differing.is_empty() && self.provenance_mismatch.is_empty()
+    }
+
+    /// The row: `<dir> identical <n>`, `<dir> differs <sha256>` for the first
+    /// vector that did not reproduce, or `<dir> provenance_mismatch (<sha256>
+    /// <field>)`.
+    #[must_use]
+    pub fn render(&self) -> String {
+        let dir = self.dir.display();
+        if let Some(first) = self.differing.first() {
+            format!("{dir} differs {first}")
+        } else if let Some(first) = self.provenance_mismatch.first() {
+            format!("{dir} provenance_mismatch ({first})")
+        } else if self.vectors == 0 {
+            format!("{dir} empty")
+        } else {
+            format!("{dir} identical {}", self.identical)
+        }
+    }
+}
+
+fn input(what: impl Into<String>, detail: impl Into<String>) -> HarnessError {
+    HarnessError::Input {
+        what: what.into(),
+        detail: detail.into(),
+    }
+}
+
+/// The combination a stored vector was made with: `argv[1..]` are the
+/// non-pointer parameters in order, the input length first where there is an
+/// `in_len`.
+fn combination_of(
+    adapter: &Adapter,
+    vector: &Vector,
+    seed_len: usize,
+) -> Result<Combination, String> {
+    let mut texts = vector.argv.iter().skip(1);
+    let mut values = Vec::new();
+    for param in adapter.params() {
+        match param.role {
+            Role::InLen => {
+                let text = texts.next().ok_or("argv is shorter than the parameters")?;
+                if text != &seed_len.to_string() {
+                    return Err(format!(
+                        "argv input length {text} is not the stdin length {seed_len}"
+                    ));
+                }
+            }
+            Role::OutCap | Role::Scalar => {
+                let text = texts.next().ok_or("argv is shorter than the parameters")?;
+                values.push(
+                    text.parse::<i64>()
+                        .map_err(|_| format!("argv value {text:?} is not a decimal integer"))?,
+                );
+            }
+            Role::InBuf | Role::OutBuf => {}
+        }
+    }
+    if texts.next().is_some() {
+        return Err("argv is longer than the parameters".to_owned());
+    }
+    Ok(Combination { values })
+}
+
+/// Re-run every vector of the corpus in `dir` (`<corpus>/<target>/<config>/
+/// <entry>`) twice through the current build and compare the canonical bytes
+/// with the stored file, then compare each provenance record's driver, archive
+/// and object hashes with `build.json` (CONTEXT D-21; threat T-03-17). A stored
+/// file that was edited, cannot be read, or does not parse counts as differing;
+/// the corpus is read file by file so one bad file does not hide the rest.
+///
+/// # Errors
+/// [`HarnessError`] when the index cannot be read, the entry's driver is not
+/// built, or a tool cannot run.
+pub fn replay_corpus(options: &ReplayOptions, dir: &Path) -> Result<ReplayReport, HarnessError> {
+    let index_path = dir.join("index.json");
+    let index: CorpusIndex = serde_json::from_slice(
+        &std::fs::read(&index_path).map_err(|e| io("cannot read", &index_path, e))?,
+    )
+    .map_err(|e| input(index_path.display().to_string(), e.to_string()))?;
+    let manifest = Manifest::load(&options.scope.manifest_path).map_err(|e| {
+        input(
+            options.scope.manifest_path.display().to_string(),
+            e.to_string(),
+        )
+    })?;
+    let entry = manifest
+        .target
+        .get(&index.target)
+        .and_then(|target| target.entry.iter().find(|entry| entry.name == index.entry))
+        .ok_or_else(|| {
+            input(
+                index_path.display().to_string(),
+                format!("the manifest has no entry {}/{}", index.target, index.entry),
+            )
+        })?;
+    let loaded =
+        load_driver(&options.scope, &index.target, &index.config, entry).map_err(|state| {
+            input(
+                format!("{}/{}/{}", index.target, index.config, index.entry),
+                format!("the driver cannot be loaded: {state:?}"),
+            )
+        })?;
+    let budgets = Budgets::DEFAULT;
+    let exec = Exec {
+        tools: &options.tools,
+        cfg: &options.cfg,
+        budgets: &budgets,
+    };
+    let slot_dir = options.scratch_dir.join("replay");
+    let mut report = ReplayReport {
+        dir: dir.to_path_buf(),
+        vectors: index.vectors.len(),
+        identical: 0,
+        differing: Vec::new(),
+        provenance_mismatch: Vec::new(),
+    };
+    for (sha, provenance) in &index.vectors {
+        for (field, same) in [
+            (
+                "driver_elf",
+                provenance.driver_elf == loaded.build.driver_elf_sha256,
+            ),
+            (
+                "driver_source",
+                provenance.driver_source == loaded.build.driver_source_sha256,
+            ),
+            ("archive", provenance.archive == loaded.build.archive_sha256),
+            ("objects", provenance.objects == loaded.build.objects),
+        ] {
+            if !same {
+                report.provenance_mismatch.push(format!("{sha} {field}"));
+            }
+        }
+        let path = dir.join(format!("{sha}.json"));
+        let Ok(stored) = std::fs::read(&path) else {
+            report.differing.push(sha.clone());
+            continue;
+        };
+        let Ok(vector) = Vector::from_json_bytes(&stored) else {
+            report.differing.push(sha.clone());
+            continue;
+        };
+        let Ok(seed) = decode_latin1(&vector.stdin) else {
+            report.differing.push(sha.clone());
+            continue;
+        };
+        let Ok(combination) = combination_of(&loaded.adapter, &vector, seed.len()) else {
+            report.differing.push(sha.clone());
+            continue;
+        };
+        let observed = run_vector_twice(
+            &exec,
+            &loaded.adapter,
+            &loaded.driver,
+            &slot_dir,
+            &seed,
+            &combination,
+        )?;
+        let reproduced = vector.argv.first() == Some(&loaded.adapter.argv0())
+            && observed.is_ok_and(|done| {
+                done.vector
+                    .to_canonical_json()
+                    .is_ok_and(|bytes| bytes == stored)
+            });
+        if reproduced {
+            report.identical += 1;
+        } else {
+            report.differing.push(sha.clone());
+        }
+    }
+    Ok(report)
 }

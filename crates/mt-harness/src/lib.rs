@@ -16,6 +16,7 @@
 //! - [`adapter`] turns an entry's manifest roles into the call, the `argv` and
 //!   the scalar combinations,
 //! - [`link`] checks the captured objects and links the driver against them,
+//! - [`globals`] finds the writable globals of the objects and their addresses,
 //! - [`exec`] runs a driver under `qemu-arm` through the runner,
 //! - [`frame`] parses the result frame the driver writes,
 //! - [`classify`] maps a finished run to exactly one outcome,
@@ -31,6 +32,7 @@ pub mod classify;
 pub mod driver;
 pub mod exec;
 pub mod frame;
+pub mod globals;
 pub mod link;
 pub mod replay;
 pub mod run;

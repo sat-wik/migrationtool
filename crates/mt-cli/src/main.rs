@@ -19,6 +19,7 @@ use mt_capture::testbed::{
 };
 use mt_contract::Policy;
 use mt_contract::policy;
+use mt_harness::replay::{ReplayOptions, check_corpora, replay_corpus};
 use mt_harness::run::{
     BuildOptions, RunOptions, Scope as VectorsScope, build_entries, list_adapters, run_entries,
 };
@@ -196,6 +197,48 @@ enum VectorsAction {
         /// Vector files or corpus directories to validate.
         #[arg(required = true)]
         paths: Vec<PathBuf>,
+    },
+    /// Re-run every vector of stored corpora twice through the current build of
+    /// their entry and compare the canonical bytes with the stored files, and
+    /// compare each provenance record's driver, archive and object hashes with
+    /// the build (EQV-04, D-21). Each CORPUS_DIR is one entry's corpus
+    /// (`<corpus>/<t>/<c>/<e>`). Captured object code runs here. Prints
+    /// `<dir> identical <n>`, `<dir> differs <sha256>` or `<dir>
+    /// provenance_mismatch (<sha256> <field>)` per corpus, then `result: passed
+    /// (<n> rows)` or `result: failed`. Exit 0 when every corpus reproduced, 1
+    /// otherwise, 2 for invalid input.
+    Replay {
+        /// The test-bed manifest.
+        #[arg(long)]
+        manifest: PathBuf,
+        /// Path to the pins file.
+        #[arg(long)]
+        pins: PathBuf,
+        /// The work directory; the drivers are read from
+        /// `<work-dir>/vectors-build`. Defaults to $MT_WORK_DIR, else `.mt-work`.
+        #[arg(long)]
+        work_dir: Option<PathBuf>,
+        /// Where the replay's scratch slots go. Defaults to
+        /// `<work-dir>/tmp/vectors-replay`.
+        #[arg(long)]
+        scratch_dir: Option<PathBuf>,
+        /// The corpus directories to replay.
+        #[arg(required = true)]
+        corpus_dirs: Vec<PathBuf>,
+    },
+    /// Compare two corpus trees file by file (EQV-04, D-21). Fails closed: a file
+    /// on one side only, an unreadable file, a file that is not a regular file,
+    /// a differing byte and a comparison of no file all fail. Prints `identical
+    /// <n> files` or the first difference, then `result: passed (1 rows)` or
+    /// `result: failed`. Exit 0 when identical, 1 when not, 2 when a tree cannot
+    /// be read.
+    Check {
+        /// The first corpus tree.
+        #[arg(long)]
+        first: PathBuf,
+        /// The second corpus tree.
+        #[arg(long)]
+        second: PathBuf,
     },
     /// The pinned TRACTOR public test-vector sample (D-23): local use only,
     /// never copied into the repository.
@@ -810,6 +853,14 @@ fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
         }
         VectorsAction::Validate { tractor, paths } => validate_command(tractor, &paths),
         VectorsAction::Adapters { manifest } => adapters_command(&manifest),
+        VectorsAction::Replay {
+            manifest,
+            pins,
+            work_dir,
+            scratch_dir,
+            corpus_dirs,
+        } => replay_command(&manifest, &pins, work_dir, scratch_dir, &corpus_dirs),
+        VectorsAction::Check { first, second } => check_command(&first, &second),
         VectorsAction::Build { args, replay_dir } => build_command(args, replay_dir),
         VectorsAction::Run {
             args,
@@ -872,6 +923,50 @@ fn exec_context(pins_path: &Path) -> anyhow::Result<(ExecTools, RunnerConfig)> {
         pins.image.source_date_epoch.clone(),
     );
     Ok((tools, cfg))
+}
+
+/// Exit code of `mt vectors replay`: 0 every corpus reproduced, 1 one did not.
+fn replay_command(
+    manifest: &Path,
+    pins_path: &Path,
+    work_dir: Option<PathBuf>,
+    scratch_dir: Option<PathBuf>,
+    corpus_dirs: &[PathBuf],
+) -> anyhow::Result<u8> {
+    let (tools, cfg) = exec_context(pins_path)?;
+    let work = vectors_work_dir(work_dir);
+    let scratch_dir = scratch_dir.unwrap_or_else(|| work.join("tmp").join("vectors-replay"));
+    let options = ReplayOptions {
+        scope: VectorsScope::new(manifest.to_path_buf(), work),
+        tools,
+        cfg,
+        scratch_dir,
+    };
+    let mut failed = false;
+    for dir in corpus_dirs {
+        let report =
+            replay_corpus(&options, dir).with_context(|| format!("replaying {}", dir.display()))?;
+        println!("{}", report.render());
+        failed |= !report.passed();
+    }
+    Ok(print_result(corpus_dirs.len(), failed))
+}
+
+/// Exit code of `mt vectors check`: 0 identical, 1 not identical.
+fn check_command(first: &Path, second: &Path) -> anyhow::Result<u8> {
+    let comparison = check_corpora(first, second).context("comparing the corpus trees")?;
+    if comparison.identical() {
+        println!("identical {} files", comparison.files);
+        Ok(print_result(1, false))
+    } else {
+        println!(
+            "{}",
+            comparison
+                .first_difference()
+                .unwrap_or_else(|| "not identical".to_owned())
+        );
+        Ok(print_result(1, true))
+    }
 }
 
 /// Exit code of `mt vectors build`: 0 no row failed, 1 a row failed.

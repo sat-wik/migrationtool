@@ -83,6 +83,22 @@ impl Request {
         }
     }
 
+    /// This request with the dump plan: each range's address and size as two
+    /// little-endian words, so the driver snapshots those bytes before and after
+    /// the call (CONTEXT D-10).
+    #[must_use]
+    pub fn with_dump_plan(mut self, ranges: &[(u32, u32)]) -> Self {
+        let mut plan = Vec::with_capacity(ranges.len() * 8);
+        for (address, size) in ranges {
+            plan.extend_from_slice(&address.to_le_bytes());
+            plan.extend_from_slice(&size.to_le_bytes());
+        }
+        if let Some(field) = self.fields.get_mut(4) {
+            *field = plan;
+        }
+        self
+    }
+
     /// The bytes of `req.bin`: magic, version, field count, then each field with
     /// its length.
     #[must_use]

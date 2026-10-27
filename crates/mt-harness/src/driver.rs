@@ -123,9 +123,9 @@ fn is_prefix_line(line: &str) -> bool {
         return false;
     };
     let known = ["include", "define", "undef"].iter().any(|name| {
-        directive.strip_prefix(name).is_some_and(|after| {
-            !after.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_')
-        })
+        directive
+            .strip_prefix(name)
+            .is_some_and(|after| after.starts_with([' ', '\t']) && !after.trim().is_empty())
     });
     known && !line.chars().any(|c| c.is_control() && c != '\t')
 }
