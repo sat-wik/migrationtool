@@ -738,7 +738,8 @@ jobs:
           out="$RUNNER_TEMP/out"
           script='set -uo pipefail
           qemu-arm --version | head -n 1
-          if qemu-arm -cpu help 2>&1 | grep -qw cortex-m4; then echo "cpu list: cortex-m4 listed"; else echo "cpu list: cortex-m4 NOT listed"; fi
+          cpus=$(qemu-arm -cpu help 2>&1 || true)
+          if grep -qw cortex-m4 <<< "$cpus"; then echo "cpu list: cortex-m4 listed"; else echo "cpu list: cortex-m4 NOT listed"; fi
           arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -nostdlib -static -o /tmp/qemu-mprofile.elf container/smoke/qemu-mprofile.S
           timeout 60 qemu-arm -cpu cortex-m4 -R 0x10000000 /tmp/qemu-mprofile.elf
           echo "exit code: $?"'
