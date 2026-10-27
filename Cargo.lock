@@ -328,9 +328,19 @@ dependencies = [
  "anyhow",
  "clap",
  "mt-capture",
+ "mt-contract",
  "mt-harness",
  "mt-toolchain",
  "tempfile",
+]
+
+[[package]]
+name = "mt-contract"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "thiserror",
+ "toml",
 ]
 
 [[package]]
