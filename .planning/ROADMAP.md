@@ -157,35 +157,35 @@ Plans:
 
 **Plans:** 10 plans
 
-**Execution order (D-31 gap insertion, binding):** 03-01 Tracer and Task 2 (done) → 03-09 → 03-10 → 03-01 Task 3 (round trip 3, the founder's `extend 1`) → Wave 2 onward. Wave numbers cannot express an insertion into a plan that is already half executed; 03-10's frontmatter `wave: 2` only encodes `depends_on: ["03-09"]` and it does not run in parallel with 03-02.
+**Execution order (D-31 gap insertion, binding):** 03-01 Tracer and Task 2 (done) → 03-09 → 03-10 → 03-01 Task 3 (round trip 3, the founder's `extend 1`) → 03-02 → 03-03 .. 03-08. The frontmatter encodes it: 03-09 is wave 1, 03-10 wave 2 (depends on 03-09), 03-02 wave 3 (depends on 03-01 and 03-10), 03-03 .. 03-08 waves 4 .. 9. 03-01 is half executed and stays wave 1; its Task 3 precondition requires 03-10-SUMMARY.md to record the founder's merge, the approved re-baseline and the Current image digest, so it halts until 03-10 has finished.
 
 Plans:
-**Wave 1**
+**Wave 1** *(03-01 Task 3 halts on its precondition until 03-10 has finished)*
 - [ ] 03-01-PLAN.md — Tracer: executor core (shared runtime template, link recipe, qemu-arm -cpu cortex-m4 through the runner, result frame, outcome classification) and `mt vectors selftest` measured in the pinned image before dependent work (D-30)
-
-**Gap insertion (D-31)** *(runs between 03-01 Task 2 and 03-01 Task 3, in this order)*
 - [ ] 03-09-PLAN.md — D-31 branch side: QEMU (qemu-user, qemu-system-arm) from bookworm-backports at the pinned snapshot through a QEMU-only apt preferences file, pin discovery, an in-image `qemu-arm -cpu cortex-m4` start probe that gates the publish, pins, fixtures and docs, the two 03-01 hand-back edits; green container, pin-discovery and ci on the session branch
+
+**Wave 2** *(blocked on 03-09)*
 - [ ] 03-10-PLAN.md — D-31 publish: image PR to main, founder merge, publish confirmed, origin/main merged back, new digest under Current image, the first testbed run on the new image, founder re-baseline of 02-22-CI-NOTICES.md; hands back to 03-01 Task 3
 
-**Wave 2** *(blocked on Wave 1 completion, including 03-09, 03-10 and 03-01 Task 3)*
+**Wave 3** *(blocked on 03-01, including its Task 3, and 03-10)*
 - [ ] 03-02-PLAN.md — Contract v0 (docs/specs/equivalence-contract.md 0.1.0) and the mt-contract policy loader with the UB menu, return_error default, default_change and full override records; 16 policy files (EQV-01)
 
-**Wave 3** *(blocked on Wave 2 completion)*
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 03-03-PLAN.md — mt-vectors: nine-field schema, Latin-1 codec, has_ub absence rule, comparison rule, lib_state model, sha256 corpus with provenance index; pinned TRACTOR sample fetched and loaded unchanged, locally and in CI (EQV-02)
 
-**Wave 4** *(blocked on Wave 3 completion)*
+**Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 03-04-PLAN.md — Manifest argument roles and the generated driver over the exact captured objects; corejson, lz4, libfdt vectors run twice identically, globals snapshot, replay and determinism steps in CI
 
-**Wave 5** *(blocked on Wave 4 completion)*
+**Wave 6** *(blocked on Wave 5 completion)*
 - [ ] 03-05-PLAN.md — State layout from the pinned GCC's DWARF, pointer classification, typed globals; microcoap, nimble, tinycbor
 
-**Wave 6** *(blocked on Wave 5 completion)*
+**Wave 7** *(blocked on Wave 6 completion)*
 - [ ] 03-06-PLAN.md — Output scalars and pointers, struct and pointer returns, typed heap walk; zlib, paho, nanopb, cjson, corejson JSON_SearchT; adapter drop log and the floor of 10 as a test
 
-**Wave 7** *(blocked on Wave 6 completion)*
+**Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 03-07-PLAN.md — Declared setup sequences (D-12), locals, wrap and state arrays; httpparser, tinycbor validate, qcbor, zcbor
 
-**Wave 8** *(blocked on Wave 7 completion)*
+**Wave 9** *(blocked on Wave 8 completion)*
 - [ ] 03-08-PLAN.md — Bounded attempts of the remaining entries, completeness test, committed CI-produced vector sample, final full run
 
 ### Phase 4: UB Detection and Decision Log
