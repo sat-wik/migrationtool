@@ -204,7 +204,7 @@ fn combination_of(
                     ));
                 }
             }
-            Role::OutCap | Role::Scalar => {
+            Role::OutCap | Role::Scalar | Role::InoutLen => {
                 let text = texts.next().ok_or("argv is shorter than the parameters")?;
                 values.push(
                     text.parse::<i64>()

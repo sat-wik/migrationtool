@@ -30,8 +30,7 @@ pub const PLACEHOLDER_NAMES: [&str; 9] = [
 pub const SELFTEST_CALL: &str = "mt_call(selector, mt_in, mt_in_len, mt_out, mt_out_cap)";
 
 /// The states fragment of a driver with no state.
-pub const NO_STATES: &str =
-    "#define MT_STATE_COUNT 0u\nstatic const u32 mt_state_sizes[MT_STATE_COUNT + 1u] = { 0u };";
+pub const NO_STATES: &str = "#define MT_STATE_COUNT 0u\nstatic const u32 mt_state_sizes[MT_STATE_COUNT + 1u] = { 0u };\nstatic const int mt_state_word[MT_STATE_COUNT + 1u] = { -1 };";
 
 /// The values written into the template.
 #[derive(Debug, Clone)]
@@ -49,8 +48,10 @@ pub struct Placeholders {
     /// The `#include`, `#define` and `#undef` lines an entry driver starts
     /// with, one per line; empty for the self-test.
     pub includes: String,
-    /// The entry's states: `#define MT_STATE_COUNT <n>u` and the array
-    /// `mt_state_sizes`, `sizeof` of each state type followed by `0u`.
+    /// The entry's states: `#define MT_STATE_COUNT <n>u`, the array
+    /// `mt_state_sizes` (`sizeof` of each state type followed by `0u`) and the
+    /// array `mt_state_word` (the request word that holds each state's value
+    /// before the call, or -1).
     pub states: String,
     /// C source of `static u32 mt_call(u32, u8 *, u32, u8 *, u32)`, the cases.
     pub cases: String,

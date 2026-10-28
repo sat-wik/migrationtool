@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 
 use mt_capture::manifest::{
     BASELINE_CFLAGS, Entry, MAX_SCALAR_COMBOS, Role, UnobservedMark, split_parameters,
-    state_pointee_type,
+    state_pointee_type, value_pointee_type,
 };
 
 use crate::budget::Budgets;
@@ -55,8 +55,8 @@ pub struct Param {
     pub role: Role,
     /// The name an `out_cap` or `scalar` value, or a `state`, is recorded under.
     pub name: Option<String>,
-    /// For a `state`, the type its pointer points at (a plain type name, checked
-    /// by [`state_pointee_type`]).
+    /// For a `state` or an `inout_len`, the type its pointer points at (a plain
+    /// type name, checked by [`state_pointee_type`] and [`value_pointee_type`]).
     pub state_type: Option<String>,
     /// The first value of an `out_cap` or `scalar`.
     pub default: Option<i64>,
@@ -64,6 +64,8 @@ pub struct Param {
     pub sweep: Vec<i64>,
     /// The largest input an `in_len` accepts.
     pub max: Option<u64>,
+    /// What an `inout_len` is the length of (`out`).
+    pub of: Option<String>,
 }
 
 /// The values of the scalar dimensions of one run, in parameter order (one per
@@ -74,13 +76,17 @@ pub struct Combination {
     pub values: Vec<i64>,
 }
 
-/// A state of an entry: the object the library fills in.
+/// A state of an entry: the object the library fills in, or the value a pointer
+/// parameter leaves behind.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StateParam {
     /// The name its fields are recorded under in `lib_state_in` and `lib_state_out`.
     pub name: String,
     /// The type text of the object (the pointee of the parameter).
     pub type_text: String,
+    /// The request word that holds its value before the call (an `inout_len`),
+    /// or `None` for an object that starts zero-filled.
+    pub init_word: Option<usize>,
 }
 
 /// An entry ready to be driven.
@@ -181,20 +187,27 @@ impl Adapter {
             }
             let name = match arg.role {
                 Role::OutCap => Some(arg.name.clone().unwrap_or_else(|| "out_cap".to_owned())),
-                Role::Scalar | Role::State => arg.name.clone(),
+                Role::Scalar | Role::State | Role::InoutLen => arg.name.clone(),
                 _ => None,
             };
-            let state_type = if arg.role == Role::State {
-                if name.is_none() {
-                    return Err(AdapterError::Invalid("a state needs a name".to_owned()));
+            let state_type = match arg.role {
+                Role::State | Role::InoutLen if name.is_none() => {
+                    return Err(AdapterError::Invalid(format!(
+                        "a {} needs a name",
+                        arg.role.word()
+                    )));
                 }
-                Some(state_pointee_type(text).ok_or_else(|| {
+                Role::State => Some(state_pointee_type(text).ok_or_else(|| {
                     AdapterError::Invalid(format!(
                         "state parameter {text:?} does not point at a plain type name"
                     ))
-                })?)
-            } else {
-                None
+                })?),
+                Role::InoutLen => Some(value_pointee_type(text).ok_or_else(|| {
+                    AdapterError::Invalid(format!(
+                        "inout_len parameter {text:?} does not point at a plain integer type"
+                    ))
+                })?),
+                _ => None,
             };
             params.push(Param {
                 c_type: text.clone(),
@@ -204,6 +217,7 @@ impl Adapter {
                 default: arg.default,
                 sweep: arg.sweep.clone(),
                 max: arg.max,
+                of: arg.of.clone(),
             });
         }
         Ok(Self {
@@ -263,6 +277,14 @@ impl Adapter {
                     state_index += 1;
                     text
                 }
+                Role::InoutLen => {
+                    // The initial value is request word `scalar_index`; the
+                    // driver writes it into the state before the call.
+                    scalar_index += 1;
+                    let text = format!("mt_state({state_index})");
+                    state_index += 1;
+                    text
+                }
             };
             args.push(format!("({}){value}", param.c_type));
         }
@@ -284,7 +306,7 @@ impl Adapter {
         for param in &self.params {
             match param.role {
                 Role::InLen => argv.push(input_len.to_string()),
-                Role::OutCap | Role::Scalar => {
+                Role::OutCap | Role::Scalar | Role::InoutLen => {
                     let value = combination.values.get(dimension).copied().unwrap_or(0);
                     dimension += 1;
                     argv.push(value.to_string());
@@ -304,16 +326,32 @@ impl Adapter {
     /// The states, in parameter order.
     #[must_use]
     pub fn states(&self) -> Vec<StateParam> {
-        self.params
-            .iter()
-            .filter(|param| param.role == Role::State)
-            .filter_map(|param| {
-                Some(StateParam {
-                    name: param.name.clone()?,
-                    type_text: param.state_type.clone()?,
-                })
-            })
-            .collect()
+        let mut word = 0usize;
+        let mut states = Vec::new();
+        for param in &self.params {
+            let init_word = match param.role {
+                Role::Scalar => {
+                    word += 1;
+                    None
+                }
+                Role::InoutLen => {
+                    word += 1;
+                    Some(word - 1)
+                }
+                _ => None,
+            };
+            if !matches!(param.role, Role::State | Role::InoutLen) {
+                continue;
+            }
+            if let (Some(name), Some(type_text)) = (&param.name, &param.state_type) {
+                states.push(StateParam {
+                    name: name.clone(),
+                    type_text: type_text.clone(),
+                    init_word,
+                });
+            }
+        }
+        states
     }
 
     /// The C text that declares the states of the driver: their count and the
@@ -328,8 +366,16 @@ impl Adapter {
             .iter()
             .map(|state| format!("(u32)sizeof({}), ", state.type_text))
             .collect();
+        let words: String = states
+            .iter()
+            .map(|state| {
+                state
+                    .init_word
+                    .map_or_else(|| "-1, ".to_owned(), |word| format!("{word}, "))
+            })
+            .collect();
         format!(
-            "#define MT_STATE_COUNT {}u\nstatic const u32 mt_state_sizes[MT_STATE_COUNT + 1u] = {{ {sizes}0u }};",
+            "#define MT_STATE_COUNT {}u\nstatic const u32 mt_state_sizes[MT_STATE_COUNT + 1u] = {{ {sizes}0u }};\nstatic const int mt_state_word[MT_STATE_COUNT + 1u] = {{ {words}-1 }};",
             states.len()
         )
     }
@@ -339,9 +385,11 @@ impl Adapter {
     pub fn output_capacity(&self, combination: &Combination) -> u32 {
         let mut dimension = 0usize;
         for param in &self.params {
-            if matches!(param.role, Role::OutCap | Role::Scalar) {
+            if matches!(param.role, Role::OutCap | Role::Scalar | Role::InoutLen) {
                 let value = combination.values.get(dimension).copied().unwrap_or(0);
-                if param.role == Role::OutCap {
+                let sizes_output = param.role == Role::OutCap
+                    || (param.role == Role::InoutLen && param.of.as_deref() == Some("out"));
+                if sizes_output {
                     return u32::try_from(value).unwrap_or(0);
                 }
                 dimension += 1;
@@ -350,17 +398,18 @@ impl Adapter {
         0
     }
 
-    /// The values of the `scalar` parameters of a combination, in order: the
-    /// words the request carries for `mt_scalar`.
+    /// The values of the `scalar` and `inout_len` parameters of a combination, in
+    /// order: the words the request carries for `mt_scalar` and for the initial
+    /// value of an `inout_len`.
     #[must_use]
     pub fn scalar_words(&self, combination: &Combination) -> Vec<i64> {
         let mut dimension = 0usize;
         let mut words = Vec::new();
         for param in &self.params {
-            if matches!(param.role, Role::OutCap | Role::Scalar) {
+            if matches!(param.role, Role::OutCap | Role::Scalar | Role::InoutLen) {
                 let value = combination.values.get(dimension).copied().unwrap_or(0);
                 dimension += 1;
-                if param.role == Role::Scalar {
+                if matches!(param.role, Role::Scalar | Role::InoutLen) {
                     words.push(value);
                 }
             }
@@ -374,7 +423,7 @@ impl Adapter {
         let mut named = BTreeMap::new();
         let mut dimension = 0usize;
         for param in &self.params {
-            if matches!(param.role, Role::OutCap | Role::Scalar) {
+            if matches!(param.role, Role::OutCap | Role::Scalar | Role::InoutLen) {
                 let value = combination.values.get(dimension).copied().unwrap_or(0);
                 dimension += 1;
                 if let Some(name) = &param.name {
@@ -409,7 +458,7 @@ pub fn combinations(adapter: &Adapter) -> Result<Vec<Combination>, AdapterError>
     let limit = i64::from(Budgets::DEFAULT.max_input);
     let mut dimensions: Vec<Vec<i64>> = Vec::new();
     for param in &adapter.params {
-        if !matches!(param.role, Role::OutCap | Role::Scalar) {
+        if !matches!(param.role, Role::OutCap | Role::Scalar | Role::InoutLen) {
             continue;
         }
         let label = param.name.as_deref().unwrap_or("scalar");
@@ -420,7 +469,7 @@ pub fn combinations(adapter: &Adapter) -> Result<Vec<Combination>, AdapterError>
         };
         let mut values = vec![default];
         values.extend(param.sweep.iter().copied());
-        if param.role == Role::OutCap
+        if matches!(param.role, Role::OutCap | Role::InoutLen)
             && let Some(bad) = values.iter().find(|value| !(0..=limit).contains(value))
         {
             return Err(AdapterError::Invalid(format!(

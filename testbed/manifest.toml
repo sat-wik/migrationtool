@@ -1033,6 +1033,28 @@ header = "zlib.h"
 source = "uncompr.c"
 form = "direct"
 signature = "int (Bytef *, uLongf *, const Bytef *, uLong)"
+# Argument roles (Phase 3 CONTEXT D-05, D-11, D-14), one table per C parameter. The
+# destination buffer is the output; its capacity is not a parameter of its own but
+# arrives through the pointer to destLen, so destLen is an inout_len with
+# of = "out": its declared initial value is the capacity (argv, lib_state_in) and
+# what uncompress leaves in it is the produced length (lib_state_out). 256 is the
+# default capacity; 16 overflows on a longer output (Z_BUF_ERROR with a partial
+# write) and 4096 leaves a long sentinel tail.
+[[target.zlib.entry.arg]]
+role = "out_buf"
+
+[[target.zlib.entry.arg]]
+role = "inout_len"
+name = "destLen"
+default = 256
+sweep = [16, 4096]
+of = "out"
+
+[[target.zlib.entry.arg]]
+role = "in_buf"
+
+[[target.zlib.entry.arg]]
+role = "in_len"
 
 [[target.zlib.entry]]
 name = "inflate"
