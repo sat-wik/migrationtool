@@ -212,3 +212,89 @@ fn eqv_04_layouts_cli_fails_closed_without_a_build() {
         outcome.stdout
     );
 }
+
+#[test]
+fn eqv_04_adapters_cli_checks_the_floor() {
+    // D-13, D-24: `--check-floor` adds the count of drivable targets and fails
+    // below the floor of 10.
+    let ok = run_mt(&[
+        "vectors",
+        "adapters",
+        "--manifest",
+        "testbed/manifest.toml",
+        "--check-floor",
+    ]);
+    assert_eq!(ok.code, Some(0), "stderr: {}", ok.stderr);
+    let count = ok
+        .stdout
+        .lines()
+        .find_map(|line| {
+            line.strip_prefix("drivable targets: ")?
+                .strip_suffix(" (floor 10)")?
+                .parse::<usize>()
+                .ok()
+        })
+        .unwrap_or_else(|| panic!("no floor line in {}", ok.stdout));
+    assert!(count >= 10, "{count}");
+    assert!(
+        ok.stdout
+            .lines()
+            .any(|row| row == "zcbor/cbor_decode_Pet dropped (no_seeds)"),
+        "a logged entry prints a dropped row: {}",
+        ok.stdout
+    );
+
+    // A copy of the testbed whose adapter drop log drops four floor targets.
+    let tmp = tempfile::tempdir().unwrap();
+    let copy = tmp.path().join("testbed");
+    let from = repo_root().join("testbed");
+    std::fs::create_dir_all(&copy).unwrap();
+    for file in ["manifest.toml", "dropped.toml"] {
+        std::fs::copy(from.join(file), copy.join(file)).unwrap();
+    }
+    for item in std::fs::read_dir(from.join("seeds")).unwrap() {
+        let item = item.unwrap();
+        let index = item.path().join("index.json");
+        if index.is_file() {
+            let dir = copy.join("seeds").join(item.file_name());
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::copy(&index, dir.join("index.json")).unwrap();
+        }
+    }
+    let mut log = String::from("schema_version = 1\n");
+    for (target, entry) in [
+        ("lz4", "LZ4_decompress_safe"),
+        ("libfdt", "fdt_check_full"),
+        ("microcoap", "coap_parse"),
+        ("nimble", "ble_uuid_init_from_buf"),
+    ] {
+        log.push_str(&format!(
+            "\n[[dropped]]\ntarget = \"{target}\"\nentry = \"{entry}\"\ncause = \"attempt_failed\"\ndetail = \"x\"\nattempt = \"y\"\n"
+        ));
+    }
+    std::fs::write(copy.join("adapter-dropped.toml"), log).unwrap();
+    let manifest = copy.join("manifest.toml");
+    let below = run_mt(&[
+        "vectors",
+        "adapters",
+        "--manifest",
+        manifest.to_str().unwrap(),
+        "--check-floor",
+    ]);
+    assert_eq!(below.code, Some(1), "stdout: {}", below.stdout);
+    assert!(
+        below
+            .stdout
+            .lines()
+            .any(|l| l == "drivable targets: 6 (floor 10)"),
+        "{}",
+        below.stdout
+    );
+    assert!(
+        below
+            .stdout
+            .lines()
+            .last()
+            .is_some_and(|l| l == "result: failed")
+    );
+}
