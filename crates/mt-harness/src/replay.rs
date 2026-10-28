@@ -196,7 +196,7 @@ fn combination_of(
     let mut values = Vec::new();
     for param in adapter.params() {
         match param.role {
-            Role::InLen => {
+            Role::InLen | Role::Wrap => {
                 let text = texts.next().ok_or("argv is shorter than the parameters")?;
                 if text != &seed_len.to_string() {
                     return Err(format!(

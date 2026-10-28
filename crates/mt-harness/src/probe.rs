@@ -47,14 +47,30 @@ fn io(action: &'static str, path: &Path, source: std::io::Error) -> HarnessError
 /// manifest is validated and again by the adapter before they get here.
 #[must_use]
 pub fn render_probe(include_lines: &[String], states: &[(String, String)]) -> String {
+    let counted: Vec<(String, String, Option<u32>)> = states
+        .iter()
+        .map(|(name, type_text)| (name.clone(), type_text.clone(), None))
+        .collect();
+    render_probe_counted(include_lines, &counted)
+}
+
+/// [`render_probe`] with an optional element count per state: `Some(n)` declares
+/// an array of `n` elements, `<type> mt_probe_<name>[n]` (CONTEXT D-12). The count
+/// is a number validated to 1..=64 by the manifest; no manifest text is pasted.
+#[must_use]
+pub fn render_probe_counted(
+    include_lines: &[String],
+    states: &[(String, String, Option<u32>)],
+) -> String {
     let mut source = String::new();
     for line in include_lines {
         source.push_str(line);
         source.push('\n');
     }
-    for (name, type_text) in states {
+    for (name, type_text, count) in states {
+        let array = count.map_or_else(String::new, |count| format!("[{count}]"));
         source.push_str(&format!(
-            "{type_text} {PROBE_PREFIX}{name} __attribute__((used));\n"
+            "{type_text} {PROBE_PREFIX}{name}{array} __attribute__((used));\n"
         ));
     }
     source
@@ -122,8 +138,9 @@ pub struct LayoutRequest<'a> {
     pub include_lines: &'a [String],
     /// The driver's flags ([`crate::adapter::driver_flags`]).
     pub flags: &'a [String],
-    /// Each state's name and the type text of its pointee.
-    pub states: &'a [(String, String)],
+    /// Each state's name, the type text of its pointee and, for an array of them,
+    /// the element count.
+    pub states: &'a [(String, String, Option<u32>)],
 }
 
 /// The layouts a probe gives: each state's type and the types its pointers point at.
@@ -157,7 +174,7 @@ pub fn layout_for_entry(
     let dump_path = request.dir.join("probe.dwarf.txt");
     std::fs::write(
         &source_path,
-        render_probe(request.include_lines, request.states),
+        render_probe_counted(request.include_lines, request.states),
     )
     .map_err(|e| io("cannot write", &source_path, e))?;
     if object_path.exists() {
@@ -179,7 +196,7 @@ pub fn layout_for_entry(
     std::fs::write(&dump_path, &text).map_err(|e| io("cannot write", &dump_path, e))?;
     let model = parse_dwarfdump(&text).map_err(|e| layout_error("the layout probe", e))?;
     let mut layouts = EntryLayouts::default();
-    for (name, type_text) in request.states {
+    for (name, type_text, _) in request.states {
         let variable = format!("{PROBE_PREFIX}{name}");
         let ty = model
             .type_of_variable(&variable)

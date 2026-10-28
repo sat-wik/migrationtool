@@ -114,6 +114,36 @@ form = "wrapped"
 signature = "CborError (const CborValue *, uint32_t)"
 accepted_wrapped = true
 
+# Argument roles (Phase 3 CONTEXT D-09, D-11, D-12, D-14): cbor_value_validate takes an
+# iterator and no buffer, so the iterator is made by the declared setup step
+# cbor_parser_init(buffer, size, flags, &parser, &it) from the vector's input ($in and
+# $len) into a local CborParser; the iterator then points into the parser and the input
+# ({buffer: parser} and {buffer: in}). The setup is expected to return CborNoError (0);
+# an input the parser refuses ends as setup_failed with the step's error code in rc,
+# which is compared like any other outcome. argv carries `flags` only: the length of
+# the input is the stdin length. `flags` is swept over its default 0 and
+# CborValidateStrictMode, 0xfff00 = 1048320 in src/cbor.h (the mask of the strict
+# validation flags below CborValidateMapKeysAreString); the value is a documented mask,
+# not an undefined combination.
+[[target.tinycbor.entry.arg]]
+role = "state"
+name = "it"
+
+[[target.tinycbor.entry.arg]]
+role = "scalar"
+name = "flags"
+default = 0
+sweep = [1048320]
+
+[[target.tinycbor.entry.local]]
+name = "parser"
+type = "CborParser"
+
+[[target.tinycbor.entry.setup]]
+call = "cbor_parser_init"
+args = ["$in", "$len", "0", "&parser", "&it"]
+expect = "0"
+
 [[target.tinycbor.config]]
 name = "default"
 
@@ -165,6 +195,41 @@ header = "include/zcbor_decode.h"
 source = "src/zcbor_decode.c"
 form = "direct"
 signature = "void (zcbor_state_t *, size_t, const uint8_t *, size_t, size_t, uint8_t *, size_t)"
+
+# Argument roles (Phase 3 CONTEXT D-09, D-11, D-12, D-14): the function fills in an array
+# of states, so `states` is one guarded mapping of three zcbor_state_t, recorded as
+# items. The first state's constant_state points at the last element ({buffer: states}),
+# its payload at the input. n_states is a scalar that must equal the count (a smaller
+# value leaves elements untouched, a larger one writes outside the mapping). The out
+# buffer is the elem_state area: its capacity is swept over 0 and 64 bytes.
+[[target.zcbor.entry.arg]]
+role = "state"
+name = "states"
+count = 3
+
+[[target.zcbor.entry.arg]]
+role = "scalar"
+name = "n_states"
+default = 3
+
+[[target.zcbor.entry.arg]]
+role = "in_buf"
+
+[[target.zcbor.entry.arg]]
+role = "in_len"
+
+[[target.zcbor.entry.arg]]
+role = "scalar"
+name = "elem_count"
+default = 1
+
+[[target.zcbor.entry.arg]]
+role = "out_buf"
+
+[[target.zcbor.entry.arg]]
+role = "out_cap"
+default = 0
+sweep = [64]
 
 [[target.zcbor.config]]
 name = "default"
@@ -218,6 +283,27 @@ source = "src/qcbor_decode.c"
 form = "wrapped"
 signature = "void (QCBORDecodeContext *, UsefulBufC, QCBORDecodeMode)"
 accepted_wrapped = true
+
+# Argument roles (Phase 3 CONTEXT D-09, D-11, D-12, D-14): the context is a state (a large
+# struct recorded field by field, its input pointer as {buffer: in, offset: 0}); the input
+# is passed as a UsefulBufC built by value from the input pointer and length (wrap, the
+# members ptr and len of struct q_useful_buf_c). The decode mode is swept over the three
+# values of QCBORDecodeMode in qcbor_decode.h: 0 normal, 1 maps with string keys only,
+# 2 maps as arrays.
+[[target.qcbor.entry.arg]]
+role = "state"
+name = "ctx"
+
+[[target.qcbor.entry.arg]]
+role = "wrap"
+ptr_field = "ptr"
+len_field = "len"
+
+[[target.qcbor.entry.arg]]
+role = "scalar"
+name = "mode"
+default = 0
+sweep = [1, 2]
 
 [[target.qcbor.config]]
 name = "default"

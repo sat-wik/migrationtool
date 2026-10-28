@@ -10,9 +10,9 @@
 use std::collections::BTreeMap;
 
 use mt_capture::manifest::{
-    BASELINE_CFLAGS, Entry, Expect, MAX_SCALAR_COMBOS, Role, SetupArg, UnobservedMark,
-    is_function_name, pointer_pointee_type, split_parameters, state_pointee_type,
-    value_pointee_type,
+    BASELINE_CFLAGS, Entry, Expect, MAX_SCALAR_COMBOS, Role, SetValue, SetupArg, UnobservedMark,
+    is_closed_type_text, is_function_name, parse_set_path, pointer_pointee_type, split_parameters,
+    state_pointee_type, value_pointee_type,
 };
 use serde::{Deserialize, Serialize};
 
@@ -79,7 +79,17 @@ pub struct Param {
     pub mutable: bool,
     /// The declared strings of a `str`.
     pub values: Vec<String>,
+    /// For a `state`: the number of objects of its pointee type in its mapping.
+    pub count: Option<u32>,
+    /// For a `wrap`: the member that receives the input pointer.
+    pub ptr_field: Option<String>,
+    /// For a `wrap`: the member that receives the input length.
+    pub len_field: Option<String>,
 }
+
+/// The most states (parameters that are filled in, locals and the returned value)
+/// one driver holds; tied to `MT_MAX_STATES` in `runtime.c` by a test.
+pub const MAX_STATES: usize = 8;
 
 /// The values of the dimensions of one run, in parameter order (one per
 /// `out_cap`, `scalar`, `inout_len` or `str` parameter; a `str` is the index of
@@ -104,6 +114,9 @@ pub struct StateParam {
     /// The request word that holds its value before the call (an `inout_len`),
     /// or `None` for an object that starts zero-filled.
     pub init_word: Option<usize>,
+    /// `Some(n)` when the object is an array of `n` elements of `type_text` (a
+    /// counted `state` or `local`), recorded as items.
+    pub count: Option<u32>,
 }
 
 /// One argument of a setup call, resolved against the entry's roles (CONTEXT D-12).
@@ -119,8 +132,11 @@ enum ArgExpr {
     Scalar(usize),
     /// A decimal integer.
     Int(i64),
-    /// `&<name>`: the address of state `n`.
+    /// `&<name>`: the address of state `n` (its first element for an array).
     Address(usize),
+    /// `<name>`: the value of the pointer local at state `n`, whose type text is
+    /// the second field.
+    Value(usize, String),
 }
 
 impl ArgExpr {
@@ -130,8 +146,9 @@ impl ArgExpr {
             Self::Len => "mt_in_len".to_owned(),
             Self::Cap => "mt_out_cap".to_owned(),
             Self::Scalar(word) => format!("mt_scalar({word})"),
-            Self::Int(value) => value.to_string(),
+            Self::Int(value) => c_integer(*value),
             Self::Address(index) => format!("mt_state({index})"),
+            Self::Value(index, type_text) => format!("(*({type_text} *)mt_state({index}))"),
         }
     }
 }
@@ -144,6 +161,42 @@ struct SetupCall {
     expect: Expect,
 }
 
+/// A declared field assignment: `((<type> *)mt_state(<index>))-><path> = <value>`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SetStep {
+    index: usize,
+    type_text: String,
+    members: Vec<String>,
+    value: SetValue,
+}
+
+/// One declared setup step.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SetupStepKind {
+    Call(SetupCall),
+    Set(SetStep),
+}
+
+/// A decimal integer as C text: negative values in parentheses, values above
+/// `i32::MAX` with a `u` suffix, so no literal changes type on a 32-bit target.
+fn c_integer(value: i64) -> String {
+    if value < 0 {
+        format!("({value})")
+    } else if value > i64::from(i32::MAX) {
+        format!("{value}u")
+    } else {
+        value.to_string()
+    }
+}
+
+/// An object the harness creates besides the parameters (CONTEXT D-12).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct LocalParam {
+    name: String,
+    type_text: String,
+    count: Option<u32>,
+}
+
 /// An entry ready to be driven.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Adapter {
@@ -154,7 +207,8 @@ pub struct Adapter {
     params: Vec<Param>,
     marks: Vec<UnobservedMark>,
     ret_text: String,
-    setup: Vec<SetupCall>,
+    locals: Vec<LocalParam>,
+    setup: Vec<SetupStepKind>,
 }
 
 /// `[A-Za-z_][A-Za-z0-9_]*`.
@@ -282,7 +336,14 @@ impl Adapter {
             };
             let state_type = match arg.role {
                 Role::State => {
-                    Some(state_pointee_type(text).ok_or_else(|| bad_pointee("a plain type name"))?)
+                    let pointee =
+                        state_pointee_type(text).ok_or_else(|| bad_pointee("a plain type name"))?;
+                    if !is_closed_type_text(&pointee) {
+                        return Err(AdapterError::Invalid(format!(
+                            "state type {pointee:?} is outside the closed type grammar"
+                        )));
+                    }
+                    Some(pointee)
                 }
                 Role::InoutLen | Role::OutScalar => Some(
                     value_pointee_type(text).ok_or_else(|| bad_pointee("a plain scalar type"))?,
@@ -292,6 +353,20 @@ impl Adapter {
                 }
                 _ => None,
             };
+            if arg.role == Role::Wrap {
+                if !is_closed_type_text(text) || text.ends_with('*') {
+                    return Err(AdapterError::Invalid(format!(
+                        "wrap type {text:?} is outside the closed type grammar or is a pointer"
+                    )));
+                }
+                for member in [&arg.ptr_field, &arg.len_field] {
+                    if !member.as_deref().is_some_and(is_c_identifier) {
+                        return Err(AdapterError::Invalid(
+                            "a wrap needs ptr_field and len_field, both C identifiers".to_owned(),
+                        ));
+                    }
+                }
+            }
             if arg.role == Role::Str && !arg.values.iter().all(|v| is_printable(v)) {
                 return Err(AdapterError::Invalid(
                     "a str value holds a character outside printable ASCII".to_owned(),
@@ -308,9 +383,13 @@ impl Adapter {
                 of: arg.of.clone(),
                 mutable: arg.mutable,
                 values: arg.values.clone(),
+                count: arg.count,
+                ptr_field: arg.ptr_field.clone(),
+                len_field: arg.len_field.clone(),
             });
         }
-        let setup = build_setup(entry, &params)?;
+        let locals = build_locals(entry)?;
+        let setup = build_setup(entry, &params, &locals)?;
         Ok(Self {
             target: target.to_owned(),
             config: config.to_owned(),
@@ -319,8 +398,22 @@ impl Adapter {
             params,
             marks: entry.unobserved.clone(),
             ret_text,
+            locals,
             setup,
         })
+        .and_then(Self::checked)
+    }
+
+    /// This adapter, or why its states do not fit a driver: at most
+    /// [`MAX_STATES`] of them.
+    fn checked(self) -> Result<Self, AdapterError> {
+        let states = self.states().len();
+        if states > MAX_STATES {
+            return Err(AdapterError::Invalid(format!(
+                "{states} states (parameters filled in, locals and the returned value); a driver holds at most {MAX_STATES}"
+            )));
+        }
+        Ok(self)
     }
 
     /// `<target>/<config>/<entry>`: `argv[0]` of every vector (D-05).
@@ -440,6 +533,17 @@ impl Adapter {
                     str_index += 1;
                     text
                 }
+                Role::Wrap => {
+                    // A struct by value, built from the input; the members are
+                    // validated C identifiers, so no cast of the whole value.
+                    let ptr = param.ptr_field.as_deref().unwrap_or("ptr");
+                    let len = param.len_field.as_deref().unwrap_or("len");
+                    args.push(format!(
+                        "({}){{ .{ptr} = mt_in, .{len} = mt_in_len }}",
+                        param.c_type
+                    ));
+                    continue;
+                }
                 Role::StrLen => {
                     let of = param
                         .of
@@ -452,6 +556,8 @@ impl Adapter {
             };
             args.push(format!("({}){value}", param.c_type));
         }
+        // The returned value's state follows the parameters' states and the locals.
+        let state_index = state_index + self.locals.len();
         let call = format!("{}({})", self.entry, args.join(", "));
         match self.ret {
             ReturnKind::Integer => format!("(int32_t)({call})"),
@@ -470,8 +576,10 @@ impl Adapter {
     /// The C statements of the declared setup steps (CONTEXT D-12), in order. Each
     /// step runs only while every earlier one returned what it expected; the first
     /// mismatch records `SETUP_STATUS_BASE + k` and the step's return value in
-    /// `setup_status` and `setup_ret`. Everything in it is a validated identifier, a
-    /// decimal integer or a runtime accessor, never text from the manifest.
+    /// `setup_status` and `setup_ret`. A `set` step assigns one field of a state or
+    /// local (the first element of an array). Everything in it is a validated
+    /// identifier, a decimal integer or a runtime accessor, never text from the
+    /// manifest.
     #[must_use]
     pub fn setup_fragment(&self) -> String {
         if self.setup.is_empty() {
@@ -481,18 +589,28 @@ impl Adapter {
             .setup
             .iter()
             .enumerate()
-            .map(|(step, call)| {
-                let args: Vec<String> = call.args.iter().map(ArgExpr::render).collect();
-                let invocation = format!("{}({})", call.name, args.join(", "));
-                match call.expect {
-                    Expect::Void => {
-                        format!("if (setup_status == 0u) {{\n        (void)({invocation});\n    }}")
+            .map(|(step, kind)| match kind {
+                SetupStepKind::Call(call) => {
+                    let args: Vec<String> = call.args.iter().map(ArgExpr::render).collect();
+                    let invocation = format!("{}({})", call.name, args.join(", "));
+                    match call.expect {
+                        Expect::Void => format!(
+                            "if (setup_status == 0u) {{\n        (void)({invocation});\n    }}"
+                        ),
+                        Expect::Value(value) => format!(
+                            "if (setup_status == 0u) {{\n        int32_t mt_setup_r = (int32_t)({invocation});\n        if (mt_setup_r != (int32_t)({})) {{\n            setup_status = {}u;\n            setup_ret = (u32)mt_setup_r;\n        }}\n    }}",
+                            c_integer(i64::from(value)),
+                            SETUP_STATUS_BASE as usize + step
+                        ),
                     }
-                    Expect::Value(value) => format!(
-                        "if (setup_status == 0u) {{\n        int32_t mt_setup_r = (int32_t)({invocation});\n        if (mt_setup_r != (int32_t)({value})) {{\n            setup_status = {}u;\n            setup_ret = (u32)mt_setup_r;\n        }}\n    }}",
-                        SETUP_STATUS_BASE as usize + step
-                    ),
                 }
+                SetupStepKind::Set(set) => format!(
+                    "if (setup_status == 0u) {{\n        (({} *)mt_state({}))->{} = {};\n    }}",
+                    set.type_text,
+                    set.index,
+                    set.members.join("."),
+                    render_set_value(set.value)
+                ),
             })
             .collect();
         blocks.join("\n    ")
@@ -507,7 +625,7 @@ impl Adapter {
         let mut argv = vec![self.argv0()];
         for (index, param) in self.params.iter().enumerate() {
             match param.role {
-                Role::InLen => argv.push(input_len.to_string()),
+                Role::InLen | Role::Wrap => argv.push(input_len.to_string()),
                 Role::OutCap | Role::Scalar | Role::InoutLen => {
                     argv.push(values.get(&index).copied().unwrap_or(0).to_string());
                 }
@@ -532,51 +650,31 @@ impl Adapter {
         &self.marks
     }
 
-    /// The states, in parameter order, then the returned value's state for a
-    /// pointer or struct return.
+    /// The states, in parameter order, then the entry's locals, then the returned
+    /// value's state for a pointer or struct return.
     #[must_use]
     pub fn states(&self) -> Vec<StateParam> {
-        let mut word = 0usize;
-        let mut states = Vec::new();
-        for param in &self.params {
-            let init_word = match param.role {
-                Role::Scalar => {
-                    word += 1;
-                    None
-                }
-                Role::InoutLen => {
-                    word += 1;
-                    Some(word - 1)
-                }
-                _ => None,
-            };
-            if !matches!(
-                param.role,
-                Role::State | Role::InoutLen | Role::OutScalar | Role::OutPtr
-            ) {
-                continue;
-            }
-            if let (Some(name), Some(type_text)) = (&param.name, &param.state_type) {
-                states.push(StateParam {
-                    name: name.clone(),
-                    type_text: type_text.clone(),
-                    init_word,
-                });
-            }
-        }
+        let mut states = param_states(&self.params);
+        states.extend(self.locals.iter().map(|local| StateParam {
+            name: local.name.clone(),
+            type_text: local.type_text.clone(),
+            init_word: None,
+            count: local.count,
+        }));
         if self.records_return() {
             states.push(StateParam {
                 name: RET_NAME.to_owned(),
                 type_text: self.ret_text.clone(),
                 init_word: None,
+                count: None,
             });
         }
         states
     }
 
-    /// The C text that declares the states of the driver: their count, the
-    /// `sizeof` of each type and the request word that holds each initial value,
-    /// in the order of [`Adapter::states`].
+    /// The C text that declares the states of the driver: their count, the size in
+    /// bytes of each and the request word that holds each initial value, in the
+    /// order of [`Adapter::states`].
     #[must_use]
     pub fn states_fragment(&self) -> String {
         let states = self.states();
@@ -585,7 +683,10 @@ impl Adapter {
         }
         let sizes: String = states
             .iter()
-            .map(|state| format!("(u32)sizeof({}), ", state.type_text))
+            .map(|state| match state.count {
+                None => format!("(u32)sizeof({}), ", state.type_text),
+                Some(count) => format!("(u32)(sizeof({}) * {count}u), ", state.type_text),
+            })
             .collect();
         let words: String = states
             .iter()
@@ -699,34 +800,129 @@ impl Adapter {
     }
 }
 
-/// Resolve the entry's `setup` steps against its roles (CONTEXT D-12, T-03-25): a
-/// call name must be a function name, an argument one of the closed forms that names
-/// a state or a scalar of the entry, and the expectation `void` or a 32-bit decimal.
-/// The manifest validator checks the same; this is the second check, at the point the
-/// steps become C.
-fn build_setup(entry: &Entry, params: &[Param]) -> Result<Vec<SetupCall>, AdapterError> {
-    let bad = |step: usize, why: String| AdapterError::Invalid(format!("setup[{step}]: {why}"));
-    if !entry.local.is_empty() {
-        return Err(AdapterError::Invalid(
-            "local objects are not driven yet".to_owned(),
-        ));
-    }
-    let mut states: BTreeMap<&str, usize> = BTreeMap::new();
-    let mut scalars: BTreeMap<&str, usize> = BTreeMap::new();
-    let (mut state_index, mut word) = (0usize, 0usize);
+/// The states the parameters fill in, in parameter order: a `state`, an
+/// `inout_len`, an `out_scalar` and an `out_ptr` each own one mapping. A `scalar`
+/// and an `inout_len` each take one request word, in order.
+fn param_states(params: &[Param]) -> Vec<StateParam> {
+    let mut word = 0usize;
+    let mut states = Vec::new();
     for param in params {
-        match param.role {
-            Role::State => {
-                if let Some(name) = param.name.as_deref() {
-                    states.insert(name, state_index);
-                }
-                state_index += 1;
+        let init_word = match param.role {
+            Role::Scalar => {
+                word += 1;
+                None
             }
             Role::InoutLen => {
-                state_index += 1;
                 word += 1;
+                Some(word - 1)
             }
-            Role::OutScalar | Role::OutPtr => state_index += 1,
+            _ => None,
+        };
+        if !matches!(
+            param.role,
+            Role::State | Role::InoutLen | Role::OutScalar | Role::OutPtr
+        ) {
+            continue;
+        }
+        if let (Some(name), Some(type_text)) = (&param.name, &param.state_type) {
+            states.push(StateParam {
+                name: name.clone(),
+                type_text: type_text.clone(),
+                init_word,
+                count: param.count,
+            });
+        }
+    }
+    states
+}
+
+/// The entry's `local` objects, each checked again against the closed type grammar
+/// (CONTEXT D-11, D-12, T-03-25) at the point they become C.
+fn build_locals(entry: &Entry) -> Result<Vec<LocalParam>, AdapterError> {
+    entry
+        .local
+        .iter()
+        .map(|local| {
+            if !is_c_identifier(&local.name) {
+                return Err(AdapterError::Invalid(format!(
+                    "local name {:?} is not a C identifier",
+                    local.name
+                )));
+            }
+            if !is_closed_type_text(&local.type_text) {
+                return Err(AdapterError::Invalid(format!(
+                    "local type {:?} is outside the closed type grammar",
+                    local.type_text
+                )));
+            }
+            if local.count.is_some_and(|count| !(1..=64).contains(&count)) {
+                return Err(AdapterError::Invalid(format!(
+                    "local {} has a count outside 1..=64",
+                    local.name
+                )));
+            }
+            Ok(LocalParam {
+                name: local.name.clone(),
+                type_text: local.type_text.clone(),
+                count: local.count,
+            })
+        })
+        .collect()
+}
+
+/// A decimal for the C text of a `set` value.
+fn render_set_value(value: SetValue) -> String {
+    match value {
+        SetValue::In => "mt_in".to_owned(),
+        SetValue::InPlus(n) => format!("(mt_in + {n}u)"),
+        SetValue::Len => "mt_in_len".to_owned(),
+        SetValue::LenMinus(n) => format!("(u32)(mt_in_len - {n}u)"),
+        SetValue::Int(n) => c_integer(n),
+    }
+}
+
+/// Resolve the entry's `setup` steps against its roles and locals (CONTEXT D-12,
+/// T-03-25): a call name must be a function name, an argument one of the closed
+/// forms that names a state, local or scalar of the entry, a set path a declared
+/// object with identifier members, and a value one of the closed forms. The manifest
+/// validator checks the same; this is the second check, at the point the steps
+/// become C.
+fn build_setup(
+    entry: &Entry,
+    params: &[Param],
+    locals: &[LocalParam],
+) -> Result<Vec<SetupStepKind>, AdapterError> {
+    let bad = |step: usize, why: String| AdapterError::Invalid(format!("setup[{step}]: {why}"));
+    // Every object a step may name, with its index among the states: the
+    // parameters' states first, then the locals.
+    let mut objects: BTreeMap<String, (usize, String, Option<u32>)> = BTreeMap::new();
+    let parameter_states = param_states(params);
+    for (index, state) in parameter_states.iter().enumerate() {
+        if params
+            .iter()
+            .any(|param| param.role == Role::State && param.name.as_deref() == Some(&state.name))
+        {
+            objects.insert(
+                state.name.clone(),
+                (index, state.type_text.clone(), state.count),
+            );
+        }
+    }
+    for (offset, local) in locals.iter().enumerate() {
+        objects.insert(
+            local.name.clone(),
+            (
+                parameter_states.len() + offset,
+                local.type_text.clone(),
+                local.count,
+            ),
+        );
+    }
+    let mut scalars: BTreeMap<&str, usize> = BTreeMap::new();
+    let mut word = 0usize;
+    for param in params {
+        match param.role {
+            Role::InoutLen => word += 1,
             Role::Scalar => {
                 if let Some(name) = param.name.as_deref() {
                     scalars.insert(name, word);
@@ -736,56 +932,108 @@ fn build_setup(entry: &Entry, params: &[Param]) -> Result<Vec<SetupCall>, Adapte
             _ => {}
         }
     }
-    let mut setup = Vec::new();
-    for (step, declared) in entry.setup.iter().enumerate() {
-        let Some(name) = declared.call.as_deref() else {
-            return Err(bad(step, "set steps are not driven yet".to_owned()));
-        };
-        if !is_function_name(name) {
-            return Err(bad(step, format!("call {name:?} is not a C identifier")));
-        }
-        let Some(expect) = declared.expect.as_deref().and_then(Expect::parse) else {
-            return Err(bad(
-                step,
-                "a call needs expect void or a decimal".to_owned(),
-            ));
-        };
-        let mut args = Vec::new();
-        for text in &declared.args {
-            let arg = match SetupArg::parse(text) {
-                Some(SetupArg::In) => ArgExpr::In,
-                Some(SetupArg::Len) => ArgExpr::Len,
-                Some(SetupArg::Cap) => ArgExpr::Cap,
-                Some(SetupArg::Int(value)) => ArgExpr::Int(value),
-                Some(SetupArg::Scalar(name)) => scalars
-                    .get(name.as_str())
-                    .map(|index| ArgExpr::Scalar(*index))
-                    .ok_or_else(|| bad(step, format!("argument {text:?} names no scalar")))?,
-                Some(SetupArg::AddressOf(name)) => states
-                    .get(name.as_str())
-                    .map(|index| ArgExpr::Address(*index))
-                    .ok_or_else(|| bad(step, format!("argument {text:?} names no state")))?,
-                Some(SetupArg::Local(_)) | None => {
-                    return Err(bad(
-                        step,
-                        format!("argument {text:?} is not in the closed grammar"),
-                    ));
-                }
-            };
-            args.push(arg);
-        }
-        setup.push(SetupCall {
-            name: name.to_owned(),
-            args,
-            expect,
-        });
-    }
-    if setup.len() > mt_capture::manifest::MAX_SETUP_STEPS {
+    if entry.setup.len() > mt_capture::manifest::MAX_SETUP_STEPS {
         return Err(AdapterError::Invalid(format!(
             "{} setup steps; at most {}",
-            setup.len(),
+            entry.setup.len(),
             mt_capture::manifest::MAX_SETUP_STEPS
         )));
+    }
+    let mut setup = Vec::new();
+    for (step, declared) in entry.setup.iter().enumerate() {
+        match (declared.call.as_deref(), declared.set.as_deref()) {
+            (Some(name), None) => {
+                if !is_function_name(name) {
+                    return Err(bad(step, format!("call {name:?} is not a C identifier")));
+                }
+                let Some(expect) = declared.expect.as_deref().and_then(Expect::parse) else {
+                    return Err(bad(
+                        step,
+                        "a call needs expect void or a decimal".to_owned(),
+                    ));
+                };
+                let mut args = Vec::new();
+                for text in &declared.args {
+                    let arg = match SetupArg::parse(text) {
+                        Some(SetupArg::In) => ArgExpr::In,
+                        Some(SetupArg::Len) => ArgExpr::Len,
+                        Some(SetupArg::Cap) => ArgExpr::Cap,
+                        Some(SetupArg::Int(value)) => ArgExpr::Int(value),
+                        Some(SetupArg::Scalar(name)) => scalars
+                            .get(name.as_str())
+                            .map(|index| ArgExpr::Scalar(*index))
+                            .ok_or_else(|| {
+                                bad(step, format!("argument {text:?} names no scalar"))
+                            })?,
+                        Some(SetupArg::AddressOf(name)) => objects
+                            .get(&name)
+                            .map(|(index, _, _)| ArgExpr::Address(*index))
+                            .ok_or_else(|| {
+                                bad(step, format!("argument {text:?} names no state or local"))
+                            })?,
+                        Some(SetupArg::Local(name)) => match objects.get(&name) {
+                            Some((index, type_text, None | Some(1)))
+                                if type_text.ends_with(" *")
+                                    && locals.iter().any(|local| local.name == name) =>
+                            {
+                                ArgExpr::Value(*index, type_text.clone())
+                            }
+                            _ => {
+                                return Err(bad(
+                                    step,
+                                    format!("argument {text:?} names no pointer local"),
+                                ));
+                            }
+                        },
+                        None => {
+                            return Err(bad(
+                                step,
+                                format!("argument {text:?} is not in the closed grammar"),
+                            ));
+                        }
+                    };
+                    args.push(arg);
+                }
+                setup.push(SetupStepKind::Call(SetupCall {
+                    name: name.to_owned(),
+                    args,
+                    expect,
+                }));
+            }
+            (None, Some(path)) => {
+                let Some((object, members)) = parse_set_path(path) else {
+                    return Err(bad(
+                        step,
+                        format!("set path {path:?} is not in the grammar"),
+                    ));
+                };
+                let Some((index, type_text, _)) = objects.get(&object) else {
+                    return Err(bad(
+                        step,
+                        format!("set path {path:?} names no state or local"),
+                    ));
+                };
+                if type_text.ends_with('*') {
+                    return Err(bad(
+                        step,
+                        format!("set path {path:?} names a pointer, not a struct"),
+                    ));
+                }
+                let Some(value) = declared.value.as_deref().and_then(SetValue::parse) else {
+                    return Err(bad(
+                        step,
+                        "a set needs a value of the closed grammar".to_owned(),
+                    ));
+                };
+                setup.push(SetupStepKind::Set(SetStep {
+                    index: *index,
+                    type_text: type_text.clone(),
+                    members,
+                    value,
+                }));
+            }
+            _ => return Err(bad(step, "exactly one of call or set".to_owned())),
+        }
     }
     Ok(setup)
 }

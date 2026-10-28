@@ -209,6 +209,37 @@ fn eqv_03_driver_golden_set_step_is_rendered_and_closed() {
 }
 
 #[test]
+fn eqv_03_driver_states_are_bounded_and_tied_to_the_runtime() {
+    // T-03-27: a driver holds at most MAX_STATES states; the constant is the
+    // runtime template's MT_MAX_STATES.
+    let define = mt_harness::runtime::RUNTIME_TEMPLATE
+        .lines()
+        .find(|line| line.starts_with("#define MT_MAX_STATES "))
+        .unwrap();
+    assert_eq!(
+        define,
+        format!("#define MT_MAX_STATES {}u", mt_harness::adapter::MAX_STATES)
+    );
+
+    // Five states and a local are six; two more locals make eight and pass, a
+    // ninth is refused naming the limit.
+    let mut entry = coremqtt_set_step_entry("$len");
+    let extra = |index: usize| LocalObject {
+        name: format!("extra{index}"),
+        type_text: "MQTTPacketInfo_t".to_owned(),
+        count: None,
+    };
+    entry.local.extend((0..2).map(extra));
+    Adapter::from_entry("coremqtt", "default", &entry).unwrap();
+    entry.local.push(extra(2));
+    let refused = Adapter::from_entry("coremqtt", "default", &entry);
+    assert!(
+        matches!(refused, Err(AdapterError::Invalid(ref why)) if why.contains("at most 8")),
+        "{refused:?}"
+    );
+}
+
+#[test]
 fn eqv_03_driver_names_never_reach_rendering() {
     // The validator refuses a name that is not a C identifier before anything
     // is rendered.

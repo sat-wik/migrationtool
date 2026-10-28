@@ -557,15 +557,15 @@ fn build_entry(
     // The probe lays out every state and, for a return that is not void, the
     // returned value: a typedef name does not say whether it is an integer, an
     // enum or a struct, so the DWARF of the entry's header decides (D-06, D-11).
-    let mut probes: Vec<(String, String)> = adapter
+    let mut probes: Vec<(String, String, Option<u32>)> = adapter
         .states()
         .into_iter()
-        .map(|state| (state.name, state.type_text))
+        .map(|state| (state.name, state.type_text, state.count))
         .collect();
     let resolve_return =
         adapter.return_kind() == ReturnKind::Integer && adapter.return_text() != "void";
     if resolve_return {
-        probes.push((RET_NAME.to_owned(), adapter.return_text().to_owned()));
+        probes.push((RET_NAME.to_owned(), adapter.return_text().to_owned(), None));
     }
     let mut layouts = match layout_for_entry(
         &opts.tools,

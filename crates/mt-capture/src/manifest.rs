@@ -476,7 +476,7 @@ impl SetupArg {
 }
 
 /// The value a `set` step assigns (CONTEXT D-12).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SetValue {
     /// `$in`: the address of the input buffer.
     In,
@@ -641,6 +641,11 @@ pub enum Role {
     Str,
     /// The byte length of the `str` named by `of`, without the NUL; derived.
     StrLen,
+    /// A struct passed by value that wraps the input: its `ptr_field` receives the
+    /// input pointer and its `len_field` the input length (Phase 3, CONTEXT D-11,
+    /// D-12). It stands for the entry's `in_buf` and `in_len` together and needs
+    /// `accepted_wrapped = true`.
+    Wrap,
 }
 
 impl Role {
@@ -659,6 +664,7 @@ impl Role {
             Self::OutPtr => "out_ptr",
             Self::Str => "str",
             Self::StrLen => "str_len",
+            Self::Wrap => "wrap",
         }
     }
 
@@ -1534,6 +1540,11 @@ fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
                 "{h}: the pointee of an {word} parameter must be a plain scalar type name and not const; found {param:?} (D-11)"
             ));
         }
+        if arg.role == Role::Wrap && !pointer && !is_closed_type_text(param) {
+            issues.push(format!(
+                "{h}: role wrap: type {param:?} does not match {TYPE_TEXT_GRAMMAR} (D-11)"
+            ));
+        }
         if arg.role == Role::OutPtr && pointer && pointer_pointee_type(param).is_none() {
             issues.push(format!(
                 "{h}: role out_ptr needs a pointer to a pointer, found {param:?} (D-11)"
@@ -1579,6 +1590,7 @@ fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
             "{f}: an inout_len with of = \"out\" needs an out_buf to size (D-11)"
         ));
     }
+    wrap_and_input_issues(g, &f, entry, issues);
     for (buf, len, buf_word, len_word) in [
         (Role::InBuf, Role::InLen, "in_buf", "in_len"),
         (Role::OutBuf, Role::OutCap, "out_buf", "out_cap"),
@@ -1622,6 +1634,43 @@ fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
     if combinations > MAX_SCALAR_COMBOS {
         issues.push(format!(
             "{f}: {combinations} scalar combinations exceed the limit of {MAX_SCALAR_COMBOS} (D-14)"
+        ));
+    }
+}
+
+/// The rules that join the input to the entry (CONTEXT D-11, D-12): at most one
+/// `wrap`, none beside an `in_buf` or an `in_len` (it stands for both), a wrap only
+/// on an entry with `accepted_wrapped = true`, and an input that is reached: by an
+/// `in_buf`, a `wrap`, or `$in` in a setup call or a `set` value.
+fn wrap_and_input_issues(g: &str, f: &str, entry: &Entry, issues: &mut Vec<String>) {
+    let count = |role: Role| entry.arg.iter().filter(|arg| arg.role == role).count();
+    let wraps = count(Role::Wrap);
+    if wraps > 1 {
+        issues.push(format!("{f}: {wraps} wrap tables; at most one (D-12)"));
+    }
+    if wraps > 0 && (count(Role::InBuf) > 0 || count(Role::InLen) > 0) {
+        issues.push(format!(
+            "{f}: a wrap stands for the in_buf and the in_len, so the entry has neither beside it (D-12)"
+        ));
+    }
+    if wraps > 0 && !entry.accepted_wrapped {
+        issues.push(format!(
+            "{g}.accepted_wrapped: a wrap needs accepted_wrapped = true (D-12, D-28)"
+        ));
+    }
+    let named_by_setup = entry.setup.iter().any(|step| {
+        step.args
+            .iter()
+            .any(|text| SetupArg::parse(text) == Some(SetupArg::In))
+            || step
+                .value
+                .as_deref()
+                .and_then(SetValue::parse)
+                .is_some_and(|value| matches!(value, SetValue::In | SetValue::InPlus(_)))
+    });
+    if count(Role::InBuf) == 0 && wraps == 0 && !named_by_setup {
+        issues.push(format!(
+            "{f}: the input is never reached; declare an in_buf with its in_len, a wrap, or name $in in a setup step (D-12)"
         ));
     }
 }
@@ -1870,7 +1919,7 @@ fn arg_key_issues(h: &str, arg: &ArgRole, param: &str, issues: &mut Vec<String>)
     let word = arg.role.word();
     let takes_value = matches!(arg.role, Role::OutCap | Role::Scalar | Role::InoutLen);
     match arg.role {
-        Role::InBuf | Role::OutBuf | Role::InLen | Role::StrLen => {
+        Role::InBuf | Role::OutBuf | Role::InLen | Role::StrLen | Role::Wrap => {
             if arg.name.is_some() {
                 issues.push(format!("{h}: role {word} takes no name (D-11)"));
             }
@@ -1939,11 +1988,7 @@ fn arg_key_issues(h: &str, arg: &ArgRole, param: &str, issues: &mut Vec<String>)
         )),
     }
     str_value_issues(h, arg, issues);
-    if arg.count.is_some() || arg.ptr_field.is_some() || arg.len_field.is_some() {
-        issues.push(format!(
-            "{h}: count, ptr_field and len_field are not available on {word} yet (D-12)"
-        ));
-    }
+    object_key_issues(h, arg, issues);
     if arg.mutable {
         if arg.role != Role::InBuf {
             issues.push(format!("{h}: mutable is only allowed on in_buf (D-11)"));
@@ -1960,6 +2005,43 @@ fn arg_key_issues(h: &str, arg: &ArgRole, param: &str, issues: &mut Vec<String>)
         (Role::InLen, Some(0)) => issues.push(format!("{h}: max must be above zero (D-11)")),
         (Role::InLen, _) | (_, None) => {}
         (_, Some(_)) => issues.push(format!("{h}: max is only allowed on in_len (D-11)")),
+    }
+}
+
+/// The keys `count`, `ptr_field` and `len_field` take (CONTEXT D-12): `count`
+/// belongs to a `state` and is 1 to [`MAX_OBJECT_COUNT`]; the two members belong to
+/// a `wrap`, are C identifiers and differ.
+fn object_key_issues(h: &str, arg: &ArgRole, issues: &mut Vec<String>) {
+    match (arg.role, arg.count) {
+        (Role::State, Some(count)) if !(1..=MAX_OBJECT_COUNT).contains(&count) => {
+            issues.push(format!(
+                "{h}: count {count} is outside 1..={MAX_OBJECT_COUNT} (D-12, T-03-27)"
+            ));
+        }
+        (Role::State, _) | (_, None) => {}
+        (_, Some(_)) => issues.push(format!("{h}: count is only allowed on state (D-12)")),
+    }
+    if arg.role != Role::Wrap {
+        for (key, value) in [("ptr_field", &arg.ptr_field), ("len_field", &arg.len_field)] {
+            if value.is_some() {
+                issues.push(format!("{h}: {key} is only allowed on wrap (D-12)"));
+            }
+        }
+        return;
+    }
+    for (key, value) in [("ptr_field", &arg.ptr_field), ("len_field", &arg.len_field)] {
+        match value {
+            None => issues.push(format!("{h}: role wrap needs {key} (D-12)")),
+            Some(member) if !is_c_identifier(member) => issues.push(format!(
+                "{h}: {key} {member:?} is not a C identifier (D-12)"
+            )),
+            Some(_) => {}
+        }
+    }
+    if arg.ptr_field.is_some() && arg.ptr_field == arg.len_field {
+        issues.push(format!(
+            "{h}: ptr_field and len_field must name different members (D-12)"
+        ));
     }
 }
 
