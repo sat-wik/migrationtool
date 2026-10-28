@@ -10,12 +10,14 @@
 use std::collections::BTreeMap;
 
 use mt_capture::manifest::{
-    BASELINE_CFLAGS, Entry, MAX_SCALAR_COMBOS, Role, UnobservedMark, pointer_pointee_type,
-    split_parameters, state_pointee_type, value_pointee_type,
+    BASELINE_CFLAGS, Entry, Expect, MAX_SCALAR_COMBOS, Role, SetupArg, UnobservedMark,
+    is_function_name, pointer_pointee_type, split_parameters, state_pointee_type,
+    value_pointee_type,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::budget::Budgets;
+use crate::frame::SETUP_STATUS_BASE;
 use crate::runtime::NO_STATES;
 
 /// Why an entry cannot be driven, or a compile flag cannot be handled.
@@ -104,6 +106,44 @@ pub struct StateParam {
     pub init_word: Option<usize>,
 }
 
+/// One argument of a setup call, resolved against the entry's roles (CONTEXT D-12).
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ArgExpr {
+    /// `$in`.
+    In,
+    /// `$len`.
+    Len,
+    /// `$cap`.
+    Cap,
+    /// `$arg:<name>`: request word `n`.
+    Scalar(usize),
+    /// A decimal integer.
+    Int(i64),
+    /// `&<name>`: the address of state `n`.
+    Address(usize),
+}
+
+impl ArgExpr {
+    fn render(&self) -> String {
+        match self {
+            Self::In => "mt_in".to_owned(),
+            Self::Len => "mt_in_len".to_owned(),
+            Self::Cap => "mt_out_cap".to_owned(),
+            Self::Scalar(word) => format!("mt_scalar({word})"),
+            Self::Int(value) => value.to_string(),
+            Self::Address(index) => format!("mt_state({index})"),
+        }
+    }
+}
+
+/// A declared setup call: only validated tokens, never manifest text.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SetupCall {
+    name: String,
+    args: Vec<ArgExpr>,
+    expect: Expect,
+}
+
 /// An entry ready to be driven.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Adapter {
@@ -114,6 +154,7 @@ pub struct Adapter {
     params: Vec<Param>,
     marks: Vec<UnobservedMark>,
     ret_text: String,
+    setup: Vec<SetupCall>,
 }
 
 /// `[A-Za-z_][A-Za-z0-9_]*`.
@@ -269,6 +310,7 @@ impl Adapter {
                 values: arg.values.clone(),
             });
         }
+        let setup = build_setup(entry, &params)?;
         Ok(Self {
             target: target.to_owned(),
             config: config.to_owned(),
@@ -277,6 +319,7 @@ impl Adapter {
             params,
             marks: entry.unobserved.clone(),
             ret_text,
+            setup,
         })
     }
 
@@ -422,6 +465,37 @@ impl Adapter {
                 self.ret_text
             ),
         }
+    }
+
+    /// The C statements of the declared setup steps (CONTEXT D-12), in order. Each
+    /// step runs only while every earlier one returned what it expected; the first
+    /// mismatch records `SETUP_STATUS_BASE + k` and the step's return value in
+    /// `setup_status` and `setup_ret`. Everything in it is a validated identifier, a
+    /// decimal integer or a runtime accessor, never text from the manifest.
+    #[must_use]
+    pub fn setup_fragment(&self) -> String {
+        if self.setup.is_empty() {
+            return "/* no setup steps */".to_owned();
+        }
+        let blocks: Vec<String> = self
+            .setup
+            .iter()
+            .enumerate()
+            .map(|(step, call)| {
+                let args: Vec<String> = call.args.iter().map(ArgExpr::render).collect();
+                let invocation = format!("{}({})", call.name, args.join(", "));
+                match call.expect {
+                    Expect::Void => {
+                        format!("if (setup_status == 0u) {{\n        (void)({invocation});\n    }}")
+                    }
+                    Expect::Value(value) => format!(
+                        "if (setup_status == 0u) {{\n        int32_t mt_setup_r = (int32_t)({invocation});\n        if (mt_setup_r != (int32_t)({value})) {{\n            setup_status = {}u;\n            setup_ret = (u32)mt_setup_r;\n        }}\n    }}",
+                        SETUP_STATUS_BASE as usize + step
+                    ),
+                }
+            })
+            .collect();
+        blocks.join("\n    ")
     }
 
     /// The `argv` of a vector: `argv[0]`, then every non-pointer parameter in
@@ -623,6 +697,97 @@ impl Adapter {
             .filter_map(|param| param.max)
             .min()
     }
+}
+
+/// Resolve the entry's `setup` steps against its roles (CONTEXT D-12, T-03-25): a
+/// call name must be a function name, an argument one of the closed forms that names
+/// a state or a scalar of the entry, and the expectation `void` or a 32-bit decimal.
+/// The manifest validator checks the same; this is the second check, at the point the
+/// steps become C.
+fn build_setup(entry: &Entry, params: &[Param]) -> Result<Vec<SetupCall>, AdapterError> {
+    let bad = |step: usize, why: String| AdapterError::Invalid(format!("setup[{step}]: {why}"));
+    if !entry.local.is_empty() {
+        return Err(AdapterError::Invalid(
+            "local objects are not driven yet".to_owned(),
+        ));
+    }
+    let mut states: BTreeMap<&str, usize> = BTreeMap::new();
+    let mut scalars: BTreeMap<&str, usize> = BTreeMap::new();
+    let (mut state_index, mut word) = (0usize, 0usize);
+    for param in params {
+        match param.role {
+            Role::State => {
+                if let Some(name) = param.name.as_deref() {
+                    states.insert(name, state_index);
+                }
+                state_index += 1;
+            }
+            Role::InoutLen => {
+                state_index += 1;
+                word += 1;
+            }
+            Role::OutScalar | Role::OutPtr => state_index += 1,
+            Role::Scalar => {
+                if let Some(name) = param.name.as_deref() {
+                    scalars.insert(name, word);
+                }
+                word += 1;
+            }
+            _ => {}
+        }
+    }
+    let mut setup = Vec::new();
+    for (step, declared) in entry.setup.iter().enumerate() {
+        let Some(name) = declared.call.as_deref() else {
+            return Err(bad(step, "set steps are not driven yet".to_owned()));
+        };
+        if !is_function_name(name) {
+            return Err(bad(step, format!("call {name:?} is not a C identifier")));
+        }
+        let Some(expect) = declared.expect.as_deref().and_then(Expect::parse) else {
+            return Err(bad(
+                step,
+                "a call needs expect void or a decimal".to_owned(),
+            ));
+        };
+        let mut args = Vec::new();
+        for text in &declared.args {
+            let arg = match SetupArg::parse(text) {
+                Some(SetupArg::In) => ArgExpr::In,
+                Some(SetupArg::Len) => ArgExpr::Len,
+                Some(SetupArg::Cap) => ArgExpr::Cap,
+                Some(SetupArg::Int(value)) => ArgExpr::Int(value),
+                Some(SetupArg::Scalar(name)) => scalars
+                    .get(name.as_str())
+                    .map(|index| ArgExpr::Scalar(*index))
+                    .ok_or_else(|| bad(step, format!("argument {text:?} names no scalar")))?,
+                Some(SetupArg::AddressOf(name)) => states
+                    .get(name.as_str())
+                    .map(|index| ArgExpr::Address(*index))
+                    .ok_or_else(|| bad(step, format!("argument {text:?} names no state")))?,
+                Some(SetupArg::Local(_)) | None => {
+                    return Err(bad(
+                        step,
+                        format!("argument {text:?} is not in the closed grammar"),
+                    ));
+                }
+            };
+            args.push(arg);
+        }
+        setup.push(SetupCall {
+            name: name.to_owned(),
+            args,
+            expect,
+        });
+    }
+    if setup.len() > mt_capture::manifest::MAX_SETUP_STEPS {
+        return Err(AdapterError::Invalid(format!(
+            "{} setup steps; at most {}",
+            setup.len(),
+            mt_capture::manifest::MAX_SETUP_STEPS
+        )));
+    }
+    Ok(setup)
 }
 
 /// True for text of printable ASCII only (0x20 to 0x7E).

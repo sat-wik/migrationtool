@@ -55,6 +55,9 @@ fn arm_role(role: Role) -> ArgRole {
         of: None,
         mutable: false,
         values: Vec::new(),
+        count: None,
+        ptr_field: None,
+        len_field: None,
     }
 }
 
@@ -129,6 +132,8 @@ fn build(tools: &ExecTools, sources: &[(&str, &str)]) -> Result<Built, String> {
         accepted_wrapped: false,
         arg: vec![arm_role(Role::InBuf), arm_role(Role::InLen)],
         unobserved: Vec::new(),
+        local: Vec::new(),
+        setup: Vec::new(),
     };
     let adapter = Adapter::from_entry("synthetic", "default", &entry).unwrap();
     let include = format!("#include \"{}\"", root.join("x.h").display());

@@ -17,6 +17,12 @@ pub const REQUEST_MAGIC: [u8; 4] = *b"MTRQ";
 /// Version of the frame and of the request layout.
 pub const FRAME_VERSION: u32 = 1;
 
+/// The status word of a frame whose setup step `k` returned something other than
+/// its expectation is `SETUP_STATUS_BASE + k` (CONTEXT D-12); the raw return value
+/// of the frame is then that step's return value, and the entry did not run. A
+/// frame whose entry ran has status 0.
+pub const SETUP_STATUS_BASE: u32 = 0x100;
+
 /// Bytes before the first region: magic and six words.
 const HEADER_LEN: usize = 28;
 
@@ -32,7 +38,8 @@ pub struct Region {
 /// A parsed result frame.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Frame {
-    /// Status word: 0 when the call ran.
+    /// Status word: 0 when the call ran, `SETUP_STATUS_BASE + k` when setup step
+    /// `k` failed.
     pub status: u32,
     /// The raw return value of the call.
     pub ret: u32,

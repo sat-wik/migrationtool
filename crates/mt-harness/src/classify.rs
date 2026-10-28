@@ -9,17 +9,23 @@
 //! | host signal on `qemu-arm`, `tree_kill_sent`, incomplete or truncated stream | `executor_error` |
 //! | exit 0, well-formed frame whose length equals the whole stdout | `ok` (rc from the frame) |
 //! | exit 0, slack check set in the frame | `fault`, label `oob-write:guard-slack` |
+//! | exit 0, status word `SETUP_STATUS_BASE + k` | `setup_failed`, rc = the step's return value, no label |
 //! | exit 132, 135, 136, 139 (handler: 128 + SIGILL, SIGBUS, SIGFPE, SIGSEGV) | `fault`, rc = -signal |
 //! | exit 134 (abort or a failed assert) | `abort`, rc -6, label `crash:SIGABRT` |
 //! | driver exit 95..=99, any other code, malformed or missing frame | `executor_error` |
 //!
 //! `executor_error` never becomes a vector. `setup_failed` is constructed from
-//! the frame's status word by the plan that adds setup steps; it is listed so
-//! the class set is complete.
+//! the frame's status word (CONTEXT D-12): a declared setup step returned something
+//! other than its expectation, the entry did not run, and the run is compared like
+//! any other. It has no `has_ub` label. A fault, abort or timeout during setup is
+//! that fault, abort or timeout, and a changed guard-slack byte is a fault even
+//! when a step failed.
 
 use mt_toolchain::runner::RunOutput;
 
-use crate::frame::parse_frame;
+use mt_capture::manifest::MAX_SETUP_STEPS;
+
+use crate::frame::{SETUP_STATUS_BASE, parse_frame};
 
 /// The outcome classes a vector can record, in report order. `executor_error`
 /// is not among them.
@@ -180,10 +186,21 @@ fn classify_frame(output: &RunOutput) -> Outcome {
     match parse_frame(&output.stdout) {
         Ok(frame) if frame.total_len as u64 == output.record.stdout.bytes_total => {
             let rc = i32::from_le_bytes(frame.ret.to_le_bytes());
-            if frame.status != 0 {
-                error(format!("unexpected frame status word {}", frame.status))
-            } else if frame.slack != 0 {
+            let step = match frame.status {
+                0 => None,
+                status => match status.checked_sub(SETUP_STATUS_BASE) {
+                    Some(step) if usize::try_from(step).is_ok_and(|s| s < MAX_SETUP_STEPS) => {
+                        Some(step)
+                    }
+                    _ => {
+                        return error(format!("unexpected frame status word {status:#x}"));
+                    }
+                },
+            };
+            if frame.slack != 0 {
                 Outcome::Fault { signal: None, rc }
+            } else if let Some(step) = step {
+                Outcome::SetupFailed { step, rc }
             } else {
                 Outcome::Ok { rc }
             }

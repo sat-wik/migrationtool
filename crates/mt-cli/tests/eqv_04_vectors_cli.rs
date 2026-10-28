@@ -244,7 +244,8 @@ fn eqv_04_adapters_cli_checks_the_floor() {
         ok.stdout
     );
 
-    // A copy of the testbed whose adapter drop log drops four floor targets.
+    // A copy of the testbed whose adapter drop log drops six drivable targets, so the
+    // count falls below the floor of 10 however many targets later plans add.
     let tmp = tempfile::tempdir().unwrap();
     let copy = tmp.path().join("testbed");
     let from = repo_root().join("testbed");
@@ -267,6 +268,8 @@ fn eqv_04_adapters_cli_checks_the_floor() {
         ("libfdt", "fdt_check_full"),
         ("microcoap", "coap_parse"),
         ("nimble", "ble_uuid_init_from_buf"),
+        ("nanopb", "pb_istream_from_buffer"),
+        ("zlib", "uncompress"),
     ] {
         log.push_str(&format!(
             "\n[[dropped]]\ntarget = \"{target}\"\nentry = \"{entry}\"\ncause = \"attempt_failed\"\ndetail = \"x\"\nattempt = \"y\"\n"
@@ -286,7 +289,7 @@ fn eqv_04_adapters_cli_checks_the_floor() {
         below
             .stdout
             .lines()
-            .any(|l| l == "drivable targets: 6 (floor 10)"),
+            .any(|l| *l == format!("drivable targets: {} (floor 10)", count - 6)),
         "{}",
         below.stdout
     );

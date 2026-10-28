@@ -219,6 +219,9 @@ fn arg(role: Role) -> ArgRole {
         of: None,
         mutable: false,
         values: Vec::new(),
+        count: None,
+        ptr_field: None,
+        len_field: None,
     }
 }
 

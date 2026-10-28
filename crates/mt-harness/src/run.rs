@@ -929,6 +929,17 @@ fn has_ub_source(outcome: &Outcome) -> HasUbSource {
     }
 }
 
+/// The executor's own text of a vector's `stderr`: `outcome=<class>`, and for a
+/// failed setup step ` step=<k>` (CONTEXT D-12).
+fn stderr_pattern(outcome: &Outcome) -> String {
+    match outcome {
+        Outcome::SetupFailed { step, .. } => {
+            format!("outcome={} step={step}", outcome.class_word())
+        }
+        _ => format!("outcome={}", outcome.class_word()),
+    }
+}
+
 /// Judge one run and build the vector, or say why no vector can be made.
 fn observe(
     adapter: &Adapter,
@@ -942,13 +953,15 @@ fn observe(
         return Err(format!("executor_error: {reason}"));
     }
     let (out_bytes, discarded, lib_state_in, lib_state_out) = match &outcome {
-        Outcome::Ok { .. } | Outcome::Fault { signal: None, .. } => {
+        Outcome::Ok { .. } | Outcome::Fault { signal: None, .. } | Outcome::SetupFailed { .. } => {
             let frame = parse_frame(&output.stdout).map_err(|e| format!("result frame: {e}"))?;
             let out = frame
                 .region(OUT_REGION)
                 .map(|region| region.bytes.clone())
                 .ok_or_else(|| "the result frame has no output region".to_owned())?;
-            let (before, after) = record_state(adapter, driver, &frame)?;
+            // A failed setup step means the entry did not run: nothing was returned.
+            let entry_ran = !matches!(outcome, Outcome::SetupFailed { .. });
+            let (before, after) = record_state(adapter, driver, &frame, entry_ran)?;
             (out, frame.discarded, before, after)
         }
         _ => (Vec::new(), 0, LibState::default(), LibState::default()),
@@ -967,7 +980,7 @@ fn observe(
             is_regex: false,
         },
         stderr: Output {
-            pattern: format!("outcome={}", outcome.class_word()),
+            pattern: stderr_pattern(&outcome),
             is_regex: false,
         },
         rc: outcome.rc().unwrap_or(0),
@@ -1116,6 +1129,7 @@ fn record_state(
     adapter: &Adapter,
     driver: &PreparedDriver,
     frame: &Frame,
+    entry_ran: bool,
 ) -> Result<(LibState, LibState), String> {
     let states = adapter.states();
     let words = address_words(frame)?;
@@ -1131,8 +1145,8 @@ fn record_state(
             (STATE_BEFORE_REGION, &mut before),
             (STATE_AFTER_REGION, &mut after),
         ] {
-            if state.name == RET_NAME && base == STATE_BEFORE_REGION {
-                // Nothing is returned before the call.
+            if state.name == RET_NAME && (base == STATE_BEFORE_REGION || !entry_ran) {
+                // Nothing is returned before the call, nor when setup stopped first.
                 continue;
             }
             let bytes = region_bytes(frame, base, index, &format!("state {}", state.name))?;

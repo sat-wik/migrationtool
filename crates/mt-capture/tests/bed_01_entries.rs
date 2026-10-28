@@ -472,6 +472,8 @@ fn bed_01_entry_mismatch_fails_the_capture() {
         accepted_wrapped: false,
         arg: Vec::new(),
         unobserved: Vec::new(),
+        local: Vec::new(),
+        setup: Vec::new(),
     };
     let mut target = git_target(&upstream, BuildSystem::Make);
     target.build_args = Some(BuildArgs {
@@ -624,6 +626,8 @@ impl World {
             accepted_wrapped: false,
             arg: Vec::new(),
             unobserved: Vec::new(),
+            local: Vec::new(),
+            setup: Vec::new(),
         };
         check_entry(
             &cfg,

@@ -1297,3 +1297,96 @@ fn eqv_04_setup_sequence_runs_before_the_entry() {
         assert!(parsed_some, "at least one message is parsed");
     }
 }
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_setup_failure_is_a_compared_outcome() {
+    // D-12, T-03-26: a setup call whose return differs from its expectation stops
+    // the sequence. The vector records outcome setup_failed with the step in stderr
+    // and the step's return value in rc, no label, and is compared like any other.
+    // The manifest here is the committed one with a setup step added to corejson
+    // JSON_Validate: it validates the input and expects JSONSuccess (0), so the
+    // seeds that are not valid JSON (a JSONStatus_t above 0) end in setup_failed.
+    use mt_capture::manifest::SetupStep;
+    use mt_vectors::vector::OutcomeClass;
+
+    let work = local_work_dir();
+    let tmp = tempfile::tempdir().unwrap();
+    let testbed = tmp.path().join("testbed");
+    std::fs::create_dir_all(&testbed).unwrap();
+    for name in ["seeds", "policy", "targets"] {
+        std::os::unix::fs::symlink(repo_root().join("testbed").join(name), testbed.join(name))
+            .unwrap();
+    }
+    let mut manifest = Manifest::load(&repo_root().join("testbed/manifest.toml")).unwrap();
+    let entry = manifest
+        .target
+        .get_mut("corejson")
+        .unwrap()
+        .entry
+        .iter_mut()
+        .find(|entry| entry.name == "JSON_Validate")
+        .unwrap();
+    entry.setup = vec![SetupStep {
+        call: Some("JSON_Validate".to_owned()),
+        args: vec!["$in".to_owned(), "$len".to_owned()],
+        expect: Some("0".to_owned()),
+        set: None,
+        value: None,
+    }];
+    manifest.validate().unwrap();
+    std::fs::write(
+        testbed.join("manifest.toml"),
+        toml::to_string(&manifest).unwrap(),
+    )
+    .unwrap();
+
+    let mut scope = Scope::new(testbed.join("manifest.toml"), work);
+    scope.pairs = vec![("corejson".to_owned(), "default".to_owned())];
+    scope.entries = Some(vec!["JSON_Validate".to_owned()]);
+    scope.build_root = tmp.path().join("build");
+    build_ok(&scope);
+    let first = run_into(&scope, &tmp.path().join("a"), &tmp.path().join("slots-a"));
+    let second = run_into(&scope, &tmp.path().join("b"), &tmp.path().join("slots-b"));
+    assert_eq!(first, second, "two full runs agree");
+    let comparison = check_corpora(&tmp.path().join("a"), &tmp.path().join("b")).unwrap();
+    assert!(comparison.identical(), "{:?}", comparison.problems);
+    assert!(first.setup_failed > 0 && first.ok > 0, "{first:?}");
+    assert_eq!(first.ok + first.setup_failed, first.vectors, "{first:?}");
+
+    let corpus = read_corpus(&tmp.path().join("a/corejson/default/JSON_Validate")).unwrap();
+    let (mut failed, mut passed) = (0usize, 0usize);
+    for (sha, vector) in &corpus.vectors {
+        let provenance = &corpus.index.vectors[sha];
+        match vector.outcome_class().unwrap() {
+            OutcomeClass::SetupFailed => {
+                failed += 1;
+                assert_eq!(
+                    vector.stderr.pattern, "outcome=setup_failed step=0",
+                    "{sha}"
+                );
+                assert!(
+                    vector.rc > 0,
+                    "{sha}: the step's return value, a JSONStatus_t other than JSONSuccess"
+                );
+                assert!(
+                    vector.has_ub.is_none(),
+                    "{sha}: a setup failure has no label"
+                );
+                assert_eq!(provenance.outcome, "setup_failed");
+                assert_eq!(provenance.has_ub_source, HasUbSource::Unchecked);
+                assert_eq!(vector.lib_state_in, vector.lib_state_out, "{sha}");
+            }
+            OutcomeClass::Ok => {
+                passed += 1;
+                assert_eq!(vector.stderr.pattern, "outcome=ok", "{sha}");
+                assert_eq!(vector.rc, 0, "{sha}");
+            }
+            other => panic!("{sha}: unexpected class {other:?}"),
+        }
+    }
+    assert_eq!((failed, passed), (first.setup_failed, first.ok));
+    println!(
+        "corejson/default/JSON_Validate setup: {failed} setup_failed, {passed} ok, twice identical"
+    );
+}

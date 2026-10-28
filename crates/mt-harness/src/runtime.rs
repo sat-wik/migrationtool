@@ -13,7 +13,7 @@ use crate::budget::Budgets;
 pub const RUNTIME_TEMPLATE: &str = include_str!("runtime.c");
 
 /// The names of the closed placeholder set, in the order they are replaced.
-pub const PLACEHOLDER_NAMES: [&str; 9] = [
+pub const PLACEHOLDER_NAMES: [&str; 10] = [
     "MT_RESERVED_VA",
     "MT_HEAP_ARENA",
     "MT_SENTINEL",
@@ -22,6 +22,7 @@ pub const PLACEHOLDER_NAMES: [&str; 9] = [
     "MT_INCLUDES",
     "MT_STATES",
     "MT_CASES",
+    "MT_SETUP",
     "MT_CALL",
 ];
 
@@ -55,6 +56,12 @@ pub struct Placeholders {
     pub states: String,
     /// C source of `static u32 mt_call(u32, u8 *, u32, u8 *, u32)`, the cases.
     pub cases: String,
+    /// The C statements of the declared setup steps (CONTEXT D-12), run in order
+    /// before the states are snapshotted; empty for the self-test and for an entry
+    /// without setup. They may read `mt_in`, `mt_in_len`, `mt_out_cap`,
+    /// `mt_scalar(index)` and `mt_state(index)`, and set `setup_status` and
+    /// `setup_ret`.
+    pub setup: String,
     /// The C expression of the call, of a type convertible to `u32`. It may
     /// read `selector`, `mt_in`, `mt_in_len`, `mt_out`, `mt_out_cap` and
     /// `mt_scalar(index)`.
@@ -75,17 +82,25 @@ impl Placeholders {
             includes: String::new(),
             states: NO_STATES.to_owned(),
             cases,
+            setup: String::new(),
             call: SELFTEST_CALL.to_owned(),
         }
     }
 
-    /// The placeholders of an entry driver: the entry's include lines, states
-    /// and call expression, and no cases.
+    /// The placeholders of an entry driver: the entry's include lines, states,
+    /// setup statements and call expression, and no cases.
     #[must_use]
-    pub fn for_entry(budgets: &Budgets, includes: String, states: String, call: String) -> Self {
+    pub fn for_entry(
+        budgets: &Budgets,
+        includes: String,
+        states: String,
+        setup: String,
+        call: String,
+    ) -> Self {
         Self {
             includes,
             states,
+            setup,
             call,
             ..Self::from_budgets(budgets, String::new())
         }
@@ -100,6 +115,7 @@ impl Placeholders {
             "MT_MAX_INPUT" => self.max_input.to_string(),
             "MT_INCLUDES" => self.includes.clone(),
             "MT_STATES" => self.states.clone(),
+            "MT_SETUP" => self.setup.clone(),
             "MT_CALL" => self.call.clone(),
             _ => self.cases.clone(),
         }
@@ -137,6 +153,7 @@ pub fn render_template(template: &str, values: &Placeholders) -> Result<String, 
     for (what, text) in [
         ("includes", &values.includes),
         ("states", &values.states),
+        ("setup", &values.setup),
         ("cases", &values.cases),
         ("call", &values.call),
     ] {

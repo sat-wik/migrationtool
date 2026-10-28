@@ -1658,27 +1658,34 @@ fn eqv_03_roles_types_reaching_c_are_closed() {
 #[test]
 fn eqv_03_roles_setup_and_local_parse_from_toml_and_stay_absent_otherwise() {
     // D-12: the new tables are additive; an entry without them serialises as before.
-    let committed = committed();
-    let json = committed.canonical_json().unwrap();
+    let mut plain = committed();
+    for target in plain.target.values_mut() {
+        for entry in &mut target.entry {
+            entry.setup.clear();
+            entry.local.clear();
+        }
+    }
+    let json = plain.canonical_json().unwrap();
     assert!(!json.contains("\"setup\""), "no setup key when empty");
     assert!(!json.contains("\"local\""), "no local key when empty");
 
-    let marker = "signature = \"size_t (http_parser *, const http_parser_settings *, const char *, size_t)\"\n";
+    // http_parser_parse_url has no roles in the committed manifest.
+    let marker = "signature = \"int (const char *, size_t, int, struct http_parser_url *)\"\n";
     let text = committed_text();
     assert!(text.contains(marker), "the marker line is in the manifest");
-    let block = "\n[[target.httpparser.entry.arg]]\nrole = \"state\"\nname = \"parser\"\n\n[[target.httpparser.entry.arg]]\nrole = \"state\"\nname = \"settings\"\n\n[[target.httpparser.entry.arg]]\nrole = \"in_buf\"\n\n[[target.httpparser.entry.arg]]\nrole = \"in_len\"\n\n[[target.httpparser.entry.local]]\nname = \"scratch\"\ntype = \"http_parser\"\ncount = 2\n\n[[target.httpparser.entry.setup]]\ncall = \"http_parser_init\"\nargs = [\"&parser\", \"2\"]\nexpect = \"void\"\n\n[[target.httpparser.entry.setup]]\nset = \"scratch.data\"\nvalue = \"$in\"\n";
+    let block = "\n[[target.httpparser.entry.arg]]\nrole = \"in_buf\"\n\n[[target.httpparser.entry.arg]]\nrole = \"in_len\"\n\n[[target.httpparser.entry.arg]]\nrole = \"scalar\"\nname = \"is_connect\"\ndefault = 0\n\n[[target.httpparser.entry.arg]]\nrole = \"state\"\nname = \"url\"\n\n[[target.httpparser.entry.local]]\nname = \"scratch\"\ntype = \"http_parser\"\ncount = 2\n\n[[target.httpparser.entry.setup]]\ncall = \"http_parser_url_init\"\nargs = [\"&url\"]\nexpect = \"void\"\n\n[[target.httpparser.entry.setup]]\nset = \"scratch.data\"\nvalue = \"$in\"\n";
     let edited = text.replacen(marker, &format!("{marker}{block}"), 1);
     let manifest = Manifest::parse(&edited).unwrap();
     manifest.validate().unwrap();
     let entry = manifest.target["httpparser"]
         .entry
         .iter()
-        .find(|entry| entry.name == "http_parser_execute")
+        .find(|entry| entry.name == "http_parser_parse_url")
         .unwrap();
     assert_eq!(entry.local, [local("scratch", "http_parser", Some(2))]);
     assert_eq!(entry.setup.len(), 2);
-    assert_eq!(entry.setup[0].call.as_deref(), Some("http_parser_init"));
-    assert_eq!(entry.setup[0].args, ["&parser", "2"]);
+    assert_eq!(entry.setup[0].call.as_deref(), Some("http_parser_url_init"));
+    assert_eq!(entry.setup[0].args, ["&url"]);
     assert_eq!(entry.setup[1].set.as_deref(), Some("scratch.data"));
 
     // Unknown keys are refused, as everywhere in the manifest.

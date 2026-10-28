@@ -621,6 +621,9 @@ fn eqv_04_struct_return_is_ret() {
         of: None,
         mutable: false,
         values: Vec::new(),
+        count: None,
+        ptr_field: None,
+        len_field: None,
     };
     let manifest = mt_capture::manifest::Manifest::load(
         &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../testbed/manifest.toml"),

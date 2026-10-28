@@ -159,6 +159,7 @@ pub fn render_entry_driver(
         &Budgets::DEFAULT,
         include_lines.join("\n"),
         adapter.states_fragment(),
+        adapter.setup_fragment(),
         adapter.call_expression(),
     ))
 }

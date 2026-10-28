@@ -325,6 +325,8 @@ fn entry(name: &str, header: &str, source: &str, signature: &str) -> Entry {
         accepted_wrapped: false,
         arg: Vec::new(),
         unobserved: Vec::new(),
+        local: Vec::new(),
+        setup: Vec::new(),
     }
 }
 

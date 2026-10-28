@@ -314,6 +314,233 @@ pub struct Entry {
     /// reason (Phase 3, CONTEXT D-09). Absent when empty.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub unobserved: Vec<UnobservedMark>,
+    /// Objects the harness creates besides the parameters, recorded like states
+    /// (Phase 3, CONTEXT D-12). Absent when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub local: Vec<LocalObject>,
+    /// The steps that run before the entry, in order (Phase 3, CONTEXT D-12).
+    /// Absent when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub setup: Vec<SetupStep>,
+}
+
+/// The most setup steps one entry may declare.
+pub const MAX_SETUP_STEPS: usize = 16;
+
+/// The most elements a `local` may have (and a `state` with a count).
+pub const MAX_OBJECT_COUNT: u32 = 64;
+
+/// The closed grammar of every type text that is written into generated C (a
+/// local's type, a wrapped struct's type). Applied by [`is_closed_type_text`].
+pub const TYPE_TEXT_GRAMMAR: &str =
+    r"^(const )?(struct |union |enum )?[A-Za-z_][A-Za-z0-9_]*( \*)?$";
+
+/// Words that match the identifier part of [`TYPE_TEXT_GRAMMAR`] but are not
+/// names: they would not make a type, so a text built from them is refused.
+const NOT_A_NAME: [&str; 24] = [
+    "auto", "break", "case", "const", "continue", "default", "do", "else", "enum", "extern", "for",
+    "goto", "if", "inline", "register", "restrict", "return", "sizeof", "static", "struct",
+    "switch", "typedef", "union", "volatile",
+];
+
+/// True when `text` can be the name of a function the generated driver calls: a C
+/// identifier that is not a keyword.
+#[must_use]
+pub fn is_function_name(text: &str) -> bool {
+    is_c_identifier(text) && !NOT_A_NAME.contains(&text)
+}
+
+/// True when `text` matches [`TYPE_TEXT_GRAMMAR`] and its name is not a C keyword
+/// that cannot name a type. `void` is a name only as `void *`.
+#[must_use]
+pub fn is_closed_type_text(text: &str) -> bool {
+    let mut rest = text.strip_prefix("const ").unwrap_or(text);
+    for keyword in ["struct ", "union ", "enum "] {
+        if let Some(after) = rest.strip_prefix(keyword) {
+            rest = after;
+            break;
+        }
+    }
+    let (name, pointer) = match rest.strip_suffix(" *") {
+        Some(name) => (name, true),
+        None => (rest, false),
+    };
+    is_c_identifier(name) && !NOT_A_NAME.contains(&name) && (pointer || name != "void")
+}
+
+/// One `[[target.X.entry.local]]` table: an object the harness creates in its own
+/// guarded, zero-filled mapping and records like a state (CONTEXT D-12).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LocalObject {
+    /// A C identifier, unique among the entry's role names and locals.
+    pub name: String,
+    /// A type text matching [`TYPE_TEXT_GRAMMAR`].
+    #[serde(rename = "type")]
+    pub type_text: String,
+    /// An array of this many objects, 1 to [`MAX_OBJECT_COUNT`]; absent for one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub count: Option<u32>,
+}
+
+/// One `[[target.X.entry.setup]]` table (CONTEXT D-12): exactly one of a `call`
+/// (with `args` and `expect`) or a `set` (with `value`). Every string is parsed
+/// into a closed form by [`SetupArg::parse`], [`Expect::parse`], [`parse_set_path`]
+/// and [`SetValue::parse`]; none is pasted into C.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SetupStep {
+    /// The C function to call: an identifier.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call: Option<String>,
+    /// The arguments of the call, each a [`SetupArg`].
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<String>,
+    /// The expected return of the call: `void` or a decimal integer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expect: Option<String>,
+    /// The field to assign: `<local or state>.<member>(.<member>)*`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub set: Option<String>,
+    /// The value to assign, a [`SetValue`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+}
+
+/// The decimal integers of the setup grammar: `0` or an optional `-` and digits
+/// without a leading zero, at most `u32::MAX` in magnitude.
+fn parse_decimal(text: &str) -> Option<i64> {
+    let (negative, digits) = match text.strip_prefix('-') {
+        Some(digits) => (true, digits),
+        None => (false, text),
+    };
+    let canonical = !digits.is_empty()
+        && digits.bytes().all(|b| b.is_ascii_digit())
+        && (digits == "0" || !digits.starts_with('0'));
+    if !canonical || (negative && digits == "0") {
+        return None;
+    }
+    let value: i64 = digits.parse().ok()?;
+    if value > i64::from(u32::MAX) {
+        return None;
+    }
+    Some(if negative { -value } else { value })
+}
+
+/// An unsigned decimal in the same form, for `$in+<n>` and `$len-<n>`.
+fn parse_unsigned(text: &str) -> Option<u64> {
+    let value = parse_decimal(text)?;
+    u64::try_from(value).ok()
+}
+
+/// One argument of a setup call (CONTEXT D-12).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SetupArg {
+    /// `$in`: the input buffer.
+    In,
+    /// `$len`: the input length in bytes.
+    Len,
+    /// `$cap`: the output capacity.
+    Cap,
+    /// `$arg:<name>`: the value of the scalar called `name` in this run.
+    Scalar(String),
+    /// A decimal integer, optionally negative.
+    Int(i64),
+    /// `&<name>`: the address of a state or local.
+    AddressOf(String),
+    /// `<name>`: the value of a pointer local.
+    Local(String),
+}
+
+impl SetupArg {
+    /// Parse one argument, or `None` when it is not in the closed grammar.
+    #[must_use]
+    pub fn parse(text: &str) -> Option<Self> {
+        match text {
+            "$in" => return Some(Self::In),
+            "$len" => return Some(Self::Len),
+            "$cap" => return Some(Self::Cap),
+            _ => {}
+        }
+        if let Some(name) = text.strip_prefix("$arg:") {
+            return is_c_identifier(name).then(|| Self::Scalar(name.to_owned()));
+        }
+        if let Some(name) = text.strip_prefix('&') {
+            return is_c_identifier(name).then(|| Self::AddressOf(name.to_owned()));
+        }
+        if let Some(value) = parse_decimal(text) {
+            return Some(Self::Int(value));
+        }
+        is_c_identifier(text).then(|| Self::Local(text.to_owned()))
+    }
+}
+
+/// The value a `set` step assigns (CONTEXT D-12).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SetValue {
+    /// `$in`: the address of the input buffer.
+    In,
+    /// `$in+<n>`: the address `n` bytes into it.
+    InPlus(u64),
+    /// `$len`: the input length.
+    Len,
+    /// `$len-<n>`: the input length less `n`, in 32-bit unsigned arithmetic.
+    LenMinus(u64),
+    /// A decimal integer.
+    Int(i64),
+}
+
+impl SetValue {
+    /// Parse one value, or `None` when it is not in the closed grammar.
+    #[must_use]
+    pub fn parse(text: &str) -> Option<Self> {
+        match text {
+            "$in" => return Some(Self::In),
+            "$len" => return Some(Self::Len),
+            _ => {}
+        }
+        if let Some(digits) = text.strip_prefix("$in+") {
+            return parse_unsigned(digits).map(Self::InPlus);
+        }
+        if let Some(digits) = text.strip_prefix("$len-") {
+            return parse_unsigned(digits).map(Self::LenMinus);
+        }
+        parse_decimal(text).map(Self::Int)
+    }
+}
+
+/// What a setup call must return for the sequence to go on (CONTEXT D-12).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Expect {
+    /// `void`: nothing is checked.
+    Void,
+    /// A decimal return value, as a 32-bit integer.
+    Value(i32),
+}
+
+impl Expect {
+    /// Parse `void` or a decimal integer that fits `i32`.
+    #[must_use]
+    pub fn parse(text: &str) -> Option<Self> {
+        if text == "void" {
+            return Some(Self::Void);
+        }
+        i32::try_from(parse_decimal(text)?).ok().map(Self::Value)
+    }
+}
+
+/// Split a `set` path into the object name and its members, or `None` when it is
+/// not `<name>.<member>(.<member>)*` in C identifiers.
+#[must_use]
+pub fn parse_set_path(path: &str) -> Option<(String, Vec<String>)> {
+    let mut parts = path.split('.');
+    let name = parts.next()?;
+    if !is_c_identifier(name) {
+        return None;
+    }
+    let members: Vec<String> = parts.map(str::to_owned).collect();
+    (!members.is_empty() && members.iter().all(|member| is_c_identifier(member)))
+        .then(|| (name.to_owned(), members))
 }
 
 /// One `[[target.X.entry.unobserved]]` table: a field of a state that is recorded
@@ -484,6 +711,16 @@ pub struct ArgRole {
     /// most [`MAX_STR_BYTES`] printable ASCII bytes each).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub values: Vec<String>,
+    /// For a `state`: an array of this many objects of the pointee type, 1 to
+    /// [`MAX_OBJECT_COUNT`] (Phase 3, CONTEXT D-12).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub count: Option<u32>,
+    /// For a `wrap`: the struct member that receives the input pointer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ptr_field: Option<String>,
+    /// For a `wrap`: the struct member that receives the input length.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub len_field: Option<String>,
 }
 
 fn is_false(value: &bool) -> bool {
@@ -1216,6 +1453,8 @@ fn entry_issues(f: &str, entries: &[Entry], issues: &mut Vec<String>) {
             _ => {}
         }
         role_issues(&g, entry, issues);
+        local_issues(&g, entry, issues);
+        setup_issues(&g, entry, issues);
         mark_issues(&g, entry, issues);
     }
 }
@@ -1387,9 +1626,206 @@ fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
     }
 }
 
+/// The names the roles of an entry are recorded under: scalars, capacities,
+/// states, lengths and the pointer outputs. An unnamed `out_cap` is `out_cap`.
+fn role_names(entry: &Entry) -> Vec<String> {
+    entry
+        .arg
+        .iter()
+        .filter_map(|arg| match (arg.role, &arg.name) {
+            (Role::OutCap, None) => Some("out_cap".to_owned()),
+            (
+                Role::OutCap
+                | Role::Scalar
+                | Role::State
+                | Role::InoutLen
+                | Role::OutScalar
+                | Role::OutPtr
+                | Role::Str,
+                Some(name),
+            ) => Some(name.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The rules for an entry's `local` tables (CONTEXT D-12): a C identifier that is
+/// not reserved and not repeated among the role names and the other locals, a type
+/// text of the closed grammar and a count of 1 to [`MAX_OBJECT_COUNT`]. Locals and
+/// setup steps belong to an entry that has roles.
+fn local_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
+    if entry.arg.is_empty() {
+        if !entry.local.is_empty() || !entry.setup.is_empty() {
+            issues.push(format!(
+                "{g}: local and setup tables need the entry's arg roles (D-12)"
+            ));
+        }
+        return;
+    }
+    let mut seen = role_names(entry);
+    for (index, local) in entry.local.iter().enumerate() {
+        let h = format!("{g}.local[{index}]");
+        if !is_c_identifier(&local.name) {
+            issues.push(format!(
+                "{h}: name {:?} is not a C identifier (D-12)",
+                local.name
+            ));
+        }
+        if RESERVED_ARG_NAMES.contains(&local.name.as_str()) {
+            issues.push(format!(
+                "{h}: name {:?} is reserved ({}) (D-12)",
+                local.name,
+                RESERVED_ARG_NAMES.join(", ")
+            ));
+        }
+        if seen.contains(&local.name) {
+            issues.push(format!("{h}: duplicate name {:?} (D-12)", local.name));
+        }
+        seen.push(local.name.clone());
+        if !is_closed_type_text(&local.type_text) {
+            issues.push(format!(
+                "{h}: type {:?} does not match {TYPE_TEXT_GRAMMAR} (D-11, D-12)",
+                local.type_text
+            ));
+        }
+        if let Some(count) = local.count
+            && !(1..=MAX_OBJECT_COUNT).contains(&count)
+        {
+            issues.push(format!(
+                "{h}: count {count} is outside 1..={MAX_OBJECT_COUNT} (D-12)"
+            ));
+        }
+    }
+}
+
+/// True when a local's text names a pointer.
+fn local_is_pointer(local: &LocalObject) -> bool {
+    local.type_text.ends_with(" *") && local.count.is_none_or(|count| count == 1)
+}
+
+/// The rules for an entry's `setup` steps (CONTEXT D-12, T-03-25): at most
+/// [`MAX_SETUP_STEPS`]; each step exactly one of a call or a set; a call names a C
+/// identifier, takes arguments of the closed grammar that name something the entry
+/// declares and expects `void` or a 32-bit decimal; a set names a declared local or
+/// state, a member path and a value of the closed grammar.
+fn setup_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
+    if entry.arg.is_empty() {
+        return;
+    }
+    if entry.setup.len() > MAX_SETUP_STEPS {
+        issues.push(format!(
+            "{g}.setup: {} steps; at most {MAX_SETUP_STEPS} (D-12)",
+            entry.setup.len()
+        ));
+    }
+    let objects: Vec<&str> = entry
+        .arg
+        .iter()
+        .filter(|arg| arg.role == Role::State)
+        .filter_map(|arg| arg.name.as_deref())
+        .chain(entry.local.iter().map(|local| local.name.as_str()))
+        .collect();
+    let scalars: Vec<&str> = entry
+        .arg
+        .iter()
+        .filter(|arg| arg.role == Role::Scalar)
+        .filter_map(|arg| arg.name.as_deref())
+        .collect();
+    for (index, step) in entry.setup.iter().enumerate() {
+        let h = format!("{g}.setup[{index}]");
+        match (&step.call, &step.set) {
+            (Some(call), None) => {
+                call_step_issues(&h, step, call, &objects, &scalars, entry, issues);
+            }
+            (None, Some(path)) => set_step_issues(&h, step, path, &objects, issues),
+            _ => issues.push(format!("{h}: exactly one of call or set (D-12)")),
+        }
+    }
+}
+
+fn call_step_issues(
+    h: &str,
+    step: &SetupStep,
+    call: &str,
+    objects: &[&str],
+    scalars: &[&str],
+    entry: &Entry,
+    issues: &mut Vec<String>,
+) {
+    if !is_function_name(call) {
+        issues.push(format!("{h}: call {call:?} is not a C identifier (D-12)"));
+    }
+    if step.value.is_some() {
+        issues.push(format!("{h}: a call step takes no value (D-12)"));
+    }
+    match step.expect.as_deref().map(Expect::parse) {
+        Some(Some(_)) => {}
+        Some(None) => issues.push(format!(
+            "{h}: expect {:?} must be void or a decimal integer within 32 bits (D-12)",
+            step.expect.as_deref().unwrap_or_default()
+        )),
+        None => issues.push(format!("{h}: a call step needs expect (D-12)")),
+    }
+    for text in &step.args {
+        let fail = |why: &str| {
+            format!(
+                "{h}: argument {text:?} {why}; the closed grammar is $in, $len, $cap, $arg:<scalar>, a decimal integer, &<state or local> and <pointer local> (D-12)"
+            )
+        };
+        match SetupArg::parse(text) {
+            None => issues.push(fail("is not in the closed grammar")),
+            Some(SetupArg::AddressOf(name)) if !objects.contains(&name.as_str()) => {
+                issues.push(fail("names no state or local of the entry"));
+            }
+            Some(SetupArg::Scalar(name)) if !scalars.contains(&name.as_str()) => {
+                issues.push(fail("names no scalar of the entry"));
+            }
+            Some(SetupArg::Local(name))
+                if !entry
+                    .local
+                    .iter()
+                    .any(|local| local.name == name && local_is_pointer(local)) =>
+            {
+                issues.push(fail("names no pointer local of the entry"));
+            }
+            Some(_) => {}
+        }
+    }
+}
+
+fn set_step_issues(
+    h: &str,
+    step: &SetupStep,
+    path: &str,
+    objects: &[&str],
+    issues: &mut Vec<String>,
+) {
+    if !step.args.is_empty() || step.expect.is_some() {
+        issues.push(format!("{h}: a set step takes no args or expect (D-12)"));
+    }
+    match parse_set_path(path) {
+        None => issues.push(format!(
+            "{h}: path {path:?} must be <name>.<member>(.<member>)* in C identifiers (D-12)"
+        )),
+        Some((name, _)) if !objects.contains(&name.as_str()) => issues.push(format!(
+            "{h}: path {path:?} names no state or local of the entry (D-12)"
+        )),
+        Some(_) => {}
+    }
+    match step.value.as_deref().map(SetValue::parse) {
+        Some(Some(_)) => {}
+        Some(None) => issues.push(format!(
+            "{h}: value {:?} must be $in, $in+<n>, $len, $len-<n> or a decimal integer (D-12)",
+            step.value.as_deref().unwrap_or_default()
+        )),
+        None => issues.push(format!("{h}: a set step needs a value (D-12)")),
+    }
+}
+
 /// The rules for an entry's unobserved marks (CONTEXT D-09): a reason that is
 /// not blank, a path of the form `<state name>(.<member>|[<index>])+`, a state
-/// that a `state` role of the same entry declares, and no field marked twice. The
+/// that a `state` role or a `local` of the same entry declares, and no field
+/// marked twice. The
 /// members themselves are checked against the layout when the driver is built.
 fn mark_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
     let states: Vec<&str> = entry
@@ -1397,6 +1833,7 @@ fn mark_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
         .iter()
         .filter(|arg| arg.role == Role::State)
         .filter_map(|arg| arg.name.as_deref())
+        .chain(entry.local.iter().map(|local| local.name.as_str()))
         .collect();
     let mut seen: Vec<&str> = Vec::new();
     for (index, mark) in entry.unobserved.iter().enumerate() {
@@ -1502,6 +1939,11 @@ fn arg_key_issues(h: &str, arg: &ArgRole, param: &str, issues: &mut Vec<String>)
         )),
     }
     str_value_issues(h, arg, issues);
+    if arg.count.is_some() || arg.ptr_field.is_some() || arg.len_field.is_some() {
+        issues.push(format!(
+            "{h}: count, ptr_field and len_field are not available on {word} yet (D-12)"
+        ));
+    }
     if arg.mutable {
         if arg.role != Role::InBuf {
             issues.push(format!("{h}: mutable is only allowed on in_buf (D-11)"));

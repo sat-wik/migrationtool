@@ -304,12 +304,15 @@ fn eqv_03_floor_counts_only_seeded_undropped_entries() {
     let after = drivable_targets(&manifest, &seeds, &dropped_lz4, &none);
     assert!(!after.contains("lz4"), "{after:?}");
 
-    // Below the floor the check is an error that names the count and the floor.
+    // Below the floor the check is an error that names the count and the floor. Six
+    // targets are dropped, so the count is below 10 however many later plans add.
     let rows: String = [
         ("lz4", "LZ4_decompress_safe"),
         ("libfdt", "fdt_check_full"),
         ("microcoap", "coap_parse"),
         ("nimble", "ble_uuid_init_from_buf"),
+        ("nanopb", "pb_istream_from_buffer"),
+        ("zlib", "uncompress"),
     ]
     .iter()
     .map(|(target, entry)| {
@@ -320,5 +323,9 @@ fn eqv_03_floor_counts_only_seeded_undropped_entries() {
     let error = check_adapter_floor(&manifest, &seeds, &phase2, &log)
         .unwrap_err()
         .to_string();
-    assert!(error.contains('6') && error.contains("10"), "{error}");
+    let remaining = (baseline.len() - 6).to_string();
+    assert!(
+        error.contains(&remaining) && error.contains("10"),
+        "{error}"
+    );
 }

@@ -979,6 +979,32 @@ source = "http_parser.c"
 form = "direct"
 signature = "size_t (http_parser *, const http_parser_settings *, const char *, size_t)"
 
+# Argument roles (Phase 3 CONTEXT D-09, D-11, D-12): the parser and the settings are two
+# states, each in its own guarded mapping and recorded field by field (the parser is
+# full of bitfields, recorded as integers). The settings hold only callback pointers
+# and stay zero, so no callback is ever called. http_parser_execute needs a parser that
+# http_parser_init has filled in, so that call is the declared setup step (D-12): its
+# second argument 2 is HTTP_BOTH of enum http_parser_type in http_parser.h, it returns
+# void, and the state after it is lib_state_in.
+[[target.httpparser.entry.arg]]
+role = "state"
+name = "parser"
+
+[[target.httpparser.entry.arg]]
+role = "state"
+name = "settings"
+
+[[target.httpparser.entry.arg]]
+role = "in_buf"
+
+[[target.httpparser.entry.arg]]
+role = "in_len"
+
+[[target.httpparser.entry.setup]]
+call = "http_parser_init"
+args = ["&parser", "2"]
+expect = "void"
+
 [[target.httpparser.entry]]
 name = "http_parser_parse_url"
 header = "http_parser.h"
