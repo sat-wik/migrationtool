@@ -5,6 +5,7 @@
 //! needed.
 
 use mt_harness::classify::{OUTCOME_CLASSES, Outcome, classify};
+use mt_harness::frame::SETUP_STATUS_BASE;
 use mt_toolchain::runner::{RunOutput, RunRecord};
 use serde_json::json;
 
@@ -218,5 +219,57 @@ fn eqv_04_classify_executor_error_never_has_a_vector_class() {
     assert_eq!(
         Outcome::SetupFailed { step: 1, rc: 3 }.class_word(),
         "setup_failed"
+    );
+}
+
+#[test]
+fn eqv_04_classify_setup_failure_is_its_own_class() {
+    // D-12, T-03-26: a setup step that returns something other than its
+    // expectation ends the sequence. The frame's status word names the step and
+    // the raw return value is the step's return value; the run is a vector of its
+    // own class, never labelled as undefined behavior and never an executor error.
+    let failed =
+        classify(&Run::exit(0, frame_bytes(SETUP_STATUS_BASE, (-2i32) as u32, 0)).output());
+    assert_eq!(failed, Outcome::SetupFailed { step: 0, rc: -2 });
+    assert_eq!(failed.class_word(), "setup_failed");
+    assert_eq!(failed.rc(), Some(-2));
+    assert_eq!(failed.has_ub_label(), None, "a setup failure has no label");
+    assert!(failed.is_vector_outcome());
+    assert!(OUTCOME_CLASSES.contains(&failed.class_word()));
+
+    // The step index is the status word minus the base.
+    assert_eq!(
+        classify(&Run::exit(0, frame_bytes(SETUP_STATUS_BASE + 3, 9, 0)).output()),
+        Outcome::SetupFailed { step: 3, rc: 9 }
+    );
+
+    // A status word that is neither 0 nor a step of the grammar's 16 is an
+    // executor error, as before.
+    for status in [
+        1,
+        SETUP_STATUS_BASE - 1,
+        SETUP_STATUS_BASE + 16,
+        0xFFFF_FFFF,
+    ] {
+        assert_eq!(
+            classify(&Run::exit(0, frame_bytes(status, 0, 0)).output()).class_word(),
+            "executor_error",
+            "status {status:#x}"
+        );
+    }
+
+    // A changed guard-slack byte is a fault even when a setup step failed.
+    assert_eq!(
+        classify(&Run::exit(0, frame_bytes(SETUP_STATUS_BASE, 5, 1)).output()),
+        Outcome::Fault {
+            signal: None,
+            rc: 5
+        }
+    );
+
+    // A fault, abort or timeout during setup is the same fault, abort or timeout.
+    assert_eq!(
+        judged(&Run::exit(139, Vec::new())),
+        ("fault", Some(-11), Some("crash:SIGSEGV"))
     );
 }

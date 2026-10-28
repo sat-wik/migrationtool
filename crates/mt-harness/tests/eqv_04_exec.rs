@@ -1214,3 +1214,86 @@ fn eqv_04_string_argument_and_mutable_input() {
         );
     }
 }
+
+/// The struct members of a recorded state value.
+fn struct_fields<'a>(
+    value: &'a StateValue,
+    what: &str,
+) -> &'a std::collections::BTreeMap<String, StateValue> {
+    match value {
+        StateValue::Struct { fields, .. } => fields,
+        other => panic!("{what} must be a recorded struct, found {other:?}"),
+    }
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_setup_sequence_runs_before_the_entry() {
+    // D-12: httpparser's http_parser_execute needs a parser that http_parser_init
+    // has filled in. The declared setup step runs before the entry; the state after
+    // it is lib_state_in and the state after the entry is lib_state_out.
+    for config in ["default", "strict"] {
+        let tmp = tempfile::tempdir().unwrap();
+        let (summary, dir) =
+            run_pair_twice("httpparser", config, "http_parser_execute", tmp.path());
+        assert_eq!(summary.setup_failed, 0, "http_parser_init returns void");
+        let corpus = read_corpus(&dir).unwrap();
+        let mut parsed_some = false;
+        for (sha, vector) in &corpus.vectors {
+            let input_len = decode_latin1(&vector.stdin).unwrap().len();
+            assert_eq!(
+                vector.argv,
+                [
+                    format!("httpparser/{config}/http_parser_execute"),
+                    input_len.to_string()
+                ],
+                "{sha}: argv holds the input length"
+            );
+            // lib_state_in is the state after http_parser_init: the type field of
+            // HTTP_BOTH (2), the start state, and every other member zero.
+            let before = struct_fields(
+                vector
+                    .lib_state_in
+                    .get("parser")
+                    .expect("lib_state_in.parser"),
+                "lib_state_in.parser",
+            );
+            assert_eq!(int_field(before, "type"), 2, "{sha}: HTTP_BOTH");
+            assert!(int_field(before, "state") > 0, "{sha}: a start state");
+            for (name, value) in before {
+                if !matches!(name.as_str(), "type" | "state") {
+                    assert!(is_all_zero(value), "{sha}: {name} is zero after init");
+                }
+            }
+            // The settings have no callbacks: all zero before and after.
+            for state in [&vector.lib_state_in, &vector.lib_state_out] {
+                let settings = state.get("settings").expect("settings is recorded");
+                assert!(is_all_zero(settings), "{sha}: no callbacks are set");
+            }
+            // lib_state_out is the state after parsing, bitfields as integers.
+            let after = struct_fields(
+                vector
+                    .lib_state_out
+                    .get("parser")
+                    .expect("lib_state_out.parser"),
+                "lib_state_out.parser",
+            );
+            assert_eq!(
+                after.keys().collect::<Vec<_>>(),
+                before.keys().collect::<Vec<_>>()
+            );
+            // rc is the number of bytes parsed.
+            let parsed = usize::try_from(vector.rc).expect("rc is the parsed byte count");
+            assert!(parsed <= input_len, "{sha}: {parsed} of {input_len}");
+            if parsed > 0 {
+                parsed_some = true;
+                assert_ne!(
+                    vector.lib_state_in.get("parser"),
+                    vector.lib_state_out.get("parser"),
+                    "{sha}: parsing changes the parser"
+                );
+            }
+        }
+        assert!(parsed_some, "at least one message is parsed");
+    }
+}

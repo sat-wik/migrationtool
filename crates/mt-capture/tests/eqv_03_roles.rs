@@ -8,8 +8,9 @@
 use std::path::PathBuf;
 
 use mt_capture::manifest::{
-    ArgRole, MANIFEST_SCHEMA_VERSION, Manifest, ManifestError, Role, UnobservedMark,
-    split_parameters, state_pointee_type,
+    ArgRole, LocalObject, MANIFEST_SCHEMA_VERSION, Manifest, ManifestError, Role, SetValue,
+    SetupArg, SetupStep, TYPE_TEXT_GRAMMAR, UnobservedMark, is_closed_type_text, split_parameters,
+    state_pointee_type,
 };
 
 fn repo_file(relative: &str) -> PathBuf {
@@ -36,6 +37,9 @@ fn role(role: Role) -> ArgRole {
         of: None,
         mutable: false,
         values: Vec::new(),
+        count: None,
+        ptr_field: None,
+        len_field: None,
     }
 }
 
@@ -253,6 +257,9 @@ fn scalar(name: &str, default: Option<i64>, sweep: &[i64]) -> ArgRole {
         of: None,
         mutable: false,
         values: Vec::new(),
+        count: None,
+        ptr_field: None,
+        len_field: None,
     }
 }
 
@@ -501,6 +508,9 @@ fn state(name: Option<&str>) -> ArgRole {
         of: None,
         mutable: false,
         values: Vec::new(),
+        count: None,
+        ptr_field: None,
+        len_field: None,
     }
 }
 
@@ -726,6 +736,9 @@ fn inout_len(name: Option<&str>, default: Option<i64>, sweep: &[i64], of: Option
         of: of.map(str::to_owned),
         mutable: false,
         values: Vec::new(),
+        count: None,
+        ptr_field: None,
+        len_field: None,
     }
 }
 
@@ -877,6 +890,9 @@ fn str_role(name: Option<&str>, values: &[&str]) -> ArgRole {
         of: None,
         mutable: false,
         values: values.iter().map(|value| (*value).to_owned()).collect(),
+        count: None,
+        ptr_field: None,
+        len_field: None,
     }
 }
 
@@ -1169,4 +1185,503 @@ fn eqv_03_roles_out_roles_need_pointers_and_names() {
     let mut roles = good();
     roles[3].of = Some("out".to_owned());
     assert!(has_issue(&with_entry(signature, roles), &["of"]));
+}
+
+// ---------------------------------------------------------------------------
+// Plan 03-07: declared setup sequences and local objects (D-12)
+// ---------------------------------------------------------------------------
+
+const HTTP_SIGNATURE: &str =
+    "size_t (http_parser *, const http_parser_settings *, const char *, size_t)";
+
+fn call_step(call: &str, args: &[&str], expect: Option<&str>) -> SetupStep {
+    SetupStep {
+        call: Some(call.to_owned()),
+        args: args.iter().map(|arg| (*arg).to_owned()).collect(),
+        expect: expect.map(str::to_owned),
+        set: None,
+        value: None,
+    }
+}
+
+fn set_step(path: &str, value: Option<&str>) -> SetupStep {
+    SetupStep {
+        call: None,
+        args: Vec::new(),
+        expect: None,
+        set: Some(path.to_owned()),
+        value: value.map(str::to_owned),
+    }
+}
+
+fn local(name: &str, type_text: &str, count: Option<u32>) -> LocalObject {
+    LocalObject {
+        name: name.to_owned(),
+        type_text: type_text.to_owned(),
+        count,
+    }
+}
+
+/// The roles of httpparser `http_parser_execute` as the Tracer declares them:
+/// two states, then the input and its length.
+fn http_roles() -> Vec<ArgRole> {
+    vec![
+        out_role(Role::State, Some("parser")),
+        out_role(Role::State, Some("settings")),
+        role(Role::InBuf),
+        role(Role::InLen),
+    ]
+}
+
+fn http_setup() -> Vec<SetupStep> {
+    vec![call_step(
+        "http_parser_init",
+        &["&parser", "2"],
+        Some("void"),
+    )]
+}
+
+/// The committed manifest with the httpparser `http_parser_execute` entry given
+/// `roles`, `setup` and `locals`; the declaration is inline, not the committed one.
+fn with_http(roles: Vec<ArgRole>, setup: Vec<SetupStep>, locals: Vec<LocalObject>) -> Manifest {
+    let mut manifest = committed();
+    let entry = manifest
+        .target
+        .get_mut("httpparser")
+        .unwrap()
+        .entry
+        .iter_mut()
+        .find(|entry| entry.name == "http_parser_execute")
+        .unwrap();
+    assert_eq!(entry.signature, HTTP_SIGNATURE);
+    entry.arg = roles;
+    entry.setup = setup;
+    entry.local = locals;
+    manifest
+}
+
+fn http_issue(manifest: &Manifest, words: &[&str]) -> bool {
+    issues_of(manifest).iter().any(|issue| {
+        issue.contains("http_parser_execute") && words.iter().all(|w| issue.contains(w))
+    })
+}
+
+#[test]
+fn eqv_03_roles_setup_grammar_is_closed() {
+    // D-12, T-03-25: a setup step is a call of a C identifier with arguments from
+    // the closed grammar and an expected return, or a set of a field path; nothing
+    // else reaches the generated driver.
+    with_http(http_roles(), http_setup(), Vec::new())
+        .validate()
+        .unwrap();
+
+    // The call name is a C identifier.
+    for bad in [
+        "http_parser_init; evil()",
+        "a b",
+        "",
+        "1abc",
+        "f(",
+        "a.b",
+        "a-b",
+    ] {
+        let manifest = with_http(
+            http_roles(),
+            vec![call_step(bad, &["&parser", "2"], Some("void"))],
+            Vec::new(),
+        );
+        assert!(
+            http_issue(&manifest, &["setup[0]", "identifier"]),
+            "{bad:?}: {:?}",
+            issues_of(&manifest)
+        );
+    }
+
+    // Every argument is a token of the closed grammar that names something declared.
+    for bad in [
+        "$in;",
+        "&nosuch",
+        "nosuch",
+        "1+1",
+        "$arg:",
+        "$arg:nosuch",
+        "&",
+        "$IN",
+        "0x10",
+        "01",
+        "--1",
+        " 2",
+        "2 ",
+        "$arg:parser",
+        "parser.type",
+        "",
+    ] {
+        let manifest = with_http(
+            http_roles(),
+            vec![call_step(
+                "http_parser_init",
+                &["&parser", bad],
+                Some("void"),
+            )],
+            Vec::new(),
+        );
+        assert!(
+            http_issue(&manifest, &["setup[0]", "argument"]),
+            "{bad:?}: {:?}",
+            issues_of(&manifest)
+        );
+    }
+    // The grammar accepts each token form that names something declared: the input,
+    // its length, the capacity, a decimal, the address of a state or local and the
+    // value of a pointer local.
+    with_http(
+        http_roles(),
+        vec![call_step(
+            "http_parser_init",
+            &["&parser", "$in", "$len", "$cap", "-5", "&blob", "ptr"],
+            Some("0"),
+        )],
+        vec![
+            local("blob", "http_parser", None),
+            local("ptr", "const char *", None),
+        ],
+    )
+    .validate()
+    .unwrap();
+    // A pointer local is passed by value; a local that is not a pointer is not.
+    let manifest = with_http(
+        http_roles(),
+        vec![call_step("http_parser_init", &["blob", "2"], Some("void"))],
+        vec![local("blob", "http_parser", None)],
+    );
+    assert!(
+        http_issue(&manifest, &["setup[0]", "argument", "blob"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+
+    // Exactly one of call and set; a call has an expectation; a set has a value.
+    let both = SetupStep {
+        call: Some("http_parser_init".to_owned()),
+        args: Vec::new(),
+        expect: Some("void".to_owned()),
+        set: Some("parser.type".to_owned()),
+        value: Some("1".to_owned()),
+    };
+    let neither = SetupStep {
+        call: None,
+        args: Vec::new(),
+        expect: None,
+        set: None,
+        value: None,
+    };
+    for step in [both, neither] {
+        let manifest = with_http(http_roles(), vec![step], Vec::new());
+        assert!(
+            http_issue(&manifest, &["setup[0]", "exactly one of call or set"]),
+            "{:?}",
+            issues_of(&manifest)
+        );
+    }
+    for expect in [
+        None,
+        Some("maybe"),
+        Some("1.5"),
+        Some("2147483648"),
+        Some(""),
+    ] {
+        let manifest = with_http(
+            http_roles(),
+            vec![call_step("http_parser_init", &["&parser", "2"], expect)],
+            Vec::new(),
+        );
+        assert!(
+            http_issue(&manifest, &["setup[0]", "expect"]),
+            "{expect:?}: {:?}",
+            issues_of(&manifest)
+        );
+    }
+    for expect in ["void", "0", "-2", "17"] {
+        with_http(
+            http_roles(),
+            vec![call_step(
+                "http_parser_init",
+                &["&parser", "2"],
+                Some(expect),
+            )],
+            Vec::new(),
+        )
+        .validate()
+        .unwrap();
+    }
+    let mut mixed = set_step("parser.type", Some("1"));
+    mixed.args = vec!["2".to_owned()];
+    let manifest = with_http(http_roles(), vec![mixed], Vec::new());
+    assert!(
+        http_issue(&manifest, &["setup[0]", "args"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    let mut mixed = call_step("http_parser_init", &["&parser", "2"], Some("void"));
+    mixed.value = Some("1".to_owned());
+    let manifest = with_http(http_roles(), vec![mixed], Vec::new());
+    assert!(
+        http_issue(&manifest, &["setup[0]", "value"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+
+    // A set path is <name>.<member>(.<member>)* in C identifiers over a declared
+    // local or state; its value is one of the closed forms.
+    for bad in [
+        "parser.type; x",
+        "parser",
+        "nosuch.type",
+        "parser..type",
+        ".type",
+        "parser.1a",
+    ] {
+        let manifest = with_http(http_roles(), vec![set_step(bad, Some("1"))], Vec::new());
+        assert!(
+            http_issue(&manifest, &["setup[0]", "path"]),
+            "{bad:?}: {:?}",
+            issues_of(&manifest)
+        );
+    }
+    for bad in [
+        "$in*2", "$len-x", "$in+", "$in+-1", "$len-", "1+1", "$cap", "",
+    ] {
+        let manifest = with_http(
+            http_roles(),
+            vec![set_step("parser.data", Some(bad))],
+            Vec::new(),
+        );
+        assert!(
+            http_issue(&manifest, &["setup[0]", "value"]),
+            "{bad:?}: {:?}",
+            issues_of(&manifest)
+        );
+    }
+    for good in ["$in", "$in+4", "$len", "$len-2", "12", "-1"] {
+        with_http(
+            http_roles(),
+            vec![set_step("parser.data", Some(good))],
+            Vec::new(),
+        )
+        .validate()
+        .unwrap();
+    }
+
+    // The step that is wrong is the one named.
+    let manifest = with_http(
+        http_roles(),
+        vec![
+            call_step("http_parser_init", &["&parser", "2"], Some("void")),
+            call_step("http_parser_init", &["&parser", "1+1"], Some("void")),
+        ],
+        Vec::new(),
+    );
+    assert!(http_issue(&manifest, &["setup[1]", "argument"]));
+    assert!(!http_issue(&manifest, &["setup[0]"]));
+
+    // At most 16 steps.
+    let steps: Vec<SetupStep> = (0..17).map(|_| http_setup().remove(0)).collect();
+    let manifest = with_http(http_roles(), steps, Vec::new());
+    assert!(
+        http_issue(&manifest, &["setup", "at most 16"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+
+    // The token parsers themselves.
+    assert_eq!(SetupArg::parse("$in"), Some(SetupArg::In));
+    assert_eq!(SetupArg::parse("$len"), Some(SetupArg::Len));
+    assert_eq!(SetupArg::parse("$cap"), Some(SetupArg::Cap));
+    assert_eq!(
+        SetupArg::parse("$arg:flags"),
+        Some(SetupArg::Scalar("flags".to_owned()))
+    );
+    assert_eq!(SetupArg::parse("-7"), Some(SetupArg::Int(-7)));
+    assert_eq!(SetupArg::parse("0"), Some(SetupArg::Int(0)));
+    assert_eq!(
+        SetupArg::parse("&parser"),
+        Some(SetupArg::AddressOf("parser".to_owned()))
+    );
+    assert_eq!(
+        SetupArg::parse("parser"),
+        Some(SetupArg::Local("parser".to_owned()))
+    );
+    for bad in [
+        "$in;", "1+1", "$arg:", "&", "", "007", "+1", "&a&b", "&1a", "a b",
+    ] {
+        assert_eq!(SetupArg::parse(bad), None, "{bad:?}");
+    }
+    assert_eq!(SetValue::parse("$in"), Some(SetValue::In));
+    assert_eq!(SetValue::parse("$in+4"), Some(SetValue::InPlus(4)));
+    assert_eq!(SetValue::parse("$len"), Some(SetValue::Len));
+    assert_eq!(SetValue::parse("$len-2"), Some(SetValue::LenMinus(2)));
+    assert_eq!(SetValue::parse("12"), Some(SetValue::Int(12)));
+    assert_eq!(SetValue::parse("-1"), Some(SetValue::Int(-1)));
+    for bad in [
+        "$in*2", "$len-x", "$in+", "$in+-1", "$len-", "", "$cap", "1+1",
+    ] {
+        assert_eq!(SetValue::parse(bad), None, "{bad:?}");
+    }
+}
+
+#[test]
+fn eqv_03_roles_types_reaching_c_are_closed() {
+    // D-11, T-03-25: every type text that reaches generated C matches the closed
+    // grammar; the local objects are where a new type text enters in this plan.
+    assert_eq!(
+        TYPE_TEXT_GRAMMAR,
+        r"^(const )?(struct |union |enum )?[A-Za-z_][A-Za-z0-9_]*( \*)?$"
+    );
+    for good in [
+        "CborParser",
+        "struct Pet",
+        "const char *",
+        "union u",
+        "enum e",
+        "uint8_t *",
+        "const struct x *",
+        "_x1",
+    ] {
+        assert!(is_closed_type_text(good), "{good:?}");
+    }
+    for bad in [
+        "int (*)(void)",
+        "struct x; y",
+        "char **",
+        "unsigned char",
+        "const",
+        "struct",
+        "x y",
+        "1x",
+        "",
+        "char*",
+        "char *\n",
+        "x /* c */",
+        " x",
+        "x ",
+        "struct struct x",
+        "x[3]",
+    ] {
+        assert!(!is_closed_type_text(bad), "{bad:?}");
+    }
+
+    // Through the manifest: a local of an open type is refused, naming the local.
+    for good in ["CborParser", "struct Pet", "const char *"] {
+        with_http(
+            http_roles(),
+            http_setup(),
+            vec![local("scratch", good, None)],
+        )
+        .validate()
+        .unwrap();
+    }
+    for bad in ["int (*)(void)", "struct x; y", "char **", "x y"] {
+        let manifest = with_http(
+            http_roles(),
+            http_setup(),
+            vec![local("scratch", bad, None)],
+        );
+        assert!(
+            http_issue(&manifest, &["local[0]", "type"]),
+            "{bad:?}: {:?}",
+            issues_of(&manifest)
+        );
+    }
+
+    // A local's count is 1 to 64; its name is a C identifier, not reserved, and
+    // unique among the roles' names and the other locals.
+    for count in [Some(1), Some(64), None] {
+        with_http(
+            http_roles(),
+            http_setup(),
+            vec![local("scratch", "CborParser", count)],
+        )
+        .validate()
+        .unwrap();
+    }
+    for count in [0u32, 65, 1000] {
+        let manifest = with_http(
+            http_roles(),
+            http_setup(),
+            vec![local("scratch", "CborParser", Some(count))],
+        );
+        assert!(
+            http_issue(&manifest, &["local[0]", "count"]),
+            "{count}: {:?}",
+            issues_of(&manifest)
+        );
+    }
+    for (name, word) in [
+        ("a b", "identifier"),
+        ("heap", "reserved"),
+        ("parser", "duplicate"),
+    ] {
+        let manifest = with_http(
+            http_roles(),
+            http_setup(),
+            vec![local(name, "CborParser", None)],
+        );
+        assert!(
+            http_issue(&manifest, &["local[0]", word]),
+            "{name:?}: {:?}",
+            issues_of(&manifest)
+        );
+    }
+    let manifest = with_http(
+        http_roles(),
+        http_setup(),
+        vec![
+            local("scratch", "CborParser", None),
+            local("scratch", "CborParser", None),
+        ],
+    );
+    assert!(http_issue(&manifest, &["local[1]", "duplicate"]));
+
+    // A setup step may name a local; the entry still declares it.
+    let manifest = with_http(
+        http_roles(),
+        vec![call_step(
+            "http_parser_init",
+            &["&scratch", "2"],
+            Some("void"),
+        )],
+        vec![local("scratch", "http_parser", None)],
+    );
+    manifest.validate().unwrap();
+}
+
+#[test]
+fn eqv_03_roles_setup_and_local_parse_from_toml_and_stay_absent_otherwise() {
+    // D-12: the new tables are additive; an entry without them serialises as before.
+    let committed = committed();
+    let json = committed.canonical_json().unwrap();
+    assert!(!json.contains("\"setup\""), "no setup key when empty");
+    assert!(!json.contains("\"local\""), "no local key when empty");
+
+    let marker = "signature = \"size_t (http_parser *, const http_parser_settings *, const char *, size_t)\"\n";
+    let text = committed_text();
+    assert!(text.contains(marker), "the marker line is in the manifest");
+    let block = "\n[[target.httpparser.entry.arg]]\nrole = \"state\"\nname = \"parser\"\n\n[[target.httpparser.entry.arg]]\nrole = \"state\"\nname = \"settings\"\n\n[[target.httpparser.entry.arg]]\nrole = \"in_buf\"\n\n[[target.httpparser.entry.arg]]\nrole = \"in_len\"\n\n[[target.httpparser.entry.local]]\nname = \"scratch\"\ntype = \"http_parser\"\ncount = 2\n\n[[target.httpparser.entry.setup]]\ncall = \"http_parser_init\"\nargs = [\"&parser\", \"2\"]\nexpect = \"void\"\n\n[[target.httpparser.entry.setup]]\nset = \"scratch.data\"\nvalue = \"$in\"\n";
+    let edited = text.replacen(marker, &format!("{marker}{block}"), 1);
+    let manifest = Manifest::parse(&edited).unwrap();
+    manifest.validate().unwrap();
+    let entry = manifest.target["httpparser"]
+        .entry
+        .iter()
+        .find(|entry| entry.name == "http_parser_execute")
+        .unwrap();
+    assert_eq!(entry.local, [local("scratch", "http_parser", Some(2))]);
+    assert_eq!(entry.setup.len(), 2);
+    assert_eq!(entry.setup[0].call.as_deref(), Some("http_parser_init"));
+    assert_eq!(entry.setup[0].args, ["&parser", "2"]);
+    assert_eq!(entry.setup[1].set.as_deref(), Some("scratch.data"));
+
+    // Unknown keys are refused, as everywhere in the manifest.
+    let unknown = edited.replacen("expect = \"void\"", "expect = \"void\"\nretry = 3", 1);
+    assert!(Manifest::parse(&unknown).is_err());
 }

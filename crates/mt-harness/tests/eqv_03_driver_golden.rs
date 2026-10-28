@@ -75,6 +75,17 @@ fn eqv_03_driver_golden() {
             "zlib-uncompress.driver.c",
             lines(&["#include \"/fixed/zlib.h\""]),
         ),
+        // D-12: a declared setup step (http_parser_init) before the entry.
+        (
+            "httpparser",
+            "http_parser_execute",
+            "httpparser-http_parser_execute.driver.c",
+            lines(&[
+                "#include <stddef.h>",
+                "#include <stdint.h>",
+                "#include \"/fixed/http_parser.h\"",
+            ]),
+        ),
     ];
     for (target, entry, file, include_lines) in cases {
         let source = render_entry_driver(&adapter_of(target, entry), &include_lines).unwrap();
