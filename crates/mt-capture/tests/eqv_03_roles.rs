@@ -33,6 +33,7 @@ fn role(role: Role) -> ArgRole {
         default: None,
         sweep: Vec::new(),
         max: None,
+        of: None,
     }
 }
 
@@ -239,6 +240,7 @@ fn scalar(name: &str, default: Option<i64>, sweep: &[i64]) -> ArgRole {
         default,
         sweep: sweep.to_vec(),
         max: None,
+        of: None,
     }
 }
 
@@ -484,6 +486,7 @@ fn state(name: Option<&str>) -> ArgRole {
         default: None,
         sweep: Vec::new(),
         max: None,
+        of: None,
     }
 }
 
@@ -697,4 +700,153 @@ fn eqv_03_unobserved_marks_parse_from_toml_and_stay_absent_otherwise() {
     // An unknown key in a mark is refused.
     let unknown = edited.replacen("reason = ", "why = ", 1);
     assert!(Manifest::parse(&unknown).is_err());
+}
+
+fn inout_len(name: Option<&str>, default: Option<i64>, sweep: &[i64], of: Option<&str>) -> ArgRole {
+    ArgRole {
+        role: Role::InoutLen,
+        name: name.map(str::to_owned),
+        default,
+        sweep: sweep.to_vec(),
+        max: None,
+        of: of.map(str::to_owned),
+    }
+}
+
+#[test]
+fn eqv_03_roles_inout_len_may_size_the_output() {
+    // D-11, D-14: zlib's uncompress takes the capacity of its output buffer
+    // through a pointer to a length; `of = "out"` makes that length the capacity.
+    let signature = "int (Bytef *, uLongf *, const Bytef *, uLong)";
+    let roles = |len: ArgRole| {
+        vec![
+            role(Role::OutBuf),
+            len,
+            role(Role::InBuf),
+            role(Role::InLen),
+        ]
+    };
+    let sizing = inout_len(Some("destLen"), Some(256), &[16, 4096], Some("out"));
+    with_entry(signature, roles(sizing.clone()))
+        .validate()
+        .unwrap();
+
+    // The length is the capacity: an out_cap as well is a second capacity.
+    let both = with_entry(
+        "int (Bytef *, uLongf *, const Bytef *, uLong, uLong)",
+        vec![
+            role(Role::OutBuf),
+            sizing.clone(),
+            role(Role::InBuf),
+            role(Role::InLen),
+            {
+                let mut cap = role(Role::OutCap);
+                cap.default = Some(8);
+                cap
+            },
+        ],
+    );
+    assert!(
+        has_issue(&both, &["inout_len", "out_cap"]),
+        "{:?}",
+        issues_of(&both)
+    );
+
+    // `of` names the output buffer or nothing.
+    let nothing = with_entry(
+        signature,
+        roles(inout_len(
+            Some("destLen"),
+            Some(256),
+            &[],
+            Some("elsewhere"),
+        )),
+    );
+    assert!(
+        has_issue(&nothing, &["of", "elsewhere"]),
+        "{:?}",
+        issues_of(&nothing)
+    );
+
+    // `of = "out"` needs an out_buf in the entry.
+    let no_buffer = with_entry(
+        "int (const Bytef *, uLongf *, uLong)",
+        vec![
+            role(Role::InBuf),
+            inout_len(Some("destLen"), Some(256), &[], Some("out")),
+            role(Role::InLen),
+        ],
+    );
+    assert!(
+        has_issue(&no_buffer, &["of", "out_buf"]),
+        "{:?}",
+        issues_of(&no_buffer)
+    );
+
+    // It is a pointer to a value, with a name and a default.
+    let value = with_entry(
+        "int (Bytef *, uLong, const Bytef *, uLong)",
+        roles(sizing.clone()),
+    );
+    assert!(
+        has_issue(&value, &["inout_len", "pointer"]),
+        "{:?}",
+        issues_of(&value)
+    );
+    let nameless = with_entry(
+        signature,
+        roles(inout_len(None, Some(256), &[], Some("out"))),
+    );
+    assert!(has_issue(&nameless, &["inout_len", "name"]));
+    let no_default = with_entry(
+        signature,
+        roles(inout_len(Some("destLen"), None, &[], Some("out"))),
+    );
+    assert!(has_issue(&no_default, &["inout_len", "default"]));
+
+    // Its values are capacities, so they lie within 0..=MAX_OUT_CAP, and the
+    // name is not reserved or repeated.
+    let huge = with_entry(
+        signature,
+        roles(inout_len(
+            Some("destLen"),
+            Some(1_000_000),
+            &[],
+            Some("out"),
+        )),
+    );
+    assert!(has_issue(&huge, &["inout_len", "65536"]));
+    let reserved = with_entry(
+        signature,
+        roles(inout_len(Some("heap"), Some(256), &[], Some("out"))),
+    );
+    assert!(has_issue(&reserved, &["reserved"]));
+
+    // The values of the length join the combination count.
+    let many = with_entry(
+        signature,
+        roles(inout_len(
+            Some("destLen"),
+            Some(1),
+            &[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+            Some("out"),
+        )),
+    );
+    assert!(has_issue(&many, &["combinations"]));
+}
+
+#[test]
+fn eqv_03_roles_inout_len_parses_from_toml() {
+    let arg: ArgRole = toml::from_str(
+        "role = \"inout_len\"\nname = \"destLen\"\ndefault = 256\nsweep = [16, 4096]\nof = \"out\"\n",
+    )
+    .unwrap();
+    assert_eq!(arg.role, Role::InoutLen);
+    assert_eq!(arg.name.as_deref(), Some("destLen"));
+    assert_eq!(arg.of.as_deref(), Some("out"));
+    assert_eq!(arg.sweep, [16, 4096]);
+    // `of` is absent from the serialised form when it is not set.
+    let plain: ArgRole = toml::from_str("role = \"in_buf\"\n").unwrap();
+    assert_eq!(plain.of, None);
+    assert!(!toml::to_string(&plain).unwrap().contains("of"));
 }

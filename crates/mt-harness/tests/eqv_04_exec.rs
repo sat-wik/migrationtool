@@ -743,3 +743,102 @@ fn eqv_04_print_local_layouts() {
         println!("layout {line}");
     }
 }
+
+/// The value of a recorded integer.
+fn recorded_int(state: &mt_vectors::state::LibState, name: &str) -> i64 {
+    match state.get(name) {
+        Some(StateValue::Int { value, .. }) => *value,
+        other => panic!("{name} must be a recorded integer, found {other:?}"),
+    }
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_inout_len_is_recorded_in_and_out() {
+    // D-05, D-06, D-07, D-11: zlib's uncompress takes the capacity of its output
+    // buffer through a pointer to a length and reports the produced length back
+    // through it.
+    let work = local_work_dir();
+    for config in ["default", "no-gzip"] {
+        let tmp = tempfile::tempdir().unwrap();
+        let scope = scope_for(
+            "zlib",
+            config,
+            "uncompress",
+            &tmp.path().join("build"),
+            &work,
+        );
+        build_ok(&scope);
+        let first = run_into(&scope, &tmp.path().join("a"), &tmp.path().join("slots-a"));
+        let second = run_into(&scope, &tmp.path().join("b"), &tmp.path().join("slots-b"));
+        assert_eq!(first, second, "zlib/{config}: two full runs agree");
+        assert!(first.vectors > 0 && first.twice_identical, "{first:?}");
+        let comparison = check_corpora(&tmp.path().join("a"), &tmp.path().join("b")).unwrap();
+        assert!(comparison.identical(), "{:?}", comparison.problems);
+
+        let dir = tmp.path().join(format!("a/zlib/{config}/uncompress"));
+        let corpus = read_corpus(&dir).unwrap();
+        let (mut ok, mut buf_error) = (0usize, 0usize);
+        let mut capacities = std::collections::BTreeSet::new();
+        for (sha, vector) in &corpus.vectors {
+            let input_len = decode_latin1(&vector.stdin).unwrap().len();
+            assert_eq!(vector.argv.len(), 3, "{sha}: {:?}", vector.argv);
+            assert_eq!(vector.argv[0], format!("zlib/{config}/uncompress"));
+            let capacity: i64 = vector.argv[1].parse().unwrap();
+            assert_eq!(
+                vector.argv[2],
+                input_len.to_string(),
+                "{sha}: argv holds the initial destLen, then sourceLen, in parameter order"
+            );
+            capacities.insert(capacity);
+            assert_eq!(
+                recorded_int(&vector.lib_state_in, "destLen"),
+                capacity,
+                "{sha}: lib_state_in holds the declared initial value"
+            );
+            let produced = recorded_int(&vector.lib_state_out, "destLen");
+            let output = decode_latin1(&vector.stdout.pattern).unwrap();
+            assert_eq!(
+                output.len() as i64,
+                capacity,
+                "{sha}: stdout is the whole output buffer, whose size is the initial destLen"
+            );
+            match vector.rc {
+                0 => {
+                    ok += 1;
+                    let produced = usize::try_from(produced).unwrap();
+                    assert!(produced <= output.len(), "{sha}");
+                    assert!(
+                        output[produced..].iter().all(|byte| *byte == 0xA5),
+                        "{sha}: the sentinel tail follows the produced length"
+                    );
+                }
+                -5 => {
+                    buf_error += 1;
+                    assert!(capacity < 4096, "{sha}: only a small buffer overflows");
+                    assert!(
+                        output.iter().any(|byte| *byte != 0xA5),
+                        "{sha}: the partial write is recorded"
+                    );
+                }
+                _ => {}
+            }
+            assert_eq!(corpus.index.vectors[sha].scalars["destLen"], capacity);
+        }
+        assert_eq!(
+            capacities,
+            [16, 256, 4096].into_iter().collect(),
+            "the declared capacities are swept"
+        );
+        assert!(ok > 0, "at least one stream decompresses");
+        assert!(
+            buf_error > 0,
+            "a capacity of 16 overflows on a longer output"
+        );
+        println!("zlib/{config}/uncompress {}", first.render());
+        println!(
+            "zlib/{config}/uncompress vectors={} identical",
+            first.vectors
+        );
+    }
+}

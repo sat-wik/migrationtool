@@ -69,6 +69,12 @@ fn eqv_03_driver_golden() {
                 "#include \"/fixed/coap.h\"",
             ]),
         ),
+        (
+            "zlib",
+            "uncompress",
+            "zlib-uncompress.driver.c",
+            lines(&["#include \"/fixed/zlib.h\""]),
+        ),
     ];
     for (target, entry, file, include_lines) in cases {
         let source = render_entry_driver(&adapter_of(target, entry), &include_lines).unwrap();
