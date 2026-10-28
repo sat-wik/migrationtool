@@ -74,7 +74,7 @@ fn eqv_03_adapter_return_kinds() {
         (
             "cJSON *(const char *, size_t)",
             ReturnKind::Pointer,
-            "((JSON_Validate((const char *)mt_in, (size_t)mt_in_len)) != 0 ? (int32_t)1 : (int32_t)0)",
+            "((*(cJSON * *)mt_state(0) = JSON_Validate((const char *)mt_in, (size_t)mt_in_len)) != 0 ? (int32_t)1 : (int32_t)0)",
         ),
         (
             "JSONStatus_t (const char *, size_t)",
@@ -216,6 +216,8 @@ fn arg(role: Role) -> ArgRole {
         sweep: Vec::new(),
         max: None,
         of: None,
+        mutable: false,
+        values: Vec::new(),
     }
 }
 
@@ -270,4 +272,88 @@ fn eqv_03_adapter_inout_len_argv_and_capacity() {
         "{}",
         adapter.states_fragment()
     );
+}
+
+#[test]
+fn eqv_03_adapter_returns_a_struct_by_value() {
+    // A returned struct is recorded as `ret` (D-06), so it is no longer refused.
+    let mut entry = entry_of("corejson", "JSON_Validate");
+    entry.signature = "struct pet (const char *, size_t)".to_owned();
+    let adapter = Adapter::from_entry("corejson", "default", &entry).unwrap();
+    assert_eq!(adapter.return_kind(), ReturnKind::Struct);
+    assert_eq!(
+        adapter.call_expression(),
+        "(*(struct pet *)mt_state(0) = JSON_Validate((const char *)mt_in, (size_t)mt_in_len), (int32_t)0)"
+    );
+    // The pointer return is a state too, after the declared ones.
+    entry.signature = "cJSON *(const char *, size_t)".to_owned();
+    let adapter = Adapter::from_entry("corejson", "default", &entry).unwrap();
+    let states = adapter.states();
+    assert_eq!(states.len(), 1);
+    assert_eq!(
+        (states[0].name.as_str(), states[0].type_text.as_str()),
+        ("ret", "cJSON *")
+    );
+}
+
+#[test]
+fn eqv_03_adapter_str_and_out_roles() {
+    // D-05, D-11: strings are request data and argv text, the derived length
+    // follows them, and the out roles are states in parameter order.
+    let mut entry = entry_of("corejson", "JSON_SearchT");
+    let mut buf = arg(Role::InBuf);
+    buf.mutable = true;
+    let mut query = arg(Role::Str);
+    query.name = Some("query".to_owned());
+    query.values = ["foo", "hello", "[0]"].map(str::to_owned).to_vec();
+    let mut length = arg(Role::StrLen);
+    length.of = Some("query".to_owned());
+    let named = |role, name: &str| {
+        let mut out = arg(role);
+        out.name = Some(name.to_owned());
+        out
+    };
+    entry.arg = vec![
+        buf,
+        arg(Role::InLen),
+        query,
+        length,
+        named(Role::OutPtr, "outValue"),
+        named(Role::OutScalar, "outValueLength"),
+        named(Role::OutScalar, "outType"),
+    ];
+    let adapter = Adapter::from_entry("corejson", "default", &entry).unwrap();
+    assert_eq!(
+        adapter.call_expression(),
+        "(int32_t)(JSON_SearchT((char *)mt_in, (size_t)mt_in_len, (const char *)mt_str(0), (size_t)mt_str_len(0), (char **)mt_state(0), (size_t *)mt_state(1), (JSONTypes_t *)mt_state(2)))"
+    );
+    let combos = combinations(&adapter).unwrap();
+    let values: Vec<Vec<i64>> = combos.iter().map(|c| c.values.clone()).collect();
+    assert_eq!(
+        values,
+        [vec![0], vec![1], vec![2]],
+        "a str dimension is the value index"
+    );
+    assert_eq!(
+        adapter.argv(12, &combos[1]),
+        ["corejson/default/JSON_SearchT", "12", "hello", "5"]
+    );
+    assert_eq!(adapter.strings(&combos[2]), ["[0]"]);
+    assert_eq!(adapter.scalars_by_name(&combos[1]).get("query"), Some(&1));
+    assert!(adapter.mutable_input());
+    let states = adapter.states();
+    let described: Vec<(&str, &str)> = states
+        .iter()
+        .map(|state| (state.name.as_str(), state.type_text.as_str()))
+        .collect();
+    assert_eq!(
+        described,
+        [
+            ("outValue", "char *"),
+            ("outValueLength", "size_t"),
+            ("outType", "JSONTypes_t")
+        ]
+    );
+    assert!(states.iter().all(|state| state.init_word.is_none()));
+    assert_eq!(adapter.output_capacity(&combos[0]), 0);
 }

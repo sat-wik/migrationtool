@@ -53,6 +53,8 @@ fn arm_role(role: Role) -> ArgRole {
         sweep: Vec::new(),
         max: None,
         of: None,
+        mutable: false,
+        values: Vec::new(),
     }
 }
 

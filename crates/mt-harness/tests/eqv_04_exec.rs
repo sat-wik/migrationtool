@@ -842,3 +842,343 @@ fn eqv_04_inout_len_is_recorded_in_and_out() {
         );
     }
 }
+
+/// Build, run twice and compare two full runs of one pair and entry; returns the
+/// summary and the directory of the first corpus.
+fn run_pair_twice(
+    target: &str,
+    config: &str,
+    entry: &str,
+    tmp: &Path,
+) -> (EntryRunSummary, PathBuf) {
+    let scope = scope_for(target, config, entry, &tmp.join("build"), &local_work_dir());
+    build_ok(&scope);
+    let first = run_into(&scope, &tmp.join("a"), &tmp.join("slots-a"));
+    let second = run_into(&scope, &tmp.join("b"), &tmp.join("slots-b"));
+    assert_eq!(
+        first, second,
+        "{target}/{config}/{entry}: two full runs agree"
+    );
+    assert!(first.vectors > 0 && first.twice_identical, "{first:?}");
+    let comparison = check_corpora(&tmp.join("a"), &tmp.join("b")).unwrap();
+    assert!(comparison.identical(), "{:?}", comparison.problems);
+    println!("{target}/{config}/{entry} {}", first.render());
+    println!(
+        "{target}/{config}/{entry} vectors={} identical",
+        first.vectors
+    );
+    (first, tmp.join(format!("a/{target}/{config}/{entry}")))
+}
+
+/// Every pointer of `value` is null or a byte offset into the region `region`.
+fn assert_pointers_only_into(value: &StateValue, region: &str, what: &str) {
+    let mut found = Vec::new();
+    pointers_of(value, &mut found);
+    for pointer in found {
+        match pointer {
+            Pointer::Null => {}
+            Pointer::Buffer { region: found, .. } => {
+                assert_eq!(found, region, "{what}: {value:?}");
+            }
+            Pointer::Symbol(name) => panic!("{what}: unexpected function {name}"),
+        }
+    }
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_out_scalars_and_pointers_are_recorded() {
+    // D-06, D-11: paho's deserializers return their results through pointers to
+    // scalars, a pointer to a pointer and a string struct.
+    let tmp = tempfile::tempdir().unwrap();
+    let (_, dir) = run_pair_twice(
+        "paho",
+        "default",
+        "MQTTDeserialize_connack",
+        &tmp.path().join("connack"),
+    );
+    let corpus = read_corpus(&dir).unwrap();
+    let mut parsed = 0usize;
+    for (sha, vector) in &corpus.vectors {
+        let input_len = decode_latin1(&vector.stdin).unwrap().len();
+        assert_eq!(
+            vector.argv,
+            [
+                "paho/default/MQTTDeserialize_connack".to_owned(),
+                input_len.to_string()
+            ],
+            "{sha}: argv holds the input length only"
+        );
+        for name in ["sessionPresent", "connack_rc"] {
+            assert!(
+                is_all_zero(vector.lib_state_in.get(name).expect("lib_state_in")),
+                "{sha}: {name} starts zero"
+            );
+            assert!(
+                matches!(vector.lib_state_out.get(name), Some(StateValue::Int { c_type, .. }) if c_type == "unsigned char"),
+                "{sha}: {name} is recorded after the call: {:?}",
+                vector.lib_state_out.get(name)
+            );
+        }
+        if vector.rc == 1 {
+            parsed += 1;
+        }
+    }
+    assert!(parsed > 0, "at least one seed is a connack packet");
+
+    let (_, dir) = run_pair_twice(
+        "paho",
+        "default",
+        "MQTTDeserialize_publish",
+        &tmp.path().join("publish"),
+    );
+    let corpus = read_corpus(&dir).unwrap();
+    let (mut parsed, mut with_payload) = (0usize, 0usize);
+    for (sha, vector) in &corpus.vectors {
+        let input_len = decode_latin1(&vector.stdin).unwrap().len() as u64;
+        for name in ["dup", "qos", "retained", "packetid", "payloadlen"] {
+            assert!(
+                matches!(vector.lib_state_out.get(name), Some(StateValue::Int { .. })),
+                "{sha}: {name}: {:?}",
+                vector.lib_state_out.get(name)
+            );
+        }
+        assert!(
+            matches!(vector.lib_state_out.get("packetid"), Some(StateValue::Int { c_type, .. }) if c_type == "unsigned short")
+        );
+        let topic = vector.lib_state_out.get("topicName").expect("topicName");
+        assert!(
+            matches!(topic, StateValue::Struct { c_type, .. } if c_type == "MQTTString"),
+            "{sha}: {topic:?}"
+        );
+        assert_pointers_only_into(topic, "in", sha);
+        let payload = vector.lib_state_out.get("payload").expect("payload");
+        assert!(
+            matches!(payload, StateValue::Pointer { c_type, .. } if c_type == "unsigned char *"),
+            "{sha}: {payload:?}"
+        );
+        assert_pointers_only_into(payload, "in", sha);
+        if vector.rc == 1 {
+            parsed += 1;
+            if let StateValue::Pointer {
+                pointer: Pointer::Buffer { offset, .. },
+                ..
+            } = payload
+            {
+                assert!(*offset <= input_len, "{sha}");
+                with_payload += 1;
+            }
+            // A parsed publish names its topic by a pointer into the input.
+            let mut pointers = Vec::new();
+            pointers_of(topic, &mut pointers);
+            assert!(
+                pointers
+                    .iter()
+                    .any(|pointer| matches!(pointer, Pointer::Buffer { .. })),
+                "{sha}: a parsed publish has a topic pointer"
+            );
+        }
+    }
+    assert!(parsed > 0, "at least one seed is a publish packet");
+    assert!(
+        with_payload > 0,
+        "at least one parsed packet has a payload pointer"
+    );
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_struct_return_is_recorded() {
+    // D-06, D-11: nanopb's pb_istream_from_buffer returns a struct by value,
+    // which the contract records as lib_state_out.ret and rc 0.
+    for config in ["default", "buffer-only"] {
+        let tmp = tempfile::tempdir().unwrap();
+        let (_, dir) = run_pair_twice("nanopb", config, "pb_istream_from_buffer", tmp.path());
+        let corpus = read_corpus(&dir).unwrap();
+        let mut with_callback = 0usize;
+        for (sha, vector) in &corpus.vectors {
+            let input_len = decode_latin1(&vector.stdin).unwrap().len();
+            assert_eq!(vector.rc, 0, "{sha}: a struct return gives rc 0");
+            assert!(
+                vector.lib_state_in.get("ret").is_none(),
+                "{sha}: nothing is returned before the call"
+            );
+            let ret = vector.lib_state_out.get("ret").expect("lib_state_out.ret");
+            let StateValue::Struct { c_type, fields } = ret else {
+                panic!("{sha}: ret must be a struct: {ret:?}");
+            };
+            assert_eq!(c_type, "pb_istream_t");
+            assert!(
+                matches!(&fields["state"], StateValue::Pointer { pointer: Pointer::Buffer { region, offset: 0 }, .. } if region == "in"),
+                "{sha}: state points at the start of the input: {:?}",
+                fields["state"]
+            );
+            assert_eq!(
+                int_field(fields, "bytes_left"),
+                i64::try_from(input_len).unwrap(),
+                "{sha}"
+            );
+            if let Some(callback) = fields.get("callback") {
+                assert!(
+                    matches!(
+                        callback,
+                        StateValue::Pointer {
+                            pointer: Pointer::Symbol(_),
+                            ..
+                        }
+                    ),
+                    "{sha}: callback is a function: {callback:?}"
+                );
+                with_callback += 1;
+            }
+        }
+        if config == "default" {
+            assert_eq!(
+                with_callback,
+                corpus.vectors.len(),
+                "the stream has a callback"
+            );
+        }
+    }
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_heap_tree_is_recorded() {
+    // D-06, D-09: cJSON_ParseWithLength returns a heap tree and records its
+    // error position in a writable global.
+    for config in ["default", "no-locale"] {
+        let tmp = tempfile::tempdir().unwrap();
+        let (_, dir) = run_pair_twice("cjson", config, "cJSON_ParseWithLength", tmp.path());
+        let corpus = read_corpus(&dir).unwrap();
+        let (mut parsed, mut failed, mut strings) = (0usize, 0usize, 0usize);
+        for (sha, vector) in &corpus.vectors {
+            let ret = vector.lib_state_out.get("ret").expect("lib_state_out.ret");
+            let StateValue::Pointer { c_type, pointer } = ret else {
+                panic!("{sha}: ret must be a pointer: {ret:?}");
+            };
+            assert_eq!(c_type, "cJSON *");
+            match pointer {
+                Pointer::Buffer { region, offset } => {
+                    parsed += 1;
+                    assert_eq!(vector.rc, 1, "{sha}");
+                    assert_eq!(region, "heap", "{sha}");
+                    let heap = vector.lib_state_out.get("heap").expect("heap");
+                    let StateValue::Struct { fields, .. } = heap else {
+                        panic!("{sha}: heap must be struct-shaped: {heap:?}");
+                    };
+                    let root = fields
+                        .get(&offset.to_string())
+                        .unwrap_or_else(|| panic!("{sha}: no object at {offset}: {fields:?}"));
+                    assert!(
+                        matches!(root, StateValue::Struct { c_type, .. } if c_type == "cJSON"),
+                        "{sha}: {root:?}"
+                    );
+                    assert_pointers_only_into(heap, "heap", sha);
+                    strings += fields
+                        .values()
+                        .filter(|object| matches!(object, StateValue::Bytes { .. }))
+                        .count();
+                }
+                Pointer::Null => {
+                    failed += 1;
+                    assert_eq!(vector.rc, 0, "{sha}");
+                    let globals = vector
+                        .lib_state_out
+                        .get("globals")
+                        .expect("a failed parse changes global_error");
+                    let StateValue::Struct { fields, .. } = globals else {
+                        panic!("{sha}: globals must be struct-shaped");
+                    };
+                    let (key, error) = fields
+                        .iter()
+                        .find(|(key, _)| key.ends_with(":global_error"))
+                        .expect("global_error");
+                    let StateValue::Struct { fields: error, .. } = error else {
+                        panic!("{sha}: {key} must be typed: {error:?}");
+                    };
+                    assert!(
+                        matches!(&error["json"], StateValue::Pointer { pointer: Pointer::Buffer { region, .. }, .. } if region == "in"),
+                        "{sha}: the error points into the input: {:?}",
+                        error["json"]
+                    );
+                    let before = vector
+                        .lib_state_in
+                        .get("globals")
+                        .expect("the global is recorded before the call too");
+                    assert!(
+                        matches!(before, StateValue::Struct { fields, .. } if fields.keys().any(|key| key.ends_with(":global_error")) && is_all_zero(before)),
+                        "{sha}: the error starts empty: {before:?}"
+                    );
+                    assert!(vector.lib_state_out.get("heap").is_none(), "{sha}");
+                }
+                Pointer::Symbol(name) => panic!("{sha}: ret is the function {name}"),
+            }
+        }
+        assert!(parsed > 0, "at least one seed parses");
+        assert!(strings > 0, "at least one tree holds a string");
+        println!(
+            "cjson/{config}/cJSON_ParseWithLength parsed={parsed} failed={failed} strings={strings}"
+        );
+        assert!(failed > 0, "at least one seed fails to parse");
+    }
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_string_argument_and_mutable_input() {
+    // D-05, D-11: JSON_SearchT takes a query string whose declared values are
+    // data in the request, and a mutable input whose bytes after the call are
+    // recorded.
+    for config in ["default", "depth-8"] {
+        let tmp = tempfile::tempdir().unwrap();
+        let (_, dir) = run_pair_twice("corejson", config, "JSON_SearchT", tmp.path());
+        let corpus = read_corpus(&dir).unwrap();
+        let mut queries = std::collections::BTreeMap::<String, (usize, usize)>::new();
+        for (sha, vector) in &corpus.vectors {
+            let input = decode_latin1(&vector.stdin).unwrap();
+            assert_eq!(vector.argv.len(), 4, "{sha}: {:?}", vector.argv);
+            assert_eq!(vector.argv[0], format!("corejson/{config}/JSON_SearchT"));
+            assert_eq!(vector.argv[1], input.len().to_string(), "{sha}");
+            let query = vector.argv[2].clone();
+            assert!(
+                ["foo", "hello", "[0]"].contains(&query.as_str()),
+                "{sha}: {query}"
+            );
+            assert_eq!(vector.argv[3], query.len().to_string(), "{sha}");
+            let after = vector.lib_state_out.get("in").expect("lib_state_out.in");
+            assert!(
+                matches!(after, StateValue::Bytes { hex, .. } if *hex == input.iter().map(|b| format!("{b:02x}")).collect::<String>()),
+                "{sha}: the input after the call: {after:?}"
+            );
+            assert!(vector.lib_state_in.get("in").is_none(), "{sha}");
+            for name in ["outValueLength", "outType"] {
+                assert!(
+                    matches!(vector.lib_state_out.get(name), Some(StateValue::Int { .. })),
+                    "{sha}: {name}"
+                );
+            }
+            let out_value = vector.lib_state_out.get("outValue").expect("outValue");
+            assert_pointers_only_into(out_value, "in", sha);
+            let entry = queries.entry(query).or_default();
+            entry.0 += 1;
+            if matches!(
+                out_value,
+                StateValue::Pointer {
+                    pointer: Pointer::Buffer { .. },
+                    ..
+                }
+            ) {
+                entry.1 += 1;
+            }
+        }
+        for (query, (runs, hits)) in &queries {
+            println!("corejson/{config}/JSON_SearchT query={query} runs={runs} hits={hits}");
+        }
+        assert_eq!(queries.len(), 3, "every declared query is run");
+        assert!(
+            queries.values().any(|(_, hits)| *hits > 0),
+            "at least one query finds a value"
+        );
+    }
+}

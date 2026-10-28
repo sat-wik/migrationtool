@@ -5,11 +5,13 @@
 
 use std::collections::BTreeMap;
 
-use mt_capture::manifest::UnobservedMark;
+use mt_capture::manifest::{ArgRole, Role, UnobservedMark};
+use mt_harness::adapter::{Adapter, ReturnKind};
 use mt_harness::decode::{
     Regions, UNRESOLVED_POINTER_REASON, apply_marks, check_marks, classify_pointer, decode_value,
 };
 use mt_harness::globals::{DumpRange, record_globals};
+use mt_harness::heap::{HEAP_CAP_REASON, HEAP_WALK_CAP, walk_heap};
 use mt_harness::layout::{BitField, CType, Kind, Member};
 use mt_harness::probe::GlobalType;
 use mt_vectors::state::{LibState, Pointer, StateValue};
@@ -444,4 +446,242 @@ fn eqv_04_changed_global_is_recorded_typed() {
         record_globals(&plan, &BTreeMap::new(), &[initial], &[initial], &regions).unwrap(),
         None
     );
+}
+
+const HEAP_BASE: u32 = 0x0010_0000;
+
+fn heap_pointer(c_type: &str, offset: u64) -> StateValue {
+    StateValue::Pointer {
+        c_type: c_type.to_owned(),
+        pointer: Pointer::Buffer {
+            region: "heap".to_owned(),
+            offset,
+        },
+    }
+}
+
+/// `struct node { u32 value; struct node *next; char *name; }`, 12 bytes.
+fn node_type() -> CType {
+    record(
+        "struct node",
+        12,
+        vec![
+            member("value", int("unsigned int", 4, false), 0),
+            member("next", pointer("struct node *"), 4),
+            member("name", pointer("char *"), 8),
+        ],
+    )
+}
+
+fn node_pointees() -> BTreeMap<String, CType> {
+    BTreeMap::from([
+        ("struct node".to_owned(), node_type()),
+        ("char".to_owned(), int("char", 1, true)),
+    ])
+}
+
+#[test]
+fn eqv_04_heap_walk_follows_typed_edges() {
+    // D-06, D-09: objects reachable from recorded pointers through typed edges
+    // are recorded by decimal offset; a char pointee is a NUL-terminated run; a
+    // cycle is decoded once.
+    let mut arena = Vec::new();
+    arena.extend(words(&[7, HEAP_BASE + 12, HEAP_BASE + 24]));
+    arena.extend(words(&[9, HEAP_BASE, 0]));
+    arena.extend(b"hi\0\0");
+    let regions = Regions::new()
+        .with_region("heap", HEAP_BASE, u32::try_from(arena.len()).unwrap())
+        .with_region("in", 0x0400_0000, 8);
+    let mut root = heap_pointer("struct node *", 0);
+    let mut other = StateValue::Pointer {
+        c_type: "struct node *".to_owned(),
+        pointer: Pointer::Buffer {
+            region: "in".to_owned(),
+            offset: 4,
+        },
+    };
+    let objects = walk_heap(
+        &arena,
+        &node_pointees(),
+        &regions,
+        &mut [&mut root, &mut other],
+    )
+    .unwrap();
+    let keys: Vec<&str> = objects.keys().map(String::as_str).collect();
+    assert_eq!(
+        keys,
+        ["0", "12", "24"],
+        "three objects, the cycle decoded once"
+    );
+
+    let first = fields_of(&objects["0"]);
+    assert!(matches!(&first["value"], StateValue::Int { value: 7, .. }));
+    assert_eq!(
+        first["next"],
+        heap_pointer("struct node *", 12),
+        "the next pointer is a region offset"
+    );
+    assert_eq!(first["name"], heap_pointer("char *", 24));
+    let second = fields_of(&objects["12"]);
+    assert_eq!(second["next"], heap_pointer("struct node *", 0));
+    assert!(matches!(
+        &second["name"],
+        StateValue::Pointer {
+            pointer: Pointer::Null,
+            ..
+        }
+    ));
+    assert_eq!(
+        objects["24"],
+        StateValue::Bytes {
+            c_type: "char[3]".to_owned(),
+            hex: "686900".to_owned()
+        },
+        "a char pointee is the NUL-terminated bytes in hex"
+    );
+    // The roots keep their classified pointers; one into `in` is not walked.
+    assert_eq!(root, heap_pointer("struct node *", 0));
+    assert!(
+        matches!(&other, StateValue::Pointer { pointer: Pointer::Buffer { region, .. }, .. } if region == "in")
+    );
+
+    // A pointer past the used bytes, to an unknown type or to a void pointee,
+    // stays a classified pointer with no object.
+    let mut unknown = heap_pointer("struct unknown *", 0);
+    let mut beyond = heap_pointer("struct node *", 1000);
+    let mut nothing = heap_pointer("void *", 0);
+    let objects = walk_heap(
+        &arena,
+        &node_pointees(),
+        &regions,
+        &mut [&mut unknown, &mut beyond, &mut nothing],
+    )
+    .unwrap();
+    assert!(objects.is_empty(), "{objects:?}");
+}
+
+#[test]
+fn eqv_04_heap_walk_cap_is_an_unobserved_mark() {
+    // T-03-22: the walk stops after HEAP_WALK_CAP objects, and the first pointer
+    // not followed is recorded as unobserved with the cap's reason.
+    assert_eq!(HEAP_WALK_CAP, 4096);
+    let nodes = HEAP_WALK_CAP + 4;
+    let node = record(
+        "struct chain",
+        8,
+        vec![
+            member("next", pointer("struct chain *"), 0),
+            member("pad", int("unsigned int", 4, false), 4),
+        ],
+    );
+    let mut arena = Vec::new();
+    for index in 0..nodes {
+        let next = if index + 1 < nodes {
+            HEAP_BASE + u32::try_from((index + 1) * 8).unwrap()
+        } else {
+            0
+        };
+        arena.extend(words(&[next, 0]));
+    }
+    let regions =
+        Regions::new().with_region("heap", HEAP_BASE, u32::try_from(arena.len()).unwrap());
+    let pointees = BTreeMap::from([("struct chain".to_owned(), node)]);
+    let mut root = heap_pointer("struct chain *", 0);
+    let objects = walk_heap(&arena, &pointees, &regions, &mut [&mut root]).unwrap();
+    assert_eq!(objects.len(), HEAP_WALK_CAP);
+    let last = (HEAP_WALK_CAP - 1) * 8;
+    let before_last = fields_of(&objects[&(last - 8).to_string()]);
+    assert_eq!(
+        before_last["next"],
+        heap_pointer("struct chain *", u64::try_from(last).unwrap()),
+        "the pointer to the last object is followed"
+    );
+    let capped = fields_of(&objects[&last.to_string()]);
+    assert_eq!(
+        capped["next"],
+        StateValue::Unobserved {
+            c_type: "struct chain *".to_owned(),
+            reason: HEAP_CAP_REASON.to_owned()
+        },
+        "the first pointer not followed is an unobserved mark"
+    );
+    assert_eq!(HEAP_CAP_REASON, "heap walk cap reached");
+}
+
+#[test]
+fn eqv_04_struct_return_is_ret() {
+    // D-06, D-11: a struct returned by value is stored in a state called `ret`
+    // after the declared states; rc is 0 and `ret` is decoded like any struct.
+    let arg = |role| ArgRole {
+        role,
+        name: None,
+        default: None,
+        sweep: Vec::new(),
+        max: None,
+        of: None,
+        mutable: false,
+        values: Vec::new(),
+    };
+    let manifest = mt_capture::manifest::Manifest::load(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../testbed/manifest.toml"),
+    )
+    .unwrap();
+    let mut entry = manifest.target["nanopb"]
+        .entry
+        .iter()
+        .find(|entry| entry.name == "pb_istream_from_buffer")
+        .unwrap()
+        .clone();
+    entry.arg = vec![arg(Role::InBuf), arg(Role::InLen)];
+    // The typedef name alone does not say it is a struct; the build resolves it
+    // from the DWARF of the entry's header.
+    let adapter = Adapter::from_entry("nanopb", "default", &entry).unwrap();
+    assert_eq!(adapter.return_kind(), ReturnKind::Integer);
+    assert!(adapter.states().is_empty());
+    let adapter = adapter.with_return_kind(ReturnKind::Struct);
+    assert_eq!(adapter.return_kind(), ReturnKind::Struct);
+    assert_eq!(
+        adapter.call_expression(),
+        "(*(pb_istream_t *)mt_state(0) = pb_istream_from_buffer((const pb_byte_t *)mt_in, (size_t)mt_in_len), (int32_t)0)"
+    );
+    let states = adapter.states();
+    assert_eq!(states.len(), 1);
+    assert_eq!(states[0].name, "ret");
+    assert_eq!(states[0].type_text, "pb_istream_t");
+    assert_eq!(states[0].init_word, None);
+    assert!(
+        adapter
+            .states_fragment()
+            .contains("(u32)sizeof(pb_istream_t)")
+    );
+
+    let stream = record(
+        "pb_istream_t",
+        16,
+        vec![
+            member("callback", pointer("bool (*)(...)"), 0),
+            member("state", pointer("void *"), 4),
+            member("bytes_left", int("size_t", 4, false), 8),
+            member("errmsg", pointer("const char *"), 12),
+        ],
+    );
+    let regions = Regions::new()
+        .with_region("in", 0x0400_0000, 5)
+        .with_function(0x0001_0000, "buf_read");
+    let bytes = words(&[0x0001_0001, 0x0400_0000, 5, 0]);
+    let ret = decode_value(&stream, &bytes, &regions).unwrap();
+    let fields = fields_of(&ret);
+    assert!(
+        matches!(&fields["callback"], StateValue::Pointer { pointer: Pointer::Symbol(name), .. } if name == "buf_read")
+    );
+    assert!(
+        matches!(&fields["state"], StateValue::Pointer { pointer: Pointer::Buffer { region, offset: 0 }, .. } if region == "in")
+    );
+    assert!(matches!(
+        &fields["bytes_left"],
+        StateValue::Int { value: 5, .. }
+    ));
+    // `ret` is a reserved top-level name that accepts any value.
+    let state = LibState::new(BTreeMap::from([("ret".to_owned(), ret)])).unwrap();
+    assert_eq!(state.unobserved_count(), 0);
 }

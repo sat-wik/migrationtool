@@ -34,6 +34,8 @@ fn role(role: Role) -> ArgRole {
         sweep: Vec::new(),
         max: None,
         of: None,
+        mutable: false,
+        values: Vec::new(),
     }
 }
 
@@ -241,6 +243,8 @@ fn scalar(name: &str, default: Option<i64>, sweep: &[i64]) -> ArgRole {
         sweep: sweep.to_vec(),
         max: None,
         of: None,
+        mutable: false,
+        values: Vec::new(),
     }
 }
 
@@ -487,6 +491,8 @@ fn state(name: Option<&str>) -> ArgRole {
         sweep: Vec::new(),
         max: None,
         of: None,
+        mutable: false,
+        values: Vec::new(),
     }
 }
 
@@ -710,6 +716,8 @@ fn inout_len(name: Option<&str>, default: Option<i64>, sweep: &[i64], of: Option
         sweep: sweep.to_vec(),
         max: None,
         of: of.map(str::to_owned),
+        mutable: false,
+        values: Vec::new(),
     }
 }
 
@@ -849,4 +857,308 @@ fn eqv_03_roles_inout_len_parses_from_toml() {
     let plain: ArgRole = toml::from_str("role = \"in_buf\"\n").unwrap();
     assert_eq!(plain.of, None);
     assert!(!toml::to_string(&plain).unwrap().contains("of"));
+}
+
+fn str_role(name: Option<&str>, values: &[&str]) -> ArgRole {
+    ArgRole {
+        role: Role::Str,
+        name: name.map(str::to_owned),
+        default: None,
+        sweep: Vec::new(),
+        max: None,
+        of: None,
+        mutable: false,
+        values: values.iter().map(|value| (*value).to_owned()).collect(),
+    }
+}
+
+fn str_len(of: Option<&str>) -> ArgRole {
+    let mut role = role(Role::StrLen);
+    role.of = of.map(str::to_owned);
+    role
+}
+
+const SEARCH_SIGNATURE: &str = "JSONStatus_t (const char *, size_t, const char *, size_t)";
+
+fn search_roles(query: ArgRole, length: ArgRole) -> Manifest {
+    with_entry(
+        SEARCH_SIGNATURE,
+        vec![role(Role::InBuf), role(Role::InLen), query, length],
+    )
+}
+
+#[test]
+fn eqv_03_roles_str_values_are_printable_and_bounded() {
+    // D-11, T-03-24: a str is a declared list of printable ASCII values, passed
+    // as data; its length is derived.
+    search_roles(
+        str_role(Some("query"), &["foo", "hello", "[0]", " "]),
+        str_len(Some("query")),
+    )
+    .validate()
+    .unwrap();
+
+    let bad =
+        |values: &[&str]| search_roles(str_role(Some("query"), values), str_len(Some("query")));
+    // A control character, a byte above 0x7E and a 65-byte value are refused.
+    for value in ["a\tb", "a\nb", "a\u{7f}", "caf\u{e9}", "a\u{0}b"] {
+        let manifest = bad(&[value]);
+        assert!(
+            has_issue(&manifest, &["str", "printable"]),
+            "{value:?}: {:?}",
+            issues_of(&manifest)
+        );
+    }
+    let long = "x".repeat(65);
+    let manifest = bad(&[long.as_str()]);
+    assert!(
+        has_issue(&manifest, &["str", "64"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    let exact = "x".repeat(64);
+    bad(&[exact.as_str()]).validate().unwrap();
+    // The list has one to eight values and no repeat.
+    let manifest = bad(&[]);
+    assert!(
+        has_issue(&manifest, &["str", "values"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    let nine = ["a", "b", "c", "d", "e", "f", "g", "h", "i"];
+    let manifest = bad(&nine);
+    assert!(
+        has_issue(&manifest, &["str", "8"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    bad(&nine[..8]).validate().unwrap();
+    let manifest = bad(&["a", "a"]);
+    assert!(
+        has_issue(&manifest, &["str", "repeat"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    // It needs a name, and values belong to str alone.
+    let nameless = search_roles(str_role(None, &["a"]), str_len(Some("query")));
+    assert!(has_issue(&nameless, &["str", "name"]));
+    let mut stray = role(Role::InLen);
+    stray.values = vec!["a".to_owned()];
+    let manifest = with_roles(vec![role(Role::InBuf), stray]);
+    assert!(
+        has_issue(&manifest, &["values", "str"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+
+    // str_len names its str with `of`, and has no other key.
+    let manifest = search_roles(str_role(Some("query"), &["a"]), str_len(None));
+    assert!(
+        has_issue(&manifest, &["str_len", "of"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    let manifest = search_roles(str_role(Some("query"), &["a"]), str_len(Some("other")));
+    assert!(
+        has_issue(&manifest, &["str_len", "other"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    let mut with_default = str_len(Some("query"));
+    with_default.default = Some(1);
+    let manifest = search_roles(str_role(Some("query"), &["a"]), with_default);
+    assert!(has_issue(&manifest, &["default"]));
+    // A str_len is a value parameter.
+    let manifest = with_entry(
+        "JSONStatus_t (const char *, size_t, const char *, size_t *)",
+        vec![
+            role(Role::InBuf),
+            role(Role::InLen),
+            str_role(Some("query"), &["a"]),
+            str_len(Some("query")),
+        ],
+    );
+    assert!(
+        has_issue(&manifest, &["str_len", "value"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    // A str is a pointer parameter.
+    let manifest = with_entry(
+        "JSONStatus_t (const char *, size_t, int, size_t)",
+        vec![
+            role(Role::InBuf),
+            role(Role::InLen),
+            str_role(Some("query"), &["a"]),
+            str_len(Some("query")),
+        ],
+    );
+    assert!(
+        has_issue(&manifest, &["str", "pointer"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    // The values are a combination dimension: nine str values of three strs
+    // exceed the cap.
+    let manifest = with_entry(
+        "JSONStatus_t (const char *, size_t, const char *, const char *, const char *)",
+        vec![
+            role(Role::InBuf),
+            role(Role::InLen),
+            str_role(Some("a"), &["1", "2", "3", "4"]),
+            str_role(Some("b"), &["1", "2", "3", "4"]),
+            str_role(Some("c"), &["1", "2"]),
+        ],
+    );
+    assert!(
+        has_issue(&manifest, &["combinations"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+}
+
+#[test]
+fn eqv_03_roles_mutable_input_needs_a_non_const_pointer() {
+    // D-11: `mutable` records the input's bytes after the call, so the C code
+    // must be allowed to write them.
+    let mut buf = role(Role::InBuf);
+    buf.mutable = true;
+    with_entry(
+        "JSONStatus_t (char *, size_t)",
+        vec![buf.clone(), role(Role::InLen)],
+    )
+    .validate()
+    .unwrap();
+    let manifest = with_entry(
+        "JSONStatus_t (const char *, size_t)",
+        vec![buf.clone(), role(Role::InLen)],
+    );
+    assert!(
+        has_issue(&manifest, &["mutable", "const"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    // Only an in_buf is mutable.
+    let mut len = role(Role::InLen);
+    len.mutable = true;
+    let manifest = with_roles(vec![role(Role::InBuf), len]);
+    assert!(
+        has_issue(&manifest, &["mutable", "in_buf"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    let mut out = role(Role::OutBuf);
+    out.mutable = true;
+    let manifest = with_entry(
+        "JSONStatus_t (char *, size_t, size_t)",
+        vec![out, role(Role::InLen), {
+            let mut cap = role(Role::OutCap);
+            cap.default = Some(4);
+            cap
+        }],
+    );
+    assert!(has_issue(&manifest, &["mutable", "in_buf"]));
+}
+
+fn out_role(role: Role, name: Option<&str>) -> ArgRole {
+    let mut arg = self::role(role);
+    arg.name = name.map(str::to_owned);
+    arg
+}
+
+#[test]
+fn eqv_03_roles_out_roles_need_pointers_and_names() {
+    // D-11: out_scalar is a pointer to a scalar, out_ptr a pointer to a pointer;
+    // both are recorded under a name.
+    let signature = "JSONStatus_t (const char *, size_t, char **, size_t *, JSONTypes_t *)";
+    let roles = |ptr: ArgRole, scalar: ArgRole, kind: ArgRole| {
+        vec![role(Role::InBuf), role(Role::InLen), ptr, scalar, kind]
+    };
+    let good = || {
+        roles(
+            out_role(Role::OutPtr, Some("outValue")),
+            out_role(Role::OutScalar, Some("outValueLength")),
+            out_role(Role::OutScalar, Some("outType")),
+        )
+    };
+    with_entry(signature, good()).validate().unwrap();
+
+    // Names: required, C identifiers, not reserved, not repeated.
+    for (role_word, which) in [("out_ptr", 2usize), ("out_scalar", 3)] {
+        let mut roles = good();
+        roles[which].name = None;
+        let manifest = with_entry(signature, roles);
+        assert!(
+            has_issue(&manifest, &[role_word, "name"]),
+            "{role_word}: {:?}",
+            issues_of(&manifest)
+        );
+    }
+    let mut roles = good();
+    roles[3].name = Some("outValue".to_owned());
+    assert!(has_issue(&with_entry(signature, roles), &["duplicate"]));
+    let mut roles = good();
+    roles[3].name = Some("heap".to_owned());
+    assert!(has_issue(&with_entry(signature, roles), &["reserved"]));
+    let mut roles = good();
+    roles[3].name = Some("a b".to_owned());
+    assert!(has_issue(&with_entry(signature, roles), &["identifier"]));
+
+    // out_scalar is a pointer to a plain value; out_ptr a pointer to a pointer.
+    let manifest = with_entry(
+        "JSONStatus_t (const char *, size_t, char *, size_t *, JSONTypes_t *)",
+        good(),
+    );
+    assert!(
+        has_issue(&manifest, &["out_ptr", "pointer to a pointer"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    let manifest = with_entry(
+        "JSONStatus_t (const char *, size_t, char **, size_t, JSONTypes_t *)",
+        good(),
+    );
+    assert!(
+        has_issue(&manifest, &["out_scalar", "pointer"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    let manifest = with_entry(
+        "JSONStatus_t (const char *, size_t, char **, size_t **, JSONTypes_t *)",
+        good(),
+    );
+    assert!(
+        has_issue(&manifest, &["out_scalar", "plain"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    let manifest = with_entry(
+        "JSONStatus_t (const char *, size_t, char **, const size_t *, JSONTypes_t *)",
+        good(),
+    );
+    assert!(
+        has_issue(&manifest, &["out_scalar", "const"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+
+    // Neither takes a default, sweep, max, values, of or mutable.
+    let mut roles = good();
+    roles[3].default = Some(1);
+    assert!(has_issue(
+        &with_entry(signature, roles),
+        &["default", "out_scalar"]
+    ));
+    let mut roles = good();
+    roles[2].sweep = vec![1];
+    assert!(has_issue(
+        &with_entry(signature, roles),
+        &["sweep", "out_ptr"]
+    ));
+    let mut roles = good();
+    roles[3].values = vec!["a".to_owned()];
+    assert!(has_issue(&with_entry(signature, roles), &["values", "str"]));
+    let mut roles = good();
+    roles[3].of = Some("out".to_owned());
+    assert!(has_issue(&with_entry(signature, roles), &["of"]));
 }
