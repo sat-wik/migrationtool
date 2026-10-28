@@ -4,18 +4,18 @@ milestone: v1.0
 milestone_name: MVP
 current_phase: 03
 current_phase_name: Equivalence Contract and Test-Vector Schema
-current_plan: 8
+current_plan: 9
 status: executing
-stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-10-28T19:16:00.647Z"
+stopped_at: Completed 03-06-PLAN.md
+last_updated: "2026-10-28T20:31:03.713Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 03 execution started
-state_head: 7b07138aaee1d9d1ceea6aeb8f87f0243aecea6f
+state_head: 134cb4e77cfe127aa8f38fc94c27446667e2c813
 progress:
   total_phases: 12
   completed_phases: 2
   total_plans: 41
-  completed_plans: 38
+  completed_plans: 39
 ---
 
 # Project State
@@ -30,10 +30,10 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 03 (Equivalence Contract and Test-Vector Schema) — EXECUTING
-Current Plan: 8
+Current Plan: 9
 Total Plans in Phase: 10
-Plan: 03-01, 03-02, 03-03, 03-04, 03-09 and 03-10 done (03-04: manifest argument roles, generated drivers over the exact captured objects, corejson/lz4/libfdt reference vectors run twice and rerun identically in the D-31 image, testbed run 40541809803 = round trip 1 of 3); the 03-04 SUMMARY, STATE and ROADMAP commits are unpushed and ride with 03-05's first push; next 03-05, then 03-06 .. 03-08
-Status: Ready to plan-execute 03-05
+Plan: 03-01 to 03-06, 03-09 and 03-10 done (03-06: output scalars and pointers, struct and pointer returns, the typed heap walk, string arguments, the adapter drop log and the floor of 10 as a test; ten targets reproduced twice-identical with a byte-identical rerun corpus in the D-31 image, testbed run 40761178752 = round trip 2 of 3); the 03-06 SUMMARY, STATE and ROADMAP commits are unpushed and ride with 03-07's first push; next 03-07, then 03-08
+Status: Ready to plan-execute 03-07
 Last activity: 2026-10-27 — Phase 03 execution started
 
 Progress: [██░░░░░░░░] 17%
@@ -89,6 +89,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 03 P03 | 10h 26m (usage-limit pause) | 3 tasks | 25 files |
 | Phase 03 P04 | 55 min | 3 tasks | 32 files |
 | Phase 03 P05 | 75 min | 3 tasks | 29 files |
+| Phase 03 P06 | 66 min | 3 tasks | 30 files |
 
 ## Accumulated Context
 
@@ -154,6 +155,12 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 03]: A changed writable global is typed from its defining unit's DWARF (recompiled with its own flags + -g -gdwarf-5 -O0) or stays untyped_global_changed
 - [Phase 03]: A signal fault, abort or timeout has no frame, so lib_state_in and lib_state_out are empty for it
 - [Phase 03]: tinycbor flags scalar has the single value 0 (the only documented flag makes the parser call through a data pointer)
+- [Phase 03]: inout_len is a state whose initial value is a request word written before the snapshot; with of=out it is the capacity of the output buffer
+- [Phase 03]: Pointer and struct returns are one more state called ret recorded after the call only; the return kind of a typedef name is resolved from the DWARF at build time (build.json return_kind)
+- [Phase 03]: The heap walk records objects by decimal offset from a table of pointee types, a char run as bytes including the NUL, and stops at 4096 objects with an unobserved mark
+- [Phase 03]: str values travel only in request field 5 into guarded NUL-terminated mappings; JSON_SearchT queries are foo, hello and [0]
+- [Phase 03]: ADAPTER_FLOOR is 10 and counts retained targets with a seeded, unlogged entry with roles; the CLI validates the drop log rows but not the never-both rule
+- [Phase 03]: mt vectors build and run print no_roles: <n> instead of one row per entry without roles because a job keeps 50 annotations (vectors notices use 49)
 
 ### Pending Todos
 
@@ -171,6 +178,7 @@ None yet.
 - [Init]: Open spec questions: first RTOS (Zephyr or FreeRTOS), acceptability of "return error" as UB default, IAR/Keil linking. First one gets recorded in Phase 2.
 - [Init]: TRACTOR corpus licence unchecked; use locally only until Phase 12 checks it.
 - [Init]: Before starting, check the day-job invention-assignment clause and keep work on own time and hardware.
+- Plans 03-07 and 03-08: the testbed job is at 49 of GitHub's 50 annotations (31 are Phase 2 fixture notices); decide how to stay within the cap before adding rows
 
 ### Quick Tasks Completed
 
@@ -193,6 +201,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T19:16:00.496Z
-Stopped at: Completed 03-05-PLAN.md
+Last session: 2026-10-28T20:31:02.922Z
+Stopped at: Completed 03-06-PLAN.md
 Resume file: None
