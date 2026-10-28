@@ -23,7 +23,7 @@ use mt_harness::adapter_drops::{ADAPTER_FLOOR, testbed_drivable_targets};
 use mt_harness::replay::{ReplayOptions, check_corpora, replay_corpus};
 use mt_harness::run::{
     BuildOptions, RunOptions, Scope as VectorsScope, build_entries, layout_lines, list_adapters,
-    run_entries,
+    render_build_listing, render_run_listing, run_entries,
 };
 use mt_harness::selftest::run_selftest;
 use mt_harness::tools::ExecTools;
@@ -276,9 +276,11 @@ enum VectorsAction {
     /// capture.json, the capture verdict is `captured` and, with --replay-dir, the
     /// pair's replay report starts `identical`. Prints `<t>/<c>/<e> built
     /// driver_sha256=<hex>`, `link_unresolved (<names>)`, `unhandled_flag
-    /// (<flag>)`, `no_roles` or `refused (<reason>)` per entry, then `result:
-    /// passed (<n> rows)` or `result: failed`. Exit 0 when no row failed, 1
-    /// otherwise, 2 for invalid input.
+    /// (<flag>)` or `refused (<reason>)` per entry with roles, `no_roles: <n>`
+    /// once for the entries without (their rows are not repeated: the workflow
+    /// publishes the listing as one annotation of the 50 a job may have), then
+    /// `result: passed (<n> rows)` or `result: failed` with every entry counted.
+    /// Exit 0 when no row failed, 1 otherwise, 2 for invalid input.
     Build {
         #[command(flatten)]
         args: TestbedArgs,
@@ -306,8 +308,9 @@ enum VectorsAction {
     /// is written once, with its provenance, into `<corpus-dir>/<t>/<c>/<e>`.
     /// Captured object code runs here. Prints `<t>/<c>/<e> vectors=<n> ok=<n>
     /// fault=<n> abort=<n> timeout=<n> setup_failed=<n> skipped=<n>
-    /// twice=identical`, then `result: passed (<n> rows)` or `result: failed`.
-    /// Exit 0 when no row failed, 1 otherwise, 2 for invalid input.
+    /// twice=identical` per entry with roles, `no_roles: <n>` once for the entries
+    /// without, then `result: passed (<n> rows)` or `result: failed` with every
+    /// entry counted. Exit 0 when no row failed, 1 otherwise, 2 for invalid input.
     Run {
         #[command(flatten)]
         args: TestbedArgs,
@@ -1024,8 +1027,8 @@ fn build_command(args: TestbedArgs, replay_dir: Option<PathBuf>) -> anyhow::Resu
         replay_dir,
     })
     .context("building the reference drivers")?;
-    for row in &rows {
-        println!("{}", row.render());
+    for line in render_build_listing(&rows) {
+        println!("{line}");
     }
     Ok(print_result(
         rows.len(),
@@ -1051,8 +1054,8 @@ fn run_command(
         scratch_dir,
     })
     .context("running the reference vectors")?;
-    for row in &rows {
-        println!("{}", row.render());
+    for line in render_run_listing(&rows) {
+        println!("{line}");
     }
     Ok(print_result(
         rows.len(),

@@ -733,6 +733,24 @@ fn global_types_of(
     Ok(types)
 }
 
+/// The lines `mt vectors build` prints: every row but the `no_roles` rows, then
+/// `no_roles: <n>` when there were any. The testbed workflow publishes the listing
+/// as one annotation and GitHub keeps at most 50 annotations per job, so the many
+/// rows of entries without roles (one per configuration) are counted in one line.
+#[must_use]
+pub fn render_build_listing(rows: &[BuildRow]) -> Vec<String> {
+    let mut lines: Vec<String> = rows
+        .iter()
+        .filter(|row| !matches!(row.state, BuildState::NoRoles))
+        .map(BuildRow::render)
+        .collect();
+    let skipped = rows.len() - lines.len();
+    if skipped > 0 {
+        lines.push(format!("no_roles: {skipped}"));
+    }
+    lines
+}
+
 // ---------------------------------------------------------------------------
 // Run
 // ---------------------------------------------------------------------------
@@ -849,6 +867,22 @@ impl RunRow {
     pub const fn is_failure(&self) -> bool {
         matches!(self.state, RunState::NotBuilt(_) | RunState::Failed(_))
     }
+}
+
+/// The lines `mt vectors run` prints: every row but the `no_roles` rows, then
+/// `no_roles: <n>` when there were any (see [`render_build_listing`]).
+#[must_use]
+pub fn render_run_listing(rows: &[RunRow]) -> Vec<String> {
+    let mut lines: Vec<String> = rows
+        .iter()
+        .filter(|row| !matches!(row.state, RunState::NoRoles))
+        .map(RunRow::render)
+        .collect();
+    let skipped = rows.len() - lines.len();
+    if skipped > 0 {
+        lines.push(format!("no_roles: {skipped}"));
+    }
+    lines
 }
 
 /// A linked driver, its dump plan and its state layouts, ready to run.
