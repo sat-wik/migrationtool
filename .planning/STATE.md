@@ -4,18 +4,18 @@ milestone: v1.0
 milestone_name: MVP
 current_phase: 03
 current_phase_name: Equivalence Contract and Test-Vector Schema
-current_plan: 7
+current_plan: 8
 status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-10-27T16:48:49.543Z"
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-10-28T19:16:00.647Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 03 execution started
-state_head: 9566950e5ffcf938b38d7c7c023f0eb30721d484
+state_head: 7b07138aaee1d9d1ceea6aeb8f87f0243aecea6f
 progress:
   total_phases: 12
   completed_phases: 2
   total_plans: 41
-  completed_plans: 37
+  completed_plans: 38
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 03 (Equivalence Contract and Test-Vector Schema) — EXECUTING
-Current Plan: 7
+Current Plan: 8
 Total Plans in Phase: 10
 Plan: 03-01, 03-02, 03-03, 03-04, 03-09 and 03-10 done (03-04: manifest argument roles, generated drivers over the exact captured objects, corejson/lz4/libfdt reference vectors run twice and rerun identically in the D-31 image, testbed run 40541809803 = round trip 1 of 3); the 03-04 SUMMARY, STATE and ROADMAP commits are unpushed and ride with 03-05's first push; next 03-05, then 03-06 .. 03-08
 Status: Ready to plan-execute 03-05
@@ -88,6 +88,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 03 P02 | 12 min | 3 tasks | 28 files |
 | Phase 03 P03 | 10h 26m (usage-limit pause) | 3 tasks | 25 files |
 | Phase 03 P04 | 55 min | 3 tasks | 32 files |
+| Phase 03 P05 | 75 min | 3 tasks | 29 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,12 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 03]: Plan 03-04: argv lists every non-pointer parameter including the input length (the locked D-05 text); the manifest role grammar is closed and entries without arg tables validate unchanged (schema_version 1)
 - [Phase 03]: Plan 03-04: a writable global counts as changed when its bytes before or after the call differ from the image; without a typed layout the run fails with untyped_global_changed and stores nothing (typing arrives in 03-05)
 - [Phase 03]: Plan 03-04 finding: LZ4_decompress_safe writes up to 3 bytes past its return value and leaves partial output on error paths; the whole-buffer record (D-07) captures it, and the founder decides at verify-work whether the comparison should cover only the produced prefix
+- [Phase 03]: Role::State pointee is a plain type name (state_pointee_type); state names share the scalar-name namespace
+- [Phase 03]: Layouts are owned CType trees read from the pinned GCC's DWARF; typedefs keep their own name as the type text
+- [Phase 03]: Pointers in state are null, {buffer, offset}, {symbol} or unobserved with reason 'pointer outside known regions'; addresses come from the driver's own frame
+- [Phase 03]: A changed writable global is typed from its defining unit's DWARF (recompiled with its own flags + -g -gdwarf-5 -O0) or stays untyped_global_changed
+- [Phase 03]: A signal fault, abort or timeout has no frame, so lib_state_in and lib_state_out are empty for it
+- [Phase 03]: tinycbor flags scalar has the single value 0 (the only documented flag makes the parser call through a data pointer)
 
 ### Pending Todos
 
@@ -186,6 +193,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-27T16:48:06.218Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-10-28T19:16:00.496Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None
