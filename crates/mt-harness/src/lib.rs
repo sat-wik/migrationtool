@@ -15,6 +15,7 @@
 //!   renders an entry's driver,
 //! - [`adapter`] turns an entry's manifest roles into the call, the `argv` and
 //!   the scalar combinations,
+//! - [`adapter_drops`] logs the entries that are not drivable and checks the floor,
 //! - [`link`] checks the captured objects and links the driver against them,
 //! - [`globals`] finds the writable globals of the objects and their addresses,
 //! - [`layout`] reads a type's layout from the pinned GCC's DWARF text,
@@ -31,6 +32,7 @@
 //! Every external program runs only through `mt_toolchain::runner`.
 
 pub mod adapter;
+pub mod adapter_drops;
 pub mod budget;
 pub mod classify;
 pub mod decode;

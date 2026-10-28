@@ -1,0 +1,42 @@
+# The adapter drop log (CONTEXT D-13, D-28). An entry of testbed/manifest.toml that
+# the harness cannot drive is logged here with its cause, a detail and the attempt
+# that was made, like Phase 2's testbed/dropped.toml. It stays named in the manifest.
+# An entry is in this log or has argument roles, never both, and the floor of 10
+# drivable targets is counted over the committed files by eqv_03_adapter_floor_is_ten.
+#
+# Each [[dropped]] table has:
+#   target   a target id of the manifest
+#   entry    an entry function of that target
+#   cause    no_seeds | not_expressible | link_unresolved | attempt_failed |
+#            nondeterministic | not_attempted
+#   detail   the cause as the attempt stated it
+#   attempt  what was tried; never empty (`none: ...` when nothing was)
+#   ci_run   optional: the testbed run that showed the failure
+#
+# no_seeds (D-22, D-28): the seed corpus lists no seed for the entry, so there is
+# nothing to run. Another entry's seeds are never borrowed. not_attempted (D-24)
+# marks an entry left unattempted at a phase budget stop: its detail is
+# `phase budget (D-24)` and its attempt `none: stopped at the phase budget before
+# the attempt`. Plans 03-07 and 03-08 log the entries they drop.
+schema_version = 1
+
+[[dropped]]
+target = "zcbor"
+entry = "cbor_decode_Pet"
+cause = "no_seeds"
+detail = "testbed/seeds/zcbor/index.json lists no seed for cbor_decode_Pet; its 137 seeds all list zcbor_new_decode_state, and they are not borrowed (D-22, D-28)"
+attempt = "none: the seed corpus lists no seed for this entry (D-28)"
+
+[[dropped]]
+target = "httpparser"
+entry = "http_parser_parse_url"
+cause = "no_seeds"
+detail = "testbed/seeds/httpparser/index.json lists no seed for http_parser_parse_url; its 76 seeds all list http_parser_execute, and they are not borrowed (D-22, D-28)"
+attempt = "none: the seed corpus lists no seed for this entry (D-28)"
+
+[[dropped]]
+target = "mbedtls"
+entry = "mbedtls_asn1_get_tag"
+cause = "no_seeds"
+detail = "testbed/seeds/mbedtls/index.json lists no seed for mbedtls_asn1_get_tag; its 200 seeds all list mbedtls_x509_crt_parse_der, and they are not borrowed (D-22, D-28)"
+attempt = "none: the seed corpus lists no seed for this entry (D-28)"

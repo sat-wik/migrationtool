@@ -19,6 +19,7 @@ use mt_capture::testbed::{
 };
 use mt_contract::Policy;
 use mt_contract::policy;
+use mt_harness::adapter_drops::{ADAPTER_FLOOR, testbed_drivable_targets};
 use mt_harness::replay::{ReplayOptions, check_corpora, replay_corpus};
 use mt_harness::run::{
     BuildOptions, RunOptions, Scope as VectorsScope, build_entries, layout_lines, list_adapters,
@@ -251,15 +252,22 @@ enum VectorsAction {
     /// (EQV-03, D-11): one `<target>/<entry> roles=<n> seeds=<n> drivable` row
     /// per entry with valid roles and at least one seed that lists it,
     /// `<target>/<entry> no_roles seeds=<n>` for an entry without roles,
-    /// `no_seeds` or `invalid (<reason>)` otherwise, and a closing `result:
-    /// passed (<n> rows)` or `result: failed`. Exit 0 when no entry is
-    /// invalid, 1 otherwise, 2 for a manifest that cannot be read or is
-    /// invalid.
+    /// `no_seeds` or `invalid (<reason>)` otherwise, `<target>/<entry> dropped
+    /// (<cause>)` for an entry in `adapter-dropped.toml` next to the manifest, and
+    /// a closing `result: passed (<n> rows)` or `result: failed`. With
+    /// `--check-floor` it prints `drivable targets: <n> (floor 10)` before the
+    /// result and fails below the floor. Exit 0 when no entry is invalid and the
+    /// floor (when checked) is met, 1 otherwise, 2 for a manifest or drop log that
+    /// cannot be read or is invalid.
     Adapters {
-        /// The test-bed manifest; the seed indexes are read from `seeds` next
-        /// to it.
+        /// The test-bed manifest; the seed indexes and the drop logs are read
+        /// from the directory it is in.
         #[arg(long)]
         manifest: PathBuf,
+        /// Count the targets that can produce reference vectors from the committed
+        /// files and fail below the floor of 10 (D-13, D-24).
+        #[arg(long)]
+        check_floor: bool,
     },
     /// Build the reference driver of every entry with roles in the selected
     /// pairs (EQV-04, D-01): the generated driver is compiled with the pinned
@@ -866,7 +874,10 @@ fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
             policy_check_command(manifest.as_deref(), &files)
         }
         VectorsAction::Validate { tractor, paths } => validate_command(tractor, &paths),
-        VectorsAction::Adapters { manifest } => adapters_command(&manifest),
+        VectorsAction::Adapters {
+            manifest,
+            check_floor,
+        } => adapters_command(&manifest, check_floor),
         VectorsAction::Replay {
             manifest,
             pins,
@@ -904,16 +915,24 @@ fn print_result(rows: usize, failed: bool) -> u8 {
     }
 }
 
-/// Exit code of `mt vectors adapters`: 0 no entry invalid, 1 an invalid entry.
-fn adapters_command(manifest: &Path) -> anyhow::Result<u8> {
+/// Exit code of `mt vectors adapters`: 0 no entry invalid and, with the floor
+/// checked, at least [`ADAPTER_FLOOR`] drivable targets; 1 otherwise.
+fn adapters_command(manifest: &Path, check_floor: bool) -> anyhow::Result<u8> {
     let rows = list_adapters(manifest).context("listing the adapters")?;
     for row in &rows {
         println!("{}", row.render());
     }
-    Ok(print_result(
-        rows.len(),
-        rows.iter().any(|row| row.is_failure()),
-    ))
+    let mut failed = rows.iter().any(|row| row.is_failure());
+    if check_floor {
+        let drivable =
+            testbed_drivable_targets(manifest).context("counting the drivable targets")?;
+        println!(
+            "drivable targets: {} (floor {ADAPTER_FLOOR})",
+            drivable.len()
+        );
+        failed |= drivable.len() < ADAPTER_FLOOR;
+    }
+    Ok(print_result(rows.len(), failed))
 }
 
 /// The scope of a build or run: the retained pairs of the selected targets.

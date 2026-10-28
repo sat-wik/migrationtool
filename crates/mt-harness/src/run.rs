@@ -31,6 +31,7 @@ use serde::{Deserialize, Serialize};
 use crate::adapter::{
     Adapter, AdapterError, Combination, RET_NAME, ReturnKind, combinations, driver_flags,
 };
+use crate::adapter_drops::AdapterDropLog;
 use crate::budget::Budgets;
 use crate::classify::{Outcome, classify};
 use crate::decode::{Regions, apply_marks, check_marks, decode_value};
@@ -1529,6 +1530,8 @@ pub enum AdapterState {
     NoSeeds,
     /// The roles do not make an adapter, with the reason.
     Invalid(String),
+    /// The entry is in the adapter drop log (D-13), with its cause.
+    Dropped(String),
 }
 
 /// One row of `mt vectors adapters`.
@@ -1554,6 +1557,7 @@ impl AdapterRow {
         let key = format!("{}/{}", self.target, self.entry);
         match &self.state {
             AdapterState::NoRoles => format!("{key} no_roles seeds={}", self.seeds),
+            AdapterState::Dropped(cause) => format!("{key} dropped ({cause})"),
             AdapterState::Drivable => {
                 format!("{key} roles={} seeds={} drivable", self.roles, self.seeds)
             }
@@ -1601,6 +1605,18 @@ pub fn list_adapters(manifest_path: &Path) -> Result<Vec<AdapterRow>, HarnessErr
     let scope = Scope::new(manifest_path.to_path_buf(), PathBuf::from("."));
     let manifest = load_manifest(&scope)?;
     let testbed = scope.testbed_dir();
+    let drops = AdapterDropLog::load_from_testbed_dir(&testbed).map_err(|e| {
+        input(
+            testbed.join("adapter-dropped.toml").display().to_string(),
+            e.to_string(),
+        )
+    })?;
+    drops.validate(&manifest).map_err(|e| {
+        input(
+            testbed.join("adapter-dropped.toml").display().to_string(),
+            e.to_string(),
+        )
+    })?;
     let mut rows = Vec::new();
     for (id, target) in &manifest.target {
         let mut entries: Vec<&Entry> = target.entry.iter().collect();
@@ -1608,6 +1624,12 @@ pub fn list_adapters(manifest_path: &Path) -> Result<Vec<AdapterRow>, HarnessErr
         for entry in entries {
             let seeds = seed_count(&testbed, id, &entry.name);
             let state = match Adapter::from_entry(id, "default", entry) {
+                Err(AdapterError::NoRoles) if drops.row(id, &entry.name).is_some() => {
+                    let cause = drops
+                        .row(id, &entry.name)
+                        .map_or("", |row| row.cause.as_str());
+                    AdapterState::Dropped(cause.to_owned())
+                }
                 Err(AdapterError::NoRoles) => AdapterState::NoRoles,
                 Err(error) => AdapterState::Invalid(error.to_string()),
                 Ok(adapter) => match combinations(&adapter) {
