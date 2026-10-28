@@ -403,6 +403,17 @@ pub enum Role {
     /// leaves comes out (Phase 3, CONTEXT D-11). With `of = "out"` it is the
     /// capacity of the entry's `out_buf`, so the entry has no `out_cap`.
     InoutLen,
+    /// A pointer to a scalar or enum the C code writes; it starts zero-filled in
+    /// its own guarded mapping and is recorded before and after the call.
+    OutScalar,
+    /// A pointer to a pointer the C code sets; it starts zero-filled and is
+    /// recorded as a classified pointer after the call.
+    OutPtr,
+    /// A pointer to a NUL-terminated string taken from the declared `values`.
+    /// The bytes travel as data in the request file, never as C text.
+    Str,
+    /// The byte length of the `str` named by `of`, without the NUL; derived.
+    StrLen,
 }
 
 impl Role {
@@ -417,6 +428,10 @@ impl Role {
             Self::Scalar => "scalar",
             Self::State => "state",
             Self::InoutLen => "inout_len",
+            Self::OutScalar => "out_scalar",
+            Self::OutPtr => "out_ptr",
+            Self::Str => "str",
+            Self::StrLen => "str_len",
         }
     }
 
@@ -425,7 +440,13 @@ impl Role {
     pub const fn is_pointer_role(self) -> bool {
         matches!(
             self,
-            Self::InBuf | Self::OutBuf | Self::State | Self::InoutLen
+            Self::InBuf
+                | Self::OutBuf
+                | Self::State
+                | Self::InoutLen
+                | Self::OutScalar
+                | Self::OutPtr
+                | Self::Str
         )
     }
 }
@@ -451,10 +472,29 @@ pub struct ArgRole {
     /// is narrower than 32 bits.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max: Option<u64>,
-    /// What an `inout_len` is the length of: `out`, the entry's output buffer.
+    /// What an `inout_len` is the length of (`out`, the entry's output buffer),
+    /// or the name of the `str` a `str_len` is the length of.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub of: Option<String>,
+    /// For an `in_buf`: record the input's bytes after the call as
+    /// `lib_state_out.in`. Only a pointer to non-const data may be mutable.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub mutable: bool,
+    /// The declared strings of a `str` (1 to [`MAX_STR_VALUES`] values of at
+    /// most [`MAX_STR_BYTES`] printable ASCII bytes each).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub values: Vec<String>,
 }
+
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
+/// The most values a `str` may declare.
+pub const MAX_STR_VALUES: usize = 8;
+
+/// The longest a declared string may be, in bytes, without its NUL.
+pub const MAX_STR_BYTES: usize = 64;
 
 fn invalid_signature(message: String) -> ManifestError {
     ManifestError::Invalid {
@@ -580,6 +620,28 @@ pub fn value_pointee_type(parameter: &str) -> Option<String> {
         rest => (1..=3).contains(&rest.len()) && rest.iter().all(|t| word(t) && *t != "enum"),
     };
     acceptable.then(|| tokens.join(" "))
+}
+
+/// The type an `out_ptr` parameter points at: the parameter text with its last
+/// `*` removed, for a pointer to a pointer. `unsigned char **` is `unsigned char *`
+/// and `const char **` is `const char *`. The text becomes a type in the generated
+/// driver and in the layout probe, so it is one to four C identifiers followed by
+/// `*`. `None` when the parameter is not a pointer to a pointer of that form
+/// (CONTEXT D-09, D-11).
+#[must_use]
+pub fn pointer_pointee_type(parameter: &str) -> Option<String> {
+    let spaced = parameter.replace('*', " * ");
+    let mut tokens: Vec<&str> = spaced.split_whitespace().collect();
+    if tokens.iter().filter(|token| **token == "*").count() != 2
+        || tokens.last() != Some(&"*")
+        || tokens.iter().rev().nth(1) != Some(&"*")
+    {
+        return None;
+    }
+    tokens.pop();
+    tokens.pop();
+    let acceptable = (1..=4).contains(&tokens.len()) && tokens.iter().all(|t| is_c_identifier(t));
+    acceptable.then(|| format!("{} *", tokens.join(" ")))
 }
 
 /// One named build configuration: macro and flag sets on top of the baseline.
@@ -1225,14 +1287,38 @@ fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
                 "{h}: the pointee of a state parameter must be a plain type name, optionally after struct, union or enum, and not void; found {param:?} (D-09)"
             ));
         }
-        if arg.role == Role::InoutLen && pointer && value_pointee_type(param).is_none() {
+        if matches!(arg.role, Role::InoutLen | Role::OutScalar)
+            && pointer
+            && value_pointee_type(param).is_none()
+        {
             issues.push(format!(
-                "{h}: the pointee of an inout_len parameter must be a plain integer type name and not const; found {param:?} (D-11)"
+                "{h}: the pointee of an {word} parameter must be a plain scalar type name and not const; found {param:?} (D-11)"
+            ));
+        }
+        if arg.role == Role::OutPtr && pointer && pointer_pointee_type(param).is_none() {
+            issues.push(format!(
+                "{h}: role out_ptr needs a pointer to a pointer, found {param:?} (D-11)"
             ));
         }
         arg_key_issues(&h, arg, param, issues);
     }
     let count = |role: Role| entry.arg.iter().filter(|arg| arg.role == role).count();
+    let str_names: Vec<&str> = entry
+        .arg
+        .iter()
+        .filter(|arg| arg.role == Role::Str)
+        .filter_map(|arg| arg.name.as_deref())
+        .collect();
+    for (index, arg) in entry.arg.iter().enumerate() {
+        if arg.role == Role::StrLen
+            && let Some(of) = arg.of.as_deref()
+            && !str_names.contains(&of)
+        {
+            issues.push(format!(
+                "{f}[{index}]: str_len of {of:?} names no str of the entry (D-11)"
+            ));
+        }
+    }
     // An inout_len with `of = "out"` is the capacity of the output buffer.
     let sizing = entry
         .arg
@@ -1279,8 +1365,19 @@ fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
     let combinations: usize = entry
         .arg
         .iter()
-        .filter(|arg| matches!(arg.role, Role::OutCap | Role::Scalar | Role::InoutLen))
-        .map(|arg| 1 + arg.sweep.len())
+        .filter(|arg| {
+            matches!(
+                arg.role,
+                Role::OutCap | Role::Scalar | Role::InoutLen | Role::Str
+            )
+        })
+        .map(|arg| {
+            if arg.role == Role::Str {
+                arg.values.len().max(1)
+            } else {
+                1 + arg.sweep.len()
+            }
+        })
         .try_fold(1usize, usize::checked_mul)
         .unwrap_or(usize::MAX);
     if combinations > MAX_SCALAR_COMBOS {
@@ -1336,12 +1433,17 @@ fn arg_key_issues(h: &str, arg: &ArgRole, param: &str, issues: &mut Vec<String>)
     let word = arg.role.word();
     let takes_value = matches!(arg.role, Role::OutCap | Role::Scalar | Role::InoutLen);
     match arg.role {
-        Role::InBuf | Role::OutBuf | Role::InLen => {
+        Role::InBuf | Role::OutBuf | Role::InLen | Role::StrLen => {
             if arg.name.is_some() {
                 issues.push(format!("{h}: role {word} takes no name (D-11)"));
             }
         }
-        Role::Scalar | Role::State | Role::InoutLen => match &arg.name {
+        Role::Scalar
+        | Role::State
+        | Role::InoutLen
+        | Role::OutScalar
+        | Role::OutPtr
+        | Role::Str => match &arg.name {
             None => issues.push(format!("{h}: role {word} needs a name (D-11)")),
             Some(name) if !is_c_identifier(name) => {
                 issues.push(format!("{h}: name {name:?} is not a C identifier (D-11)"));
@@ -1383,7 +1485,7 @@ fn arg_key_issues(h: &str, arg: &ArgRole, param: &str, issues: &mut Vec<String>)
         }
     } else if arg.default.is_some() || !arg.sweep.is_empty() {
         issues.push(format!(
-            "{h}: default and sweep belong to out_cap and scalar, not {word} (D-14)"
+            "{h}: default and sweep belong to out_cap, scalar and inout_len, not {word} (D-14)"
         ));
     }
     match (arg.role, arg.of.as_deref()) {
@@ -1391,8 +1493,23 @@ fn arg_key_issues(h: &str, arg: &ArgRole, param: &str, issues: &mut Vec<String>)
         (Role::InoutLen, Some(other)) => issues.push(format!(
             "{h}: of = {other:?} names no output buffer; the only value is \"out\" (D-11)"
         )),
-        (_, None) => {}
-        (_, Some(_)) => issues.push(format!("{h}: of is only allowed on inout_len (D-11)")),
+        (Role::StrLen, None) => issues.push(format!(
+            "{h}: role str_len needs `of` naming its str (D-11)"
+        )),
+        (Role::StrLen, Some(_)) | (_, None) => {}
+        (_, Some(_)) => issues.push(format!(
+            "{h}: of is only allowed on inout_len and str_len (D-11)"
+        )),
+    }
+    str_value_issues(h, arg, issues);
+    if arg.mutable {
+        if arg.role != Role::InBuf {
+            issues.push(format!("{h}: mutable is only allowed on in_buf (D-11)"));
+        } else if pointee_is_const(param) {
+            issues.push(format!(
+                "{h}: a mutable in_buf needs a pointer to non-const data, found {param:?} (D-11)"
+            ));
+        }
     }
     match (arg.role, arg.max) {
         (Role::InLen, None) if NARROW_LENGTH_TYPES.contains(&param) => issues.push(format!(
@@ -1404,6 +1521,52 @@ fn arg_key_issues(h: &str, arg: &ArgRole, param: &str, issues: &mut Vec<String>)
     }
 }
 
+/// True when the data a pointer parameter points at is `const`: a `const` before
+/// the last `*`.
+fn pointee_is_const(param: &str) -> bool {
+    let spaced = param.replace('*', " * ");
+    let before: Vec<&str> = spaced
+        .split_whitespace()
+        .take_while(|token| *token != "*")
+        .collect();
+    before.contains(&"const")
+}
+
+/// The rules for the declared values of a `str` (T-03-24): one to eight values of
+/// at most 64 printable ASCII bytes, none repeated; `values` belongs to `str`.
+fn str_value_issues(h: &str, arg: &ArgRole, issues: &mut Vec<String>) {
+    if arg.role != Role::Str {
+        if !arg.values.is_empty() {
+            issues.push(format!("{h}: values is only allowed on str (D-11)"));
+        }
+        return;
+    }
+    if arg.values.is_empty() || arg.values.len() > MAX_STR_VALUES {
+        issues.push(format!(
+            "{h}: role str needs 1 to {MAX_STR_VALUES} values, found {} (D-11)",
+            arg.values.len()
+        ));
+    }
+    for (index, value) in arg.values.iter().enumerate() {
+        if value.len() > MAX_STR_BYTES {
+            issues.push(format!(
+                "{h}: str value {index} is {} bytes; at most {MAX_STR_BYTES} (T-03-24)",
+                value.len()
+            ));
+        }
+        if !value.bytes().all(|byte| (0x20..=0x7e).contains(&byte)) {
+            issues.push(format!(
+                "{h}: str value {index} must be printable ASCII (0x20 to 0x7E) (T-03-24)"
+            ));
+        }
+        if arg.values[..index].contains(value) {
+            issues.push(format!(
+                "{h}: the str values repeat {value:?}; every combination must differ (D-14)"
+            ));
+        }
+    }
+}
+
 /// Names recorded for `out_cap` and `scalar` values: not reserved, not repeated.
 /// An unnamed `out_cap` is recorded as `out_cap`.
 fn name_issues(f: &str, entry: &Entry, issues: &mut Vec<String>) {
@@ -1411,9 +1574,16 @@ fn name_issues(f: &str, entry: &Entry, issues: &mut Vec<String>) {
     for (index, arg) in entry.arg.iter().enumerate() {
         let name = match (arg.role, &arg.name) {
             (Role::OutCap, None) => "out_cap".to_owned(),
-            (Role::OutCap | Role::Scalar | Role::State | Role::InoutLen, Some(name)) => {
-                name.clone()
-            }
+            (
+                Role::OutCap
+                | Role::Scalar
+                | Role::State
+                | Role::InoutLen
+                | Role::OutScalar
+                | Role::OutPtr
+                | Role::Str,
+                Some(name),
+            ) => name.clone(),
             _ => continue,
         };
         if RESERVED_ARG_NAMES.contains(&name.as_str()) {

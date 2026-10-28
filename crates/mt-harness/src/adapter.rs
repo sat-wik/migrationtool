@@ -10,9 +10,10 @@
 use std::collections::BTreeMap;
 
 use mt_capture::manifest::{
-    BASELINE_CFLAGS, Entry, MAX_SCALAR_COMBOS, Role, UnobservedMark, split_parameters,
-    state_pointee_type, value_pointee_type,
+    BASELINE_CFLAGS, Entry, MAX_SCALAR_COMBOS, Role, UnobservedMark, pointer_pointee_type,
+    split_parameters, state_pointee_type, value_pointee_type,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::budget::Budgets;
 use crate::runtime::NO_STATES;
@@ -36,14 +37,19 @@ pub enum AdapterError {
 
 /// How the call's return value becomes the vector's `rc` (contract: Field
 /// convention).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ReturnKind {
     /// An integer or enum, cast to 32 bits.
     Integer,
     /// `void`: `rc` is 0.
     Void,
-    /// A pointer: 0 for NULL, 1 otherwise.
+    /// A pointer: `rc` is 0 for NULL and 1 otherwise, and the pointer is recorded
+    /// as `lib_state_out.ret`, classified like any pointer.
     Pointer,
+    /// A struct or union by value: `rc` is 0 and the value is recorded as
+    /// `lib_state_out.ret`.
+    Struct,
 }
 
 /// One C parameter with its role.
@@ -64,17 +70,26 @@ pub struct Param {
     pub sweep: Vec<i64>,
     /// The largest input an `in_len` accepts.
     pub max: Option<u64>,
-    /// What an `inout_len` is the length of (`out`).
+    /// What an `inout_len` is the length of (`out`), or the name of the `str` a
+    /// `str_len` is the length of.
     pub of: Option<String>,
+    /// For an `in_buf`: the input's bytes after the call are recorded.
+    pub mutable: bool,
+    /// The declared strings of a `str`.
+    pub values: Vec<String>,
 }
 
-/// The values of the scalar dimensions of one run, in parameter order (one per
-/// `out_cap` or `scalar` parameter).
+/// The values of the dimensions of one run, in parameter order (one per
+/// `out_cap`, `scalar`, `inout_len` or `str` parameter; a `str` is the index of
+/// its value).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Combination {
     /// The values.
     pub values: Vec<i64>,
 }
+
+/// The name the returned value of a pointer or struct return is recorded under.
+pub const RET_NAME: &str = "ret";
 
 /// A state of an entry: the object the library fills in, or the value a pointer
 /// parameter leaves behind.
@@ -98,6 +113,7 @@ pub struct Adapter {
     ret: ReturnKind,
     params: Vec<Param>,
     marks: Vec<UnobservedMark>,
+    ret_text: String,
 }
 
 /// `[A-Za-z_][A-Za-z0-9_]*`.
@@ -118,21 +134,31 @@ fn is_plain_type(text: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b' ' | b'*'))
 }
 
-/// Return types the 32-bit `rc` cannot hold: floating point and 64-bit
-/// integers (their full value belongs to `lib_state_out.ret`), and a struct or
-/// union by value.
+/// Return types the 32-bit `rc` cannot hold and that are not structs: floating
+/// point and 64-bit integers.
 fn is_wide_return(text: &str) -> bool {
     let words: Vec<&str> = text.split_whitespace().collect();
-    words.iter().any(|word| {
-        matches!(
-            *word,
-            "float" | "double" | "struct" | "union" | "uint64_t" | "int64_t"
-        )
-    }) || words.iter().filter(|word| **word == "long").count() >= 2
+    words
+        .iter()
+        .any(|word| matches!(*word, "float" | "double" | "uint64_t" | "int64_t"))
+        || words.iter().filter(|word| **word == "long").count() >= 2
+}
+
+/// True for the roles whose value is one dimension of the combinations.
+const fn is_dimension(role: Role) -> bool {
+    matches!(
+        role,
+        Role::OutCap | Role::Scalar | Role::InoutLen | Role::Str
+    )
 }
 
 impl Adapter {
     /// The adapter of `entry` of `target` in `config`.
+    ///
+    /// The return kind is read from the signature's text: `void`, a pointer, a
+    /// `struct` or `union` by value, or otherwise an integer. A typedef name
+    /// cannot say whether it is an integer, an enum or a struct, so the build
+    /// resolves it from the DWARF of the entry's header ([`Adapter::with_return_kind`]).
     ///
     /// # Errors
     /// [`AdapterError::NoRoles`] for an entry without `arg` tables,
@@ -163,6 +189,8 @@ impl Adapter {
             ReturnKind::Pointer
         } else if is_wide_return(&ret_text) {
             return Err(AdapterError::UnsupportedReturn(ret_text));
+        } else if ret_text.starts_with("struct ") || ret_text.starts_with("union ") {
+            ReturnKind::Struct
         } else {
             ReturnKind::Integer
         };
@@ -187,28 +215,47 @@ impl Adapter {
             }
             let name = match arg.role {
                 Role::OutCap => Some(arg.name.clone().unwrap_or_else(|| "out_cap".to_owned())),
-                Role::Scalar | Role::State | Role::InoutLen => arg.name.clone(),
+                Role::Scalar
+                | Role::State
+                | Role::InoutLen
+                | Role::OutScalar
+                | Role::OutPtr
+                | Role::Str => arg.name.clone(),
                 _ => None,
+            };
+            let needs_name = matches!(
+                arg.role,
+                Role::State | Role::InoutLen | Role::OutScalar | Role::OutPtr | Role::Str
+            );
+            if needs_name && name.is_none() {
+                return Err(AdapterError::Invalid(format!(
+                    "a {} needs a name",
+                    arg.role.word()
+                )));
+            }
+            let bad_pointee = |what: &str| {
+                AdapterError::Invalid(format!(
+                    "{} parameter {text:?} does not point at {what}",
+                    arg.role.word()
+                ))
             };
             let state_type = match arg.role {
-                Role::State | Role::InoutLen if name.is_none() => {
-                    return Err(AdapterError::Invalid(format!(
-                        "a {} needs a name",
-                        arg.role.word()
-                    )));
+                Role::State => {
+                    Some(state_pointee_type(text).ok_or_else(|| bad_pointee("a plain type name"))?)
                 }
-                Role::State => Some(state_pointee_type(text).ok_or_else(|| {
-                    AdapterError::Invalid(format!(
-                        "state parameter {text:?} does not point at a plain type name"
-                    ))
-                })?),
-                Role::InoutLen => Some(value_pointee_type(text).ok_or_else(|| {
-                    AdapterError::Invalid(format!(
-                        "inout_len parameter {text:?} does not point at a plain integer type"
-                    ))
-                })?),
+                Role::InoutLen | Role::OutScalar => Some(
+                    value_pointee_type(text).ok_or_else(|| bad_pointee("a plain scalar type"))?,
+                ),
+                Role::OutPtr => {
+                    Some(pointer_pointee_type(text).ok_or_else(|| bad_pointee("a pointer"))?)
+                }
                 _ => None,
             };
+            if arg.role == Role::Str && !arg.values.iter().all(|v| is_printable(v)) {
+                return Err(AdapterError::Invalid(
+                    "a str value holds a character outside printable ASCII".to_owned(),
+                ));
+            }
             params.push(Param {
                 c_type: text.clone(),
                 role: arg.role,
@@ -218,6 +265,8 @@ impl Adapter {
                 sweep: arg.sweep.clone(),
                 max: arg.max,
                 of: arg.of.clone(),
+                mutable: arg.mutable,
+                values: arg.values.clone(),
             });
         }
         Ok(Self {
@@ -227,6 +276,7 @@ impl Adapter {
             ret,
             params,
             marks: entry.unobserved.clone(),
+            ret_text,
         })
     }
 
@@ -254,12 +304,66 @@ impl Adapter {
         self.ret
     }
 
+    /// The return type as the signature spells it.
+    #[must_use]
+    pub fn return_text(&self) -> &str {
+        &self.ret_text
+    }
+
+    /// This adapter with its return kind resolved from the DWARF of the return
+    /// type: a typedef name read as an integer by the signature's text may be a
+    /// struct, an enum or a pointer.
+    #[must_use]
+    pub fn with_return_kind(mut self, kind: ReturnKind) -> Self {
+        self.ret = kind;
+        self
+    }
+
+    /// True when the returned value is stored in a state called [`RET_NAME`].
+    #[must_use]
+    pub const fn records_return(&self) -> bool {
+        matches!(self.ret, ReturnKind::Pointer | ReturnKind::Struct)
+    }
+
+    /// The value of each dimension of `combination` by parameter index.
+    fn dimension_values(&self, combination: &Combination) -> BTreeMap<usize, i64> {
+        let mut found = BTreeMap::new();
+        let mut dimension = 0usize;
+        for (index, param) in self.params.iter().enumerate() {
+            if is_dimension(param.role) {
+                let value = combination.values.get(dimension).copied().unwrap_or(0);
+                found.insert(index, value);
+                dimension += 1;
+            }
+        }
+        found
+    }
+
+    /// The string a `str` parameter takes in a combination.
+    fn chosen<'a>(&'a self, index: usize, values: &BTreeMap<usize, i64>) -> &'a str {
+        let choice = values.get(&index).copied().unwrap_or(0);
+        self.params
+            .get(index)
+            .and_then(|param| param.values.get(usize::try_from(choice).unwrap_or(0)))
+            .map_or("", String::as_str)
+    }
+
+    /// The index of the `str` parameter called `name`.
+    fn str_param(&self, name: &str) -> Option<usize> {
+        self.params
+            .iter()
+            .position(|param| param.role == Role::Str && param.name.as_deref() == Some(name))
+    }
+
     /// The C expression of the call, of type `int32_t`, over the runtime's
-    /// `mt_in`, `mt_in_len`, `mt_out`, `mt_out_cap` and `mt_scalar(index)`.
+    /// `mt_in`, `mt_in_len`, `mt_out`, `mt_out_cap`, `mt_scalar(index)`,
+    /// `mt_state(index)`, `mt_str(index)` and `mt_str_len(index)`.
     #[must_use]
     pub fn call_expression(&self) -> String {
         let mut scalar_index = 0usize;
         let mut state_index = 0usize;
+        let mut str_index = 0usize;
+        let mut str_indexes: BTreeMap<&str, usize> = BTreeMap::new();
         let mut args = Vec::new();
         for param in &self.params {
             let value = match param.role {
@@ -272,7 +376,7 @@ impl Adapter {
                     scalar_index += 1;
                     text
                 }
-                Role::State => {
+                Role::State | Role::OutScalar | Role::OutPtr => {
                     let text = format!("mt_state({state_index})");
                     state_index += 1;
                     text
@@ -285,6 +389,23 @@ impl Adapter {
                     state_index += 1;
                     text
                 }
+                Role::Str => {
+                    if let Some(name) = param.name.as_deref() {
+                        str_indexes.insert(name, str_index);
+                    }
+                    let text = format!("mt_str({str_index})");
+                    str_index += 1;
+                    text
+                }
+                Role::StrLen => {
+                    let of = param
+                        .of
+                        .as_deref()
+                        .and_then(|name| str_indexes.get(name))
+                        .copied()
+                        .unwrap_or(0);
+                    format!("mt_str_len({of})")
+                }
             };
             args.push(format!("({}){value}", param.c_type));
         }
@@ -292,26 +413,40 @@ impl Adapter {
         match self.ret {
             ReturnKind::Integer => format!("(int32_t)({call})"),
             ReturnKind::Void => format!("((void)({call}), (int32_t)0)"),
-            ReturnKind::Pointer => format!("(({call}) != 0 ? (int32_t)1 : (int32_t)0)"),
+            ReturnKind::Pointer => format!(
+                "((*({} *)mt_state({state_index}) = {call}) != 0 ? (int32_t)1 : (int32_t)0)",
+                self.ret_text
+            ),
+            ReturnKind::Struct => format!(
+                "(*({} *)mt_state({state_index}) = {call}, (int32_t)0)",
+                self.ret_text
+            ),
         }
     }
 
     /// The `argv` of a vector: `argv[0]`, then every non-pointer parameter in
-    /// parameter order as decimal text. The input length is the stdin byte
-    /// count (D-05).
+    /// parameter order as decimal text, and each `str` as its text. The input
+    /// length is the stdin byte count (D-05).
     #[must_use]
     pub fn argv(&self, input_len: usize, combination: &Combination) -> Vec<String> {
+        let values = self.dimension_values(combination);
         let mut argv = vec![self.argv0()];
-        let mut dimension = 0usize;
-        for param in &self.params {
+        for (index, param) in self.params.iter().enumerate() {
             match param.role {
                 Role::InLen => argv.push(input_len.to_string()),
                 Role::OutCap | Role::Scalar | Role::InoutLen => {
-                    let value = combination.values.get(dimension).copied().unwrap_or(0);
-                    dimension += 1;
-                    argv.push(value.to_string());
+                    argv.push(values.get(&index).copied().unwrap_or(0).to_string());
                 }
-                Role::InBuf | Role::OutBuf | Role::State => {}
+                Role::Str => argv.push(self.chosen(index, &values).to_owned()),
+                Role::StrLen => {
+                    let length = param
+                        .of
+                        .as_deref()
+                        .and_then(|name| self.str_param(name))
+                        .map_or(0, |at| self.chosen(at, &values).len());
+                    argv.push(length.to_string());
+                }
+                Role::InBuf | Role::OutBuf | Role::State | Role::OutScalar | Role::OutPtr => {}
             }
         }
         argv
@@ -323,7 +458,8 @@ impl Adapter {
         &self.marks
     }
 
-    /// The states, in parameter order.
+    /// The states, in parameter order, then the returned value's state for a
+    /// pointer or struct return.
     #[must_use]
     pub fn states(&self) -> Vec<StateParam> {
         let mut word = 0usize;
@@ -340,7 +476,10 @@ impl Adapter {
                 }
                 _ => None,
             };
-            if !matches!(param.role, Role::State | Role::InoutLen) {
+            if !matches!(
+                param.role,
+                Role::State | Role::InoutLen | Role::OutScalar | Role::OutPtr
+            ) {
                 continue;
             }
             if let (Some(name), Some(type_text)) = (&param.name, &param.state_type) {
@@ -351,11 +490,19 @@ impl Adapter {
                 });
             }
         }
+        if self.records_return() {
+            states.push(StateParam {
+                name: RET_NAME.to_owned(),
+                type_text: self.ret_text.clone(),
+                init_word: None,
+            });
+        }
         states
     }
 
-    /// The C text that declares the states of the driver: their count and the
-    /// `sizeof` of each type, in parameter order.
+    /// The C text that declares the states of the driver: their count, the
+    /// `sizeof` of each type and the request word that holds each initial value,
+    /// in the order of [`Adapter::states`].
     #[must_use]
     pub fn states_fragment(&self) -> String {
         let states = self.states();
@@ -383,16 +530,13 @@ impl Adapter {
     /// The output capacity of a combination, 0 without an output buffer.
     #[must_use]
     pub fn output_capacity(&self, combination: &Combination) -> u32 {
-        let mut dimension = 0usize;
-        for param in &self.params {
-            if matches!(param.role, Role::OutCap | Role::Scalar | Role::InoutLen) {
-                let value = combination.values.get(dimension).copied().unwrap_or(0);
-                let sizes_output = param.role == Role::OutCap
-                    || (param.role == Role::InoutLen && param.of.as_deref() == Some("out"));
-                if sizes_output {
-                    return u32::try_from(value).unwrap_or(0);
-                }
-                dimension += 1;
+        let values = self.dimension_values(combination);
+        for (index, param) in self.params.iter().enumerate() {
+            let sizes_output = param.role == Role::OutCap
+                || (param.role == Role::InoutLen && param.of.as_deref() == Some("out"));
+            if sizes_output {
+                let value = values.get(&index).copied().unwrap_or(0);
+                return u32::try_from(value).unwrap_or(0);
             }
         }
         0
@@ -403,35 +547,70 @@ impl Adapter {
     /// value of an `inout_len`.
     #[must_use]
     pub fn scalar_words(&self, combination: &Combination) -> Vec<i64> {
-        let mut dimension = 0usize;
-        let mut words = Vec::new();
-        for param in &self.params {
-            if matches!(param.role, Role::OutCap | Role::Scalar | Role::InoutLen) {
-                let value = combination.values.get(dimension).copied().unwrap_or(0);
-                dimension += 1;
-                if matches!(param.role, Role::Scalar | Role::InoutLen) {
-                    words.push(value);
-                }
-            }
-        }
-        words
+        let values = self.dimension_values(combination);
+        self.params
+            .iter()
+            .enumerate()
+            .filter(|(_, param)| matches!(param.role, Role::Scalar | Role::InoutLen))
+            .map(|(index, _)| values.get(&index).copied().unwrap_or(0))
+            .collect()
     }
 
-    /// The recorded scalars of a combination by name (the provenance).
+    /// The strings the request carries for a combination, one per `str`
+    /// parameter in parameter order (the bytes are never part of the C source).
+    #[must_use]
+    pub fn strings(&self, combination: &Combination) -> Vec<String> {
+        let values = self.dimension_values(combination);
+        self.params
+            .iter()
+            .enumerate()
+            .filter(|(_, param)| param.role == Role::Str)
+            .map(|(index, _)| self.chosen(index, &values).to_owned())
+            .collect()
+    }
+
+    /// The recorded values of a combination by name (the provenance): a
+    /// scalar's, a capacity's or a length's value, and the index of a `str`'s
+    /// value.
     #[must_use]
     pub fn scalars_by_name(&self, combination: &Combination) -> BTreeMap<String, i64> {
+        let values = self.dimension_values(combination);
         let mut named = BTreeMap::new();
-        let mut dimension = 0usize;
-        for param in &self.params {
-            if matches!(param.role, Role::OutCap | Role::Scalar | Role::InoutLen) {
-                let value = combination.values.get(dimension).copied().unwrap_or(0);
-                dimension += 1;
-                if let Some(name) = &param.name {
-                    named.insert(name.clone(), value);
-                }
+        for (index, param) in self.params.iter().enumerate() {
+            if let (Some(name), Some(value)) = (&param.name, values.get(&index)) {
+                named.insert(name.clone(), *value);
             }
         }
         named
+    }
+
+    /// The element type of the input buffer, qualifiers removed: `const char *`
+    /// is `char`. It names the type of a recorded `in`.
+    #[must_use]
+    pub fn input_element_type(&self) -> String {
+        self.params
+            .iter()
+            .find(|param| param.role == Role::InBuf)
+            .map_or_else(
+                || "char".to_owned(),
+                |param| {
+                    param
+                        .c_type
+                        .replace('*', " ")
+                        .split_whitespace()
+                        .filter(|word| !matches!(*word, "const" | "volatile"))
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                },
+            )
+    }
+
+    /// True when the input's bytes after the call are recorded.
+    #[must_use]
+    pub fn mutable_input(&self) -> bool {
+        self.params
+            .iter()
+            .any(|param| param.role == Role::InBuf && param.mutable)
     }
 
     /// The smallest `max` among the `in_len` parameters: seeds longer than it
@@ -446,22 +625,34 @@ impl Adapter {
     }
 }
 
-/// The scalar combinations of `adapter` (CONTEXT D-14): the cartesian product,
-/// in parameter order with the first parameter varying slowest, of `[default] +
-/// sweep` for each `out_cap` and `scalar`. An adapter with no such parameter
-/// has one empty combination.
+/// True for text of printable ASCII only (0x20 to 0x7E).
+fn is_printable(text: &str) -> bool {
+    text.bytes().all(|byte| (0x20..=0x7e).contains(&byte))
+}
+
+/// The combinations of `adapter` (CONTEXT D-14): the cartesian product, in
+/// parameter order with the first parameter varying slowest, of `[default] +
+/// sweep` for each `out_cap`, `scalar` and `inout_len`, and of the value indexes of
+/// each `str`. An adapter with no such parameter has one empty combination.
 ///
 /// # Errors
-/// [`AdapterError::Invalid`] for a missing default, an `out_cap` outside
+/// [`AdapterError::Invalid`] for a missing default, a capacity outside
 /// `0..=max_input`, or more than [`MAX_SCALAR_COMBOS`] combinations.
 pub fn combinations(adapter: &Adapter) -> Result<Vec<Combination>, AdapterError> {
     let limit = i64::from(Budgets::DEFAULT.max_input);
     let mut dimensions: Vec<Vec<i64>> = Vec::new();
     for param in &adapter.params {
-        if !matches!(param.role, Role::OutCap | Role::Scalar | Role::InoutLen) {
+        if !is_dimension(param.role) {
             continue;
         }
         let label = param.name.as_deref().unwrap_or("scalar");
+        if param.role == Role::Str {
+            if param.values.is_empty() {
+                return Err(AdapterError::Invalid(format!("{label} has no values")));
+            }
+            dimensions.push((0..i64::try_from(param.values.len()).unwrap_or(0)).collect());
+            continue;
+        }
         let Some(default) = param.default else {
             return Err(AdapterError::Invalid(format!(
                 "{label} has no default value"

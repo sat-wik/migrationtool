@@ -211,7 +211,21 @@ fn combination_of(
                         .map_err(|_| format!("argv value {text:?} is not a decimal integer"))?,
                 );
             }
-            Role::InBuf | Role::OutBuf | Role::State => {}
+            Role::Str => {
+                let text = texts.next().ok_or("argv is shorter than the parameters")?;
+                let position = param
+                    .values
+                    .iter()
+                    .position(|value| value == text)
+                    .ok_or_else(|| format!("argv string {text:?} is not a declared value"))?;
+                values.push(i64::try_from(position).map_err(|_| "too many values".to_owned())?);
+            }
+            Role::StrLen => {
+                let text = texts.next().ok_or("argv is shorter than the parameters")?;
+                text.parse::<usize>()
+                    .map_err(|_| format!("argv length {text:?} is not a decimal integer"))?;
+            }
+            Role::InBuf | Role::OutBuf | Role::State | Role::OutScalar | Role::OutPtr => {}
         }
     }
     if texts.next().is_some() {

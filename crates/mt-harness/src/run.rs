@@ -24,11 +24,13 @@ use mt_toolchain::runner::{RunOutput, RunRecord, RunnerConfig};
 use mt_vectors::bytes::encode_latin1;
 use mt_vectors::corpus::{HasUbSource, Provenance, ProvenanceBudgets, write_corpus};
 use mt_vectors::sha256_hex;
-use mt_vectors::state::LibState;
+use mt_vectors::state::{LibState, StateValue};
 use mt_vectors::vector::{HasUbLabel, Output, Vector};
 use serde::{Deserialize, Serialize};
 
-use crate::adapter::{Adapter, AdapterError, Combination, combinations, driver_flags};
+use crate::adapter::{
+    Adapter, AdapterError, Combination, RET_NAME, ReturnKind, combinations, driver_flags,
+};
 use crate::budget::Budgets;
 use crate::classify::{Outcome, classify};
 use crate::decode::{Regions, apply_marks, check_marks, decode_value};
@@ -38,7 +40,8 @@ use crate::frame::{Frame, parse_frame};
 use crate::globals::{
     DumpRange, function_symbols, locate_globals, record_globals, writable_globals,
 };
-use crate::layout::{CType, layout_summary};
+use crate::heap::walk_heap;
+use crate::layout::{CType, Kind, layout_summary};
 use crate::link::{LinkOutcome, LinkRequest, archive, link_driver, verify_objects};
 use crate::probe::{GlobalTarget, GlobalType, LayoutRequest, layout_for_entry, layout_for_globals};
 use crate::tools::ExecTools;
@@ -64,6 +67,12 @@ const DUMP_AFTER_REGION: u32 = 0x2000;
 /// buffers (address, length), the heap arena in use (address, used bytes), then
 /// each state (address, size), all as 32-bit words.
 const ADDRESSES_REGION: u32 = 2;
+
+/// The input buffer after the call (a `mutable` input is recorded from it).
+const IN_AFTER_REGION: u32 = 3;
+
+/// The used bytes of the heap arena after the call, from its first byte.
+const HEAP_REGION: u32 = 4;
 
 /// State `i` before the call is this plus `i`; after the call,
 /// [`STATE_AFTER_REGION`] plus `i`.
@@ -310,6 +319,14 @@ pub struct BuildRecord {
     /// of its defining unit, or the reason it has none (CONTEXT D-10).
     #[serde(default)]
     pub global_types: BTreeMap<String, GlobalType>,
+    /// How the return value is recorded, resolved from the DWARF of the return
+    /// type; absent in a record made before a typedef was resolved.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub return_kind: Option<ReturnKind>,
+    /// The types the pointers of the states point at, by pointee text: the table
+    /// the heap walk reads (CONTEXT D-09).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub pointees: BTreeMap<String, CType>,
 }
 
 /// One writable global of the dump plan, as `build.json` records it.
@@ -532,17 +549,24 @@ fn build_entry(
         Ok(lines) => lines,
         Err(reason) => return Ok(BuildState::Refused(reason)),
     };
-    let source = render_entry_driver(adapter, &lines)?;
     let dir = opts
         .scope
         .entry_dir(&item.target, &item.config, &item.entry.name);
     std::fs::create_dir_all(&dir).map_err(|e| io("cannot create", &dir, e))?;
-    let states: Vec<(String, String)> = adapter
+    // The probe lays out every state and, for a return that is not void, the
+    // returned value: a typedef name does not say whether it is an integer, an
+    // enum or a struct, so the DWARF of the entry's header decides (D-06, D-11).
+    let mut probes: Vec<(String, String)> = adapter
         .states()
         .into_iter()
         .map(|state| (state.name, state.type_text))
         .collect();
-    let layouts = match layout_for_entry(
+    let resolve_return =
+        adapter.return_kind() == ReturnKind::Integer && adapter.return_text() != "void";
+    if resolve_return {
+        probes.push((RET_NAME.to_owned(), adapter.return_text().to_owned()));
+    }
+    let mut layouts = match layout_for_entry(
         &opts.tools,
         &opts.cfg,
         &LayoutRequest {
@@ -550,7 +574,7 @@ fn build_entry(
             compile_cwd: Path::new(&unit.directory),
             include_lines: &lines,
             flags: &flags,
-            states: &states,
+            states: &probes,
         },
     ) {
         Ok(layouts) => layouts,
@@ -559,9 +583,28 @@ fn build_entry(
         }
         Err(error) => return Err(error),
     };
-    if let Err(reason) = check_marks(&layouts, adapter.marks()) {
+    let mut adapter = adapter.clone();
+    if resolve_return {
+        let kind = match layouts.states.get(RET_NAME).map(|ty| &ty.kind) {
+            Some(Kind::Int { .. } | Kind::Enum { .. }) | None => ReturnKind::Integer,
+            Some(Kind::Struct { .. } | Kind::Union { .. }) => ReturnKind::Struct,
+            Some(Kind::Pointer { .. }) => ReturnKind::Pointer,
+            Some(Kind::Float | Kind::Array { .. }) => {
+                return Ok(BuildState::Refused(format!(
+                    "the return type {} cannot be recorded as a 32-bit rc or as a returned value",
+                    adapter.return_text()
+                )));
+            }
+        };
+        if kind == ReturnKind::Integer {
+            layouts.states.remove(RET_NAME);
+        }
+        adapter = adapter.with_return_kind(kind);
+    }
+    if let Err(reason) = check_marks(&layouts.states, adapter.marks()) {
         return Ok(BuildState::Refused(format!("unobserved mark {reason}")));
     }
+    let source = render_entry_driver(&adapter, &lines)?;
     let members: Vec<String> = pair.verified.objects.keys().cloned().collect();
     let archived = archive(
         &opts.tools,
@@ -608,8 +651,10 @@ fn build_entry(
                 driver_flags: flags,
                 steps,
                 globals: plan.iter().map(GlobalRecord::from_range).collect(),
-                layouts,
+                layouts: layouts.states,
                 global_types,
+                return_kind: Some(adapter.return_kind()),
+                pointees: layouts.pointees,
             };
             let path = dir.join(BUILD_JSON);
             let mut text = serde_json::to_string_pretty(&record)
@@ -819,6 +864,9 @@ pub struct PreparedDriver {
     /// The functions of the linked driver: address with the Thumb bit cleared
     /// to name.
     pub functions: BTreeMap<u32, String>,
+    /// The types the pointers of the states point at, by pointee text (the heap
+    /// walk's table).
+    pub pointees: BTreeMap<String, CType>,
 }
 
 /// One run of one request, turned into the vector it would store.
@@ -936,7 +984,8 @@ pub fn run_vector_twice(
         adapter.output_capacity(combination),
         &adapter.scalar_words(combination),
     )
-    .with_dump_plan(&ranges);
+    .with_dump_plan(&ranges)
+    .with_strings(&adapter.strings(combination));
     let mut observed = Vec::with_capacity(2);
     for _ in 0..2 {
         let slot = Slot::create(slot_dir)?;
@@ -1047,6 +1096,10 @@ fn record_state(
             (STATE_BEFORE_REGION, &mut before),
             (STATE_AFTER_REGION, &mut after),
         ] {
+            if state.name == RET_NAME && base == STATE_BEFORE_REGION {
+                // Nothing is returned before the call.
+                continue;
+            }
             let bytes = region_bytes(frame, base, index, &format!("state {}", state.name))?;
             if bytes.len() != ty.size as usize {
                 return Err(format!(
@@ -1080,6 +1133,33 @@ fn record_state(
     )? {
         before.insert("globals".to_owned(), globals_before);
         after.insert("globals".to_owned(), globals_after);
+    }
+    // The objects of the heap that the recorded pointers reach (D-06, D-09).
+    let arena = region_bytes(frame, HEAP_REGION, 0, "the heap arena")?;
+    let objects = {
+        let mut roots: Vec<&mut StateValue> = after.values_mut().collect();
+        walk_heap(&arena, &driver.pointees, &regions, &mut roots)
+            .map_err(|e| format!("heap: {e}"))?
+    };
+    if !objects.is_empty() {
+        after.insert(
+            "heap".to_owned(),
+            StateValue::Struct {
+                c_type: "heap".to_owned(),
+                fields: objects,
+            },
+        );
+    }
+    // A mutable input is recorded as it is after the call.
+    if adapter.mutable_input() {
+        let bytes = region_bytes(frame, IN_AFTER_REGION, 0, "the input after the call")?;
+        after.insert(
+            "in".to_owned(),
+            StateValue::Bytes {
+                c_type: format!("{}[{}]", adapter.input_element_type(), bytes.len()),
+                hex: crate::hex(&bytes),
+            },
+        );
     }
     let before = LibState::new(before).map_err(|e| e.to_string())?;
     let after = LibState::new(after).map_err(|e| e.to_string())?;
@@ -1151,7 +1231,7 @@ pub(crate) fn load_driver(
     config: &str,
     entry: &Entry,
 ) -> Result<LoadedDriver, RunState> {
-    let adapter = match Adapter::from_entry(target, config, entry) {
+    let mut adapter = match Adapter::from_entry(target, config, entry) {
         Ok(adapter) => adapter,
         Err(AdapterError::NoRoles) => return Err(RunState::NoRoles),
         Err(error) => return Err(RunState::Failed(error.to_string())),
@@ -1171,6 +1251,9 @@ pub(crate) fn load_driver(
             )));
         }
     };
+    if let Some(kind) = build.return_kind {
+        adapter = adapter.with_return_kind(kind);
+    }
     let elf_path = dir.join("driver.elf");
     let (elf_hash, functions) = match std::fs::read(&elf_path) {
         Ok(bytes) => match function_symbols(&bytes) {
@@ -1199,6 +1282,7 @@ pub(crate) fn load_driver(
     }
     let layouts = build.layouts.clone();
     let global_types = build.global_types.clone();
+    let pointees = build.pointees.clone();
     for state in adapter.states() {
         if !layouts.contains_key(&state.name) {
             return Err(RunState::NotBuilt(format!(
@@ -1216,6 +1300,7 @@ pub(crate) fn load_driver(
             layouts,
             global_types,
             functions,
+            pointees,
         },
     })
 }

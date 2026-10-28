@@ -126,7 +126,18 @@ pub struct LayoutRequest<'a> {
     pub states: &'a [(String, String)],
 }
 
-/// Compile the probe of an entry's states and give each state's layout.
+/// The layouts a probe gives: each state's type and the types its pointers point at.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct EntryLayouts {
+    /// Each state's layout, by state name.
+    pub states: BTreeMap<String, CType>,
+    /// The types reachable through the states' pointers, by pointee text (the
+    /// table the heap walk reads, CONTEXT D-09).
+    pub pointees: BTreeMap<String, CType>,
+}
+
+/// Compile the probe of an entry's states and give each state's layout, and the
+/// layouts of the types their pointers point at.
 ///
 /// # Errors
 /// [`HarnessError::Build`] when the compile or the dump fails,
@@ -136,9 +147,9 @@ pub fn layout_for_entry(
     tools: &ExecTools,
     cfg: &RunnerConfig,
     request: &LayoutRequest<'_>,
-) -> Result<BTreeMap<String, CType>, HarnessError> {
+) -> Result<EntryLayouts, HarnessError> {
     if request.states.is_empty() {
-        return Ok(BTreeMap::new());
+        return Ok(EntryLayouts::default());
     }
     std::fs::create_dir_all(request.dir).map_err(|e| io("cannot create", request.dir, e))?;
     let source_path = request.dir.join("probe.c");
@@ -167,7 +178,7 @@ pub fn layout_for_entry(
     let text = dump_object(tools, cfg, request.dir, &object_path)?;
     std::fs::write(&dump_path, &text).map_err(|e| io("cannot write", &dump_path, e))?;
     let model = parse_dwarfdump(&text).map_err(|e| layout_error("the layout probe", e))?;
-    let mut layouts = BTreeMap::new();
+    let mut layouts = EntryLayouts::default();
     for (name, type_text) in request.states {
         let variable = format!("{PROBE_PREFIX}{name}");
         let ty = model
@@ -182,7 +193,13 @@ pub fn layout_for_entry(
                 )),
             ));
         }
-        layouts.insert(name.clone(), ty);
+        let pointees = model
+            .pointee_types(&variable)
+            .map_err(|e| layout_error(&format!("state {name} ({type_text})"), e))?;
+        for (text, pointee) in pointees {
+            layouts.pointees.entry(text).or_insert(pointee);
+        }
+        layouts.states.insert(name.clone(), ty);
     }
     Ok(layouts)
 }

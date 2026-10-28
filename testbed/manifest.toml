@@ -286,6 +286,15 @@ header = "pb_decode.h"
 source = "pb_decode.c"
 form = "direct"
 signature = "pb_istream_t (const pb_byte_t *, size_t)"
+# Argument roles (Phase 3 CONTEXT D-06, D-11). The stream struct is returned by
+# value, so there is no output parameter: the return is a struct and is recorded as
+# lib_state_out.ret (its state pointer is a region offset into the input, its
+# callback a function name). rc is 0.
+[[target.nanopb.entry.arg]]
+role = "in_buf"
+
+[[target.nanopb.entry.arg]]
+role = "in_len"
 
 [[target.nanopb.entry]]
 name = "pb_decode_ex"
@@ -348,6 +357,16 @@ header = "cJSON.h"
 source = "cJSON.c"
 form = "direct"
 signature = "cJSON *(const char *, size_t)"
+# Argument roles (Phase 3 CONTEXT D-06, D-09, D-11). The return is a pointer to a
+# tree the library allocates: rc is 0 for NULL and 1 otherwise, lib_state_out.ret
+# is the classified pointer and lib_state_out.heap holds the tree's nodes and
+# strings by offset (the typed heap walk). The writable global global_error is
+# typed by plan 03-05 and recorded when a parse fails.
+[[target.cjson.entry.arg]]
+role = "in_buf"
+
+[[target.cjson.entry.arg]]
+role = "in_len"
 
 [[target.cjson.config]]
 name = "default"
@@ -413,6 +432,40 @@ header = "source/include/core_json.h"
 source = "source/core_json.c"
 form = "direct"
 signature = "JSONStatus_t (char *, size_t, const char *, size_t, char **, size_t *, JSONTypes_t *)"
+# Argument roles (Phase 3 CONTEXT D-05, D-09, D-11, D-14). The input is a char *
+# the function may write, so it is recorded again after the call (mutable). The
+# query is a declared string, passed as data in the request; the values are the two
+# keys that occur in the committed seeds (foo in 2 seeds, hello in 1; the seeds hold
+# 24 JSON documents of 108 inputs) and the array-index form [0], so a miss and an
+# index query are covered too. Its length is derived. The three results come back
+# through a pointer to a pointer (a position inside the input) and two scalars.
+[[target.corejson.entry.arg]]
+role = "in_buf"
+mutable = true
+
+[[target.corejson.entry.arg]]
+role = "in_len"
+
+[[target.corejson.entry.arg]]
+role = "str"
+name = "query"
+values = ["foo", "hello", "[0]"]
+
+[[target.corejson.entry.arg]]
+role = "str_len"
+of = "query"
+
+[[target.corejson.entry.arg]]
+role = "out_ptr"
+name = "outValue"
+
+[[target.corejson.entry.arg]]
+role = "out_scalar"
+name = "outValueLength"
+
+[[target.corejson.entry.arg]]
+role = "out_scalar"
+name = "outType"
 
 [[target.corejson.config]]
 name = "default"
@@ -521,6 +574,43 @@ header = "MQTTPacket/src/MQTTPacket.h"
 source = "MQTTPacket/src/MQTTDeserializePublish.c"
 form = "direct"
 signature = "int (unsigned char *, int *, unsigned char *, unsigned short *, MQTTString *, unsigned char **, int *, unsigned char *, int)"
+# Argument roles (Phase 3 CONTEXT D-06, D-11). The results come back through
+# pointers to scalars (dup, qos, retained, packetid, payloadlen), one pointer to a
+# pointer (payload, a position inside the input) and a string struct the function
+# fills in (topicName, whose pointers are region offsets into the input).
+[[target.paho.entry.arg]]
+role = "out_scalar"
+name = "dup"
+
+[[target.paho.entry.arg]]
+role = "out_scalar"
+name = "qos"
+
+[[target.paho.entry.arg]]
+role = "out_scalar"
+name = "retained"
+
+[[target.paho.entry.arg]]
+role = "out_scalar"
+name = "packetid"
+
+[[target.paho.entry.arg]]
+role = "state"
+name = "topicName"
+
+[[target.paho.entry.arg]]
+role = "out_ptr"
+name = "payload"
+
+[[target.paho.entry.arg]]
+role = "out_scalar"
+name = "payloadlen"
+
+[[target.paho.entry.arg]]
+role = "in_buf"
+
+[[target.paho.entry.arg]]
+role = "in_len"
 
 [[target.paho.entry]]
 name = "MQTTDeserialize_connack"
@@ -528,6 +618,21 @@ header = "MQTTPacket/src/MQTTPacket.h"
 source = "MQTTPacket/src/MQTTConnectClient.c"
 form = "direct"
 signature = "int (unsigned char *, unsigned char *, unsigned char *, int)"
+# Argument roles (Phase 3 CONTEXT D-06, D-11): two results through pointers to
+# unsigned char.
+[[target.paho.entry.arg]]
+role = "out_scalar"
+name = "sessionPresent"
+
+[[target.paho.entry.arg]]
+role = "out_scalar"
+name = "connack_rc"
+
+[[target.paho.entry.arg]]
+role = "in_buf"
+
+[[target.paho.entry.arg]]
+role = "in_len"
 
 [[target.paho.config]]
 name = "default"

@@ -13,7 +13,7 @@
 //! tree is finite. A type that contains itself by value is
 //! [`LayoutError::Cycle`].
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
 use serde::{Deserialize, Serialize};
@@ -348,21 +348,69 @@ impl LayoutModel {
     /// lowering the type ([`LayoutError::Unsupported`], [`LayoutError::Cycle`],
     /// [`LayoutError::Malformed`]).
     pub fn type_of_variable(&self, name: &str) -> Result<CType, LayoutError> {
+        let ty = self.variable_type_offset(name)?;
+        self.lower(ty, &mut Vec::new())
+    }
+
+    /// The type reference of the file-scope variable called `name`.
+    fn variable_type_offset(&self, name: &str) -> Result<u64, LayoutError> {
         for die in self.dies.values() {
             if die.tag != "DW_TAG_variable" || !self.is_file_scope(die) {
                 continue;
             }
             let (found, ty) = self.variable_identity(die);
             if found.as_deref() == Some(name) {
-                let Some(ty) = ty else {
-                    return Err(LayoutError::Malformed(format!(
-                        "variable {name} has no type"
-                    )));
-                };
-                return self.lower(ty, &mut Vec::new());
+                return ty
+                    .ok_or_else(|| LayoutError::Malformed(format!("variable {name} has no type")));
             }
         }
         Err(LayoutError::NoSuchVariable(name.to_owned()))
+    }
+
+    /// The types that the pointers reachable from the variable `name` point at,
+    /// keyed by the pointee's text (`cJSON`, `struct cJSON`, `char`, `const char`)
+    /// as it appears in the pointer's own text with the trailing ` *` removed. The
+    /// heap walk (CONTEXT D-09) reads a pointer's pointee from this table, because
+    /// a [`CType`] keeps only the text of what a pointer points at. A pointee that
+    /// cannot be lowered (a function, an unsupported construct) has no entry: a
+    /// pointer to it is recorded as a classified pointer with no object.
+    ///
+    /// # Errors
+    /// [`LayoutError::NoSuchVariable`] and the errors of finding the variable's type.
+    pub fn pointee_types(&self, name: &str) -> Result<BTreeMap<String, CType>, LayoutError> {
+        let mut found = BTreeMap::new();
+        let mut seen = BTreeSet::new();
+        let mut todo = vec![self.variable_type_offset(name)?];
+        while let Some(offset) = todo.pop() {
+            if !seen.insert(offset) {
+                continue;
+            }
+            let die = self.die(offset)?;
+            let tag = die.tag.as_str();
+            match tag {
+                "DW_TAG_typedef" | "DW_TAG_array_type" => todo.extend(die.reference("DW_AT_type")),
+                tag if tag_is_qualifier(tag) => todo.extend(die.reference("DW_AT_type")),
+                "DW_TAG_pointer_type" => {
+                    let Some(target) = die.reference("DW_AT_type") else {
+                        continue;
+                    };
+                    if let Ok((text, false)) = self.pointer_text(target, 0)
+                        && let Some(pointee) = text.strip_suffix(" *")
+                        && let Ok(lowered) = self.lower(target, &mut Vec::new())
+                    {
+                        found.entry(pointee.to_owned()).or_insert(lowered);
+                    }
+                    todo.push(target);
+                }
+                "DW_TAG_structure_type" | "DW_TAG_union_type" => {
+                    for child in &die.children {
+                        todo.extend(self.die(*child)?.reference("DW_AT_type"));
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(found)
     }
 
     fn is_file_scope(&self, die: &Die) -> bool {

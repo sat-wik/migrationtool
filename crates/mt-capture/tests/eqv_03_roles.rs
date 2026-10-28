@@ -78,13 +78,21 @@ fn eqv_03_roles_accept_the_committed_manifest() {
         [Role::InBuf, Role::InLen],
         "corejson JSON_Validate declares in_buf then in_len (D-11)"
     );
+    // JSON_SearchT has roles since plan 03-06; an entry the harness cannot drive
+    // yet (nanopb's pb_decode_ex) stays without arg tables.
     let search = corejson
         .entry
         .iter()
         .find(|entry| entry.name == "JSON_SearchT")
         .unwrap();
+    assert_eq!(search.arg.len(), 7);
+    let undriven = manifest.target["nanopb"]
+        .entry
+        .iter()
+        .find(|entry| entry.name == "pb_decode_ex")
+        .unwrap();
     assert!(
-        search.arg.is_empty(),
+        undriven.arg.is_empty(),
         "an entry without arg tables stays without roles"
     );
 

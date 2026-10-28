@@ -22,7 +22,8 @@
  * 1 the input bytes, 2 the output capacity word, and for an entry driver also
  * 3 the scalar arguments (eight bytes each, two's complement) and 4 a dump
  * plan: pairs of an address and a size (eight bytes each) of the writable
- * globals to snapshot. A request has 3 or 5 fields.
+ * globals to snapshot, and 5 the strings of the call: each a length word and
+ * the bytes, no terminator. A request has 3, 5 or 6 fields.
  *
  * Result frame (little-endian), written after the call: "MTRS", version 1,
  * status, raw return value, bytes the C code wrote through libc (discarded),
@@ -30,13 +31,17 @@
  * bytes, then "MTRE". Region 1 is the whole output buffer; region 2 holds the
  * addresses of the driver's own objects (input and output buffer, the heap
  * arena in use, each state), as words, so the host can classify pointers;
+ * region 3 is the input buffer after the call and region 4 the used bytes of the
+ * heap arena, from its first byte;
  * region 0x1000 + i is dump range i before the call and region 0x2000 + i the
  * same range after it; region 0x3000 + i is state i before the call and region
  * 0x4000 + i the same state after it.
  *
  * Each state of an entry (a pointer parameter the harness fills in) lives in its
  * own guarded, zero-filled mapping at a fixed base. The set of states and their
- * sizes come from the generated placeholder at-sign, MT_, STATES, at-sign.
+ * sizes come from the generated placeholder at-sign, MT_, STATES, at-sign. Each
+ * string of the request lives in its own guarded mapping with a trailing NUL, so
+ * a declared string reaches the C code as data and never as source text.
  */
 #include <errno.h>
 #include <stddef.h>
@@ -74,6 +79,8 @@ typedef uint32_t u32;
 #define MT_DUMP_TOTAL (512u * 1024u)
 #define MT_REGION_OUT 1u
 #define MT_REGION_ADDRESSES 2u
+#define MT_REGION_IN_AFTER 3u
+#define MT_REGION_HEAP 4u
 #define MT_REGION_BEFORE 0x1000u
 #define MT_REGION_AFTER 0x2000u
 #define MT_REGION_STATE_BEFORE 0x3000u
@@ -82,6 +89,9 @@ typedef uint32_t u32;
 #define MT_STATE_BASE 0x06000000u
 #define MT_STATE_STRIDE 0x00100000u
 #define MT_STATE_MAX_BYTES 65536u
+#define MT_MAX_STRS 8u
+#define MT_STR_BASE 0x06800000u
+#define MT_STR_MAX_BYTES 64u
 #define MT_REQ_MAX (MT_MAX_INPUT + 4096u)
 
 #define MT_EXIT_CALLED 95
@@ -95,8 +105,10 @@ _Static_assert(MT_STACK_BASE + (MT_STACK_PAGES + 1u) * MT_PAGE <= MT_RESERVED_VA
                "the stack mapping must lie below the reserved address space");
 _Static_assert(MT_OUT_BASE + (MT_MAX_INPUT / MT_PAGE + 3u) * MT_PAGE <= MT_STATE_BASE,
                "the output mapping must end below the state mappings");
-_Static_assert(MT_STATE_BASE + MT_MAX_STATES * MT_STATE_STRIDE <= MT_STACK_BASE,
-               "the state mappings must end below the stack mapping");
+_Static_assert(MT_STATE_BASE + MT_MAX_STATES * MT_STATE_STRIDE <= MT_STR_BASE,
+               "the state mappings must end below the string mappings");
+_Static_assert(MT_STR_BASE + MT_MAX_STRS * MT_STATE_STRIDE <= MT_STACK_BASE,
+               "the string mappings must end below the stack mapping");
 _Static_assert(MT_STATE_COUNT <= MT_MAX_STATES, "too many states");
 _Static_assert(MT_STATE_MAX_BYTES + 3u * MT_PAGE <= MT_STATE_STRIDE,
                "a state mapping must fit its stride");
@@ -510,6 +522,65 @@ static long long mt_scalar(u32 index)
     return (long long)value;
 }
 
+/* ---- the strings of a request: each in its own guarded mapping, NUL-terminated ---- */
+
+static struct guarded mt_str_map[MT_MAX_STRS];
+static u32 mt_str_count;
+
+/* The block is a sequence of a length word and that many bytes, no terminator. */
+static void mt_strs_load(const u8 *block, u32 total)
+{
+    u32 pos = 0u;
+    while (pos < total) {
+        u32 len;
+        struct guarded *g;
+        if (mt_str_count >= MT_MAX_STRS || total - pos < 4u) {
+            mt_exit(MT_EXIT_REQUEST_BAD);
+        }
+        len = mt_get32(block + pos);
+        pos += 4u;
+        if (len > MT_STR_MAX_BYTES || total - pos < len) {
+            mt_exit(MT_EXIT_REQUEST_BAD);
+        }
+        g = &mt_str_map[mt_str_count];
+        mt_guard_alloc(g, MT_STR_BASE + mt_str_count * MT_STATE_STRIDE, len + 1u);
+        memcpy(g->buf, block + pos, len);
+        g->buf[len] = 0;
+        pos += len;
+        mt_str_count++;
+    }
+}
+
+/* The index-th string of the request, for the call expression. */
+static const char *mt_str(u32 index) __attribute__((unused));
+static const char *mt_str(u32 index)
+{
+    if (index >= mt_str_count) {
+        mt_exit(MT_EXIT_REQUEST_BAD);
+    }
+    return (const char *)mt_str_map[index].buf;
+}
+
+/* Its length in bytes, without the NUL. */
+static u32 mt_str_len(u32 index) __attribute__((unused));
+static u32 mt_str_len(u32 index)
+{
+    if (index >= mt_str_count) {
+        mt_exit(MT_EXIT_REQUEST_BAD);
+    }
+    return mt_str_map[index].len - 1u;
+}
+
+static u32 mt_strs_slack_changed(void)
+{
+    u32 i;
+    u32 changed = 0u;
+    for (i = 0; i < mt_str_count; i++) {
+        changed |= mt_slack_changed(&mt_str_map[i]);
+    }
+    return changed;
+}
+
 /* A state that holds an inout_len starts with the declared value, which the request
  * carries as a scalar word (mt_state_word[i] is the word, or -1); every other state
  * stays zero-filled. The value is written little-endian, as many bytes as the type
@@ -578,8 +649,9 @@ static void mt_write_addresses(const struct guarded *in_buf, const struct guarde
 }
 
 /* The frame is written in pieces straight from the buffers: a header, the output
- * region, the addresses, the before and after region of each dump range and of
- * each state, the end marker. */
+ * region, the addresses, the input after the call, the used bytes of the heap
+ * arena, the before and after region of each dump range and of each state, the
+ * end marker. */
 static void mt_emit_frame(u32 status, u32 ret, u32 slack, const struct guarded *in_buf,
                           const struct guarded *out_buf)
 {
@@ -595,10 +667,12 @@ static void mt_emit_frame(u32 status, u32 ret, u32 slack, const struct guarded *
     mt_put32(head + 12, ret);
     mt_put32(head + 16, mt_discarded);
     mt_put32(head + 20, slack);
-    mt_put32(head + 24, 2u + 2u * mt_range_count + 2u * MT_STATE_COUNT);
+    mt_put32(head + 24, 4u + 2u * mt_range_count + 2u * MT_STATE_COUNT);
     mt_write_all(head, 28u);
     mt_write_region(MT_REGION_OUT, out_buf->buf, out_buf->len);
     mt_write_addresses(in_buf, out_buf);
+    mt_write_region(MT_REGION_IN_AFTER, in_buf->buf, in_buf->len);
+    mt_write_region(MT_REGION_HEAP, mt_heap_arena, mt_heap_used);
     for (i = 0; i < mt_range_count; i++) {
         mt_write_region(MT_REGION_BEFORE + i, mt_dump_before + off, mt_ranges[i].size);
         off += mt_ranges[i].size;
@@ -635,18 +709,21 @@ void mt_main(const char *path)
     mt_load_request(path);
     __libc_init_array();
     /* Request: selector word, input bytes, output capacity word and, for an
-     * entry driver, the scalar block and the dump plan. */
-    if ((mt_field_count != 3u && mt_field_count != 5u) || mt_fields[0].len != 4u ||
-        mt_fields[2].len != 4u) {
+     * entry driver, the scalar block, the dump plan and the strings. */
+    if ((mt_field_count != 3u && mt_field_count != 5u && mt_field_count != 6u) ||
+        mt_fields[0].len != 4u || mt_fields[2].len != 4u) {
         mt_exit(MT_EXIT_REQUEST_BAD);
     }
-    if (mt_field_count == 5u) {
+    if (mt_field_count >= 5u) {
         if (mt_fields[3].len % 8u != 0u || mt_fields[4].len % 8u != 0u) {
             mt_exit(MT_EXIT_REQUEST_BAD);
         }
         mt_scalars = mt_fields[3].data;
         mt_scalar_count = mt_fields[3].len / 8u;
         mt_load_plan(mt_fields[4].data, mt_fields[4].len / 8u);
+    }
+    if (mt_field_count == 6u) {
+        mt_strs_load(mt_fields[5].data, mt_fields[5].len);
     }
     selector = mt_get32(mt_fields[0].data);
     out_cap = mt_get32(mt_fields[2].data);
@@ -672,7 +749,8 @@ void mt_main(const char *path)
     mt_states_snapshot();
     ret = (u32)(@MT_CALL@);
     fflush(NULL);
-    slack = mt_slack_changed(&in_buf) | mt_slack_changed(&out_buf) | mt_states_slack_changed();
+    slack = mt_slack_changed(&in_buf) | mt_slack_changed(&out_buf) | mt_states_slack_changed() |
+            mt_strs_slack_changed();
     mt_emit_frame(0u, ret, slack, &in_buf, &out_buf);
     mt_exit(0);
 }

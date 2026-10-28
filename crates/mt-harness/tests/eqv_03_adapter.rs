@@ -55,9 +55,10 @@ fn eqv_03_adapter_maps_corejson_validate() {
 
 #[test]
 fn eqv_03_adapter_refuses_an_entry_without_roles() {
-    let entry = entry_of("corejson", "JSON_SearchT");
+    // pb_decode_ex is not driven yet; JSON_SearchT has roles since plan 03-06.
+    let entry = entry_of("nanopb", "pb_decode_ex");
     assert_eq!(
-        Adapter::from_entry("corejson", "default", &entry).unwrap_err(),
+        Adapter::from_entry("nanopb", "default", &entry).unwrap_err(),
         AdapterError::NoRoles
     );
 }

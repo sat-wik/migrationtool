@@ -65,7 +65,7 @@ pub struct Request {
 impl Request {
     /// The request of an entry driver: an unused selector word, the input
     /// bytes, the output capacity, the scalar arguments (eight bytes each,
-    /// two's complement) and an empty dump plan (CONTEXT D-05, D-07).
+    /// two's complement), an empty dump plan and no strings (CONTEXT D-05, D-07).
     #[must_use]
     pub fn entry(input: &[u8], out_cap: u32, scalars: &[i64]) -> Self {
         let mut block = Vec::with_capacity(scalars.len() * 8);
@@ -79,8 +79,26 @@ impl Request {
                 out_cap.to_le_bytes().to_vec(),
                 block,
                 Vec::new(),
+                Vec::new(),
             ],
         }
+    }
+
+    /// This request with the strings of the call: each as a length word and its
+    /// bytes. The driver puts every string in its own guarded mapping with a NUL
+    /// after it, so a declared string is data and never source text (T-03-24).
+    #[must_use]
+    pub fn with_strings(mut self, strings: &[String]) -> Self {
+        let mut block = Vec::new();
+        for text in strings {
+            let length = u32::try_from(text.len()).unwrap_or(u32::MAX);
+            block.extend_from_slice(&length.to_le_bytes());
+            block.extend_from_slice(text.as_bytes());
+        }
+        if let Some(field) = self.fields.get_mut(5) {
+            *field = block;
+        }
+        self
     }
 
     /// This request with the dump plan: each range's address and size as two

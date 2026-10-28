@@ -20,6 +20,7 @@
 //! - [`layout`] reads a type's layout from the pinned GCC's DWARF text,
 //! - [`probe`] compiles the probes that DWARF comes from,
 //! - [`decode`] turns the bytes of a state object into typed values,
+//! - [`heap`] follows typed pointers through the driver's arena,
 //! - [`exec`] runs a driver under `qemu-arm` through the runner,
 //! - [`frame`] parses the result frame the driver writes,
 //! - [`classify`] maps a finished run to exactly one outcome,
@@ -37,6 +38,7 @@ pub mod driver;
 pub mod exec;
 pub mod frame;
 pub mod globals;
+pub mod heap;
 pub mod layout;
 pub mod link;
 pub mod probe;

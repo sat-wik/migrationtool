@@ -54,7 +54,7 @@ fn eqv_04_adapters_cli_lists_entries() {
     );
     assert!(
         rows.iter()
-            .any(|row| row.starts_with("corejson/JSON_SearchT no_roles")),
+            .any(|row| row.starts_with("nanopb/pb_decode_ex no_roles")),
         "an entry without roles prints a no_roles row: {}",
         outcome.stdout
     );

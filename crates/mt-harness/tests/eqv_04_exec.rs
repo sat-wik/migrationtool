@@ -205,10 +205,11 @@ fn eqv_04_run_twice_is_byte_identical() {
 fn eqv_04_build_refuses_a_pair_without_roles() {
     let work = local_work_dir();
     let tmp = tempfile::tempdir().unwrap();
+    // pb_decode_ex is not driven yet; JSON_SearchT has roles since plan 03-06.
     let scope = scope_for(
-        "corejson",
+        "nanopb",
         "default",
-        "JSON_SearchT",
+        "pb_decode_ex",
         &tmp.path().join("build"),
         &work,
     );
@@ -221,7 +222,7 @@ fn eqv_04_build_refuses_a_pair_without_roles() {
     .unwrap();
     assert_eq!(rows.len(), 1, "{rows:?}");
     assert_eq!(rows[0].state, BuildState::NoRoles);
-    assert_eq!(rows[0].render(), "corejson/default/JSON_SearchT no_roles");
+    assert_eq!(rows[0].render(), "nanopb/default/pb_decode_ex no_roles");
 }
 
 #[test]
@@ -934,8 +935,15 @@ fn eqv_04_out_scalars_and_pointers_are_recorded() {
     );
     let corpus = read_corpus(&dir).unwrap();
     let (mut parsed, mut with_payload) = (0usize, 0usize);
+    let (mut faulted, mut beyond_the_input) = (0usize, 0usize);
     for (sha, vector) in &corpus.vectors {
         let input_len = decode_latin1(&vector.stdin).unwrap().len() as u64;
+        if vector.has_ub.is_some() {
+            // A run that ends in a signal has no result frame, so no state.
+            faulted += 1;
+            assert!(vector.lib_state_out.is_empty(), "{sha}");
+            continue;
+        }
         for name in ["dup", "qos", "retained", "packetid", "payloadlen"] {
             assert!(
                 matches!(vector.lib_state_out.get(name), Some(StateValue::Int { .. })),
@@ -944,7 +952,7 @@ fn eqv_04_out_scalars_and_pointers_are_recorded() {
             );
         }
         assert!(
-            matches!(vector.lib_state_out.get("packetid"), Some(StateValue::Int { c_type, .. }) if c_type == "unsigned short")
+            matches!(vector.lib_state_out.get("packetid"), Some(StateValue::Int { c_type, .. }) if c_type == "short unsigned int")
         );
         let topic = vector.lib_state_out.get("topicName").expect("topicName");
         assert!(
@@ -953,6 +961,20 @@ fn eqv_04_out_scalars_and_pointers_are_recorded() {
         );
         assert_pointers_only_into(topic, "in", sha);
         let payload = vector.lib_state_out.get("payload").expect("payload");
+        if let StateValue::Unobserved { c_type, reason } = payload {
+            // A packet whose declared length runs past the input leaves payload
+            // pointing beyond the end of the input (the function reports success
+            // without checking it against buflen): no region holds the pointer, so
+            // it is recorded as an unobserved mark with the fixed reason (D-06, D-09).
+            assert_eq!(c_type, "unsigned char *", "{sha}");
+            assert_eq!(
+                reason,
+                mt_harness::decode::UNRESOLVED_POINTER_REASON,
+                "{sha}"
+            );
+            beyond_the_input += 1;
+            continue;
+        }
         assert!(
             matches!(payload, StateValue::Pointer { c_type, .. } if c_type == "unsigned char *"),
             "{sha}: {payload:?}"
@@ -979,6 +1001,9 @@ fn eqv_04_out_scalars_and_pointers_are_recorded() {
             );
         }
     }
+    println!(
+        "paho/default/MQTTDeserialize_publish faulted={faulted} payload_beyond_the_input={beyond_the_input}"
+    );
     assert!(parsed > 0, "at least one seed is a publish packet");
     assert!(
         with_payload > 0,
@@ -1018,18 +1043,25 @@ fn eqv_04_struct_return_is_recorded() {
                 i64::try_from(input_len).unwrap(),
                 "{sha}"
             );
-            if let Some(callback) = fields.get("callback") {
+            let callback = &fields["callback"];
+            if config == "default" {
                 assert!(
                     matches!(
                         callback,
-                        StateValue::Pointer {
-                            pointer: Pointer::Symbol(_),
-                            ..
-                        }
+                        StateValue::Pointer { c_type, pointer: Pointer::Symbol(_) } if c_type.contains("(*)")
                     ),
                     "{sha}: callback is a function: {callback:?}"
                 );
                 with_callback += 1;
+            } else {
+                // PB_BUFFER_ONLY replaces the function pointer by an unused int *.
+                assert!(
+                    matches!(
+                        callback,
+                        StateValue::Pointer { c_type, pointer: Pointer::Null } if c_type == "int *"
+                    ),
+                    "{sha}: callback is the unused int pointer: {callback:?}"
+                );
             }
         }
         if config == "default" {
