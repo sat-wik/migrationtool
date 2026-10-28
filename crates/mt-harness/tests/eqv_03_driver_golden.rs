@@ -9,7 +9,7 @@
 
 use std::path::{Path, PathBuf};
 
-use mt_capture::manifest::Manifest;
+use mt_capture::manifest::{ArgRole, Entry, LocalObject, Manifest, Role, SetupStep};
 use mt_harness::adapter::{Adapter, AdapterError};
 use mt_harness::driver::render_entry_driver;
 
@@ -101,6 +101,110 @@ fn eqv_03_driver_golden() {
             path.display()
         );
         assert!(!source.contains("@MT_"), "no placeholder is left");
+    }
+}
+
+fn role_of(role: Role, name: Option<&str>) -> ArgRole {
+    ArgRole {
+        role,
+        name: name.map(str::to_owned),
+        default: None,
+        sweep: Vec::new(),
+        max: None,
+        of: None,
+        mutable: false,
+        values: Vec::new(),
+        count: None,
+        ptr_field: None,
+        len_field: None,
+    }
+}
+
+fn set_step(path: &str, value: &str) -> SetupStep {
+    SetupStep {
+        call: None,
+        args: Vec::new(),
+        expect: None,
+        set: Some(path.to_owned()),
+        value: Some(value.to_owned()),
+    }
+}
+
+/// A test-only declaration shaped like coreMQTT's `MQTT_DeserializeAck`: the packet
+/// information is a state whose fields are set from the input, and a local array
+/// holds a second one. The committed manifest does not declare it (its packets are
+/// built by the library's own framing); the golden pins the `set` rendering that
+/// later plans' declarations use.
+fn coremqtt_set_step_entry(value_of_remaining: &str) -> Entry {
+    let manifest = Manifest::load(&repo_root().join("testbed/manifest.toml")).unwrap();
+    let mut entry = manifest.target["coremqtt"]
+        .entry
+        .iter()
+        .find(|candidate| candidate.name == "MQTT_DeserializeAck")
+        .unwrap()
+        .clone();
+    entry.arg = vec![
+        role_of(Role::State, Some("packet")),
+        role_of(Role::OutScalar, Some("packet_id")),
+        role_of(Role::State, Some("reason")),
+        role_of(Role::State, Some("props")),
+        role_of(Role::State, Some("conn")),
+    ];
+    entry.local = vec![LocalObject {
+        name: "scratch".to_owned(),
+        type_text: "MQTTPacketInfo_t".to_owned(),
+        count: Some(2),
+    }];
+    entry.setup = vec![
+        set_step("packet.type", "64"),
+        set_step("packet.pRemainingData", "$in"),
+        set_step("packet.remainingLength", value_of_remaining),
+        set_step("scratch.pRemainingData", "$in+1"),
+        set_step("scratch.remainingLength", "$len-1"),
+    ];
+    entry
+}
+
+#[test]
+fn eqv_03_driver_golden_set_step_is_rendered_and_closed() {
+    // D-12: field assignments from the input pointer and length, on a state and on a
+    // local array, between the driver's allocation and its snapshot.
+    let entry = coremqtt_set_step_entry("$len");
+    let adapter = Adapter::from_entry("coremqtt", "default", &entry).unwrap();
+    let source = render_entry_driver(
+        &adapter,
+        &lines(&[
+            "#include <stddef.h>",
+            "#include <stdint.h>",
+            "#include \"/fixed/core_mqtt_serializer.h\"",
+        ]),
+    )
+    .unwrap();
+    let path = golden_path("coremqtt-set-step.driver.c");
+    if std::env::var_os("MT_BLESS_GOLDEN").is_some() {
+        std::fs::write(&path, &source).unwrap();
+    }
+    let golden = std::fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()));
+    assert!(
+        source == golden,
+        "the generated driver differs from {}",
+        path.display()
+    );
+    assert!(!source.contains("@MT_"), "no placeholder is left");
+    // Locals are states after the parameters' own; the array local is one mapping.
+    assert!(
+        source.contains("sizeof(MQTTPacketInfo_t) * 2u"),
+        "a counted local is sized by its count"
+    );
+
+    // The value grammar is closed: nothing else is rendered.
+    for bad in ["$in*2", "$len-x", "$in+", "1+1", "$cap"] {
+        let result = Adapter::from_entry("coremqtt", "default", &coremqtt_set_step_entry(bad));
+        assert!(
+            matches!(result, Err(AdapterError::Invalid(ref why)) if why.contains("value")),
+            "{bad:?}: {result:?}"
+        );
     }
 }
 

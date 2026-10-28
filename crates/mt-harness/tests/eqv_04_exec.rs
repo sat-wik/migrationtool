@@ -1390,3 +1390,147 @@ fn eqv_04_setup_failure_is_a_compared_outcome() {
         "corejson/default/JSON_Validate setup: {failed} setup_failed, {passed} ok, twice identical"
     );
 }
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_wrapped_struct_argument() {
+    // D-11, D-12: qcbor's QCBORDecode_Init takes the input as a `UsefulBufC` passed
+    // by value. The `wrap` role builds it from the input pointer and length; the
+    // decode mode is swept (normal, strings only, map as array).
+    for config in ["default", "no-hw-float"] {
+        let tmp = tempfile::tempdir().unwrap();
+        let (summary, dir) = run_pair_twice("qcbor", config, "QCBORDecode_Init", tmp.path());
+        assert_eq!(summary.setup_failed, 0, "no setup steps");
+        let corpus = read_corpus(&dir).unwrap();
+        let mut modes_of: std::collections::BTreeMap<String, Vec<i64>> =
+            std::collections::BTreeMap::new();
+        for (sha, vector) in &corpus.vectors {
+            let input_len = decode_latin1(&vector.stdin).unwrap().len();
+            assert_eq!(vector.argv.len(), 3, "{sha}: argv0, length, mode");
+            assert_eq!(vector.argv[0], format!("qcbor/{config}/QCBORDecode_Init"));
+            assert_eq!(vector.argv[1], input_len.to_string(), "{sha}");
+            let mode: i64 = vector.argv[2].parse().unwrap();
+            assert!([0, 1, 2].contains(&mode), "{sha}: mode {mode}");
+            modes_of.entry(vector.stdin.clone()).or_default().push(mode);
+
+            // lib_state_in.ctx is the zero-filled context; lib_state_out.ctx holds
+            // every field the initialisation sets.
+            let before = vector.lib_state_in.get("ctx").expect("lib_state_in.ctx");
+            assert!(is_all_zero(before), "{sha}: the context starts zero-filled");
+            let after = struct_fields(
+                vector.lib_state_out.get("ctx").expect("lib_state_out.ctx"),
+                "lib_state_out.ctx",
+            );
+            assert_eq!(
+                struct_fields(before, "lib_state_in.ctx")
+                    .keys()
+                    .collect::<Vec<_>>(),
+                after.keys().collect::<Vec<_>>(),
+                "{sha}: the same members before and after"
+            );
+            assert_eq!(int_field(after, "uDecodeMode"), mode, "{sha}");
+            // InBuf.UB is the wrapped UsefulBufC: pointer {in, 0} and the length.
+            let in_buf = struct_fields(&after["InBuf"], "ctx.InBuf");
+            let useful = struct_fields(&in_buf["UB"], "ctx.InBuf.UB");
+            assert_eq!(int_field(useful, "len"), input_len as i64, "{sha}");
+            match &useful["ptr"] {
+                StateValue::Pointer { pointer, .. } if input_len > 0 => assert_eq!(
+                    *pointer,
+                    Pointer::Buffer {
+                        region: "in".to_owned(),
+                        offset: 0
+                    },
+                    "{sha}: the wrapped pointer is the input"
+                ),
+                StateValue::Pointer { .. } => {}
+                other => panic!("{sha}: ctx.InBuf.UB.ptr must be a pointer, found {other:?}"),
+            }
+            // Every other pointer of the context is null or into the context itself.
+            let mut found = Vec::new();
+            pointers_of(&after["nesting"], &mut found);
+            for pointer in found {
+                match pointer {
+                    Pointer::Null => {}
+                    Pointer::Buffer { region, .. } => assert_eq!(region, "ctx", "{sha}"),
+                    Pointer::Symbol(name) => panic!("{sha}: unexpected function {name}"),
+                }
+            }
+        }
+        assert!(!modes_of.is_empty(), "{config}: vectors");
+        for (input, mut modes) in modes_of {
+            modes.sort_unstable();
+            assert_eq!(
+                modes,
+                [0, 1, 2],
+                "{config}: input {input:?} runs every mode"
+            );
+        }
+    }
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_state_array() {
+    // D-12, T-03-27: zcbor's zcbor_new_decode_state fills an array of three states
+    // in one guarded mapping; the elements are recorded as items, and the payload
+    // pointers are offsets into the input. The out buffer's capacity is swept (0 and
+    // 64 bytes).
+    for config in ["default", "stop-on-error"] {
+        let tmp = tempfile::tempdir().unwrap();
+        let (summary, dir) = run_pair_twice("zcbor", config, "zcbor_new_decode_state", tmp.path());
+        assert_eq!(summary.setup_failed, 0, "no setup steps");
+        let corpus = read_corpus(&dir).unwrap();
+        let mut capacities = std::collections::BTreeSet::new();
+        for (sha, vector) in &corpus.vectors {
+            let input_len = decode_latin1(&vector.stdin).unwrap().len();
+            // argv: name, n_states, input length, elem_count, out capacity.
+            assert_eq!(vector.argv.len(), 5, "{sha}: {:?}", vector.argv);
+            assert_eq!(vector.argv[1], "3", "{sha}: n_states equals the count");
+            assert_eq!(vector.argv[2], input_len.to_string(), "{sha}");
+            assert_eq!(vector.argv[3], "1", "{sha}");
+            capacities.insert(vector.argv[4].clone());
+
+            let before = vector
+                .lib_state_in
+                .get("states")
+                .expect("lib_state_in.states");
+            assert!(is_all_zero(before), "{sha}: the array starts zero-filled");
+            let after = vector
+                .lib_state_out
+                .get("states")
+                .expect("lib_state_out.states");
+            let StateValue::Items { items, .. } = after else {
+                panic!("{sha}: lib_state_out.states must be an array, found {after:?}");
+            };
+            assert_eq!(items.len(), 3, "{sha}: three elements");
+            // Pointers are null or offsets into a region; never a raw address.
+            let mut found = Vec::new();
+            pointers_of(after, &mut found);
+            let mut into_input = false;
+            let mut into_states = false;
+            for pointer in found {
+                match pointer {
+                    Pointer::Null => {}
+                    Pointer::Buffer { region, offset } => {
+                        assert!(
+                            ["in", "states", "out"].contains(&region.as_str()),
+                            "{sha}: pointer into {region}"
+                        );
+                        into_input |= region == "in" && *offset == 0;
+                        into_states |= region == "states";
+                    }
+                    Pointer::Symbol(name) => panic!("{sha}: unexpected function {name}"),
+                }
+            }
+            assert!(into_states, "{sha}: constant_state points into the array");
+            if input_len > 0 {
+                assert!(into_input, "{sha}: payload is the input at offset 0");
+            }
+        }
+        assert_eq!(
+            capacities.into_iter().collect::<Vec<_>>(),
+            ["0", "64"],
+            "{config}: the out buffer sweep"
+        );
+    }
+}

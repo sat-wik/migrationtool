@@ -8,9 +8,9 @@
 use std::path::PathBuf;
 
 use mt_capture::manifest::{
-    ArgRole, LocalObject, MANIFEST_SCHEMA_VERSION, Manifest, ManifestError, Role, SetValue,
-    SetupArg, SetupStep, TYPE_TEXT_GRAMMAR, UnobservedMark, is_closed_type_text, split_parameters,
-    state_pointee_type,
+    ArgRole, EntryForm, LocalObject, MANIFEST_SCHEMA_VERSION, MAX_OBJECT_COUNT, Manifest,
+    ManifestError, Role, SetValue, SetupArg, SetupStep, TYPE_TEXT_GRAMMAR, UnobservedMark,
+    is_closed_type_text, split_parameters, state_pointee_type,
 };
 
 fn repo_file(relative: &str) -> PathBuf {
@@ -1691,4 +1691,333 @@ fn eqv_03_roles_setup_and_local_parse_from_toml_and_stay_absent_otherwise() {
     // Unknown keys are refused, as everywhere in the manifest.
     let unknown = edited.replacen("expect = \"void\"", "expect = \"void\"\nretry = 3", 1);
     assert!(Manifest::parse(&unknown).is_err());
+}
+
+// ---------------------------------------------------------------------------
+// Plan 03-07 Task 2: struct arguments by value, arrays of states and the input
+// that a setup step reaches (D-11, D-12)
+// ---------------------------------------------------------------------------
+
+const QCBOR_SIGNATURE: &str = "void (QCBORDecodeContext *, UsefulBufC, QCBORDecodeMode)";
+
+fn wrap_role(ptr_field: Option<&str>, len_field: Option<&str>) -> ArgRole {
+    let mut arg = role(Role::Wrap);
+    arg.ptr_field = ptr_field.map(str::to_owned);
+    arg.len_field = len_field.map(str::to_owned);
+    arg
+}
+
+/// The roles of qcbor `QCBORDecode_Init` as Task 2 declares them: the context, the
+/// input wrapped into a `UsefulBufC` and the decode mode.
+fn qcbor_roles() -> Vec<ArgRole> {
+    vec![
+        out_role(Role::State, Some("ctx")),
+        wrap_role(Some("ptr"), Some("len")),
+        scalar("mode", Some(0), &[1, 2]),
+    ]
+}
+
+/// The committed manifest with the qcbor `QCBORDecode_Init` entry given `signature`
+/// and `roles`; the declaration is inline, not the committed one.
+fn with_qcbor(signature: &str, roles: Vec<ArgRole>) -> Manifest {
+    let mut manifest = committed();
+    let entry = manifest
+        .target
+        .get_mut("qcbor")
+        .unwrap()
+        .entry
+        .iter_mut()
+        .find(|entry| entry.name == "QCBORDecode_Init")
+        .unwrap();
+    assert_eq!(entry.signature, QCBOR_SIGNATURE);
+    signature.clone_into(&mut entry.signature);
+    entry.arg = roles;
+    manifest
+}
+
+fn qcbor_issue(manifest: &Manifest, words: &[&str]) -> bool {
+    issues_of(manifest)
+        .iter()
+        .any(|issue| issue.contains("QCBORDecode_Init") && words.iter().all(|w| issue.contains(w)))
+}
+
+#[test]
+fn eqv_03_roles_wrap_needs_fields_and_accepted_wrapped() {
+    // D-11, D-12: a `wrap` builds a struct argument by value from the input pointer
+    // and length; it names the two members and the entry is an accepted wrapped one.
+    with_qcbor(QCBOR_SIGNATURE, qcbor_roles())
+        .validate()
+        .unwrap();
+    assert_eq!(Role::Wrap.word(), "wrap");
+    assert!(
+        !Role::Wrap.is_pointer_role(),
+        "a wrap is a struct passed by value"
+    );
+
+    // Both members are named, and they are C identifiers.
+    for (ptr, len, words) in [
+        (None, Some("len"), ["wrap", "ptr_field"]),
+        (Some("ptr"), None, ["wrap", "len_field"]),
+        (Some("p;x"), Some("len"), ["ptr_field", "identifier"]),
+        (Some("ptr"), Some("1len"), ["len_field", "identifier"]),
+        (Some("ptr"), Some("ptr"), ["ptr_field", "different"]),
+    ] {
+        let manifest = with_qcbor(
+            QCBOR_SIGNATURE,
+            vec![
+                out_role(Role::State, Some("ctx")),
+                wrap_role(ptr, len),
+                scalar("mode", Some(0), &[]),
+            ],
+        );
+        assert!(
+            qcbor_issue(&manifest, &words),
+            "{ptr:?} {len:?}: {:?}",
+            issues_of(&manifest)
+        );
+    }
+
+    // The member names, and a name, belong to a wrap only.
+    let mut roles = qcbor_roles();
+    roles[2].ptr_field = Some("ptr".to_owned());
+    let manifest = with_qcbor(QCBOR_SIGNATURE, roles);
+    assert!(
+        qcbor_issue(&manifest, &["ptr_field", "only allowed on wrap"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    let mut roles = qcbor_roles();
+    roles[1].len_field = Some("len".to_owned());
+    roles[2].len_field = Some("len".to_owned());
+    let manifest = with_qcbor(QCBOR_SIGNATURE, roles);
+    assert!(qcbor_issue(
+        &manifest,
+        &["len_field", "only allowed on wrap"]
+    ));
+    let mut roles = qcbor_roles();
+    roles[1].name = Some("buf".to_owned());
+    let manifest = with_qcbor(QCBOR_SIGNATURE, roles);
+    assert!(
+        qcbor_issue(&manifest, &["wrap", "takes no name"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+
+    // The parameter is a struct passed by value whose type text is in the closed
+    // grammar of every type that reaches C.
+    for (signature, words) in [
+        (
+            "void (QCBORDecodeContext *, UsefulBuf *, QCBORDecodeMode)",
+            ["wrap", "value parameter"],
+        ),
+        (
+            "void (QCBORDecodeContext *, struct x; y, QCBORDecodeMode)",
+            ["wrap", "type"],
+        ),
+    ] {
+        let manifest = with_qcbor(signature, qcbor_roles());
+        assert!(
+            qcbor_issue(&manifest, &words),
+            "{signature}: {:?}",
+            issues_of(&manifest)
+        );
+    }
+
+    // The input is reached once: not by a wrap beside an in_buf or an in_len, and
+    // not by two wraps.
+    let signature = "void (QCBORDecodeContext *, UsefulBufC, const uint8_t *, size_t)";
+    let manifest = with_qcbor(
+        signature,
+        vec![
+            out_role(Role::State, Some("ctx")),
+            wrap_role(Some("ptr"), Some("len")),
+            role(Role::InBuf),
+            role(Role::InLen),
+        ],
+    );
+    assert!(
+        qcbor_issue(&manifest, &["wrap", "in_buf"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    let signature = "void (QCBORDecodeContext *, UsefulBufC, UsefulBufC)";
+    let manifest = with_qcbor(
+        signature,
+        vec![
+            out_role(Role::State, Some("ctx")),
+            wrap_role(Some("ptr"), Some("len")),
+            wrap_role(Some("ptr"), Some("len")),
+        ],
+    );
+    assert!(
+        qcbor_issue(&manifest, &["wrap", "at most one"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+
+    // A wrapped entry needs accepted_wrapped (Phase 2's rule, D-28) and a wrap is
+    // only valid on one that has it.
+    let mut manifest = with_qcbor(QCBOR_SIGNATURE, qcbor_roles());
+    let entry = manifest
+        .target
+        .get_mut("qcbor")
+        .unwrap()
+        .entry
+        .iter_mut()
+        .find(|entry| entry.name == "QCBORDecode_Init")
+        .unwrap();
+    entry.accepted_wrapped = false;
+    assert!(
+        qcbor_issue(&manifest, &["accepted_wrapped"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    let entry = manifest
+        .target
+        .get_mut("qcbor")
+        .unwrap()
+        .entry
+        .iter_mut()
+        .find(|entry| entry.name == "QCBORDecode_Init")
+        .unwrap();
+    entry.form = EntryForm::Direct;
+    assert!(
+        qcbor_issue(&manifest, &["wrap", "accepted_wrapped"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+
+    // The role parses from TOML with its two members.
+    let text = "role = \"wrap\"\nptr_field = \"ptr\"\nlen_field = \"len\"\n";
+    let parsed: ArgRole = toml::from_str(text).unwrap();
+    assert_eq!(parsed, wrap_role(Some("ptr"), Some("len")));
+}
+
+#[test]
+fn eqv_03_roles_state_count_is_bounded() {
+    // D-12, T-03-27: a `state` may be an array of the pointee type, 1 to 64 of them.
+    let with_count = |count: Option<u32>| {
+        let mut roles = http_roles();
+        roles[0].count = count;
+        with_http(roles, http_setup(), Vec::new())
+    };
+    for good in [None, Some(1), Some(3), Some(64)] {
+        with_count(good).validate().unwrap();
+    }
+    for bad in [0u32, 65, 1000] {
+        let manifest = with_count(Some(bad));
+        assert!(
+            http_issue(&manifest, &["count", &bad.to_string()]),
+            "{bad}: {:?}",
+            issues_of(&manifest)
+        );
+    }
+
+    // A count belongs to a state.
+    let mut roles = http_roles();
+    roles[2].count = Some(3);
+    let manifest = with_http(roles, http_setup(), Vec::new());
+    assert!(
+        http_issue(&manifest, &["count", "only allowed on state"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+
+    // It parses from TOML.
+    let parsed: ArgRole =
+        toml::from_str("role = \"state\"\nname = \"states\"\ncount = 3\n").unwrap();
+    assert_eq!(parsed.count, Some(3));
+    assert_eq!(MAX_OBJECT_COUNT, 64);
+}
+
+/// The roles of tinycbor `cbor_value_validate`: the iterator and the flags. The
+/// signature has no input buffer, so the input is reached by a setup step.
+fn tinycbor_roles() -> Vec<ArgRole> {
+    vec![
+        out_role(Role::State, Some("it")),
+        scalar("flags", Some(0), &[1_048_320]),
+    ]
+}
+
+fn with_tinycbor(roles: Vec<ArgRole>, setup: Vec<SetupStep>, locals: Vec<LocalObject>) -> Manifest {
+    let mut manifest = committed();
+    let entry = manifest
+        .target
+        .get_mut("tinycbor")
+        .unwrap()
+        .entry
+        .iter_mut()
+        .find(|entry| entry.name == "cbor_value_validate")
+        .unwrap();
+    entry.arg = roles;
+    entry.setup = setup;
+    entry.local = locals;
+    manifest
+}
+
+fn tinycbor_issue(manifest: &Manifest, words: &[&str]) -> bool {
+    issues_of(manifest).iter().any(|issue| {
+        issue.contains("cbor_value_validate") && words.iter().all(|w| issue.contains(w))
+    })
+}
+
+#[test]
+fn eqv_03_roles_input_must_be_reached() {
+    // D-12: an entry reaches the input through an in_buf, a wrap, or a setup
+    // argument or value that names it. cbor_value_validate has no buffer parameter;
+    // its setup step hands `$in` and `$len` to cbor_parser_init.
+    let parser_init = || {
+        call_step(
+            "cbor_parser_init",
+            &["$in", "$len", "0", "&parser", "&it"],
+            Some("0"),
+        )
+    };
+    with_tinycbor(
+        tinycbor_roles(),
+        vec![parser_init()],
+        vec![local("parser", "CborParser", None)],
+    )
+    .validate()
+    .unwrap();
+
+    // Neither a role nor a step reaches it.
+    let manifest = with_tinycbor(
+        tinycbor_roles(),
+        Vec::new(),
+        vec![local("parser", "CborParser", None)],
+    );
+    assert!(
+        tinycbor_issue(&manifest, &["input", "in_buf", "wrap", "$in"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    // A step that never names the input does not reach it either.
+    let manifest = with_tinycbor(
+        tinycbor_roles(),
+        vec![call_step(
+            "cbor_parser_init",
+            &["&it", "0", "0", "&parser", "&it"],
+            Some("0"),
+        )],
+        vec![local("parser", "CborParser", None)],
+    );
+    assert!(
+        tinycbor_issue(&manifest, &["input"]),
+        "{:?}",
+        issues_of(&manifest)
+    );
+    // A `set` value of the input does reach it.
+    let manifest = with_tinycbor(
+        tinycbor_roles(),
+        vec![
+            set_step("holder.data", Some("$in")),
+            set_step("holder.size", Some("$len")),
+        ],
+        vec![local("holder", "CborParser", None)],
+    );
+    manifest.validate().unwrap();
+    // The existing pairs still reach it: the committed entries with an in_buf and
+    // an in_len validate (the whole manifest does).
+    committed().validate().unwrap();
 }
