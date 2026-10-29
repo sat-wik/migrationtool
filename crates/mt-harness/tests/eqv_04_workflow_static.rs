@@ -2,6 +2,11 @@
 //! EQV-04: static checks of the `run_vectors` helper and the self-test step of
 //! `.github/workflows/testbed.yml`. They read the repository file and run under
 //! plain `cargo test`, with no Docker and no network.
+//!
+//! The Phase 3 steps live in their own job, `vectors` (CONTEXT D-32), so that
+//! they have an annotation budget of their own: the `testbed` job is at GitHub's
+//! 50 annotations. Every check of a vectors step or helper reads the text of that
+//! job; the `testbed` job keeps the eight Phase 2 steps unchanged.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -69,6 +74,39 @@ fn step_text(text: &str, name: &str) -> String {
         .join("\n")
 }
 
+/// The text of the job `name` of `jobs:`: from its `  name:` line to the next
+/// job (the next key at two spaces of indentation).
+fn job_text(text: &str, name: &str) -> String {
+    let header = format!("  {name}:");
+    let mut lines = text.lines().skip_while(|line| *line != header);
+    assert!(
+        lines.next().is_some(),
+        "{WORKFLOW} has no job {name:?} under jobs:"
+    );
+    let mut body = vec![header.clone()];
+    for line in lines {
+        let is_key = line.starts_with("  ")
+            && !line.starts_with("   ")
+            && !line.trim_start().starts_with('#')
+            && line.trim_end().ends_with(':');
+        if is_key {
+            break;
+        }
+        body.push(line.to_owned());
+    }
+    body.join("\n")
+}
+
+/// The text of the `vectors` job (CONTEXT D-32).
+fn vectors_job() -> String {
+    job_text(&workflow(), "vectors")
+}
+
+/// The text of the `testbed` job.
+fn testbed_job() -> String {
+    job_text(&workflow(), "testbed")
+}
+
 /// The code lines (no comment lines) of a text.
 fn code_lines(text: &str) -> Vec<String> {
     text.lines()
@@ -93,7 +131,7 @@ fn volume_mounts(body: &str) -> Vec<String> {
 
 #[test]
 fn eqv_04_workflow_static_run_vectors_is_offline_and_least_privilege() {
-    let text = workflow();
+    let text = vectors_job();
     let body = function_body(&text, "run_vectors");
     for needle in [
         "--network none",
@@ -151,7 +189,7 @@ fn eqv_04_workflow_static_run_vectors_is_offline_and_least_privilege() {
 
 #[test]
 fn eqv_04_workflow_static_selftest_step_publishes_its_notices() {
-    let text = workflow();
+    let text = vectors_job();
     let step = step_text(&text, SELFTEST_STEP);
     let code = code_lines(&step).join("\n");
     assert!(
@@ -178,7 +216,8 @@ fn eqv_04_workflow_static_selftest_step_publishes_its_notices() {
 
 #[test]
 fn eqv_04_workflow_static_vectors_steps_never_publish_testbed_titles() {
-    let text = workflow();
+    let whole = workflow();
+    let text = vectors_job();
 
     // finish_vectors publishes `vectors-` titles only.
     let finish = function_body(&text, "finish_vectors");
@@ -199,9 +238,20 @@ fn eqv_04_workflow_static_vectors_steps_never_publish_testbed_titles() {
         "the self-test step publishes a testbed- title:\n{step}"
     );
 
+    // The vectors job publishes no testbed- title at all (D-32): its notices are
+    // read from its own job id and are never mixed with the Phase 2 baseline.
+    let in_job: Vec<String> = code_lines(&text)
+        .into_iter()
+        .filter(|line| line.contains("annotate") && line.contains("testbed-"))
+        .collect();
+    assert!(
+        in_job.is_empty(),
+        "the vectors job publishes a testbed- title: {in_job:?}"
+    );
+
     // Every literal testbed- title in the workflow is one of the eight of Phase 2.
     let pattern = Regex::new(r#"annotate\s+\w+\s+"?(testbed-[a-z]+)"#).unwrap();
-    let titles: BTreeSet<String> = code_lines(&text)
+    let titles: BTreeSet<String> = code_lines(&whole)
         .iter()
         .flat_map(|line| {
             pattern
@@ -218,7 +268,7 @@ fn eqv_04_workflow_static_vectors_steps_never_publish_testbed_titles() {
     }
 
     // The header comment lists the new titles.
-    let header: String = text
+    let header: String = whole
         .lines()
         .take_while(|line| line.starts_with('#'))
         .collect::<Vec<_>>()
@@ -253,9 +303,12 @@ const HELPER_HARDENING: [&str; 12] = [
 
 #[test]
 fn eqv_02_workflow_static_tractor_fetch_is_the_only_new_networked_step() {
-    let text = workflow();
+    let whole = workflow();
+    let text = vectors_job();
     let fetch = function_body(&text, "fetch_tractor");
-    let networked = function_body(&text, "run_networked");
+    // run_networked is the helper of the testbed job; fetch_tractor must mount the
+    // same things (D-32: the vectors job carries no run_networked of its own).
+    let networked = function_body(&whole, "run_networked");
 
     // The same hardening as run_networked, with the network left on.
     for needle in HELPER_HARDENING {
@@ -297,7 +350,7 @@ fn eqv_02_workflow_static_tractor_fetch_is_the_only_new_networked_step() {
 
     // It is called in exactly one step, the TRACTOR step.
     let calls = Regex::new(r"\bfetch_tractor\s+\S").unwrap();
-    let call_lines: Vec<String> = code_lines(&text)
+    let call_lines: Vec<String> = code_lines(&whole)
         .into_iter()
         .filter(|line| calls.is_match(line))
         .collect();
@@ -305,6 +358,10 @@ fn eqv_02_workflow_static_tractor_fetch_is_the_only_new_networked_step() {
         call_lines.len(),
         1,
         "fetch_tractor is called on: {call_lines:?}"
+    );
+    assert!(
+        !testbed_job().contains("fetch_tractor"),
+        "the testbed job must not hold the TRACTOR fetch helper (D-32)"
     );
     let step = code_lines(&step_text(&text, TRACTOR_STEP)).join("\n");
     assert!(
@@ -349,7 +406,7 @@ fn eqv_02_workflow_static_tractor_fetch_is_the_only_new_networked_step() {
     );
 
     // The header comment lists the title and the amended network policy.
-    let header: String = text
+    let header: String = whole
         .lines()
         .take_while(|line| line.starts_with('#'))
         .collect::<Vec<_>>()
@@ -367,11 +424,12 @@ fn eqv_02_workflow_static_tractor_fetch_is_the_only_new_networked_step() {
 const BUILD_STEP: &str = "Build the reference drivers";
 const RUN_STEP: &str = "Run the reference vectors twice";
 const DETERMINISM_STEP: &str = "Run the vectors again and compare (vectors determinism)";
-const REPLAY_STEP: &str = "Replay the captured builds";
+const RESTORE_STEP: &str = "Unpack the captures of the testbed job";
 
 #[test]
 fn eqv_04_workflow_static_run_guest_cannot_write_the_evidence() {
-    let text = workflow();
+    let whole = workflow();
+    let text = vectors_job();
     let body = function_body(&text, "run_guest");
     let vectors = function_body(&text, "run_vectors");
 
@@ -438,18 +496,19 @@ fn eqv_04_workflow_static_run_guest_cannot_write_the_evidence() {
     );
     // The comment above it says what it is for.
     assert!(
-        text.contains("QEMU user mode passes guest syscalls"),
+        whole.contains("QEMU user mode passes guest syscalls"),
         "the run_guest comment must state the syscall boundary"
     );
 }
 
 #[test]
 fn eqv_04_workflow_static_vectors_steps_run_in_order() {
-    let text = workflow();
-    let replay_at = text
-        .find(&format!("- name: {REPLAY_STEP}"))
-        .expect("the replay step exists");
-    let mut last = replay_at;
+    let whole = workflow();
+    let text = vectors_job();
+    let restore_at = text
+        .find(&format!("- name: {RESTORE_STEP}"))
+        .expect("the step that unpacks the captures exists");
+    let mut last = restore_at;
     for name in [BUILD_STEP, RUN_STEP, DETERMINISM_STEP] {
         let at = text
             .find(&format!("- name: {name}"))
@@ -499,8 +558,8 @@ fn eqv_04_workflow_static_vectors_steps_run_in_order() {
             .find(|line| line.trim_start().starts_with("if:"))
             .unwrap_or_else(|| panic!("{name:?} has no `if:`:\n{step}"));
         assert!(
-            condition.contains("steps.replay.outcome == 'success'"),
-            "{name:?} must require the replay step: {condition}"
+            condition.contains("steps.restore.outcome == 'success'"),
+            "{name:?} must require the step that unpacks the captures: {condition}"
         );
         assert!(!step.contains("continue-on-error"), "{name:?}: {step}");
         assert!(
@@ -519,7 +578,7 @@ fn eqv_04_workflow_static_vectors_steps_run_in_order() {
         "the output directories are created for the container user"
     );
 
-    let header: String = text
+    let header: String = whole
         .lines()
         .take_while(|line| line.starts_with('#'))
         .collect::<Vec<_>>()
@@ -585,7 +644,8 @@ const LAYOUT_STEP: &str = "Publish the state layouts";
 
 #[test]
 fn eqv_04_workflow_static_layout_step_follows_the_build() {
-    let text = workflow();
+    let whole = workflow();
+    let text = vectors_job();
     let build_at = text
         .find(&format!("- name: {BUILD_STEP}"))
         .expect("the build step exists");
@@ -633,7 +693,7 @@ fn eqv_04_workflow_static_layout_step_follows_the_build() {
         "the layouts read build.json only and run nothing from upstream"
     );
 
-    let header: String = text
+    let header: String = whole
         .lines()
         .take_while(|line| line.starts_with('#'))
         .collect::<Vec<_>>()
@@ -642,4 +702,304 @@ fn eqv_04_workflow_static_layout_step_follows_the_build() {
         header.contains("vectors-layout"),
         "the header comment does not list vectors-layout"
     );
+}
+
+/// The eight steps of Phase 2 in the `testbed` job, in order, with the sha256 of
+/// the text of each as `step_text` returns it (CONTEXT D-32: they stay byte-identical
+/// when the vectors steps move to their own job). The hashes were taken from the
+/// workflow at commit ef0bdbd, before the move. Changing one of these steps means
+/// changing this table on purpose, in the commit that does it.
+const PHASE_2_STEPS: [(&str, &str); 8] = [
+    (
+        "Pull the image by digest",
+        "f9ef0739bc2238675b2d9d3b85a6af4200d7dda9143aa099a5bdf2efeea3ed7a",
+    ),
+    (
+        "Validate the manifest",
+        "96402941942a26e376c9ee2e61fa5e6303cbcf80ac8c159bcc256cbf77a51b73",
+    ),
+    (
+        "Fetch the sources",
+        "a7fa459ad587207dc1ec3f278c04b30bf0c741b884bcb28457a7a3d9937e033b",
+    ),
+    (
+        "Check the committed seeds",
+        "d2df256006bd16ba3c6150c8eba8d8af28ce287a5d82e994797122cff88af871",
+    ),
+    (
+        "Build each pair in its own container",
+        "245334faf77b9f10f6b1e2774850eda6762c2d3b809d8088cc10b7cdbab17b9f",
+    ),
+    (
+        "Record the captures",
+        "772d1e6c40e99cb115858338f1c6f026319665990beb17326e502f6d40546b21",
+    ),
+    (
+        "Replay the captured builds",
+        "90e3a5b5fd44aaa12f6a1abe52c99aba4a8d5cf65d1dc0c3d5cd2be84545fd7f",
+    ),
+    (
+        "Capture again and compare the reports (determinism)",
+        "78d360c5b0e13fbf1ca62c1ad88717fdfdb225a285d2825bfdb4ef278b00af84",
+    ),
+];
+
+#[test]
+fn eqv_04_workflow_static_phase_2_steps_are_unchanged() {
+    let testbed = testbed_job();
+    let mut seen = Vec::new();
+    for (name, _) in PHASE_2_STEPS {
+        seen.push((
+            name,
+            mt_vectors::sha256_hex(step_text(&testbed, name).as_bytes()),
+        ));
+    }
+    let expected: Vec<(&str, String)> = PHASE_2_STEPS
+        .iter()
+        .map(|(name, hash)| (*name, (*hash).to_owned()))
+        .collect();
+    assert_eq!(seen, expected, "a Phase 2 step of the testbed job changed");
+
+    // They stay in this order, and the job publishes exactly the eight titles.
+    let positions: Vec<usize> = PHASE_2_STEPS
+        .iter()
+        .map(|(name, _)| testbed.find(&format!("- name: {name}")).unwrap())
+        .collect();
+    assert!(
+        positions.windows(2).all(|pair| pair[0] < pair[1]),
+        "{positions:?}"
+    );
+    let pattern = Regex::new(r#"annotate\s+\w+\s+"?(testbed-[a-z]+)"#).unwrap();
+    let finish = Regex::new(r"\bfinish_step\s+([a-z]+)\s").unwrap();
+    let titles: BTreeSet<String> = code_lines(&testbed)
+        .iter()
+        .flat_map(|line| {
+            let mut found: Vec<String> = pattern
+                .captures_iter(line)
+                .map(|c| c[1].to_owned())
+                .collect();
+            found.extend(
+                finish
+                    .captures_iter(line)
+                    .map(|c| format!("testbed-{}", &c[1])),
+            );
+            found
+        })
+        .collect();
+    assert_eq!(
+        titles.into_iter().collect::<Vec<_>>(),
+        {
+            let mut all: Vec<String> = PHASE_2_TITLES.iter().map(|t| (*t).to_owned()).collect();
+            all.sort();
+            all
+        },
+        "the testbed job publishes the eight Phase 2 titles and no other"
+    );
+}
+
+#[test]
+fn eqv_04_workflow_static_vectors_job_is_separate_and_equally_hardened() {
+    let whole = workflow();
+    let testbed = testbed_job();
+    let vectors = vectors_job();
+
+    // The vectors job runs after the bundle and the testbed job, on the same runner
+    // image, and runs even when the testbed job failed (it has its own evidence).
+    let key_lines = |text: &str, key: &str| -> Vec<String> {
+        code_lines(text)
+            .into_iter()
+            .filter(|line| line.starts_with(&format!("    {key}:")))
+            .collect()
+    };
+    let needs = key_lines(&vectors, "needs");
+    assert_eq!(needs.len(), 1, "{needs:?}");
+    assert!(
+        needs[0].contains("mt") && needs[0].contains("testbed"),
+        "the vectors job needs the mt bundle and the testbed job: {needs:?}"
+    );
+    assert_eq!(
+        key_lines(&vectors, "runs-on"),
+        key_lines(&testbed, "runs-on"),
+        "the two jobs run on the same runner image"
+    );
+    assert_eq!(key_lines(&vectors, "timeout-minutes").len(), 1);
+    let condition = key_lines(&vectors, "if");
+    assert_eq!(condition.len(), 1, "{condition:?}");
+    assert!(
+        condition[0].contains("!cancelled()")
+            && condition[0].contains("needs.mt.result == 'success'"),
+        "the vectors job runs when the testbed job failed, never without the bundle: {condition:?}"
+    );
+
+    // None of the Phase 3 steps or helpers is left in the testbed job, and none of
+    // the Phase 2 helpers that run upstream code is in the vectors job.
+    for needle in [
+        "run_vectors",
+        "run_guest",
+        "fetch_tractor",
+        "finish_vectors",
+        "vectors-",
+    ] {
+        let hits: Vec<String> = code_lines(&testbed)
+            .into_iter()
+            .filter(|line| line.contains(needle) && !line.contains("vectors-input"))
+            .collect();
+        assert!(
+            hits.is_empty(),
+            "the testbed job still holds {needle}: {hits:?}"
+        );
+    }
+    for needle in ["run_networked", "run_offline", "run_build", "finish_step"] {
+        let hits: Vec<String> = code_lines(&vectors)
+            .into_iter()
+            .filter(|line| line.contains(needle))
+            .collect();
+        assert!(
+            hits.is_empty(),
+            "the vectors job holds the Phase 2 helper {needle}: {hits:?}"
+        );
+    }
+
+    // The same image, only by the digest of container/README.md, pulled in the job.
+    let pull = step_text(&vectors, "Pull the image by digest");
+    assert!(pull.contains("container/README.md"), "{pull}");
+    assert!(pull.contains("docker pull"), "{pull}");
+    assert!(pull.contains("annotate notice vectors-image"), "{pull}");
+    assert!(
+        !pull.contains("testbed-"),
+        "the vectors job publishes no testbed- title"
+    );
+    assert!(
+        !Regex::new(r"sha256:[0-9a-f]{64}")
+            .unwrap()
+            .is_match(&vectors),
+        "the vectors job must not hold a digest of its own"
+    );
+
+    // Every container of the job is started by one of its helpers, none by a step,
+    // and the helpers keep the hardening of run_vectors.
+    let outside = {
+        let mut kept = Vec::new();
+        let mut skipping = false;
+        for line in vectors.lines() {
+            if ["image_tool", "run_vectors", "run_guest", "fetch_tractor"]
+                .iter()
+                .any(|name| line.trim() == format!("{name}() {{"))
+            {
+                skipping = true;
+            }
+            if !skipping {
+                kept.push(line);
+            } else if line.trim() == "}" {
+                skipping = false;
+            }
+        }
+        kept.join("\n")
+    };
+    assert!(
+        !code_lines(&outside)
+            .iter()
+            .any(|line| line.contains("docker run")),
+        "a step of the vectors job starts a container outside a helper"
+    );
+    for name in ["image_tool", "run_vectors", "run_guest"] {
+        let body = function_body(&vectors, name);
+        assert!(body.contains("--network none"), "{name} needs no network");
+        for needle in HELPER_HARDENING
+            .iter()
+            .filter(|n| !n.starts_with("/usr/local"))
+        {
+            assert!(body.contains(needle), "{name} lacks {needle}");
+        }
+    }
+    assert!(!vectors.contains("docker.sock") && !vectors.contains("secrets."));
+    assert!(
+        whole.contains("D-32"),
+        "the header comment records the decision D-32"
+    );
+
+    // Every checkout of the vectors job drops the token.
+    let lines: Vec<&str> = vectors.lines().collect();
+    let checkout = lines
+        .iter()
+        .position(|line| line.contains("uses: actions/checkout@"))
+        .expect("the vectors job checks the repository out");
+    assert!(
+        lines[checkout..lines.len().min(checkout + 4)]
+            .join("\n")
+            .contains("persist-credentials: false")
+    );
+}
+
+#[test]
+fn eqv_04_workflow_static_captures_travel_by_artifact() {
+    // The vectors steps read the verified captures, the builds and the replay
+    // reports of the testbed job. They travel as two tar files made by an image
+    // tool (the files belong to the container user), uploaded once and downloaded
+    // in the vectors job; no step of either job fetches or rebuilds them.
+    let testbed = testbed_job();
+    let vectors = vectors_job();
+
+    let archive = step_text(&testbed, "Archive the captures for the vectors job");
+    let code = code_lines(&archive).join("\n");
+    assert!(code.contains("image_tool"), "{code}");
+    assert!(code.contains("tar "), "{code}");
+    for member in ["capture", "run"] {
+        assert!(
+            Regex::new(&format!(r"-cf /out/work\.tar\b.*\b{member}\b"))
+                .unwrap()
+                .is_match(&code),
+            "the work archive lacks {member}:\n{code}"
+        );
+    }
+    assert!(code.contains("/out/replay.tar"), "{code}");
+    let condition = code
+        .lines()
+        .find(|line| line.trim_start().starts_with("if:"))
+        .unwrap_or_else(|| panic!("the step has no `if:`:\n{code}"));
+    assert!(
+        condition.contains("steps.replay.outcome == 'success'"),
+        "the archive needs the replay step: {condition}"
+    );
+    assert!(!code.contains("testbed-"), "{code}");
+
+    let upload = testbed
+        .split("- uses: actions/upload-artifact@")
+        .filter(|chunk| chunk.contains("name: vectors-input"))
+        .count();
+    assert_eq!(upload, 1, "the testbed job uploads vectors-input once");
+    let upload_at = testbed.find("name: vectors-input").unwrap();
+    assert!(
+        upload_at
+            > testbed
+                .find("- name: Archive the captures for the vectors job")
+                .unwrap(),
+        "the upload follows the archive"
+    );
+
+    let download = step_text(&vectors, "Download the captures of the testbed job");
+    let download_code = code_lines(&download).join("\n");
+    assert!(
+        download_code.contains("uses: actions/download-artifact@"),
+        "{download_code}"
+    );
+    assert!(
+        download_code.contains("name: vectors-input"),
+        "{download_code}"
+    );
+    assert!(download_code.contains("id: handoff"), "{download_code}");
+    let restore = step_text(&vectors, RESTORE_STEP);
+    let restore_code = code_lines(&restore).join("\n");
+    assert!(restore_code.contains("id: restore"), "{restore_code}");
+    assert!(
+        restore_code.contains("steps.handoff.outcome == 'success'"),
+        "{restore_code}"
+    );
+    assert!(restore_code.contains("tar -xf"), "{restore_code}");
+    assert!(
+        !restore_code.contains("tar -xPf") && !restore_code.contains("--absolute-names"),
+        "the archives are unpacked with relative names only"
+    );
+    assert!(restore_code.contains("chmod -R a+rX"), "{restore_code}");
+    assert!(!restore_code.contains("docker run"), "{restore_code}");
 }

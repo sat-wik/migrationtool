@@ -275,10 +275,14 @@ fn build_02_workflow_is_least_privilege_and_scheduled() {
 
     // Every job has a timeout.
     let jobs = blocks_under(&text, "jobs:", 2);
-    assert!(
-        jobs.len() >= 2,
-        "expected the mt and testbed jobs: {jobs:?}"
-    );
+    // CONTEXT D-32: the Phase 3 vectors steps are a job of their own.
+    let job_names: Vec<&str> = jobs.iter().map(|(name, _)| name.as_str()).collect();
+    for wanted in ["mt:", "testbed:", "vectors:"] {
+        assert!(
+            job_names.contains(&wanted),
+            "expected the mt, testbed and vectors jobs: {job_names:?}"
+        );
+    }
     for (name, body) in &jobs {
         assert!(
             body.iter()
