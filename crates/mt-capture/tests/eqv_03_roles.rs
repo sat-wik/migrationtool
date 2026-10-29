@@ -40,6 +40,7 @@ fn role(role: Role) -> ArgRole {
         count: None,
         ptr_field: None,
         len_field: None,
+        local: None,
     }
 }
 
@@ -260,6 +261,7 @@ fn scalar(name: &str, default: Option<i64>, sweep: &[i64]) -> ArgRole {
         count: None,
         ptr_field: None,
         len_field: None,
+        local: None,
     }
 }
 
@@ -511,6 +513,7 @@ fn state(name: Option<&str>) -> ArgRole {
         count: None,
         ptr_field: None,
         len_field: None,
+        local: None,
     }
 }
 
@@ -739,6 +742,7 @@ fn inout_len(name: Option<&str>, default: Option<i64>, sweep: &[i64], of: Option
         count: None,
         ptr_field: None,
         len_field: None,
+        local: None,
     }
 }
 
@@ -893,6 +897,7 @@ fn str_role(name: Option<&str>, values: &[&str]) -> ArgRole {
         count: None,
         ptr_field: None,
         len_field: None,
+        local: None,
     }
 }
 
@@ -2020,4 +2025,285 @@ fn eqv_03_roles_input_must_be_reached() {
     // The existing pairs still reach it: the committed entries with an in_buf and
     // an in_len validate (the whole manifest does).
     committed().validate().unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// Plan 03-08: the small additive forms of the bounded attempts (D-13, D-24). The
+// grammar stays closed: `null`, `local`, an `inout_len` initialised from the input
+// length, the setup argument `sizeof(<local>)` and the set value `$in[<n>]`.
+// ---------------------------------------------------------------------------
+
+fn local_role(local: Option<&str>) -> ArgRole {
+    ArgRole {
+        local: local.map(str::to_owned),
+        ..role(Role::Local)
+    }
+}
+
+/// The roles of httpparser `http_parser_execute` with `settings` in the place of
+/// its second parameter.
+fn http_roles_with(settings: ArgRole) -> Vec<ArgRole> {
+    vec![
+        out_role(Role::State, Some("parser")),
+        settings,
+        role(Role::InBuf),
+        role(Role::InLen),
+    ]
+}
+
+const LZ4F_SIGNATURE: &str = "size_t (LZ4F_dctx *, LZ4F_frameInfo_t *, const void *, size_t *)";
+
+/// The committed manifest with lz4 `LZ4F_getFrameInfo` given `roles`, `setup` and
+/// `locals`; the declaration is inline, not the committed one.
+fn with_lz4f(roles: Vec<ArgRole>, setup: Vec<SetupStep>, locals: Vec<LocalObject>) -> Manifest {
+    let mut manifest = committed();
+    let entry = manifest
+        .target
+        .get_mut("lz4")
+        .unwrap()
+        .entry
+        .iter_mut()
+        .find(|entry| entry.name == "LZ4F_getFrameInfo")
+        .unwrap();
+    assert_eq!(entry.signature, LZ4F_SIGNATURE);
+    entry.arg = roles;
+    entry.setup = setup;
+    entry.local = locals;
+    manifest
+}
+
+fn lz4f_issue(manifest: &Manifest, words: &[&str]) -> bool {
+    issues_of(manifest)
+        .iter()
+        .any(|issue| issue.contains("LZ4F_getFrameInfo") && words.iter().all(|w| issue.contains(w)))
+}
+
+fn lz4f_roles(length: ArgRole) -> Vec<ArgRole> {
+    vec![
+        local_role(Some("dctx")),
+        out_role(Role::State, Some("info")),
+        role(Role::InBuf),
+        length,
+    ]
+}
+
+fn lz4f_locals() -> Vec<LocalObject> {
+    vec![local("dctx", "LZ4F_dctx *", None)]
+}
+
+fn lz4f_setup() -> Vec<SetupStep> {
+    vec![call_step(
+        "LZ4F_createDecompressionContext",
+        &["&dctx", "100"],
+        Some("0"),
+    )]
+}
+
+#[test]
+fn eqv_03_roles_tier_c_forms() {
+    // null: a pointer parameter passed as NULL, nothing recorded.
+    assert_eq!(Role::Null.word(), "null");
+    assert!(Role::Null.is_pointer_role());
+    with_http(http_roles_with(role(Role::Null)), http_setup(), vec![])
+        .validate()
+        .unwrap();
+    let mut roles = http_roles_with(role(Role::State));
+    roles[1] = out_role(Role::State, Some("settings"));
+    roles[3] = role(Role::Null);
+    assert!(
+        http_issue(
+            &with_http(roles, http_setup(), vec![]),
+            &["null", "needs a pointer parameter"]
+        ),
+        "null on a size_t parameter"
+    );
+    let mut named = role(Role::Null);
+    named.name = Some("settings".to_owned());
+    assert!(http_issue(
+        &with_http(http_roles_with(named), http_setup(), vec![]),
+        &["null", "takes no name"]
+    ));
+
+    // local: the value of a declared pointer local; the key names it.
+    assert_eq!(Role::Local.word(), "local");
+    assert!(Role::Local.is_pointer_role());
+    let settings_local = local("cfg", "const http_parser_settings *", None);
+    with_http(
+        http_roles_with(local_role(Some("cfg"))),
+        http_setup(),
+        vec![settings_local.clone()],
+    )
+    .validate()
+    .unwrap();
+    assert!(
+        http_issue(
+            &with_http(http_roles_with(local_role(None)), http_setup(), vec![]),
+            &["local", "needs the key local"]
+        ),
+        "a local role without its key"
+    );
+    assert!(
+        http_issue(
+            &with_http(
+                http_roles_with(local_role(Some("nosuch"))),
+                http_setup(),
+                vec![settings_local]
+            ),
+            &["nosuch", "names no pointer local"]
+        ),
+        "a local role naming no local"
+    );
+    let plain = local("cfg", "http_parser_settings", None);
+    assert!(
+        http_issue(
+            &with_http(
+                http_roles_with(local_role(Some("cfg"))),
+                http_setup(),
+                vec![plain]
+            ),
+            &["cfg", "names no pointer local"]
+        ),
+        "a local role naming an object that is not a pointer"
+    );
+    let mut stray = out_role(Role::State, Some("settings"));
+    stray.local = Some("cfg".to_owned());
+    assert!(
+        http_issue(
+            &with_http(http_roles_with(stray), http_setup(), vec![]),
+            &["local", "only allowed on local"]
+        ),
+        "the key local on another role"
+    );
+
+    // inout_len of = "in": the initial value is the input length, so there is
+    // no default, no sweep and no combination dimension; it is the in_buf's length.
+    let counted = inout_len(Some("srcSize"), None, &[], Some("in"));
+    let manifest = with_lz4f(lz4f_roles(counted.clone()), lz4f_setup(), lz4f_locals());
+    manifest.validate().unwrap();
+    for (default, sweep, words) in [
+        (Some(4), vec![], "takes no default"),
+        (None, vec![8], "takes no default"),
+    ] {
+        let with_value = inout_len(Some("srcSize"), default, &sweep, Some("in"));
+        assert!(
+            lz4f_issue(
+                &with_lz4f(lz4f_roles(with_value), lz4f_setup(), lz4f_locals()),
+                &["inout_len", words]
+            ),
+            "{default:?} {sweep:?}"
+        );
+    }
+    let mut beside = lz4f_roles(counted.clone());
+    beside[2] = role(Role::InBuf);
+    beside.push(role(Role::InLen));
+    // An in_len beside it has no parameter, so only the count of tables is wrong.
+    assert!(lz4f_issue(
+        &with_lz4f(beside, lz4f_setup(), lz4f_locals()),
+        &["arg tables"]
+    ));
+    let mut no_input = lz4f_roles(counted);
+    no_input[2] = role(Role::Null);
+    assert!(
+        lz4f_issue(
+            &with_lz4f(no_input, lz4f_setup(), lz4f_locals()),
+            &["inout_len", "needs an in_buf"]
+        ),
+        "of = in without an in_buf"
+    );
+    // A sweep of 16 values on another role still counts alone: the input-length
+    // inout_len is not a dimension.
+    let mut roles = lz4f_roles(inout_len(Some("srcSize"), None, &[], Some("in")));
+    roles[1] = out_role(Role::State, Some("info"));
+    let toml = toml::to_string(&with_lz4f(roles, lz4f_setup(), lz4f_locals())).unwrap();
+    assert!(toml.contains("of = \"in\""), "{toml}");
+
+    // sizeof(<local>) as a setup argument.
+    assert_eq!(
+        SetupArg::parse("sizeof(strm)"),
+        Some(SetupArg::SizeOf("strm".to_owned()))
+    );
+    for bad in [
+        "sizeof()",
+        "sizeof(a b)",
+        "sizeof(1x)",
+        "sizeof(x",
+        "sizeof x",
+        "sizeof(x))",
+    ] {
+        assert_ne!(
+            SetupArg::parse(bad).map(|arg| matches!(arg, SetupArg::SizeOf(_))),
+            Some(true),
+            "{bad:?} is not a sizeof of the grammar"
+        );
+    }
+    let scratch = local("scratch", "http_parser", None);
+    with_http(
+        http_roles(),
+        vec![call_step(
+            "http_parser_init",
+            &["&parser", "sizeof(scratch)"],
+            Some("void"),
+        )],
+        vec![scratch.clone()],
+    )
+    .validate()
+    .unwrap();
+    for (arg, words) in [
+        ("sizeof(nosuch)", &["nosuch", "names no local"][..]),
+        ("sizeof(parser)", &["parser", "names no local"][..]),
+        ("sizeof(1x)", &["not in the closed grammar"][..]),
+    ] {
+        assert!(
+            http_issue(
+                &with_http(
+                    http_roles(),
+                    vec![call_step(
+                        "http_parser_init",
+                        &["&parser", arg],
+                        Some("void")
+                    )],
+                    vec![scratch.clone()],
+                ),
+                words
+            ),
+            "{arg:?}"
+        );
+    }
+
+    // $in[<n>] as a set value: the input byte at index n, 0 when the input is shorter.
+    assert_eq!(SetValue::parse("$in[3]"), Some(SetValue::InByte(3)));
+    assert_eq!(SetValue::parse("$in[0]"), Some(SetValue::InByte(0)));
+    for bad in [
+        "$in[x]", "$in[]", "$in[03]", "$in[-1]", "$in[3", "$in[3]x", "$in[ 3]",
+    ] {
+        assert_eq!(SetValue::parse(bad), None, "{bad:?}");
+    }
+    let set_roles = || {
+        vec![
+            out_role(Role::State, Some("parser")),
+            out_role(Role::State, Some("settings")),
+            role(Role::Null),
+            scalar("n", Some(0), &[]),
+        ]
+    };
+    let target = local("scratch", "http_parser", None);
+    // The input is reached by the byte alone: no in_buf and no in_len.
+    with_http(
+        set_roles(),
+        vec![set_step("scratch.type", Some("$in[3]"))],
+        vec![target.clone()],
+    )
+    .validate()
+    .unwrap();
+    assert!(
+        http_issue(
+            &with_http(
+                set_roles(),
+                vec![set_step("scratch.type", Some("$in[x]"))],
+                vec![target]
+            ),
+            &["value", "$in[<n>]"]
+        ),
+        "$in[x] is refused with the grammar named"
+    );
 }

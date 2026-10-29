@@ -58,6 +58,7 @@ fn arm_role(role: Role) -> ArgRole {
         count: None,
         ptr_field: None,
         len_field: None,
+        local: None,
     }
 }
 

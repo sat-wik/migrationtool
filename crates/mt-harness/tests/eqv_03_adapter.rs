@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use mt_capture::manifest::{ArgRole, Entry, Manifest, Role};
+use mt_capture::manifest::{ArgRole, Entry, LocalObject, Manifest, Role, SetupStep};
 use mt_harness::adapter::{Adapter, AdapterError, ReturnKind, combinations, driver_flags};
 
 fn repo_root() -> PathBuf {
@@ -49,7 +49,7 @@ fn eqv_03_adapter_maps_corejson_validate() {
         ["corejson/default/JSON_Validate", "17"]
     );
     assert_eq!(adapter.output_capacity(&combos[0]), 0);
-    assert!(adapter.scalar_words(&combos[0]).is_empty());
+    assert!(adapter.scalar_words(&combos[0], 17).is_empty());
     assert_eq!(adapter.max_input(), None);
 }
 
@@ -222,6 +222,7 @@ fn arg(role: Role) -> ArgRole {
         count: None,
         ptr_field: None,
         len_field: None,
+        local: None,
     }
 }
 
@@ -264,7 +265,7 @@ fn eqv_03_adapter_inout_len_argv_and_capacity() {
     assert_eq!(adapter.output_capacity(&combos[0]), 256);
     assert_eq!(adapter.output_capacity(&combos[2]), 4096);
     // The initial value reaches the driver as a request word.
-    assert_eq!(adapter.scalar_words(&combos[1]), [16]);
+    assert_eq!(adapter.scalar_words(&combos[1], 18), [16]);
     let named = adapter.scalars_by_name(&combos[2]);
     assert_eq!(named.get("destLen"), Some(&4096));
     let states = adapter.states();
@@ -360,4 +361,206 @@ fn eqv_03_adapter_str_and_out_roles() {
     );
     assert!(states.iter().all(|state| state.init_word.is_none()));
     assert_eq!(adapter.output_capacity(&combos[0]), 0);
+}
+
+// ---------------------------------------------------------------------------
+// Plan 03-08: the additive forms of the bounded attempts (D-13, D-24)
+// ---------------------------------------------------------------------------
+
+fn named(role: Role, name: &str) -> ArgRole {
+    let mut role = arg(role);
+    role.name = Some(name.to_owned());
+    role
+}
+
+fn scalar_arg(name: &str, default: i64, sweep: &[i64]) -> ArgRole {
+    let mut role = named(Role::Scalar, name);
+    role.default = Some(default);
+    role.sweep = sweep.to_vec();
+    role
+}
+
+fn local_object(name: &str, type_text: &str, count: Option<u32>) -> LocalObject {
+    LocalObject {
+        name: name.to_owned(),
+        type_text: type_text.to_owned(),
+        count,
+    }
+}
+
+fn setup_call(call: &str, args: &[&str], expect: &str) -> SetupStep {
+    SetupStep {
+        call: Some(call.to_owned()),
+        args: strings(args),
+        expect: Some(expect.to_owned()),
+        set: None,
+        value: None,
+    }
+}
+
+fn setup_set(path: &str, value: &str) -> SetupStep {
+    SetupStep {
+        call: None,
+        args: Vec::new(),
+        expect: None,
+        set: Some(path.to_owned()),
+        value: Some(value.to_owned()),
+    }
+}
+
+/// lz4's `LZ4F_getFrameInfo` with the roles plan 03-08 gives it, written inline: the
+/// context is the value of a pointer local made by a setup call, and the source size
+/// is a pointer-carried length initialised from the input.
+fn lz4f_entry() -> Entry {
+    let mut entry = entry_of("lz4", "LZ4F_getFrameInfo");
+    let mut dctx = arg(Role::Local);
+    dctx.local = Some("dctx".to_owned());
+    let mut size = named(Role::InoutLen, "srcSize");
+    size.of = Some("in".to_owned());
+    entry.arg = vec![dctx, named(Role::State, "info"), arg(Role::InBuf), size];
+    entry.local = vec![local_object("dctx", "LZ4F_dctx *", None)];
+    entry.setup = vec![setup_call(
+        "LZ4F_createDecompressionContext",
+        &["&dctx", "100"],
+        "0",
+    )];
+    entry
+}
+
+/// coreMQTT's `MQTT_DeserializePublish` with the roles plan 03-08 gives it: the
+/// packet information is a state filled by set steps from the input, the property
+/// builder is NULL.
+fn publish_entry() -> Entry {
+    let mut entry = entry_of("coremqtt", "MQTT_DeserializePublish");
+    entry.arg = vec![
+        named(Role::State, "packet"),
+        named(Role::OutScalar, "packetId"),
+        named(Role::State, "publishInfo"),
+        arg(Role::Null),
+        scalar_arg("maxPacketSize", 4096, &[8]),
+        scalar_arg("topicAliasMax", 0, &[10]),
+    ];
+    entry.setup = vec![
+        setup_set("packet.type", "$in[0]"),
+        setup_set("packet.pRemainingData", "$in+2"),
+        setup_set("packet.remainingLength", "$len-2"),
+    ];
+    entry
+}
+
+#[test]
+fn eqv_03_adapter_tier_c_forms_render() {
+    // Role::Null: the parameter is the literal NULL of its own type, nothing is
+    // recorded, and it is not in argv.
+    let adapter = Adapter::from_entry("coremqtt", "default", &publish_entry()).unwrap();
+    assert_eq!(
+        adapter.call_expression(),
+        "(int32_t)(MQTT_DeserializePublish((const MQTTPacketInfo_t *)mt_state(0), (uint16_t *)mt_state(1), (MQTTPublishInfo_t *)mt_state(2), (MQTTPropBuilder_t *)0, (uint32_t)mt_scalar(0), (uint16_t)mt_scalar(1)))"
+    );
+    let names: Vec<String> = adapter.states().into_iter().map(|s| s.name).collect();
+    assert_eq!(names, ["packet", "packetId", "publishInfo"]);
+    let combos = combinations(&adapter).unwrap();
+    assert_eq!(combos.len(), 4, "two scalars of two values each");
+    assert_eq!(
+        adapter.argv(9, &combos[0]),
+        ["coremqtt/default/MQTT_DeserializePublish", "4096", "0"],
+        "no input length: the entry has no in_len; the null is not listed"
+    );
+    // $in[n]: the input byte at index n, 0 when the input is shorter; the other
+    // set values keep their renderings.
+    let fragment = adapter.setup_fragment();
+    assert!(
+        fragment.contains("->type = (mt_in_len > 0u ? (u32)mt_in[0u] : 0u);"),
+        "{fragment}"
+    );
+    assert!(
+        fragment.contains("->pRemainingData = (mt_in + 2u);"),
+        "{fragment}"
+    );
+
+    // Role::Local and inout_len of = "in".
+    let adapter = Adapter::from_entry("lz4", "default", &lz4f_entry()).unwrap();
+    assert_eq!(
+        adapter.call_expression(),
+        "(int32_t)(LZ4F_getFrameInfo((LZ4F_dctx *)(*(LZ4F_dctx * *)mt_state(2)), (LZ4F_frameInfo_t *)mt_state(0), (const void *)mt_in, (size_t *)mt_state(1)))"
+    );
+    let combos = combinations(&adapter).unwrap();
+    assert_eq!(combos.len(), 1, "an input-length inout_len is no dimension");
+    assert!(combos[0].values.is_empty());
+    assert_eq!(
+        adapter.argv(18, &combos[0]),
+        ["lz4/default/LZ4F_getFrameInfo", "18"],
+        "D-05: the length is listed in argv"
+    );
+    assert_eq!(
+        adapter.scalar_words(&combos[0], 18),
+        [18],
+        "its initial value is the input length"
+    );
+    assert_eq!(adapter.scalar_words(&combos[0], 7), [7]);
+    assert!(adapter.scalars_by_name(&combos[0]).is_empty());
+    assert_eq!(adapter.output_capacity(&combos[0]), 0);
+    let states = adapter.states();
+    let order: Vec<&str> = states.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(
+        order,
+        ["info", "srcSize", "dctx"],
+        "locals follow the parameters"
+    );
+    assert_eq!(states[1].init_word, Some(0));
+    assert_eq!(states[2].type_text, "LZ4F_dctx *");
+    let setup = adapter.setup_fragment();
+    assert!(
+        setup.contains("LZ4F_createDecompressionContext(mt_state(2), 100)"),
+        "{setup}"
+    );
+
+    // sizeof(<local>): the size of the whole object, of an array the whole array.
+    let mut entry = publish_entry();
+    entry.local = vec![
+        local_object("scratch", "MQTTPacketInfo_t", None),
+        local_object("bytes", "uint8_t", Some(64)),
+    ];
+    entry.setup = vec![setup_call(
+        "setup_example",
+        &["&scratch", "sizeof(scratch)", "&bytes", "sizeof(bytes)"],
+        "void",
+    )];
+    let adapter = Adapter::from_entry("coremqtt", "default", &entry).unwrap();
+    let setup = adapter.setup_fragment();
+    assert!(
+        setup.contains(
+            "setup_example(mt_state(3), (u32)sizeof(MQTTPacketInfo_t), mt_state(4), (u32)(sizeof(uint8_t) * 64u))"
+        ),
+        "{setup}"
+    );
+}
+
+#[test]
+fn eqv_03_adapter_tier_c_forms_are_refused_when_they_do_not_fit() {
+    // The adapter checks again, where the forms become C (T-03-25).
+    let refuse = |entry: &Entry, words: &[&str]| {
+        let result = Adapter::from_entry("coremqtt", "default", entry);
+        assert!(
+            matches!(result, Err(AdapterError::Invalid(ref why)) if words.iter().all(|w| why.contains(w))),
+            "{words:?}: {result:?}"
+        );
+    };
+    let mut entry = publish_entry();
+    entry.setup = vec![setup_set("packet.type", "$in[x]")];
+    refuse(&entry, &["value"]);
+    let mut entry = publish_entry();
+    entry.setup = vec![setup_call("setup_example", &["sizeof(nosuch)"], "void")];
+    refuse(&entry, &["nosuch"]);
+    let mut entry = publish_entry();
+    let mut missing = arg(Role::Local);
+    missing.local = Some("nosuch".to_owned());
+    entry.arg[3] = missing;
+    refuse(&entry, &["local", "nosuch"]);
+    let mut entry = publish_entry();
+    entry.arg[3] = arg(Role::Local);
+    refuse(&entry, &["local"]);
+    let mut entry = lz4f_entry();
+    entry.arg[3].default = Some(4);
+    refuse(&entry, &["inout_len"]);
 }

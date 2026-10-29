@@ -1657,6 +1657,108 @@ fn check_mbedtls_x509(config: &str, dir: &Path) {
     assert!(failed > 0, "{config}: at least one input is refused");
 }
 
+/// coreMQTT `MQTT_DeserializePublish` and `MQTT_DeserializeAck`: the packet
+/// information is a state filled by set steps from the input (the type byte, the
+/// remaining data two bytes in, the length less two), the property builder is NULL
+/// (CONTEXT D-12, D-14). `ack` also fixes the connection properties by set steps.
+fn check_mqtt(config: &str, entry: &str, dir: &Path) {
+    let corpus = read_corpus(dir).unwrap();
+    let (mut success, mut refused) = (0usize, 0usize);
+    for (sha, vector) in &corpus.vectors {
+        let input = decode_latin1(&vector.stdin).unwrap();
+        assert_eq!(
+            vector.argv[0],
+            format!("coremqtt/{config}/{entry}"),
+            "{sha}"
+        );
+        let packet = struct_fields(
+            vector
+                .lib_state_in
+                .get("packet")
+                .expect("lib_state_in.packet"),
+            "lib_state_in.packet",
+        );
+        let first = input.first().map_or(0, |byte| i64::from(*byte));
+        assert_eq!(int_field(packet, "type"), first, "{sha}: type is $in[0]");
+        if input.len() >= 2 {
+            assert_eq!(
+                int_field(packet, "remainingLength"),
+                input.len() as i64 - 2,
+                "{sha}: remainingLength is $len-2"
+            );
+            assert!(
+                matches!(
+                    &packet["pRemainingData"],
+                    StateValue::Pointer { pointer: Pointer::Buffer { region, offset }, .. }
+                        if region == "in" && *offset == 2
+                ),
+                "{sha}: pRemainingData is the input at 2: {:?}",
+                packet["pRemainingData"]
+            );
+        }
+        if entry == "MQTT_DeserializeAck" {
+            let connect = struct_fields(
+                vector
+                    .lib_state_in
+                    .get("connectProperties")
+                    .expect("lib_state_in.connectProperties"),
+                "lib_state_in.connectProperties",
+            );
+            assert_eq!(int_field(connect, "maxPacketSize"), 4096, "{sha}");
+        }
+        if vector.rc == 0 {
+            success += 1;
+        } else {
+            refused += 1;
+        }
+    }
+    println!("coremqtt/{config}/{entry} success={success} refused={refused}");
+    assert!(
+        success > 0,
+        "{config}/{entry}: at least one packet is accepted"
+    );
+    assert!(
+        refused > 0,
+        "{config}/{entry}: at least one packet is refused"
+    );
+}
+
+/// lz4 `LZ4F_getFrameInfo`: the decompression context is a pointer local made by a
+/// setup call, the source size a pointer-carried length initialised from the input
+/// (CONTEXT D-11, D-12).
+fn check_lz4f(config: &str, dir: &Path) {
+    let corpus = read_corpus(dir).unwrap();
+    let (mut accepted, mut refused) = (0usize, 0usize);
+    for (sha, vector) in &corpus.vectors {
+        let input_len = decode_latin1(&vector.stdin).unwrap().len();
+        assert_eq!(
+            vector.argv,
+            [
+                format!("lz4/{config}/LZ4F_getFrameInfo"),
+                input_len.to_string()
+            ],
+            "{sha}: argv holds the initial source size"
+        );
+        assert_eq!(
+            recorded_int(&vector.lib_state_in, "srcSize"),
+            input_len as i64,
+            "{sha}: srcSize starts as the input length"
+        );
+        let consumed = recorded_int(&vector.lib_state_out, "srcSize");
+        assert!(
+            (0..=input_len as i64).contains(&consumed),
+            "{sha}: {consumed} bytes consumed of {input_len}"
+        );
+        if vector.rc >= 0 {
+            accepted += 1;
+        } else {
+            refused += 1;
+        }
+    }
+    println!("lz4/{config}/LZ4F_getFrameInfo accepted={accepted} refused={refused}");
+    assert!(accepted > 0, "{config}: at least one frame header is read");
+}
+
 #[test]
 #[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
 fn eqv_04_tier_c_attempts() {
@@ -1666,5 +1768,34 @@ fn eqv_04_tier_c_attempts() {
         &["default", "suite-b"],
     ) {
         check_mbedtls_x509(&config, &dir);
+    }
+    for entry in ["MQTT_DeserializePublish", "MQTT_DeserializeAck"] {
+        for (config, dir, _tmp) in attempt("coremqtt", entry, &["default", "sub-vectors-2"]) {
+            check_mqtt(&config, entry, &dir);
+        }
+    }
+    for (config, dir, _tmp) in attempt("lz4", "LZ4F_getFrameInfo", &["default", "heap-small"]) {
+        check_lz4f(&config, &dir);
+    }
+    // nimble's advertising parser: one link attempt. Either it builds and runs
+    // identically twice, or the entry is logged with the unresolved names.
+    for (config, _dir, _tmp) in attempt(
+        "nimble",
+        "ble_hs_adv_parse_fields",
+        &["default", "peripheral"],
+    ) {
+        println!("nimble/{config}/ble_hs_adv_parse_fields driven");
+    }
+    // isotp, zlib inflate and nanopb pb_decode_ex: isotp has no local objects
+    // (its roles are proven in the image); the other two must be logged.
+    for (target, entry) in [("zlib", "inflate"), ("nanopb", "pb_decode_ex")] {
+        let row = adapter_drop_row(target, entry).unwrap_or_else(|| {
+            panic!("{target}/{entry} must be logged: its attempt is a reasoned drop")
+        });
+        println!(
+            "{target}/{entry} logged {} ({})",
+            row.cause.as_str(),
+            row.detail
+        );
     }
 }

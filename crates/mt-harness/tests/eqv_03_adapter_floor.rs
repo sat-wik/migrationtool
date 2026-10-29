@@ -306,19 +306,19 @@ fn eqv_03_floor_counts_only_seeded_undropped_entries() {
 
     // Below the floor the check is an error that names the count and the floor. Six
     // targets are dropped, so the count is below 10 however many later plans add.
-    let rows: String = [
-        ("lz4", "LZ4_decompress_safe"),
-        ("libfdt", "fdt_check_full"),
-        ("microcoap", "coap_parse"),
-        ("nimble", "ble_uuid_init_from_buf"),
-        ("nanopb", "pb_istream_from_buffer"),
-        ("zlib", "uncompress"),
-    ]
-    .iter()
-    .map(|(target, entry)| {
-        format!("[[dropped]]\ntarget = \"{target}\"\nentry = \"{entry}\"\ncause = \"attempt_failed\"\ndetail = \"x\"\nattempt = \"y\"\n")
-    })
-    .collect();
+    let rows: String = ["lz4", "libfdt", "microcoap", "nimble", "nanopb", "zlib"]
+        .iter()
+        .flat_map(|target| {
+            manifest.target[*target]
+                .entry
+                .iter()
+                .filter(|entry| !entry.arg.is_empty())
+                .map(move |entry| (*target, entry.name.clone()))
+        })
+        .map(|(target, entry)| {
+            format!("[[dropped]]\ntarget = \"{target}\"\nentry = \"{entry}\"\ncause = \"attempt_failed\"\ndetail = \"x\"\nattempt = \"y\"\n")
+        })
+        .collect();
     let log = AdapterDropLog::parse(&log_of(&rows)).unwrap();
     let error = check_adapter_floor(&manifest, &seeds, &phase2, &log)
         .unwrap_err()
@@ -328,4 +328,50 @@ fn eqv_03_floor_counts_only_seeded_undropped_entries() {
         error.contains(&remaining) && error.contains("10"),
         "{error}"
     );
+}
+
+#[test]
+fn eqv_03_every_entry_is_drivable_or_logged() {
+    // T-03-28, D-13, D-24: each of the 27 entries of the test bed has roles and a
+    // seed, or a row in the adapter drop log, never both; a retained target has at
+    // least one drivable entry or all its entries logged. Committed files only.
+    let manifest = manifest();
+    let adapter = AdapterDropLog::load_from_testbed_dir(&testbed()).unwrap();
+    let phase2 = DropLog::load_from_testbed_dir(&testbed()).unwrap();
+    let seeds = testbed().join("seeds");
+    let mut total = 0usize;
+    let mut problems = Vec::new();
+    for (id, target) in &manifest.target {
+        let mut drivable = 0usize;
+        let mut logged = 0usize;
+        for entry in &target.entry {
+            total += 1;
+            let at = format!("{id}/{}", entry.name);
+            let has_roles = !entry.arg.is_empty();
+            let has_seeds = seeds_for(&seeds, id, &entry.name) > 0;
+            let row = adapter.row(id, &entry.name);
+            match (has_roles && has_seeds, row) {
+                (true, None) => drivable += 1,
+                (false, Some(row)) => {
+                    logged += 1;
+                    if has_roles {
+                        problems.push(format!("{at}: logged {} but has roles", row.cause.as_str()));
+                    }
+                }
+                (true, Some(row)) => {
+                    problems.push(format!("{at}: drivable and logged {}", row.cause.as_str()));
+                }
+                (false, None) => problems.push(format!(
+                    "{at}: neither drivable (roles={has_roles}, seeded={has_seeds}) nor logged"
+                )),
+            }
+        }
+        if phase2.target_dropped(id).is_none() && drivable == 0 && logged != target.entry.len() {
+            problems.push(format!(
+                "{id}: no drivable entry and not every entry logged"
+            ));
+        }
+    }
+    assert_eq!(total, 27, "the test bed has 27 entries");
+    assert!(problems.is_empty(), "{problems:#?}");
 }

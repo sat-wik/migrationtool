@@ -117,6 +117,7 @@ fn role_of(role: Role, name: Option<&str>) -> ArgRole {
         count: None,
         ptr_field: None,
         len_field: None,
+        local: None,
     }
 }
 
