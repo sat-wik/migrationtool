@@ -1022,7 +1022,27 @@ fn eqv_04_workflow_static_captures_travel_by_artifact() {
         !restore_code.contains("tar -xPf") && !restore_code.contains("--absolute-names"),
         "the archives are unpacked with relative names only"
     );
-    assert!(restore_code.contains("chmod -R a+rX"), "{restore_code}");
+    // Only the unpacked trees are made readable. The work and out directories also
+    // hold files the earlier steps' containers made (owned by the container user),
+    // which the runner may not chmod: a recursive chmod over them fails the step
+    // (found in round trip 1 of plan 03-08).
+    let chmod = restore_code
+        .lines()
+        .find(|line| line.contains("chmod -R a+rX"))
+        .unwrap_or_else(|| panic!("the unpacked files are not made readable:\n{restore_code}"));
+    for tree in [
+        "\"$RUNNER_TEMP/work/capture\"",
+        "\"$RUNNER_TEMP/work/run\"",
+        "\"$RUNNER_TEMP/out/replay\"",
+    ] {
+        assert!(chmod.contains(tree), "chmod misses {tree}: {chmod}");
+    }
+    for whole in ["\"$RUNNER_TEMP/work\"", "\"$RUNNER_TEMP/out\""] {
+        assert!(
+            !chmod.contains(&format!("{whole} ")) && !chmod.trim_end().ends_with(whole),
+            "chmod covers all of {whole}: {chmod}"
+        );
+    }
     assert!(!restore_code.contains("docker run"), "{restore_code}");
 }
 
