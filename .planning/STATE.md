@@ -4,18 +4,18 @@ milestone: v1.0
 milestone_name: MVP
 current_phase: 03
 current_phase_name: Equivalence Contract and Test-Vector Schema
-current_plan: 9
+current_plan: 10
 status: executing
-stopped_at: Completed 03-06-PLAN.md
-last_updated: "2026-10-28T20:31:03.713Z"
+stopped_at: Completed 03-07-PLAN.md
+last_updated: "2026-10-29T16:08:33.388Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 03 execution started
-state_head: 134cb4e77cfe127aa8f38fc94c27446667e2c813
+state_head: 7ec42686678267e26413b6b3ca2f7bdf4ff0c910
 progress:
   total_phases: 12
   completed_phases: 2
   total_plans: 41
-  completed_plans: 39
+  completed_plans: 40
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 ## Current Position
 
 Phase: 03 (Equivalence Contract and Test-Vector Schema) — EXECUTING
-Current Plan: 9
+Current Plan: 10
 Total Plans in Phase: 10
-Plan: 03-01 to 03-06, 03-09 and 03-10 done (03-06: output scalars and pointers, struct and pointer returns, the typed heap walk, string arguments, the adapter drop log and the floor of 10 as a test; ten targets reproduced twice-identical with a byte-identical rerun corpus in the D-31 image, testbed run 40761178752 = round trip 2 of 3); the 03-06 SUMMARY, STATE and ROADMAP commits are unpushed and ride with 03-07's first push; next 03-07, then 03-08
-Status: Ready to plan-execute 03-07
-Last activity: 2026-10-27 — Phase 03 execution started
+Plan: 03-01 to 03-07, 03-09 and 03-10 done (03-07: declared setup sequences, locals, the setup_failed outcome, wrap, state arrays and set steps; httpparser, qcbor, zcbor and tinycbor cbor_value_validate drivable; 13 targets reproduced twice-identical in the D-31 image, testbed run 40905688514 = round trip 1 of 3, pushed up to the notices commit fdf8ad9); the 03-07 SUMMARY, STATE and ROADMAP commits are unpushed and ride with 03-08's first push; next 03-08. BLOCKER for 03-08: the testbed job is at exactly 50 of 50 annotations, so its first push needs a founder decision on the annotation layout
+Status: Ready to plan-execute 03-08
+Last activity: 2026-10-29 — Plan 03-07 complete
 
 Progress: [██░░░░░░░░] 17%
 
@@ -90,6 +90,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 03 P04 | 55 min | 3 tasks | 32 files |
 | Phase 03 P05 | 75 min | 3 tasks | 29 files |
 | Phase 03 P06 | 66 min | 3 tasks | 30 files |
+| Phase 03 P07 | 19h 25m (spans a container restart and a usage-limit pause) | 3 tasks | 28 files |
 
 ## Accumulated Context
 
@@ -161,6 +162,7 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 03]: str values travel only in request field 5 into guarded NUL-terminated mappings; JSON_SearchT queries are foo, hello and [0]
 - [Phase 03]: ADAPTER_FLOOR is 10 and counts retained targets with a seeded, unlogged entry with roles; the CLI validates the drop log rows but not the never-both rule
 - [Phase 03]: mt vectors build and run print no_roles: <n> instead of one row per entry without roles because a job keeps 50 annotations (vectors notices use 49)
+- [Phase 03]: 03-07: setup steps are validated closed grammars; a failed step is setup_failed (status 0x100+k, rc the step's return, no label, compared); a wrap stands for in_buf and in_len; counted states and locals are arrays in one guarded mapping; at most 8 states per driver — Nothing from the manifest reaches C except parsed identifiers and decimals (T-03-25); a failed setup is defined behavior of the setup call and must not be excluded (T-03-26); bounded objects (T-03-27)
 
 ### Pending Todos
 
@@ -179,6 +181,7 @@ None yet.
 - [Init]: TRACTOR corpus licence unchecked; use locally only until Phase 12 checks it.
 - [Init]: Before starting, check the day-job invention-assignment clause and keep work on own time and hardware.
 - Plans 03-07 and 03-08: the testbed job is at 49 of GitHub's 50 annotations (31 are Phase 2 fixture notices); decide how to stay within the cap before adding rows
+- Annotation cap: the testbed job is at exactly 50 of 50 annotations after 03-07 (vectors-layout 2/2 has 63 bytes of headroom, vectors-run 162, vectors-build 166); plan 03-08 cannot add listing rows without a founder decision (second vectors job, merge the 31 Phase 2 fixture notices, or one multi-part listing)
 
 ### Quick Tasks Completed
 
@@ -201,6 +204,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T20:31:02.922Z
-Stopped at: Completed 03-06-PLAN.md
+Last session: 2026-10-29T16:08:33.202Z
+Stopped at: Completed 03-07-PLAN.md
 Resume file: None
