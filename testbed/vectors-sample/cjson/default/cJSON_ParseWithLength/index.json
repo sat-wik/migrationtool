@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "target": "cjson",
+  "config": "default",
+  "entry": "cJSON_ParseWithLength",
+  "vectors": {
+    "5f3822c8033645eebbf738676dec213ce36c16c51e5709f35b14c7b440f9387b": {
+      "seed": "99956a0476bef0fa482b71764091dc9ad46851f91ddac1e62e9b69abffb3135d",
+      "scalars": {},
+      "objects": {
+        "build/CMakeFiles/cjson.dir/cJSON.c.obj": "6e1bc1d7d08d56036925a39b7affd8c9f2f68c14f9422c7d623fbd2cf08892b6"
+      },
+      "archive": "7ba6dea9778843a7d7fa51bcf4997d3ed07c59443cbf47de388f0af7d89478d5",
+      "driver_source": "c9ceb14bc76db6921086e370f72379270bb36b7d0baa8c96410327531566e82e",
+      "driver_elf": "a44ea8067af3cdfe6b0270a1cb99335f02fea71db19c75098192692263939638",
+      "image": "ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565",
+      "executor_version": "0.1.0",
+      "contract_version": "0.1.0",
+      "policy_sha256": "c5f81e39012391ce22649a75d8aba1c101c73e0b3ae0d8d5be0f3067e3185b7a",
+      "budgets": {
+        "timeout_ms": 10000,
+        "reserved_va": 268435456,
+        "heap_arena": 1048576,
+        "sentinel": 165,
+        "slack_fill": 90,
+        "max_input": 65536
+      },
+      "outcome": "ok",
+      "has_ub_source": "unchecked",
+      "unobserved": 0,
+      "discarded_output_bytes": 0,
+      "replay": "identical"
+    }
+  }
+}

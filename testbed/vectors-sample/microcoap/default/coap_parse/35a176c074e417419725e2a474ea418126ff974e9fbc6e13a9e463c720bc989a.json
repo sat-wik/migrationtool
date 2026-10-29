@@ -1,0 +1,855 @@
+{
+  "argv": [
+    "microcoap/default/coap_parse",
+    "3"
+  ],
+  "stdin": "@\u0001\u0000",
+  "env": {},
+  "stdout": {
+    "pattern": "",
+    "is_regex": false
+  },
+  "stderr": {
+    "pattern": "outcome=ok",
+    "is_regex": false
+  },
+  "rc": 1,
+  "lib_state_in": {
+    "pkt": {
+      "fields": {
+        "hdr": {
+          "fields": {
+            "code": {
+              "type": "uint8_t",
+              "value": 0
+            },
+            "id": {
+              "hex": "0000",
+              "type": "uint8_t[2]"
+            },
+            "t": {
+              "type": "uint8_t",
+              "value": 0
+            },
+            "tkl": {
+              "type": "uint8_t",
+              "value": 0
+            },
+            "ver": {
+              "type": "uint8_t",
+              "value": 0
+            }
+          },
+          "type": "coap_header_t"
+        },
+        "numopts": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "opts": {
+          "items": [
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            }
+          ],
+          "type": "coap_option_t[16]"
+        },
+        "payload": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            }
+          },
+          "type": "coap_buffer_t"
+        },
+        "tok": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            }
+          },
+          "type": "coap_buffer_t"
+        }
+      },
+      "type": "coap_packet_t"
+    }
+  },
+  "lib_state_out": {
+    "pkt": {
+      "fields": {
+        "hdr": {
+          "fields": {
+            "code": {
+              "type": "uint8_t",
+              "value": 0
+            },
+            "id": {
+              "hex": "0000",
+              "type": "uint8_t[2]"
+            },
+            "t": {
+              "type": "uint8_t",
+              "value": 0
+            },
+            "tkl": {
+              "type": "uint8_t",
+              "value": 0
+            },
+            "ver": {
+              "type": "uint8_t",
+              "value": 0
+            }
+          },
+          "type": "coap_header_t"
+        },
+        "numopts": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "opts": {
+          "items": [
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            },
+            {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "const uint8_t *"
+                    }
+                  },
+                  "type": "coap_buffer_t"
+                },
+                "num": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "coap_option_t"
+            }
+          ],
+          "type": "coap_option_t[16]"
+        },
+        "payload": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            }
+          },
+          "type": "coap_buffer_t"
+        },
+        "tok": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            }
+          },
+          "type": "coap_buffer_t"
+        }
+      },
+      "type": "coap_packet_t"
+    }
+  }
+}

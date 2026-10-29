@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "target": "paho",
+  "config": "default",
+  "entry": "MQTTDeserialize_connack",
+  "vectors": {
+    "b6d11a7d234711739ce6134e2100dafff937f1d9068884832a3a640bd6134af4": {
+      "seed": "683914de4c707d217d22e1fda1593473b74f71e71c4c2c67bf0dfdbfe0cb4fd3",
+      "scalars": {},
+      "objects": {
+        "build/src/CMakeFiles/MQTTPacketClient.dir/MQTTConnectClient.obj": "2510678ed300ba9b85194682b1aa8d3cd8ffa6e046cc9b30495f2bb3d20f90be",
+        "build/src/CMakeFiles/MQTTPacketClient.dir/MQTTDeserializePublish.obj": "08e5eb62e5f1e6a0c36e0d4a4bfae757e8d62f697f820b4c3f797158a5fc7ef9",
+        "build/src/CMakeFiles/MQTTPacketClient.dir/MQTTFormat.obj": "fb9d4f8da769d4ad098356111b86909e3f000ded26d2b469093a76d51f0716ec",
+        "build/src/CMakeFiles/MQTTPacketClient.dir/MQTTPacket.obj": "59c0848606632424eb9cc4800bc7736a3efe461ee9a5086a0144e0320dcb807f",
+        "build/src/CMakeFiles/MQTTPacketClient.dir/MQTTSerializePublish.obj": "4683e1a81682cc27c1b36830c4399ba96fa223d2a451eedc2d51a40e40ade3a8",
+        "build/src/CMakeFiles/MQTTPacketClient.dir/MQTTSubscribeClient.obj": "299e84504c5fd7e931ce1a8446c0d6a7d3e06859493e01c5686338f02c324332",
+        "build/src/CMakeFiles/MQTTPacketClient.dir/MQTTUnsubscribeClient.obj": "955137f2e87ef49e8361aec74b2e43b5b4bdd3ddaef779dbc22974a93daf2e47"
+      },
+      "archive": "3d0a83f636afab32d7045e16e6d94d9e6277d207dffa1bd7ce8396a4402da10e",
+      "driver_source": "8317cdbe8abc1f8e554e0fbc68ae4dc2e3c1faebd05d9d06cf0a11a08fb8ffe3",
+      "driver_elf": "97070df14ffccd46129d785a301dbeb3dfd8dbea648203210244a3b8bc62a2bd",
+      "image": "ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565",
+      "executor_version": "0.1.0",
+      "contract_version": "0.1.0",
+      "policy_sha256": "a1088e4c5e3b3f9e0a3c2c0c6e449dafbb006b3a6c3f1e6e0659f112e324ad06",
+      "budgets": {
+        "timeout_ms": 10000,
+        "reserved_va": 268435456,
+        "heap_arena": 1048576,
+        "sentinel": 165,
+        "slack_fill": 90,
+        "max_input": 65536
+      },
+      "outcome": "ok",
+      "has_ub_source": "unchecked",
+      "unobserved": 0,
+      "discarded_output_bytes": 0,
+      "replay": "identical"
+    }
+  }
+}

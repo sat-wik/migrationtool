@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "target": "nanopb",
+  "config": "default",
+  "entry": "pb_istream_from_buffer",
+  "vectors": {
+    "8296d98192f0db91872956e90eb132e7fcac3c2dee25c5ee67c983e1357001ac": {
+      "seed": "62b67e1f685b7fef51102005dddd27774be3fee38c42965c53aab035d0b6b221",
+      "scalars": {},
+      "objects": {
+        "build/CMakeFiles/protobuf-nanopb-static.dir/pb_common.c.obj": "75e89928985e9ebd1cb83adcd2d76bf29960125e8b65a5b230af4f1d01fd492e",
+        "build/CMakeFiles/protobuf-nanopb-static.dir/pb_decode.c.obj": "908d05bfb6b8d759eca8c55b9d8b263f5b6bb3dee40cc6eff022b326bc6184a4",
+        "build/CMakeFiles/protobuf-nanopb-static.dir/pb_encode.c.obj": "c51414eab38c7787acd3d7a6f1acedfd572f25ca6cf97152e0f93370945feed7"
+      },
+      "archive": "ec03dfa0474e8cdb5a4cbe47e8808fc60c0a6b396c8915d239a277c6cce706aa",
+      "driver_source": "2e4672fd8060305654ec9b152c567571662cbaa54bafeecd6ed8d755280b614c",
+      "driver_elf": "5b6563b2dc48f46351328d4d319eb05454dcb601cfbe58cd24593af17b59b0f3",
+      "image": "ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565",
+      "executor_version": "0.1.0",
+      "contract_version": "0.1.0",
+      "policy_sha256": "5e5d6f22455f080bc84fd332eb2daffd87f6e6aeb7f2d8631643beffa8b82958",
+      "budgets": {
+        "timeout_ms": 10000,
+        "reserved_va": 268435456,
+        "heap_arena": 1048576,
+        "sentinel": 165,
+        "slack_fill": 90,
+        "max_input": 65536
+      },
+      "outcome": "ok",
+      "has_ub_source": "unchecked",
+      "unobserved": 0,
+      "discarded_output_bytes": 0,
+      "replay": "identical"
+    }
+  }
+}

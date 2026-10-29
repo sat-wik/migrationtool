@@ -1,0 +1,585 @@
+{
+  "argv": [
+    "cjson/default/cJSON_ParseWithLength",
+    "50"
+  ],
+  "stdin": "[\n    [0, -1, 0],\n    [1, 0, 0],\n    [0, 0, 1]\n\t]\n",
+  "env": {},
+  "stdout": {
+    "pattern": "",
+    "is_regex": false
+  },
+  "stderr": {
+    "pattern": "outcome=ok",
+    "is_regex": false
+  },
+  "rc": 1,
+  "lib_state_in": {},
+  "lib_state_out": {
+    "heap": {
+      "fields": {
+        "104": {
+          "fields": {
+            "child": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "next": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 152
+              },
+              "type": "struct cJSON *"
+            },
+            "prev": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 200
+              },
+              "type": "struct cJSON *"
+            },
+            "string": {
+              "pointer": null,
+              "type": "char *"
+            },
+            "type": {
+              "type": "int",
+              "value": 8
+            },
+            "valuedouble": {
+              "bits": "0000000000000000",
+              "type": "double"
+            },
+            "valueint": {
+              "type": "int",
+              "value": 0
+            },
+            "valuestring": {
+              "pointer": null,
+              "type": "char *"
+            }
+          },
+          "type": "struct cJSON"
+        },
+        "152": {
+          "fields": {
+            "child": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "next": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 200
+              },
+              "type": "struct cJSON *"
+            },
+            "prev": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 104
+              },
+              "type": "struct cJSON *"
+            },
+            "string": {
+              "pointer": null,
+              "type": "char *"
+            },
+            "type": {
+              "type": "int",
+              "value": 8
+            },
+            "valuedouble": {
+              "bits": "bff0000000000000",
+              "type": "double"
+            },
+            "valueint": {
+              "type": "int",
+              "value": -1
+            },
+            "valuestring": {
+              "pointer": null,
+              "type": "char *"
+            }
+          },
+          "type": "struct cJSON"
+        },
+        "200": {
+          "fields": {
+            "child": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "next": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "prev": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 152
+              },
+              "type": "struct cJSON *"
+            },
+            "string": {
+              "pointer": null,
+              "type": "char *"
+            },
+            "type": {
+              "type": "int",
+              "value": 8
+            },
+            "valuedouble": {
+              "bits": "0000000000000000",
+              "type": "double"
+            },
+            "valueint": {
+              "type": "int",
+              "value": 0
+            },
+            "valuestring": {
+              "pointer": null,
+              "type": "char *"
+            }
+          },
+          "type": "struct cJSON"
+        },
+        "248": {
+          "fields": {
+            "child": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 296
+              },
+              "type": "struct cJSON *"
+            },
+            "next": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 440
+              },
+              "type": "struct cJSON *"
+            },
+            "prev": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 56
+              },
+              "type": "struct cJSON *"
+            },
+            "string": {
+              "pointer": null,
+              "type": "char *"
+            },
+            "type": {
+              "type": "int",
+              "value": 32
+            },
+            "valuedouble": {
+              "bits": "0000000000000000",
+              "type": "double"
+            },
+            "valueint": {
+              "type": "int",
+              "value": 0
+            },
+            "valuestring": {
+              "pointer": null,
+              "type": "char *"
+            }
+          },
+          "type": "struct cJSON"
+        },
+        "296": {
+          "fields": {
+            "child": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "next": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 344
+              },
+              "type": "struct cJSON *"
+            },
+            "prev": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 392
+              },
+              "type": "struct cJSON *"
+            },
+            "string": {
+              "pointer": null,
+              "type": "char *"
+            },
+            "type": {
+              "type": "int",
+              "value": 8
+            },
+            "valuedouble": {
+              "bits": "3ff0000000000000",
+              "type": "double"
+            },
+            "valueint": {
+              "type": "int",
+              "value": 1
+            },
+            "valuestring": {
+              "pointer": null,
+              "type": "char *"
+            }
+          },
+          "type": "struct cJSON"
+        },
+        "344": {
+          "fields": {
+            "child": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "next": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 392
+              },
+              "type": "struct cJSON *"
+            },
+            "prev": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 296
+              },
+              "type": "struct cJSON *"
+            },
+            "string": {
+              "pointer": null,
+              "type": "char *"
+            },
+            "type": {
+              "type": "int",
+              "value": 8
+            },
+            "valuedouble": {
+              "bits": "0000000000000000",
+              "type": "double"
+            },
+            "valueint": {
+              "type": "int",
+              "value": 0
+            },
+            "valuestring": {
+              "pointer": null,
+              "type": "char *"
+            }
+          },
+          "type": "struct cJSON"
+        },
+        "392": {
+          "fields": {
+            "child": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "next": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "prev": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 344
+              },
+              "type": "struct cJSON *"
+            },
+            "string": {
+              "pointer": null,
+              "type": "char *"
+            },
+            "type": {
+              "type": "int",
+              "value": 8
+            },
+            "valuedouble": {
+              "bits": "0000000000000000",
+              "type": "double"
+            },
+            "valueint": {
+              "type": "int",
+              "value": 0
+            },
+            "valuestring": {
+              "pointer": null,
+              "type": "char *"
+            }
+          },
+          "type": "struct cJSON"
+        },
+        "440": {
+          "fields": {
+            "child": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 488
+              },
+              "type": "struct cJSON *"
+            },
+            "next": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "prev": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 248
+              },
+              "type": "struct cJSON *"
+            },
+            "string": {
+              "pointer": null,
+              "type": "char *"
+            },
+            "type": {
+              "type": "int",
+              "value": 32
+            },
+            "valuedouble": {
+              "bits": "0000000000000000",
+              "type": "double"
+            },
+            "valueint": {
+              "type": "int",
+              "value": 0
+            },
+            "valuestring": {
+              "pointer": null,
+              "type": "char *"
+            }
+          },
+          "type": "struct cJSON"
+        },
+        "488": {
+          "fields": {
+            "child": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "next": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 536
+              },
+              "type": "struct cJSON *"
+            },
+            "prev": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 584
+              },
+              "type": "struct cJSON *"
+            },
+            "string": {
+              "pointer": null,
+              "type": "char *"
+            },
+            "type": {
+              "type": "int",
+              "value": 8
+            },
+            "valuedouble": {
+              "bits": "0000000000000000",
+              "type": "double"
+            },
+            "valueint": {
+              "type": "int",
+              "value": 0
+            },
+            "valuestring": {
+              "pointer": null,
+              "type": "char *"
+            }
+          },
+          "type": "struct cJSON"
+        },
+        "536": {
+          "fields": {
+            "child": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "next": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 584
+              },
+              "type": "struct cJSON *"
+            },
+            "prev": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 488
+              },
+              "type": "struct cJSON *"
+            },
+            "string": {
+              "pointer": null,
+              "type": "char *"
+            },
+            "type": {
+              "type": "int",
+              "value": 8
+            },
+            "valuedouble": {
+              "bits": "0000000000000000",
+              "type": "double"
+            },
+            "valueint": {
+              "type": "int",
+              "value": 0
+            },
+            "valuestring": {
+              "pointer": null,
+              "type": "char *"
+            }
+          },
+          "type": "struct cJSON"
+        },
+        "56": {
+          "fields": {
+            "child": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 104
+              },
+              "type": "struct cJSON *"
+            },
+            "next": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 248
+              },
+              "type": "struct cJSON *"
+            },
+            "prev": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 440
+              },
+              "type": "struct cJSON *"
+            },
+            "string": {
+              "pointer": null,
+              "type": "char *"
+            },
+            "type": {
+              "type": "int",
+              "value": 32
+            },
+            "valuedouble": {
+              "bits": "0000000000000000",
+              "type": "double"
+            },
+            "valueint": {
+              "type": "int",
+              "value": 0
+            },
+            "valuestring": {
+              "pointer": null,
+              "type": "char *"
+            }
+          },
+          "type": "struct cJSON"
+        },
+        "584": {
+          "fields": {
+            "child": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "next": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "prev": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 536
+              },
+              "type": "struct cJSON *"
+            },
+            "string": {
+              "pointer": null,
+              "type": "char *"
+            },
+            "type": {
+              "type": "int",
+              "value": 8
+            },
+            "valuedouble": {
+              "bits": "3ff0000000000000",
+              "type": "double"
+            },
+            "valueint": {
+              "type": "int",
+              "value": 1
+            },
+            "valuestring": {
+              "pointer": null,
+              "type": "char *"
+            }
+          },
+          "type": "struct cJSON"
+        },
+        "8": {
+          "fields": {
+            "child": {
+              "pointer": {
+                "buffer": "heap",
+                "offset": 56
+              },
+              "type": "struct cJSON *"
+            },
+            "next": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "prev": {
+              "pointer": null,
+              "type": "struct cJSON *"
+            },
+            "string": {
+              "pointer": null,
+              "type": "char *"
+            },
+            "type": {
+              "type": "int",
+              "value": 32
+            },
+            "valuedouble": {
+              "bits": "0000000000000000",
+              "type": "double"
+            },
+            "valueint": {
+              "type": "int",
+              "value": 0
+            },
+            "valuestring": {
+              "pointer": null,
+              "type": "char *"
+            }
+          },
+          "type": "cJSON"
+        }
+      },
+      "type": "heap"
+    },
+    "ret": {
+      "pointer": {
+        "buffer": "heap",
+        "offset": 8
+      },
+      "type": "cJSON *"
+    }
+  }
+}

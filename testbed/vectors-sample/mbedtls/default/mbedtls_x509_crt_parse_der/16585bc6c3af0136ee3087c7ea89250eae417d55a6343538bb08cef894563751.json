@@ -1,0 +1,1177 @@
+{
+  "argv": [
+    "mbedtls/default/mbedtls_x509_crt_parse_der",
+    "44"
+  ],
+  "stdin": "0*0\u0005\u0006\u0003+en\u0003!\u0000Ã°é=3þj¦\u0013HÌ\u0012©\u0013bÕÂíXM°ZµA\u0011",
+  "env": {},
+  "stdout": {
+    "pattern": "",
+    "is_regex": false
+  },
+  "stderr": {
+    "pattern": "outcome=ok",
+    "is_regex": false
+  },
+  "rc": -8930,
+  "lib_state_in": {
+    "crt": {
+      "fields": {
+        "authority_key_id": {
+          "fields": {
+            "authorityCertIssuer": {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "unsigned char *"
+                    },
+                    "tag": {
+                      "type": "int",
+                      "value": 0
+                    }
+                  },
+                  "type": "mbedtls_asn1_buf"
+                },
+                "next": {
+                  "pointer": null,
+                  "type": "struct mbedtls_asn1_sequence *"
+                }
+              },
+              "type": "mbedtls_x509_sequence"
+            },
+            "authorityCertSerialNumber": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_x509_buf"
+            },
+            "keyIdentifier": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_x509_buf"
+            },
+            "raw": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_x509_buf"
+            }
+          },
+          "type": "mbedtls_x509_authority"
+        },
+        "certificate_policies": {
+          "fields": {
+            "buf": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            },
+            "next": {
+              "pointer": null,
+              "type": "struct mbedtls_asn1_sequence *"
+            }
+          },
+          "type": "mbedtls_x509_sequence"
+        },
+        "ext_key_usage": {
+          "fields": {
+            "buf": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            },
+            "next": {
+              "pointer": null,
+              "type": "struct mbedtls_asn1_sequence *"
+            }
+          },
+          "type": "mbedtls_x509_sequence"
+        },
+        "issuer": {
+          "fields": {
+            "next": {
+              "pointer": null,
+              "type": "struct mbedtls_asn1_named_data *"
+            },
+            "oid": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            },
+            "private_next_merged": {
+              "type": "unsigned char",
+              "value": 0
+            },
+            "val": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            }
+          },
+          "type": "mbedtls_x509_name"
+        },
+        "issuer_id": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "issuer_raw": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "next": {
+          "pointer": null,
+          "type": "struct mbedtls_x509_crt *"
+        },
+        "pk": {
+          "fields": {
+            "private_pk_ctx": {
+              "pointer": null,
+              "type": "void *"
+            },
+            "private_pk_info": {
+              "pointer": null,
+              "type": "const mbedtls_pk_info_t *"
+            }
+          },
+          "type": "mbedtls_pk_context"
+        },
+        "pk_raw": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "private_ca_istrue": {
+          "type": "int",
+          "value": 0
+        },
+        "private_ext_types": {
+          "type": "int",
+          "value": 0
+        },
+        "private_key_usage": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "private_max_pathlen": {
+          "type": "int",
+          "value": 0
+        },
+        "private_ns_cert_type": {
+          "type": "unsigned char",
+          "value": 0
+        },
+        "private_own_buffer": {
+          "type": "int",
+          "value": 0
+        },
+        "private_sig": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "private_sig_md": {
+          "type": "mbedtls_md_type_t",
+          "value": 0
+        },
+        "private_sig_opts": {
+          "pointer": null,
+          "type": "void *"
+        },
+        "private_sig_pk": {
+          "type": "mbedtls_pk_type_t",
+          "value": 0
+        },
+        "raw": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "serial": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "sig_oid": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "subject": {
+          "fields": {
+            "next": {
+              "pointer": null,
+              "type": "struct mbedtls_asn1_named_data *"
+            },
+            "oid": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            },
+            "private_next_merged": {
+              "type": "unsigned char",
+              "value": 0
+            },
+            "val": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            }
+          },
+          "type": "mbedtls_x509_name"
+        },
+        "subject_alt_names": {
+          "fields": {
+            "buf": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            },
+            "next": {
+              "pointer": null,
+              "type": "struct mbedtls_asn1_sequence *"
+            }
+          },
+          "type": "mbedtls_x509_sequence"
+        },
+        "subject_id": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "subject_key_id": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "subject_raw": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "tbs": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "v3_ext": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "valid_from": {
+          "fields": {
+            "day": {
+              "type": "int",
+              "value": 0
+            },
+            "hour": {
+              "type": "int",
+              "value": 0
+            },
+            "min": {
+              "type": "int",
+              "value": 0
+            },
+            "mon": {
+              "type": "int",
+              "value": 0
+            },
+            "sec": {
+              "type": "int",
+              "value": 0
+            },
+            "year": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_time"
+        },
+        "valid_to": {
+          "fields": {
+            "day": {
+              "type": "int",
+              "value": 0
+            },
+            "hour": {
+              "type": "int",
+              "value": 0
+            },
+            "min": {
+              "type": "int",
+              "value": 0
+            },
+            "mon": {
+              "type": "int",
+              "value": 0
+            },
+            "sec": {
+              "type": "int",
+              "value": 0
+            },
+            "year": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_time"
+        },
+        "version": {
+          "type": "int",
+          "value": 0
+        }
+      },
+      "type": "mbedtls_x509_crt"
+    }
+  },
+  "lib_state_out": {
+    "crt": {
+      "fields": {
+        "authority_key_id": {
+          "fields": {
+            "authorityCertIssuer": {
+              "fields": {
+                "buf": {
+                  "fields": {
+                    "len": {
+                      "type": "size_t",
+                      "value": 0
+                    },
+                    "p": {
+                      "pointer": null,
+                      "type": "unsigned char *"
+                    },
+                    "tag": {
+                      "type": "int",
+                      "value": 0
+                    }
+                  },
+                  "type": "mbedtls_asn1_buf"
+                },
+                "next": {
+                  "pointer": null,
+                  "type": "struct mbedtls_asn1_sequence *"
+                }
+              },
+              "type": "mbedtls_x509_sequence"
+            },
+            "authorityCertSerialNumber": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_x509_buf"
+            },
+            "keyIdentifier": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_x509_buf"
+            },
+            "raw": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_x509_buf"
+            }
+          },
+          "type": "mbedtls_x509_authority"
+        },
+        "certificate_policies": {
+          "fields": {
+            "buf": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            },
+            "next": {
+              "pointer": null,
+              "type": "struct mbedtls_asn1_sequence *"
+            }
+          },
+          "type": "mbedtls_x509_sequence"
+        },
+        "ext_key_usage": {
+          "fields": {
+            "buf": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            },
+            "next": {
+              "pointer": null,
+              "type": "struct mbedtls_asn1_sequence *"
+            }
+          },
+          "type": "mbedtls_x509_sequence"
+        },
+        "issuer": {
+          "fields": {
+            "next": {
+              "pointer": null,
+              "type": "struct mbedtls_asn1_named_data *"
+            },
+            "oid": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            },
+            "private_next_merged": {
+              "type": "unsigned char",
+              "value": 0
+            },
+            "val": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            }
+          },
+          "type": "mbedtls_x509_name"
+        },
+        "issuer_id": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "issuer_raw": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "next": {
+          "pointer": null,
+          "type": "struct mbedtls_x509_crt *"
+        },
+        "pk": {
+          "fields": {
+            "private_pk_ctx": {
+              "pointer": null,
+              "type": "void *"
+            },
+            "private_pk_info": {
+              "pointer": null,
+              "type": "const mbedtls_pk_info_t *"
+            }
+          },
+          "type": "mbedtls_pk_context"
+        },
+        "pk_raw": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "private_ca_istrue": {
+          "type": "int",
+          "value": 0
+        },
+        "private_ext_types": {
+          "type": "int",
+          "value": 0
+        },
+        "private_key_usage": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "private_max_pathlen": {
+          "type": "int",
+          "value": 0
+        },
+        "private_ns_cert_type": {
+          "type": "unsigned char",
+          "value": 0
+        },
+        "private_own_buffer": {
+          "type": "int",
+          "value": 0
+        },
+        "private_sig": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "private_sig_md": {
+          "type": "mbedtls_md_type_t",
+          "value": 0
+        },
+        "private_sig_opts": {
+          "pointer": null,
+          "type": "void *"
+        },
+        "private_sig_pk": {
+          "type": "mbedtls_pk_type_t",
+          "value": 0
+        },
+        "raw": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "serial": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "sig_oid": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "subject": {
+          "fields": {
+            "next": {
+              "pointer": null,
+              "type": "struct mbedtls_asn1_named_data *"
+            },
+            "oid": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            },
+            "private_next_merged": {
+              "type": "unsigned char",
+              "value": 0
+            },
+            "val": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            }
+          },
+          "type": "mbedtls_x509_name"
+        },
+        "subject_alt_names": {
+          "fields": {
+            "buf": {
+              "fields": {
+                "len": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "p": {
+                  "pointer": null,
+                  "type": "unsigned char *"
+                },
+                "tag": {
+                  "type": "int",
+                  "value": 0
+                }
+              },
+              "type": "mbedtls_asn1_buf"
+            },
+            "next": {
+              "pointer": null,
+              "type": "struct mbedtls_asn1_sequence *"
+            }
+          },
+          "type": "mbedtls_x509_sequence"
+        },
+        "subject_id": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "subject_key_id": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "subject_raw": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "tbs": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "v3_ext": {
+          "fields": {
+            "len": {
+              "type": "size_t",
+              "value": 0
+            },
+            "p": {
+              "pointer": null,
+              "type": "unsigned char *"
+            },
+            "tag": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_buf"
+        },
+        "valid_from": {
+          "fields": {
+            "day": {
+              "type": "int",
+              "value": 0
+            },
+            "hour": {
+              "type": "int",
+              "value": 0
+            },
+            "min": {
+              "type": "int",
+              "value": 0
+            },
+            "mon": {
+              "type": "int",
+              "value": 0
+            },
+            "sec": {
+              "type": "int",
+              "value": 0
+            },
+            "year": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_time"
+        },
+        "valid_to": {
+          "fields": {
+            "day": {
+              "type": "int",
+              "value": 0
+            },
+            "hour": {
+              "type": "int",
+              "value": 0
+            },
+            "min": {
+              "type": "int",
+              "value": 0
+            },
+            "mon": {
+              "type": "int",
+              "value": 0
+            },
+            "sec": {
+              "type": "int",
+              "value": 0
+            },
+            "year": {
+              "type": "int",
+              "value": 0
+            }
+          },
+          "type": "mbedtls_x509_time"
+        },
+        "version": {
+          "type": "int",
+          "value": 0
+        }
+      },
+      "type": "mbedtls_x509_crt"
+    }
+  }
+}

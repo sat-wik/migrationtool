@@ -1,0 +1,226 @@
+{
+  "argv": [
+    "coremqtt/default/MQTT_DeserializeAck"
+  ],
+  "stdin": "A",
+  "env": {},
+  "stdout": {
+    "pattern": "",
+    "is_regex": false
+  },
+  "stderr": {
+    "pattern": "outcome=ok",
+    "is_regex": false
+  },
+  "rc": 5,
+  "lib_state_in": {
+    "connectProperties": {
+      "fields": {
+        "isSharedAvailable": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "isSubscriptionIdAvailable": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "isWildcardAvailable": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "maxPacketSize": {
+          "type": "uint32_t",
+          "value": 4096
+        },
+        "receiveMax": {
+          "type": "uint16_t",
+          "value": 0
+        },
+        "requestProblemInfo": {
+          "type": "_Bool",
+          "value": 1
+        },
+        "requestResponseInfo": {
+          "type": "_Bool",
+          "value": 0
+        },
+        "retainAvailable": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "serverKeepAlive": {
+          "type": "uint16_t",
+          "value": 0
+        },
+        "serverMaxPacketSize": {
+          "type": "uint32_t",
+          "value": 0
+        },
+        "serverMaxQos": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "serverReceiveMax": {
+          "type": "uint16_t",
+          "value": 0
+        },
+        "serverTopicAliasMax": {
+          "type": "uint16_t",
+          "value": 0
+        },
+        "sessionExpiry": {
+          "type": "uint32_t",
+          "value": 0
+        },
+        "topicAliasMax": {
+          "type": "uint16_t",
+          "value": 0
+        }
+      },
+      "type": "MQTTConnectionProperties_t"
+    },
+    "packet": {
+      "fields": {
+        "headerLength": {
+          "type": "size_t",
+          "value": 2
+        },
+        "pRemainingData": {
+          "type": "uint8_t *",
+          "unobserved": "pointer outside known regions"
+        },
+        "remainingLength": {
+          "type": "uint32_t",
+          "value": 4294967295
+        },
+        "type": {
+          "type": "uint8_t",
+          "value": 65
+        }
+      },
+      "type": "MQTTPacketInfo_t"
+    },
+    "packetId": {
+      "type": "uint16_t",
+      "value": 0
+    },
+    "reasonCode": {
+      "fields": {
+        "reasonCode": {
+          "pointer": null,
+          "type": "const uint8_t *"
+        },
+        "reasonCodeLength": {
+          "type": "size_t",
+          "value": 0
+        }
+      },
+      "type": "MQTTReasonCodeInfo_t"
+    }
+  },
+  "lib_state_out": {
+    "connectProperties": {
+      "fields": {
+        "isSharedAvailable": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "isSubscriptionIdAvailable": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "isWildcardAvailable": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "maxPacketSize": {
+          "type": "uint32_t",
+          "value": 4096
+        },
+        "receiveMax": {
+          "type": "uint16_t",
+          "value": 0
+        },
+        "requestProblemInfo": {
+          "type": "_Bool",
+          "value": 1
+        },
+        "requestResponseInfo": {
+          "type": "_Bool",
+          "value": 0
+        },
+        "retainAvailable": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "serverKeepAlive": {
+          "type": "uint16_t",
+          "value": 0
+        },
+        "serverMaxPacketSize": {
+          "type": "uint32_t",
+          "value": 0
+        },
+        "serverMaxQos": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "serverReceiveMax": {
+          "type": "uint16_t",
+          "value": 0
+        },
+        "serverTopicAliasMax": {
+          "type": "uint16_t",
+          "value": 0
+        },
+        "sessionExpiry": {
+          "type": "uint32_t",
+          "value": 0
+        },
+        "topicAliasMax": {
+          "type": "uint16_t",
+          "value": 0
+        }
+      },
+      "type": "MQTTConnectionProperties_t"
+    },
+    "packet": {
+      "fields": {
+        "headerLength": {
+          "type": "size_t",
+          "value": 2
+        },
+        "pRemainingData": {
+          "type": "uint8_t *",
+          "unobserved": "pointer outside known regions"
+        },
+        "remainingLength": {
+          "type": "uint32_t",
+          "value": 4294967295
+        },
+        "type": {
+          "type": "uint8_t",
+          "value": 65
+        }
+      },
+      "type": "MQTTPacketInfo_t"
+    },
+    "packetId": {
+      "type": "uint16_t",
+      "value": 0
+    },
+    "reasonCode": {
+      "fields": {
+        "reasonCode": {
+          "pointer": null,
+          "type": "const uint8_t *"
+        },
+        "reasonCodeLength": {
+          "type": "size_t",
+          "value": 0
+        }
+      },
+      "type": "MQTTReasonCodeInfo_t"
+    }
+  }
+}

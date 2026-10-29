@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "target": "microcoap",
+  "config": "default",
+  "entry": "coap_parse",
+  "vectors": {
+    "35a176c074e417419725e2a474ea418126ff974e9fbc6e13a9e463c720bc989a": {
+      "seed": "99f9e38a0c702feac1f8834578bfab5fbc8ebd9ee8ba4edf6b0786e3621012dc",
+      "scalars": {},
+      "objects": {
+        "src/coap.o": "9e55a46bf2f4f19e5dcaa07935037d7f35953790d3089d4adb2a97585024448f",
+        "src/endpoints.o": "eb8cd0844ab87aa882f8ce9cd25bd644b9ae5265d2ad3c56c9b423b92f966443"
+      },
+      "archive": "7d04641b33c461d7734457db208d3adf9b2c46eee8e9f51b8f5c70977a397c84",
+      "driver_source": "5632103fcc2931a8cdf4ba75e8e2a6d4b162c2df0f5c8c269b60019fd2264c5e",
+      "driver_elf": "da96b944f0230505a3259be8bc8b9ed974707a0498e87aafd234fa0fe01f0bbd",
+      "image": "ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565",
+      "executor_version": "0.1.0",
+      "contract_version": "0.1.0",
+      "policy_sha256": "2f8422d24f334365cfa3dee6079ed337232b305874bee5b5e5407ceb56ffd849",
+      "budgets": {
+        "timeout_ms": 10000,
+        "reserved_va": 268435456,
+        "heap_arena": 1048576,
+        "sentinel": 165,
+        "slack_fill": 90,
+        "max_input": 65536
+      },
+      "outcome": "ok",
+      "has_ub_source": "unchecked",
+      "unobserved": 0,
+      "discarded_output_bytes": 0,
+      "replay": "identical"
+    }
+  }
+}

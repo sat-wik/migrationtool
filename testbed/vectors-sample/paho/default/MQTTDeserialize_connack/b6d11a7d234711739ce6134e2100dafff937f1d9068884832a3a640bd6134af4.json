@@ -1,0 +1,37 @@
+{
+  "argv": [
+    "paho/default/MQTTDeserialize_connack",
+    "2"
+  ],
+  "stdin": "Ð\u0000",
+  "env": {},
+  "stdout": {
+    "pattern": "",
+    "is_regex": false
+  },
+  "stderr": {
+    "pattern": "outcome=ok",
+    "is_regex": false
+  },
+  "rc": 0,
+  "lib_state_in": {
+    "connack_rc": {
+      "type": "unsigned char",
+      "value": 0
+    },
+    "sessionPresent": {
+      "type": "unsigned char",
+      "value": 0
+    }
+  },
+  "lib_state_out": {
+    "connack_rc": {
+      "type": "unsigned char",
+      "value": 0
+    },
+    "sessionPresent": {
+      "type": "unsigned char",
+      "value": 0
+    }
+  }
+}

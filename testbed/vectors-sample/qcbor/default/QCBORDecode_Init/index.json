@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "target": "qcbor",
+  "config": "default",
+  "entry": "QCBORDecode_Init",
+  "vectors": {
+    "e0b4d28d39e01e0056fdb1a31f0d5815ff7ecb51ed880881a5da5db28a12cb46": {
+      "seed": "1f184f101c67d585ba00d24cfde36863f747fbab9e84af7760ec771e9b36ca51",
+      "scalars": {
+        "mode": 0
+      },
+      "objects": {
+        "src/src/UsefulBuf.o": "196b34d5c1086e673ba616c1b13c35f3dba455fc2af1c686d0f4d4c33a86b31b",
+        "src/src/ieee754.o": "1c8b7c8ba4c06b108c71586edf1f3c5854e3fa3e4b66caa6bee7fc442aa02d41",
+        "src/src/qcbor_decode.o": "79c0ddb348c7d65690a4ae0b55053734757c8186b6790e7c8fb98d78b3cd571e",
+        "src/src/qcbor_encode.o": "bf6be6a5d40aa42b5a5e1a08f4ed82455aa6d9c301dc1170a7bbe1dbc4b18473",
+        "src/src/qcbor_err_to_str.o": "2224f3b995eaa67db6780ed31fe9d82750c94181c7ea817bab8f59463cb6263a"
+      },
+      "archive": "522ca613927ab3ebe4904dec23405bfa981ca0d9902943d82acf4ab7b0bfc24a",
+      "driver_source": "36cc75c177dd9b0ce3dab5aeceadd89d21f3356792f9b4f3a5db6cce9c3bfa4d",
+      "driver_elf": "4e620367282724ef95d239f482415a02144ae2b628e52adef6f36967d367bf2d",
+      "image": "ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565",
+      "executor_version": "0.1.0",
+      "contract_version": "0.1.0",
+      "policy_sha256": "dcbc404c3382c6d6df4052707f7d51b69716b85ef000611a0d34582047ef56e8",
+      "budgets": {
+        "timeout_ms": 10000,
+        "reserved_va": 268435456,
+        "heap_arena": 1048576,
+        "sentinel": 165,
+        "slack_fill": 90,
+        "max_input": 65536
+      },
+      "outcome": "ok",
+      "has_ub_source": "unchecked",
+      "unobserved": 0,
+      "discarded_output_bytes": 0,
+      "replay": "identical"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "target": "zcbor",
+  "config": "default",
+  "entry": "zcbor_new_decode_state",
+  "vectors": {
+    "cbd1764d16cfd99d5923ef0d2b157ee95af4b07eacf44118071da78f6d037230": {
+      "seed": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "scalars": {
+        "elem_count": 1,
+        "n_states": 3,
+        "out_cap": 0
+      },
+      "objects": {
+        "build/CMakeFiles/pet.dir/src/pet_decode.c.obj": "4aa104822dc47ebdf10de7ce4798fd07777a4bd44b39f05eefbd6b963e908302",
+        "build/CMakeFiles/pet.dir/src/pet_encode.c.obj": "cd70ddebac8e67fafde2d22997a6f921fef255092f963c52a762d669dc7f0652",
+        "build/CMakeFiles/pet.dir/work/run/zcbor/default/src/src/zcbor_common.c.obj": "c11a58cdb0a7a24f8c62532da0fb7e518e6d4ff28f93b9fd4ad91b758cd42201",
+        "build/CMakeFiles/pet.dir/work/run/zcbor/default/src/src/zcbor_decode.c.obj": "f612b122e9c6375178509fe58a9aef05ee3adbe830ca44dc96ece515458de9c4",
+        "build/CMakeFiles/pet.dir/work/run/zcbor/default/src/src/zcbor_encode.c.obj": "dcea7938eb060d5bfb1da79786ac7fabd89e48066c83c74a11f20fc2284a4b44",
+        "build/CMakeFiles/pet.dir/work/run/zcbor/default/src/src/zcbor_print.c.obj": "79e5b5ee8c64dbfc64100a3e228e4b0f222d9a6e54db3c16a978735a8bd030e2"
+      },
+      "archive": "16011cddc78ff9d90cde214e642b319d83ce306b0d3c882e8a741db3288dc70e",
+      "driver_source": "663954e074abd96d0cd5b0906602b84012b6a3343ff201422ecfc3c14ecf64d4",
+      "driver_elf": "860f00f70e9aab11facbd126b9696dcaa7efd137037624203d4f442f81664da9",
+      "image": "ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565",
+      "executor_version": "0.1.0",
+      "contract_version": "0.1.0",
+      "policy_sha256": "f4ebd99c7ca4ebde6248fe4b9f9a0c9102148289b473ca5d85b3ca5cb09d2ce7",
+      "budgets": {
+        "timeout_ms": 10000,
+        "reserved_va": 268435456,
+        "heap_arena": 1048576,
+        "sentinel": 165,
+        "slack_fill": 90,
+        "max_input": 65536
+      },
+      "outcome": "ok",
+      "has_ub_source": "unchecked",
+      "unobserved": 0,
+      "discarded_output_bytes": 0,
+      "replay": "identical"
+    }
+  }
+}

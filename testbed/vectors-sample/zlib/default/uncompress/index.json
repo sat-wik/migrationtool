@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "target": "zlib",
+  "config": "default",
+  "entry": "uncompress",
+  "vectors": {
+    "f86dc5bc82b056e45eebcdb0ec157f6ac33b456c320daa9cde19aabd226c1d33": {
+      "seed": "f5e2794887fba944442f1d3619e6773e55259ef5f3c73112857f0e293be739a0",
+      "scalars": {
+        "destLen": 256
+      },
+      "objects": {
+        "build/CMakeFiles/zlibstatic.dir/adler32.c.obj": "4252cf42c566c779c9b6163a12506665d22fd0d84d2120a8c0fb57776bf34f00",
+        "build/CMakeFiles/zlibstatic.dir/compress.c.obj": "a33f7cd10ae1427161a05a6e5e1f6a5ab19123d82a968b2f8bca524ca749481e",
+        "build/CMakeFiles/zlibstatic.dir/crc32.c.obj": "1b7e5f0fd2d3edc51d0a5eda17f0f262d4dec98938256da44a72c145e8c7afe4",
+        "build/CMakeFiles/zlibstatic.dir/deflate.c.obj": "772cd2c7a9cd6ec5836e6ef74ff285e3f690f41ad714103b8463080529ea2fbc",
+        "build/CMakeFiles/zlibstatic.dir/gzclose.c.obj": "ea1cd9053856acf46f429cbf224978c53ec7ad31f2a85d8eba5eec5f7fe06841",
+        "build/CMakeFiles/zlibstatic.dir/gzlib.c.obj": "5e08bc520f91e9104828db306c6f7c245042906fa45c0e380af6c2835a8e76b9",
+        "build/CMakeFiles/zlibstatic.dir/gzread.c.obj": "5f8b96800e0a89bcfd5c28edc3709b71226ef1060dce0a443cc15f32c2dbe8a0",
+        "build/CMakeFiles/zlibstatic.dir/gzwrite.c.obj": "03210c4565d72339dd6af6fe17903035e10f59b855278474001efbafbfacd2f4",
+        "build/CMakeFiles/zlibstatic.dir/infback.c.obj": "14034442747f4276f7721405c05608ffce13fcba0370f24b85763f96aa501a25",
+        "build/CMakeFiles/zlibstatic.dir/inffast.c.obj": "6f9d74ccd3834fd8bdf6fcce1373aebc6d951b5ddc5d67384241b68bdece8287",
+        "build/CMakeFiles/zlibstatic.dir/inflate.c.obj": "a8f3c5fd48ba69e70841956cdce2ace7717adfbe7e29c4cfb66f8946c35ebb76",
+        "build/CMakeFiles/zlibstatic.dir/inftrees.c.obj": "7af139b09098d9747ed15104e69641874fd320d77386d121831b29881a3215fe",
+        "build/CMakeFiles/zlibstatic.dir/trees.c.obj": "897e60c311f602cc9d4fec75580a6cec4c2bf1a757a33fc7970faff55d8ba471",
+        "build/CMakeFiles/zlibstatic.dir/uncompr.c.obj": "c57a5219e7f769ecf3239953fb657aeb4d46e09cb538e3fe4056dc1151fe0fde",
+        "build/CMakeFiles/zlibstatic.dir/zutil.c.obj": "2cfce632449d16004300417335109eca665945f5766459363103076976a191b9"
+      },
+      "archive": "c135f05679c71bca873783bb73dbbd662f2912c690ad0736ef5db67bc87e9520",
+      "driver_source": "222e7f9d489e8612fe5e8a97b27595588482426704a5aa11e4f9921b307e47a2",
+      "driver_elf": "af93efbaf0a1fab7f4420c9e668975d1e6af5159adcb1a3066bbc9e3b85d56d4",
+      "image": "ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565",
+      "executor_version": "0.1.0",
+      "contract_version": "0.1.0",
+      "policy_sha256": "89d9fa4a1267d60e541a786b6847fb5433c99cd0f5c8d08e3d22818bf2031f65",
+      "budgets": {
+        "timeout_ms": 10000,
+        "reserved_va": 268435456,
+        "heap_arena": 1048576,
+        "sentinel": 165,
+        "slack_fill": 90,
+        "max_input": 65536
+      },
+      "outcome": "ok",
+      "has_ub_source": "unchecked",
+      "unobserved": 0,
+      "discarded_output_bytes": 0,
+      "replay": "identical"
+    }
+  }
+}

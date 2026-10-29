@@ -1,0 +1,109 @@
+{
+  "argv": [
+    "lz4/default/LZ4F_getFrameInfo",
+    "1"
+  ],
+  "stdin": "\u0000",
+  "env": {},
+  "stdout": {
+    "pattern": "",
+    "is_regex": false
+  },
+  "stderr": {
+    "pattern": "outcome=ok",
+    "is_regex": false
+  },
+  "rc": -12,
+  "lib_state_in": {
+    "dctx": {
+      "pointer": {
+        "buffer": "heap",
+        "offset": 8
+      },
+      "type": "LZ4F_dctx *"
+    },
+    "info": {
+      "fields": {
+        "blockChecksumFlag": {
+          "type": "LZ4F_blockChecksum_t",
+          "value": 0
+        },
+        "blockMode": {
+          "type": "LZ4F_blockMode_t",
+          "value": 0
+        },
+        "blockSizeID": {
+          "type": "LZ4F_blockSizeID_t",
+          "value": 0
+        },
+        "contentChecksumFlag": {
+          "type": "LZ4F_contentChecksum_t",
+          "value": 0
+        },
+        "contentSize": {
+          "type": "long long unsigned int",
+          "value": "0"
+        },
+        "dictID": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "frameType": {
+          "type": "LZ4F_frameType_t",
+          "value": 0
+        }
+      },
+      "type": "LZ4F_frameInfo_t"
+    },
+    "srcSize": {
+      "type": "size_t",
+      "value": 1
+    }
+  },
+  "lib_state_out": {
+    "dctx": {
+      "pointer": {
+        "buffer": "heap",
+        "offset": 8
+      },
+      "type": "LZ4F_dctx *"
+    },
+    "info": {
+      "fields": {
+        "blockChecksumFlag": {
+          "type": "LZ4F_blockChecksum_t",
+          "value": 0
+        },
+        "blockMode": {
+          "type": "LZ4F_blockMode_t",
+          "value": 0
+        },
+        "blockSizeID": {
+          "type": "LZ4F_blockSizeID_t",
+          "value": 0
+        },
+        "contentChecksumFlag": {
+          "type": "LZ4F_contentChecksum_t",
+          "value": 0
+        },
+        "contentSize": {
+          "type": "long long unsigned int",
+          "value": "0"
+        },
+        "dictID": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "frameType": {
+          "type": "LZ4F_frameType_t",
+          "value": 0
+        }
+      },
+      "type": "LZ4F_frameInfo_t"
+    },
+    "srcSize": {
+      "type": "size_t",
+      "value": 0
+    }
+  }
+}

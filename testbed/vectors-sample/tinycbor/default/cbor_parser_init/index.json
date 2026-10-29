@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "target": "tinycbor",
+  "config": "default",
+  "entry": "cbor_parser_init",
+  "vectors": {
+    "350922c1289bd8afc6734a55e75ed11856ea205c89991fe22e9ce29db60d4287": {
+      "seed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "scalars": {
+        "flags": 0
+      },
+      "objects": {
+        "build/CMakeFiles/tinycbor.dir/src/cborencoder.c.obj": "29c57b3e9bd9fd081a7d68f7189907bf31d91f77271a0629b57a6e0233699cb3",
+        "build/CMakeFiles/tinycbor.dir/src/cborencoder_close_container_checked.c.obj": "c49021069356325b2e285f8c09d082ec18ea814af3273ef6602896c0574ef025",
+        "build/CMakeFiles/tinycbor.dir/src/cborencoder_float.c.obj": "5b37c95756ce9f931debfd75548a8cc66ffb42f7a6844a43eb24045a765b8394",
+        "build/CMakeFiles/tinycbor.dir/src/cborerrorstrings.c.obj": "0d56a28c950ebf03f95748ee4ab2fa3b6a5af544898b3af8b83d252d40f9db8d",
+        "build/CMakeFiles/tinycbor.dir/src/cborparser.c.obj": "2fc5de29126eb842435d73dc26758260819bfab5b3abd53856755814f1481625",
+        "build/CMakeFiles/tinycbor.dir/src/cborparser_dup_string.c.obj": "f522d707646e3ac103da297caf241be0ca29ee7b81e295bd7fe44ea093f95d3b",
+        "build/CMakeFiles/tinycbor.dir/src/cborparser_float.c.obj": "ebb08f35d82bb56c0645e6ac2b062c344af74d6e8b20dd9078160e81ff780a6b",
+        "build/CMakeFiles/tinycbor.dir/src/cborpretty.c.obj": "829abe770e668b942ce14b6096943676be56ec1801ffa5653fe806ef74c86852",
+        "build/CMakeFiles/tinycbor.dir/src/cborpretty_stdio.c.obj": "ad4d4058e959744937891ebe6536a846d9ee1c372794524bff7574729e12a598",
+        "build/CMakeFiles/tinycbor.dir/src/cbortojson.c.obj": "140259955bdb907e09582c7bd22400598a523801be6ce7ca1e4d95addda6cba5",
+        "build/CMakeFiles/tinycbor.dir/src/cborvalidation.c.obj": "ac96aa2ebe5fedd63176ac4a3b11173c66bca5fce15357d1e493da4eaabdb63e"
+      },
+      "archive": "2b6c4c858455511fa0ff2fc98d8503e319cedbb6443f2ce621594e59d3ca3e48",
+      "driver_source": "749a56377354f0f2f2861e27cc026c46cf9eaea9f509c5fe49b8ee6a6e69fdf1",
+      "driver_elf": "19829cd87276fb1380cb3760fb61d731d7cd845a65b04a6da145bfbd9081ccad",
+      "image": "ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565",
+      "executor_version": "0.1.0",
+      "contract_version": "0.1.0",
+      "policy_sha256": "451b3dc7e5ca2730c24f169e5e5ab3e6dfdb96d2078ec66353e7d4c97cf933ae",
+      "budgets": {
+        "timeout_ms": 10000,
+        "reserved_va": 268435456,
+        "heap_arena": 1048576,
+        "sentinel": 165,
+        "slack_fill": 90,
+        "max_input": 65536
+      },
+      "outcome": "ok",
+      "has_ub_source": "unchecked",
+      "unobserved": 0,
+      "discarded_output_bytes": 0,
+      "replay": "identical"
+    }
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "argv": [
+    "tinycbor/default/cbor_parser_init",
+    "0",
+    "0"
+  ],
+  "stdin": "",
+  "env": {},
+  "stdout": {
+    "pattern": "",
+    "is_regex": false
+  },
+  "stderr": {
+    "pattern": "outcome=ok",
+    "is_regex": false
+  },
+  "rc": 257,
+  "lib_state_in": {
+    "it": {
+      "fields": {
+        "extra": {
+          "type": "uint16_t",
+          "value": 0
+        },
+        "flags": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "parser": {
+          "pointer": null,
+          "type": "const CborParser *"
+        },
+        "remaining": {
+          "type": "uint32_t",
+          "value": 0
+        },
+        "source": {
+          "fields": {
+            "ptr": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            },
+            "token": {
+              "pointer": null,
+              "type": "void *"
+            }
+          },
+          "type": "union <anonymous>"
+        },
+        "type": {
+          "type": "uint8_t",
+          "value": 0
+        }
+      },
+      "type": "CborValue"
+    },
+    "parser": {
+      "fields": {
+        "flags": {
+          "type": "enum CborParserGlobalFlags",
+          "value": 0
+        },
+        "source": {
+          "fields": {
+            "end": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            },
+            "ops": {
+              "pointer": null,
+              "type": "const struct CborParserOperations *"
+            }
+          },
+          "type": "union <anonymous>"
+        }
+      },
+      "type": "CborParser"
+    }
+  },
+  "lib_state_out": {
+    "it": {
+      "fields": {
+        "extra": {
+          "type": "uint16_t",
+          "value": 0
+        },
+        "flags": {
+          "type": "uint8_t",
+          "value": 0
+        },
+        "parser": {
+          "pointer": {
+            "buffer": "parser",
+            "offset": 0
+          },
+          "type": "const CborParser *"
+        },
+        "remaining": {
+          "type": "uint32_t",
+          "value": 1
+        },
+        "source": {
+          "fields": {
+            "ptr": {
+              "pointer": {
+                "buffer": "in",
+                "offset": 0
+              },
+              "type": "const uint8_t *"
+            },
+            "token": {
+              "pointer": {
+                "buffer": "in",
+                "offset": 0
+              },
+              "type": "void *"
+            }
+          },
+          "type": "union <anonymous>"
+        },
+        "type": {
+          "type": "uint8_t",
+          "value": 255
+        }
+      },
+      "type": "CborValue"
+    },
+    "parser": {
+      "fields": {
+        "flags": {
+          "type": "enum CborParserGlobalFlags",
+          "value": 0
+        },
+        "source": {
+          "fields": {
+            "end": {
+              "pointer": {
+                "buffer": "in",
+                "offset": 0
+              },
+              "type": "const uint8_t *"
+            },
+            "ops": {
+              "pointer": {
+                "buffer": "in",
+                "offset": 0
+              },
+              "type": "const struct CborParserOperations *"
+            }
+          },
+          "type": "union <anonymous>"
+        }
+      },
+      "type": "CborParser"
+    }
+  }
+}

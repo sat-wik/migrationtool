@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "target": "lz4",
+  "config": "default",
+  "entry": "LZ4F_getFrameInfo",
+  "vectors": {
+    "15da37385df1ee2239aa8a21352b980912181b01658cc2bdc1bf652253861ee0": {
+      "seed": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "scalars": {},
+      "objects": {
+        "src/lib/lz4.o": "e4cbfb1e7014066973f3c6b5521debb8ac36cafda5f35ddd6ef91b1868703f40",
+        "src/lib/lz4file.o": "b298b99f99ccf4e39e3974c8776aa0ecbed29c596798c243ae51797682afa8c1",
+        "src/lib/lz4frame.o": "8265b184935445e39235b9042a94cf4d3da2273529f51773db71f3666a876309",
+        "src/lib/lz4hc.o": "f2a01e9460af4f65be9087d79a5e93094fb1092f3a828bc76da0ce5b0bd99b22",
+        "src/lib/xxhash.o": "70ebcec421d1a20d99f036f15445291c17f3bf147b3060775023f6a7b88863d3"
+      },
+      "archive": "a695d0b2ae12655df8bf027c5c0b3763a6bfdbd8de19871ec74fda436843671b",
+      "driver_source": "73f4428f4e2c4369bb565accf6c4910e0fd62e58acfced1a6268674d24ba7b95",
+      "driver_elf": "f3ef9a82886992c8e3d94d35c2d9c96ee9e1ca88b68b211129c330963cd2dc97",
+      "image": "ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565",
+      "executor_version": "0.1.0",
+      "contract_version": "0.1.0",
+      "policy_sha256": "4dd2c9ee2f6f4ae4d952bd894169cc24d0df3824faba6bbe242726702353d876",
+      "budgets": {
+        "timeout_ms": 10000,
+        "reserved_va": 268435456,
+        "heap_arena": 1048576,
+        "sentinel": 165,
+        "slack_fill": 90,
+        "max_input": 65536
+      },
+      "outcome": "ok",
+      "has_ub_source": "unchecked",
+      "unobserved": 0,
+      "discarded_output_bytes": 0,
+      "replay": "identical"
+    }
+  }
+}

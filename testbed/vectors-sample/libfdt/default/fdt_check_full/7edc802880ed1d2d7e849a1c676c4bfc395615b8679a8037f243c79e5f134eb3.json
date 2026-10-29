@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "libfdt/default/fdt_check_full",
+    "40"
+  ],
+  "stdin": "Ð\rþí\u0000\u0000\u0000m\u0000\u0000\u00008\u0000\u0000\u0000X\u0000\u0000\u0000(\u0000\u0000\u0000\u0011\u0000\u0000\u0000\u0010\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0015\u0000\u0000\u0000 ",
+  "env": {},
+  "stdout": {
+    "pattern": "",
+    "is_regex": false
+  },
+  "stderr": {
+    "pattern": "outcome=ok",
+    "is_regex": false
+  },
+  "rc": -8,
+  "lib_state_in": {},
+  "lib_state_out": {}
+}

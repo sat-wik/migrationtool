@@ -1,0 +1,406 @@
+{
+  "argv": [
+    "zcbor/default/zcbor_new_decode_state",
+    "3",
+    "1",
+    "1",
+    "0"
+  ],
+  "stdin": "\n",
+  "env": {},
+  "stdout": {
+    "pattern": "",
+    "is_regex": false
+  },
+  "stderr": {
+    "pattern": "outcome=ok",
+    "is_regex": false
+  },
+  "rc": 0,
+  "lib_state_in": {
+    "states": {
+      "items": [
+        {
+          "fields": {
+            "_anon0": {
+              "fields": {
+                "payload": {
+                  "pointer": null,
+                  "type": "const uint8_t *"
+                },
+                "payload_mut": {
+                  "pointer": null,
+                  "type": "uint8_t *"
+                }
+              },
+              "type": "union <anonymous>"
+            },
+            "constant_state": {
+              "pointer": null,
+              "type": "struct zcbor_state_constant *"
+            },
+            "decode_state": {
+              "fields": {
+                "counting_map_elems": {
+                  "type": "_Bool",
+                  "value": 0
+                },
+                "indefinite_length_array": {
+                  "type": "_Bool",
+                  "value": 0
+                },
+                "map_elem_count": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "map_elems_processed": {
+                  "type": "size_t",
+                  "value": 0
+                }
+              },
+              "type": "struct <anonymous>"
+            },
+            "elem_count": {
+              "type": "size_t",
+              "value": 0
+            },
+            "payload_bak": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            },
+            "payload_end": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            },
+            "payload_moved": {
+              "type": "_Bool",
+              "value": 0
+            }
+          },
+          "type": "zcbor_state_t"
+        },
+        {
+          "fields": {
+            "_anon0": {
+              "fields": {
+                "payload": {
+                  "pointer": null,
+                  "type": "const uint8_t *"
+                },
+                "payload_mut": {
+                  "pointer": null,
+                  "type": "uint8_t *"
+                }
+              },
+              "type": "union <anonymous>"
+            },
+            "constant_state": {
+              "pointer": null,
+              "type": "struct zcbor_state_constant *"
+            },
+            "decode_state": {
+              "fields": {
+                "counting_map_elems": {
+                  "type": "_Bool",
+                  "value": 0
+                },
+                "indefinite_length_array": {
+                  "type": "_Bool",
+                  "value": 0
+                },
+                "map_elem_count": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "map_elems_processed": {
+                  "type": "size_t",
+                  "value": 0
+                }
+              },
+              "type": "struct <anonymous>"
+            },
+            "elem_count": {
+              "type": "size_t",
+              "value": 0
+            },
+            "payload_bak": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            },
+            "payload_end": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            },
+            "payload_moved": {
+              "type": "_Bool",
+              "value": 0
+            }
+          },
+          "type": "zcbor_state_t"
+        },
+        {
+          "fields": {
+            "_anon0": {
+              "fields": {
+                "payload": {
+                  "pointer": null,
+                  "type": "const uint8_t *"
+                },
+                "payload_mut": {
+                  "pointer": null,
+                  "type": "uint8_t *"
+                }
+              },
+              "type": "union <anonymous>"
+            },
+            "constant_state": {
+              "pointer": null,
+              "type": "struct zcbor_state_constant *"
+            },
+            "decode_state": {
+              "fields": {
+                "counting_map_elems": {
+                  "type": "_Bool",
+                  "value": 0
+                },
+                "indefinite_length_array": {
+                  "type": "_Bool",
+                  "value": 0
+                },
+                "map_elem_count": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "map_elems_processed": {
+                  "type": "size_t",
+                  "value": 0
+                }
+              },
+              "type": "struct <anonymous>"
+            },
+            "elem_count": {
+              "type": "size_t",
+              "value": 0
+            },
+            "payload_bak": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            },
+            "payload_end": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            },
+            "payload_moved": {
+              "type": "_Bool",
+              "value": 0
+            }
+          },
+          "type": "zcbor_state_t"
+        }
+      ],
+      "type": "zcbor_state_t[3]"
+    }
+  },
+  "lib_state_out": {
+    "states": {
+      "items": [
+        {
+          "fields": {
+            "_anon0": {
+              "fields": {
+                "payload": {
+                  "pointer": {
+                    "buffer": "in",
+                    "offset": 0
+                  },
+                  "type": "const uint8_t *"
+                },
+                "payload_mut": {
+                  "pointer": {
+                    "buffer": "in",
+                    "offset": 0
+                  },
+                  "type": "uint8_t *"
+                }
+              },
+              "type": "union <anonymous>"
+            },
+            "constant_state": {
+              "pointer": {
+                "buffer": "states",
+                "offset": 72
+              },
+              "type": "struct zcbor_state_constant *"
+            },
+            "decode_state": {
+              "fields": {
+                "counting_map_elems": {
+                  "type": "_Bool",
+                  "value": 0
+                },
+                "indefinite_length_array": {
+                  "type": "_Bool",
+                  "value": 0
+                },
+                "map_elem_count": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "map_elems_processed": {
+                  "type": "size_t",
+                  "value": 0
+                }
+              },
+              "type": "struct <anonymous>"
+            },
+            "elem_count": {
+              "type": "size_t",
+              "value": 1
+            },
+            "payload_bak": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            },
+            "payload_end": {
+              "pointer": {
+                "buffer": "in",
+                "offset": 1
+              },
+              "type": "const uint8_t *"
+            },
+            "payload_moved": {
+              "type": "_Bool",
+              "value": 0
+            }
+          },
+          "type": "zcbor_state_t"
+        },
+        {
+          "fields": {
+            "_anon0": {
+              "fields": {
+                "payload": {
+                  "pointer": null,
+                  "type": "const uint8_t *"
+                },
+                "payload_mut": {
+                  "pointer": null,
+                  "type": "uint8_t *"
+                }
+              },
+              "type": "union <anonymous>"
+            },
+            "constant_state": {
+              "pointer": null,
+              "type": "struct zcbor_state_constant *"
+            },
+            "decode_state": {
+              "fields": {
+                "counting_map_elems": {
+                  "type": "_Bool",
+                  "value": 0
+                },
+                "indefinite_length_array": {
+                  "type": "_Bool",
+                  "value": 0
+                },
+                "map_elem_count": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "map_elems_processed": {
+                  "type": "size_t",
+                  "value": 0
+                }
+              },
+              "type": "struct <anonymous>"
+            },
+            "elem_count": {
+              "type": "size_t",
+              "value": 0
+            },
+            "payload_bak": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            },
+            "payload_end": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            },
+            "payload_moved": {
+              "type": "_Bool",
+              "value": 0
+            }
+          },
+          "type": "zcbor_state_t"
+        },
+        {
+          "fields": {
+            "_anon0": {
+              "fields": {
+                "payload": {
+                  "pointer": {
+                    "buffer": "states",
+                    "offset": 36
+                  },
+                  "type": "const uint8_t *"
+                },
+                "payload_mut": {
+                  "pointer": {
+                    "buffer": "states",
+                    "offset": 36
+                  },
+                  "type": "uint8_t *"
+                }
+              },
+              "type": "union <anonymous>"
+            },
+            "constant_state": {
+              "pointer": null,
+              "type": "struct zcbor_state_constant *"
+            },
+            "decode_state": {
+              "fields": {
+                "counting_map_elems": {
+                  "type": "_Bool",
+                  "value": 0
+                },
+                "indefinite_length_array": {
+                  "type": "_Bool",
+                  "value": 0
+                },
+                "map_elem_count": {
+                  "type": "size_t",
+                  "value": 0
+                },
+                "map_elems_processed": {
+                  "type": "size_t",
+                  "value": 0
+                }
+              },
+              "type": "struct <anonymous>"
+            },
+            "elem_count": {
+              "type": "size_t",
+              "value": 1
+            },
+            "payload_bak": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            },
+            "payload_end": {
+              "pointer": null,
+              "type": "const uint8_t *"
+            },
+            "payload_moved": {
+              "type": "_Bool",
+              "value": 0
+            }
+          },
+          "type": "zcbor_state_t"
+        }
+      ],
+      "type": "zcbor_state_t[3]"
+    }
+  }
+}

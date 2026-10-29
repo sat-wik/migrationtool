@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "target": "httpparser",
+  "config": "default",
+  "entry": "http_parser_execute",
+  "vectors": {
+    "43541203b0a83b93d70f352f99ba75d5ba03e88f84a3faca8c843986ec628ef2": {
+      "seed": "eb5fba2784cdb7962313ddb5c18db71fa66a1a14c115612e744e85399aa48ddd",
+      "scalars": {},
+      "objects": {
+        "src/libhttp_parser.o": "e649e06482735714c2ca7c5460afe61ef274e595ae6e5175b33aeff55f05ddbb"
+      },
+      "archive": "496d7add4d6a0b20c86c6af1067fdb699ad1378d38a70a6116f4124ae382f540",
+      "driver_source": "b38646ead6d5ac2c43ec41a0cd91cf59ad7d8e6c9890464db74ef31a4f45abae",
+      "driver_elf": "a2ca31aa78ce5d5670e71b2b53f89d7630bc4a6deb325b2bdc4dcee5349c653f",
+      "image": "ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565",
+      "executor_version": "0.1.0",
+      "contract_version": "0.1.0",
+      "policy_sha256": "f2abab6bfc5f089497aad9e36d8347683b1164a478b46872c6705d7d47aa53d5",
+      "budgets": {
+        "timeout_ms": 10000,
+        "reserved_va": 268435456,
+        "heap_arena": 1048576,
+        "sentinel": 165,
+        "slack_fill": 90,
+        "max_input": 65536
+      },
+      "outcome": "ok",
+      "has_ub_source": "unchecked",
+      "unobserved": 0,
+      "discarded_output_bytes": 0,
+      "replay": "identical"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "argv": [
+    "nanopb/default/pb_istream_from_buffer",
+    "1"
+  ],
+  "stdin": ">",
+  "env": {},
+  "stdout": {
+    "pattern": "",
+    "is_regex": false
+  },
+  "stderr": {
+    "pattern": "outcome=ok",
+    "is_regex": false
+  },
+  "rc": 0,
+  "lib_state_in": {},
+  "lib_state_out": {
+    "ret": {
+      "fields": {
+        "bytes_left": {
+          "type": "size_t",
+          "value": 1
+        },
+        "callback": {
+          "pointer": {
+            "symbol": "buf_read"
+          },
+          "type": "_Bool (*)(...)"
+        },
+        "errmsg": {
+          "pointer": null,
+          "type": "const char *"
+        },
+        "state": {
+          "pointer": {
+            "buffer": "in",
+            "offset": 0
+          },
+          "type": "void *"
+        }
+      },
+      "type": "pb_istream_t"
+    }
+  }
+}

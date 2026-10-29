@@ -1,0 +1,249 @@
+{
+  "argv": [
+    "httpparser/default/http_parser_execute",
+    "9"
+  ],
+  "stdin": "GET /\r\n\r\n",
+  "env": {},
+  "stdout": {
+    "pattern": "",
+    "is_regex": false
+  },
+  "stderr": {
+    "pattern": "outcome=ok",
+    "is_regex": false
+  },
+  "rc": 9,
+  "lib_state_in": {
+    "parser": {
+      "fields": {
+        "content_length": {
+          "type": "uint64_t",
+          "value": "0"
+        },
+        "data": {
+          "pointer": null,
+          "type": "void *"
+        },
+        "extra_flags": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "flags": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "header_state": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "http_errno": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "http_major": {
+          "type": "short unsigned int",
+          "value": 0
+        },
+        "http_minor": {
+          "type": "short unsigned int",
+          "value": 0
+        },
+        "index": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "lenient_http_headers": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "method": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "nread": {
+          "type": "uint32_t",
+          "value": 0
+        },
+        "state": {
+          "type": "unsigned int",
+          "value": 2
+        },
+        "status_code": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "type": {
+          "type": "unsigned int",
+          "value": 2
+        },
+        "upgrade": {
+          "type": "unsigned int",
+          "value": 0
+        }
+      },
+      "type": "http_parser"
+    },
+    "settings": {
+      "fields": {
+        "on_body": {
+          "pointer": null,
+          "type": "http_data_cb"
+        },
+        "on_chunk_complete": {
+          "pointer": null,
+          "type": "http_cb"
+        },
+        "on_chunk_header": {
+          "pointer": null,
+          "type": "http_cb"
+        },
+        "on_header_field": {
+          "pointer": null,
+          "type": "http_data_cb"
+        },
+        "on_header_value": {
+          "pointer": null,
+          "type": "http_data_cb"
+        },
+        "on_headers_complete": {
+          "pointer": null,
+          "type": "http_cb"
+        },
+        "on_message_begin": {
+          "pointer": null,
+          "type": "http_cb"
+        },
+        "on_message_complete": {
+          "pointer": null,
+          "type": "http_cb"
+        },
+        "on_status": {
+          "pointer": null,
+          "type": "http_data_cb"
+        },
+        "on_url": {
+          "pointer": null,
+          "type": "http_data_cb"
+        }
+      },
+      "type": "http_parser_settings"
+    }
+  },
+  "lib_state_out": {
+    "parser": {
+      "fields": {
+        "content_length": {
+          "type": "uint64_t",
+          "value": "18446744073709551615"
+        },
+        "data": {
+          "pointer": null,
+          "type": "void *"
+        },
+        "extra_flags": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "flags": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "header_state": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "http_errno": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "http_major": {
+          "type": "short unsigned int",
+          "value": 0
+        },
+        "http_minor": {
+          "type": "short unsigned int",
+          "value": 9
+        },
+        "index": {
+          "type": "unsigned int",
+          "value": 4
+        },
+        "lenient_http_headers": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "method": {
+          "type": "unsigned int",
+          "value": 1
+        },
+        "nread": {
+          "type": "uint32_t",
+          "value": 0
+        },
+        "state": {
+          "type": "unsigned int",
+          "value": 18
+        },
+        "status_code": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "type": {
+          "type": "unsigned int",
+          "value": 0
+        },
+        "upgrade": {
+          "type": "unsigned int",
+          "value": 0
+        }
+      },
+      "type": "http_parser"
+    },
+    "settings": {
+      "fields": {
+        "on_body": {
+          "pointer": null,
+          "type": "http_data_cb"
+        },
+        "on_chunk_complete": {
+          "pointer": null,
+          "type": "http_cb"
+        },
+        "on_chunk_header": {
+          "pointer": null,
+          "type": "http_cb"
+        },
+        "on_header_field": {
+          "pointer": null,
+          "type": "http_data_cb"
+        },
+        "on_header_value": {
+          "pointer": null,
+          "type": "http_data_cb"
+        },
+        "on_headers_complete": {
+          "pointer": null,
+          "type": "http_cb"
+        },
+        "on_message_begin": {
+          "pointer": null,
+          "type": "http_cb"
+        },
+        "on_message_complete": {
+          "pointer": null,
+          "type": "http_cb"
+        },
+        "on_status": {
+          "pointer": null,
+          "type": "http_data_cb"
+        },
+        "on_url": {
+          "pointer": null,
+          "type": "http_data_cb"
+        }
+      },
+      "type": "http_parser_settings"
+    }
+  }
+}

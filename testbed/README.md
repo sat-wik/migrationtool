@@ -184,6 +184,23 @@ directory (`--out`, `<work-dir>/reports` by default):
 
 The workflow also uploads them as the `testbed-reports` artifact for 7 days.
 
+## The reference vectors and the committed sample
+
+The workflow has a second job, `vectors` (decision D-32 of Phase 3), because GitHub
+keeps 50 annotations per job and the `testbed` job had reached them. It runs in the
+same pinned image with the same container hardening, receives the verified captures,
+the builds and the replay reports of the `testbed` job as the artifact `vectors-input`,
+and publishes the `vectors-*` notices: the executor self-test, the TRACTOR sample, the
+reference driver build, the state layouts, the twice-run vectors, their rerun
+comparison and the replay of the committed sample. Read the `testbed-*` notices from the
+`testbed` job's id and the `vectors-*` notices from the `vectors` job's id.
+
+`testbed/vectors-sample` holds one reference vector per drivable target, taken from
+the project's own committed seeds. Only CI writes it (the notice `fixture
+vectors-sample` carries it, with the sha256 of its tar), nobody edits it by hand, and
+every later run replays it byte for byte. `testbed/adapter-dropped.toml` logs each
+entry that is not drivable, with its cause and the attempt made.
+
 ## Exit codes
 
 - `0`: every selected target or configuration passed.

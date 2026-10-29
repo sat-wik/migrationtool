@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "target": "libfdt",
+  "config": "default",
+  "entry": "fdt_check_full",
+  "vectors": {
+    "7edc802880ed1d2d7e849a1c676c4bfc395615b8679a8037f243c79e5f134eb3": {
+      "seed": "62df4830903947f5bd55730a004d8cbe08e6759bc0a78cd951cc8dcb9e0510b4",
+      "scalars": {},
+      "objects": {
+        "src/libfdt/fdt.o": "a920c47b987df90e83c61d18a6f3700e0b8cedc16ddfce57ef51561697bbfe3d",
+        "src/libfdt/fdt_addresses.o": "e275ee0ac079a7cd31bda793e13e77931cf5c26b80379b58b4279e45650e0d3c",
+        "src/libfdt/fdt_check.o": "19feebb391ce66627ef99c7110b323170899608faf3ee6c0f6c0c6662a6e0261",
+        "src/libfdt/fdt_empty_tree.o": "88d2ea6288ea22cdcd5d6492fe66aa46c642b37cf6e58330870cc44a6eb4ff1d",
+        "src/libfdt/fdt_overlay.o": "cc928fca9ea86bfacdb54ebc80cf67a79f9a07204525725262f189e03a91480b",
+        "src/libfdt/fdt_ro.o": "73bb425f69bc07770ac83ed2a2bf09dcd8dcd54beae41c743542629da4ec6eaa",
+        "src/libfdt/fdt_rw.o": "d859795e783ae5f13df75605f4eca14b7d7e24c00b96b6b8cf8c562a365e2447",
+        "src/libfdt/fdt_strerror.o": "b7ef8828e2b603e24b09b9a04122844c8242ec7e89111c01cdb7a5dfd537ad3d",
+        "src/libfdt/fdt_sw.o": "e31ae690e034137cb61564df8c19975fac04d81a60e4984e9c7cedeea8219db7",
+        "src/libfdt/fdt_wip.o": "7d98b11cd9a6da07191d6e7e569a006845feab82c097f90186caccf80fc4833c"
+      },
+      "archive": "c7d2c5f741784f806961d951d7dc3a71c12a24da6eaa0774cbbacc85323886c9",
+      "driver_source": "6b497bae60841173020297807dd85075a04d2b53b46ab135ccb40f62dc154e32",
+      "driver_elf": "40dd08091048e9fcc6f25bc70a1d7a042b656ecfe70b60bc3cbbd3bb7fc85106",
+      "image": "ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565",
+      "executor_version": "0.1.0",
+      "contract_version": "0.1.0",
+      "policy_sha256": "36b422cfb55b5a15bde5fee9f23194e937291db45cb890f0c5d09b6fe650c045",
+      "budgets": {
+        "timeout_ms": 10000,
+        "reserved_va": 268435456,
+        "heap_arena": 1048576,
+        "sentinel": 165,
+        "slack_fill": 90,
+        "max_input": 65536
+      },
+      "outcome": "ok",
+      "has_ub_source": "unchecked",
+      "unobserved": 0,
+      "discarded_output_bytes": 0,
+      "replay": "identical"
+    }
+  }
+}

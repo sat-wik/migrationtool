@@ -1,0 +1,157 @@
+{
+  "argv": [
+    "nimble/default/ble_uuid_init_from_buf",
+    "1"
+  ],
+  "stdin": "d",
+  "env": {},
+  "stdout": {
+    "pattern": "",
+    "is_regex": false
+  },
+  "stderr": {
+    "pattern": "outcome=ok",
+    "is_regex": false
+  },
+  "rc": 3,
+  "lib_state_in": {
+    "uuid": {
+      "fields": {
+        "u": {
+          "fields": {
+            "type": {
+              "type": "uint8_t",
+              "value": 0
+            }
+          },
+          "type": "ble_uuid_t"
+        },
+        "u128": {
+          "fields": {
+            "u": {
+              "fields": {
+                "type": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "ble_uuid_t"
+            },
+            "value": {
+              "hex": "00000000000000000000000000000000",
+              "type": "uint8_t[16]"
+            }
+          },
+          "type": "ble_uuid128_t"
+        },
+        "u16": {
+          "fields": {
+            "u": {
+              "fields": {
+                "type": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "ble_uuid_t"
+            },
+            "value": {
+              "type": "uint16_t",
+              "value": 0
+            }
+          },
+          "type": "ble_uuid16_t"
+        },
+        "u32": {
+          "fields": {
+            "u": {
+              "fields": {
+                "type": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "ble_uuid_t"
+            },
+            "value": {
+              "type": "uint32_t",
+              "value": 0
+            }
+          },
+          "type": "ble_uuid32_t"
+        }
+      },
+      "type": "ble_uuid_any_t"
+    }
+  },
+  "lib_state_out": {
+    "uuid": {
+      "fields": {
+        "u": {
+          "fields": {
+            "type": {
+              "type": "uint8_t",
+              "value": 0
+            }
+          },
+          "type": "ble_uuid_t"
+        },
+        "u128": {
+          "fields": {
+            "u": {
+              "fields": {
+                "type": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "ble_uuid_t"
+            },
+            "value": {
+              "hex": "00000000000000000000000000000000",
+              "type": "uint8_t[16]"
+            }
+          },
+          "type": "ble_uuid128_t"
+        },
+        "u16": {
+          "fields": {
+            "u": {
+              "fields": {
+                "type": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "ble_uuid_t"
+            },
+            "value": {
+              "type": "uint16_t",
+              "value": 0
+            }
+          },
+          "type": "ble_uuid16_t"
+        },
+        "u32": {
+          "fields": {
+            "u": {
+              "fields": {
+                "type": {
+                  "type": "uint8_t",
+                  "value": 0
+                }
+              },
+              "type": "ble_uuid_t"
+            },
+            "value": {
+              "type": "uint32_t",
+              "value": 0
+            }
+          },
+          "type": "ble_uuid32_t"
+        }
+      },
+      "type": "ble_uuid_any_t"
+    }
+  }
+}

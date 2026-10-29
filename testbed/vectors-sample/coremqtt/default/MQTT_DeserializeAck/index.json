@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "target": "coremqtt",
+  "config": "default",
+  "entry": "MQTT_DeserializeAck",
+  "vectors": {
+    "0086b1de16db99dcb742b355c6203cc415948769318780c69688315f1d88f574": {
+      "seed": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd",
+      "scalars": {},
+      "objects": {
+        "build/CMakeFiles/core_mqtt.dir/source/core_mqtt.c.obj": "f599744edb9ca49a4b6abe061069adb4c5d63d3050985f1ef43d34711c7a5f55",
+        "build/CMakeFiles/core_mqtt.dir/source/core_mqtt_prop_deserializer.c.obj": "3f52cf12264ff67c3bb4461dec69b0ba4039036334f074226bf2508ad7c8b8d1",
+        "build/CMakeFiles/core_mqtt.dir/source/core_mqtt_prop_serializer.c.obj": "7446def387505b9928b254e1c2b6687f883e2607a8bbe4a3252c0e11f5a63e72",
+        "build/CMakeFiles/core_mqtt.dir/source/core_mqtt_serializer.c.obj": "8a6130ae462c66361462c43c17179d2b6cc07ae63ef497d6ff54c725e99a23fc",
+        "build/CMakeFiles/core_mqtt.dir/source/core_mqtt_serializer_private.c.obj": "e7eedd0940b429f1a5acbeedd4e4f62a732943d5a00a4d9d10b0e703a788d929",
+        "build/CMakeFiles/core_mqtt.dir/source/core_mqtt_state.c.obj": "f711f1c3879df0872557a84f308435cae18064d04485ab39535e34a1f9c6ed46"
+      },
+      "archive": "796db2bb34f81ead04ee808d80585e590947094993c733a139b0555dd5eef99c",
+      "driver_source": "2521b8dcf4aa09eae26f520c3444c5d9d442d36328c3aaeb5d1a6f6e51a15d54",
+      "driver_elf": "f2f21ba58009e460b147dcdaf5d8f8d02fa7fdd68732f9183933c6566b1c4202",
+      "image": "ghcr.io/sat-wik/migrationtool-toolchain@sha256:9de8bee18683cc8f5db862e6e657541135f1080b6859ccdeba0fcffa5bd5b565",
+      "executor_version": "0.1.0",
+      "contract_version": "0.1.0",
+      "policy_sha256": "31e90c38e95460325399ddab755ed7a2781a26356993fa22ea60bd29bb474d3f",
+      "budgets": {
+        "timeout_ms": 10000,
+        "reserved_va": 268435456,
+        "heap_arena": 1048576,
+        "sentinel": 165,
+        "slack_fill": 90,
+        "max_input": 65536
+      },
+      "outcome": "ok",
+      "has_ub_source": "unchecked",
+      "unobserved": 2,
+      "discarded_output_bytes": 0,
+      "replay": "identical"
+    }
+  }
+}

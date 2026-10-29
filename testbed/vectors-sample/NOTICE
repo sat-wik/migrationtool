@@ -1,0 +1,52 @@
+Committed sample of reference vectors (testbed/vectors-sample)
+
+What this is. One reference vector for each of the 15 drivable targets of the
+test bed (Phase 3, plan 03-08; CONTEXT D-21): the default configuration, the first
+drivable entry by name, the smallest committed seed of that entry (ties by the seed's
+sha256) and the first combination of the entry's scalar arguments. Each directory
+<target>/default/<entry> is a one-vector corpus: <sha256>.json is the vector (the nine
+fields of the schema, canonical JSON) and index.json is its provenance record: target,
+configuration, entry, the hashes of the build objects, of the archive and of the driver,
+the image digest, the executor and contract versions, the budgets, and the source of
+has_ub, which stays "unchecked" ("UB unchecked", never "no UB"). The vectors say what
+the original C does on the Cortex-M4 reference executor; they say nothing about any
+translation of it.
+
+Where the inputs come from. Every input is a seed this project already commits under
+testbed/seeds/<target>, each directory with its own NOTICE and licence. No seed is
+borrowed from another entry or another target (D-28), and nothing comes from the TRACTOR
+corpus. The stdin of each vector is that seed file, byte for byte; a test
+(eqv_04_committed_sample_is_valid) compares them.
+
+Who produces the files. They are produced only by the testbed workflow, in the pinned image
+(the toolchain image of container/README.md): the job "vectors" runs every seed twice
+through the generated driver under qemu-arm, `mt vectors sample` chooses the vectors above from that corpus, and the
+step "Fixture vectors sample" publishes them as a deterministic tar (gzip -n -9, base64)
+in the notice "fixture vectors-sample", whose last line is the sha256 of the tar. The
+files here are that tar after its sha256 was checked. They are never edited by hand, never
+produced by a local run, and a regeneration replaces all of them from one CI run. The
+same workflow replays them in every later run (the step "Replay the committed sample",
+notice "vectors-sample") against the drivers it builds, and each vector must reproduce
+byte for byte with the same driver, archive and object hashes.
+
+Licence of the project each sampled input comes from (the elected licence of
+testbed/manifest.toml; the seeds' own notices say which seeds are copies of upstream test
+data and which were written for this project):
+
+  cjson      cJSON_ParseWithLength        MIT
+  corejson   JSON_SearchT                 MIT
+  coremqtt   MQTT_DeserializeAck          MIT
+  httpparser http_parser_execute          MIT
+  libfdt     fdt_check_full               BSD-2-Clause
+  lz4        LZ4F_getFrameInfo            BSD-2-Clause
+  mbedtls    mbedtls_x509_crt_parse_der   Apache-2.0
+  microcoap  coap_parse                   MIT
+  nanopb     pb_istream_from_buffer       Zlib
+  nimble     ble_uuid_init_from_buf       Apache-2.0
+  paho       MQTTDeserialize_connack      BSD-3-Clause
+  qcbor      QCBORDecode_Init             BSD-3-Clause
+  tinycbor   cbor_parser_init             MIT
+  zcbor      zcbor_new_decode_state       Apache-2.0
+  zlib       uncompress                   Zlib
+
+Nothing here is a legal opinion.
