@@ -1534,3 +1534,137 @@ fn eqv_04_state_array() {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// Plan 03-08: the bounded attempts at the entries the earlier plans left (CONTEXT
+// D-13, D-24). An attempted entry ends in identical vectors twice or in one row of
+// testbed/adapter-dropped.toml with its cause, detail and the attempt made.
+// ---------------------------------------------------------------------------
+
+/// The drop row of `target`/`entry` in the committed adapter drop log, if any.
+fn adapter_drop_row(target: &str, entry: &str) -> Option<mt_harness::adapter_drops::AdapterDrop> {
+    let log = mt_harness::adapter_drops::AdapterDropLog::load_from_testbed_dir(
+        &repo_root().join("testbed"),
+    )
+    .unwrap();
+    log.row(target, entry).cloned()
+}
+
+/// Run one attempted entry in each configuration, or accept its drop row. Returns
+/// the directories of the first corpus of each configuration it ran (empty when the
+/// entry is logged).
+fn attempt(
+    target: &str,
+    entry: &str,
+    configs: &[&str],
+) -> Vec<(String, PathBuf, tempfile::TempDir)> {
+    if let Some(row) = adapter_drop_row(target, entry) {
+        assert!(
+            !row.detail.trim().is_empty() && !row.attempt.trim().is_empty(),
+            "{target}/{entry}: a drop row names its detail and the attempt made"
+        );
+        println!(
+            "{target}/{entry} logged {} ({})",
+            row.cause.as_str(),
+            row.detail
+        );
+        return Vec::new();
+    }
+    let mut ran = Vec::new();
+    for config in configs {
+        let tmp = tempfile::tempdir().unwrap();
+        let (summary, dir) = run_pair_twice(target, config, entry, tmp.path());
+        assert!(
+            summary.vectors > 0,
+            "{target}/{config}/{entry}: {summary:?}"
+        );
+        ran.push(((*config).to_owned(), dir, tmp));
+    }
+    ran
+}
+
+/// mbedtls `mbedtls_x509_crt_parse_der`: a setup call initialises the chain, the
+/// parsed certificate and its heap parts are recorded (CONTEXT D-06, D-09, D-12).
+fn check_mbedtls_x509(config: &str, dir: &Path) {
+    let corpus = read_corpus(dir).unwrap();
+    let (mut parsed, mut failed, mut heap_objects) = (0usize, 0usize, 0usize);
+    for (sha, vector) in &corpus.vectors {
+        let input_len = decode_latin1(&vector.stdin).unwrap().len();
+        assert_eq!(
+            vector.argv,
+            [
+                format!("mbedtls/{config}/mbedtls_x509_crt_parse_der"),
+                input_len.to_string()
+            ],
+            "{sha}: argv holds the input length"
+        );
+        // lib_state_in is the chain after mbedtls_x509_crt_init: all zero.
+        let before = vector.lib_state_in.get("crt").expect("lib_state_in.crt");
+        assert!(is_all_zero(before), "{sha}: the chain starts initialised");
+        let Some(after) = vector.lib_state_out.get("crt") else {
+            // A fault or timeout has no frame; none is expected here.
+            panic!("{sha}: lib_state_out.crt is not recorded");
+        };
+        if vector.rc == 0 {
+            parsed += 1;
+            // Every pointer of the parsed chain is null or points into the input,
+            // the chain itself or the heap the library allocated.
+            let mut found = Vec::new();
+            pointers_of(after, &mut found);
+            let mut into_heap = false;
+            for pointer in found {
+                match pointer {
+                    Pointer::Null => {}
+                    Pointer::Buffer { region, .. } => {
+                        assert!(
+                            ["in", "crt", "heap"].contains(&region.as_str()),
+                            "{sha}: pointer into {region}"
+                        );
+                        into_heap |= region == "heap";
+                    }
+                    Pointer::Symbol(name) => panic!("{sha}: unexpected function {name}"),
+                }
+            }
+            assert!(
+                into_heap,
+                "{sha}: the certificate copies its DER into the heap"
+            );
+            let heap = vector
+                .lib_state_out
+                .get("heap")
+                .expect("lib_state_out.heap");
+            let objects = struct_fields(heap, "lib_state_out.heap");
+            assert!(!objects.is_empty(), "{sha}: the heap holds the chain parts");
+            heap_objects += objects.len();
+            assert_ne!(
+                Some(after),
+                Some(before),
+                "{sha}: parsing changes the chain"
+            );
+        } else {
+            failed += 1;
+            assert!(
+                vector.rc < 0,
+                "{sha}: a library error code is negative, found {}",
+                vector.rc
+            );
+        }
+    }
+    println!(
+        "mbedtls/{config}/mbedtls_x509_crt_parse_der parsed={parsed} failed={failed} heap_objects={heap_objects}"
+    );
+    assert!(parsed > 0, "{config}: at least one certificate parses");
+    assert!(failed > 0, "{config}: at least one input is refused");
+}
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_tier_c_attempts() {
+    for (config, dir, _tmp) in attempt(
+        "mbedtls",
+        "mbedtls_x509_crt_parse_der",
+        &["default", "suite-b"],
+    ) {
+        check_mbedtls_x509(&config, &dir);
+    }
+}
