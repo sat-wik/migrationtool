@@ -821,6 +821,28 @@ source = "library/x509_crt.c"
 form = "direct"
 signature = "int (mbedtls_x509_crt *, const unsigned char *, size_t)"
 
+# Argument roles (Phase 3 CONTEXT D-06, D-09, D-11, D-12): the chain is a state of the
+# type mbedtls_x509_crt, initialised by the declared setup step mbedtls_x509_crt_init
+# (a void function that zero-fills it) before the snapshot, so lib_state_in is the
+# initialised chain. The library copies the DER into memory it allocates and links the
+# parsed names and extensions to the chain; those parts are recorded through the heap
+# walk, with the chain's pointers into the input, the chain itself or the heap. An input
+# that does not parse returns a negative library error code and leaves a partial chain.
+[[target.mbedtls.entry.arg]]
+role = "state"
+name = "crt"
+
+[[target.mbedtls.entry.arg]]
+role = "in_buf"
+
+[[target.mbedtls.entry.arg]]
+role = "in_len"
+
+[[target.mbedtls.entry.setup]]
+call = "mbedtls_x509_crt_init"
+args = ["&crt"]
+expect = "void"
+
 [[target.mbedtls.entry]]
 name = "mbedtls_asn1_get_tag"
 header = "include/mbedtls/asn1.h"
