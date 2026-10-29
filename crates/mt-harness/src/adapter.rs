@@ -85,6 +85,8 @@ pub struct Param {
     pub ptr_field: Option<String>,
     /// For a `wrap`: the member that receives the input length.
     pub len_field: Option<String>,
+    /// For a `local`: the name of the pointer local whose value is passed.
+    pub local: Option<String>,
 }
 
 /// The most states (parameters that are filled in, locals and the returned value)
@@ -137,6 +139,9 @@ enum ArgExpr {
     /// `<name>`: the value of the pointer local at state `n`, whose type text is
     /// the second field.
     Value(usize, String),
+    /// `sizeof(<local>)`: the size of the local's object, its type text and its
+    /// count.
+    SizeOf(String, Option<u32>),
 }
 
 impl ArgExpr {
@@ -149,6 +154,10 @@ impl ArgExpr {
             Self::Int(value) => c_integer(*value),
             Self::Address(index) => format!("mt_state({index})"),
             Self::Value(index, type_text) => format!("(*({type_text} *)mt_state({index}))"),
+            Self::SizeOf(type_text, None) => format!("(u32)sizeof({type_text})"),
+            Self::SizeOf(type_text, Some(count)) => {
+                format!("(u32)(sizeof({type_text}) * {count}u)")
+            }
         }
     }
 }
@@ -239,12 +248,19 @@ fn is_wide_return(text: &str) -> bool {
         || words.iter().filter(|word| **word == "long").count() >= 2
 }
 
-/// True for the roles whose value is one dimension of the combinations.
-const fn is_dimension(role: Role) -> bool {
-    matches!(
-        role,
-        Role::OutCap | Role::Scalar | Role::InoutLen | Role::Str
-    )
+/// True for the parameters whose value is one dimension of the combinations. An
+/// `inout_len` with `of = "in"` is not one: its value is the input length.
+fn is_dimension(param: &Param) -> bool {
+    match param.role {
+        Role::OutCap | Role::Scalar | Role::Str => true,
+        Role::InoutLen => !is_input_length(param),
+        _ => false,
+    }
+}
+
+/// True for an `inout_len` initialised from the input length (`of = "in"`).
+fn is_input_length(param: &Param) -> bool {
+    param.role == Role::InoutLen && param.of.as_deref() == Some("in")
 }
 
 impl Adapter {
@@ -372,6 +388,19 @@ impl Adapter {
                     "a str value holds a character outside printable ASCII".to_owned(),
                 ));
             }
+            if arg.role == Role::InoutLen
+                && arg.of.as_deref() == Some("in")
+                && (arg.default.is_some() || !arg.sweep.is_empty())
+            {
+                return Err(AdapterError::Invalid(
+                    "an inout_len with of = \"in\" takes no default or sweep".to_owned(),
+                ));
+            }
+            if arg.role == Role::Local && !arg.local.as_deref().is_some_and(is_c_identifier) {
+                return Err(AdapterError::Invalid(
+                    "a local role needs the key local, a C identifier".to_owned(),
+                ));
+            }
             params.push(Param {
                 c_type: text.clone(),
                 role: arg.role,
@@ -386,9 +415,23 @@ impl Adapter {
                 count: arg.count,
                 ptr_field: arg.ptr_field.clone(),
                 len_field: arg.len_field.clone(),
+                local: arg.local.clone(),
             });
         }
         let locals = build_locals(entry)?;
+        for param in params.iter().filter(|param| param.role == Role::Local) {
+            let name = param.local.as_deref().unwrap_or_default();
+            let found = locals.iter().any(|local| {
+                local.name == name
+                    && local.type_text.ends_with(" *")
+                    && local.count.is_none_or(|count| count == 1)
+            });
+            if !found {
+                return Err(AdapterError::Invalid(format!(
+                    "local role names {name:?}, which is no pointer local of the entry"
+                )));
+            }
+        }
         let setup = build_setup(entry, &params, &locals)?;
         Ok(Self {
             target: target.to_owned(),
@@ -466,7 +509,7 @@ impl Adapter {
         let mut found = BTreeMap::new();
         let mut dimension = 0usize;
         for (index, param) in self.params.iter().enumerate() {
-            if is_dimension(param.role) {
+            if is_dimension(param) {
                 let value = combination.values.get(dimension).copied().unwrap_or(0);
                 found.insert(index, value);
                 dimension += 1;
@@ -500,6 +543,7 @@ impl Adapter {
         let mut state_index = 0usize;
         let mut str_index = 0usize;
         let mut str_indexes: BTreeMap<&str, usize> = BTreeMap::new();
+        let param_state_count = param_states(&self.params).len();
         let mut args = Vec::new();
         for param in &self.params {
             let value = match param.role {
@@ -532,6 +576,23 @@ impl Adapter {
                     let text = format!("mt_str({str_index})");
                     str_index += 1;
                     text
+                }
+                Role::Null => "0".to_owned(),
+                Role::Local => {
+                    // The value of a pointer local: the local is a state after the
+                    // parameters' own.
+                    let at = self
+                        .locals
+                        .iter()
+                        .position(|local| Some(local.name.as_str()) == param.local.as_deref())
+                        .unwrap_or(0);
+                    format!(
+                        "(*({} *)mt_state({}))",
+                        self.locals
+                            .get(at)
+                            .map_or("", |local| local.type_text.as_str()),
+                        param_state_count + at
+                    )
                 }
                 Role::Wrap => {
                     // A struct by value, built from the input; the members are
@@ -626,6 +687,7 @@ impl Adapter {
         for (index, param) in self.params.iter().enumerate() {
             match param.role {
                 Role::InLen | Role::Wrap => argv.push(input_len.to_string()),
+                Role::InoutLen if is_input_length(param) => argv.push(input_len.to_string()),
                 Role::OutCap | Role::Scalar | Role::InoutLen => {
                     argv.push(values.get(&index).copied().unwrap_or(0).to_string());
                 }
@@ -638,7 +700,13 @@ impl Adapter {
                         .map_or(0, |at| self.chosen(at, &values).len());
                     argv.push(length.to_string());
                 }
-                Role::InBuf | Role::OutBuf | Role::State | Role::OutScalar | Role::OutPtr => {}
+                Role::InBuf
+                | Role::OutBuf
+                | Role::State
+                | Role::OutScalar
+                | Role::OutPtr
+                | Role::Null
+                | Role::Local => {}
             }
         }
         argv
@@ -719,15 +787,22 @@ impl Adapter {
 
     /// The values of the `scalar` and `inout_len` parameters of a combination, in
     /// order: the words the request carries for `mt_scalar` and for the initial
-    /// value of an `inout_len`.
+    /// value of an `inout_len`. The initial value of an `inout_len` with `of = "in"`
+    /// is `input_len`, the number of input bytes of the run.
     #[must_use]
-    pub fn scalar_words(&self, combination: &Combination) -> Vec<i64> {
+    pub fn scalar_words(&self, combination: &Combination, input_len: usize) -> Vec<i64> {
         let values = self.dimension_values(combination);
         self.params
             .iter()
             .enumerate()
             .filter(|(_, param)| matches!(param.role, Role::Scalar | Role::InoutLen))
-            .map(|(index, _)| values.get(&index).copied().unwrap_or(0))
+            .map(|(index, param)| {
+                if is_input_length(param) {
+                    i64::try_from(input_len).unwrap_or(i64::MAX)
+                } else {
+                    values.get(&index).copied().unwrap_or(0)
+                }
+            })
             .collect()
     }
 
@@ -877,6 +952,7 @@ fn render_set_value(value: SetValue) -> String {
         SetValue::InPlus(n) => format!("(mt_in + {n}u)"),
         SetValue::Len => "mt_in_len".to_owned(),
         SetValue::LenMinus(n) => format!("(u32)(mt_in_len - {n}u)"),
+        SetValue::InByte(n) => format!("(mt_in_len > {n}u ? (u32)mt_in[{n}u] : 0u)"),
         SetValue::Int(n) => c_integer(n),
     }
 }
@@ -971,6 +1047,13 @@ fn build_setup(
                             .ok_or_else(|| {
                                 bad(step, format!("argument {text:?} names no state or local"))
                             })?,
+                        Some(SetupArg::SizeOf(name)) => locals
+                            .iter()
+                            .find(|local| local.name == name)
+                            .map(|local| ArgExpr::SizeOf(local.type_text.clone(), local.count))
+                            .ok_or_else(|| {
+                                bad(step, format!("argument {text:?} names no local"))
+                            })?,
                         Some(SetupArg::Local(name)) => match objects.get(&name) {
                             Some((index, type_text, None | Some(1)))
                                 if type_text.ends_with(" *")
@@ -1055,7 +1138,7 @@ pub fn combinations(adapter: &Adapter) -> Result<Vec<Combination>, AdapterError>
     let limit = i64::from(Budgets::DEFAULT.max_input);
     let mut dimensions: Vec<Vec<i64>> = Vec::new();
     for param in &adapter.params {
-        if !is_dimension(param.role) {
+        if !is_dimension(param) {
             continue;
         }
         let label = param.name.as_deref().unwrap_or("scalar");

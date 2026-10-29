@@ -204,6 +204,16 @@ fn combination_of(
                     ));
                 }
             }
+            Role::InoutLen if param.of.as_deref() == Some("in") => {
+                // Initialised from the input length: argv holds it, and it is no
+                // dimension of the combination.
+                let text = texts.next().ok_or("argv is shorter than the parameters")?;
+                if text != &seed_len.to_string() {
+                    return Err(format!(
+                        "argv input length {text} is not the stdin length {seed_len}"
+                    ));
+                }
+            }
             Role::OutCap | Role::Scalar | Role::InoutLen => {
                 let text = texts.next().ok_or("argv is shorter than the parameters")?;
                 values.push(
@@ -225,7 +235,13 @@ fn combination_of(
                 text.parse::<usize>()
                     .map_err(|_| format!("argv length {text:?} is not a decimal integer"))?;
             }
-            Role::InBuf | Role::OutBuf | Role::State | Role::OutScalar | Role::OutPtr => {}
+            Role::InBuf
+            | Role::OutBuf
+            | Role::State
+            | Role::OutScalar
+            | Role::OutPtr
+            | Role::Null
+            | Role::Local => {}
         }
     }
     if texts.next().is_some() {

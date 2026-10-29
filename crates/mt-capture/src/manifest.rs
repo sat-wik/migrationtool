@@ -450,6 +450,9 @@ pub enum SetupArg {
     AddressOf(String),
     /// `<name>`: the value of a pointer local.
     Local(String),
+    /// `sizeof(<local>)`: the size in bytes of a declared local (of an array local,
+    /// the whole array), as a 32-bit unsigned value (plan 03-08).
+    SizeOf(String),
 }
 
 impl SetupArg {
@@ -464,6 +467,12 @@ impl SetupArg {
         }
         if let Some(name) = text.strip_prefix("$arg:") {
             return is_c_identifier(name).then(|| Self::Scalar(name.to_owned()));
+        }
+        if let Some(inner) = text
+            .strip_prefix("sizeof(")
+            .and_then(|rest| rest.strip_suffix(')'))
+        {
+            return is_c_identifier(inner).then(|| Self::SizeOf(inner.to_owned()));
         }
         if let Some(name) = text.strip_prefix('&') {
             return is_c_identifier(name).then(|| Self::AddressOf(name.to_owned()));
@@ -486,6 +495,9 @@ pub enum SetValue {
     Len,
     /// `$len-<n>`: the input length less `n`, in 32-bit unsigned arithmetic.
     LenMinus(u64),
+    /// `$in[<n>]`: the input byte at index `n`, 0 when the input is shorter
+    /// (plan 03-08).
+    InByte(u64),
     /// A decimal integer.
     Int(i64),
 }
@@ -504,6 +516,12 @@ impl SetValue {
         }
         if let Some(digits) = text.strip_prefix("$len-") {
             return parse_unsigned(digits).map(Self::LenMinus);
+        }
+        if let Some(digits) = text
+            .strip_prefix("$in[")
+            .and_then(|rest| rest.strip_suffix(']'))
+        {
+            return parse_unsigned(digits).map(Self::InByte);
         }
         parse_decimal(text).map(Self::Int)
     }
@@ -646,6 +664,11 @@ pub enum Role {
     /// D-12). It stands for the entry's `in_buf` and `in_len` together and needs
     /// `accepted_wrapped = true`.
     Wrap,
+    /// A pointer parameter passed as NULL; nothing is recorded (plan 03-08).
+    Null,
+    /// A pointer parameter that receives the value of a declared pointer `local`,
+    /// named by the key `local` (plan 03-08).
+    Local,
 }
 
 impl Role {
@@ -665,6 +688,8 @@ impl Role {
             Self::Str => "str",
             Self::StrLen => "str_len",
             Self::Wrap => "wrap",
+            Self::Null => "null",
+            Self::Local => "local",
         }
     }
 
@@ -680,6 +705,8 @@ impl Role {
                 | Self::OutScalar
                 | Self::OutPtr
                 | Self::Str
+                | Self::Null
+                | Self::Local
         )
     }
 }
@@ -727,6 +754,10 @@ pub struct ArgRole {
     /// For a `wrap`: the struct member that receives the input length.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub len_field: Option<String>,
+    /// For a `local`: the name of the pointer local whose value the parameter
+    /// receives (plan 03-08).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local: Option<String>,
 }
 
 fn is_false(value: &bool) -> bool {
@@ -1551,6 +1582,7 @@ fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
             ));
         }
         arg_key_issues(&h, arg, param, issues);
+        local_key_issues(&h, arg, entry, issues);
     }
     let count = |role: Role| entry.arg.iter().filter(|arg| arg.role == role).count();
     let str_names: Vec<&str> = entry
@@ -1590,6 +1622,28 @@ fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
             "{f}: an inout_len with of = \"out\" needs an out_buf to size (D-11)"
         ));
     }
+    // An inout_len with `of = "in"` is the length of the input: it is the in_buf's
+    // length, so the entry has no in_len or wrap as well (plan 03-08).
+    let counting = entry
+        .arg
+        .iter()
+        .filter(|arg| arg.role == Role::InoutLen && arg.of.as_deref() == Some("in"))
+        .count();
+    if counting > 1 {
+        issues.push(format!(
+            "{f}: {counting} inout_len tables with of = \"in\"; the input has one length (D-11)"
+        ));
+    }
+    if counting > 0 && (count(Role::InLen) > 0 || count(Role::Wrap) > 0) {
+        issues.push(format!(
+            "{f}: an inout_len with of = \"in\" is the length of the input, so the entry has no in_len or wrap as well (D-11)"
+        ));
+    }
+    if counting > 0 && count(Role::InBuf) == 0 {
+        issues.push(format!(
+            "{f}: an inout_len with of = \"in\" needs an in_buf to measure (D-11)"
+        ));
+    }
     wrap_and_input_issues(g, &f, entry, issues);
     for (buf, len, buf_word, len_word) in [
         (Role::InBuf, Role::InLen, "in_buf", "in_len"),
@@ -1597,7 +1651,12 @@ fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
     ] {
         let (bufs, lens) = (
             count(buf),
-            count(len) + if buf == Role::OutBuf { sizing } else { 0 },
+            count(len)
+                + if buf == Role::OutBuf {
+                    sizing
+                } else {
+                    counting
+                },
         );
         if bufs > 1 {
             issues.push(format!("{f}: {bufs} {buf_word} tables; at most one (D-11)"));
@@ -1620,7 +1679,7 @@ fn role_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
             matches!(
                 arg.role,
                 Role::OutCap | Role::Scalar | Role::InoutLen | Role::Str
-            )
+            ) && !(arg.role == Role::InoutLen && arg.of.as_deref() == Some("in"))
         })
         .map(|arg| {
             if arg.role == Role::Str {
@@ -1666,7 +1725,12 @@ fn wrap_and_input_issues(g: &str, f: &str, entry: &Entry, issues: &mut Vec<Strin
                 .value
                 .as_deref()
                 .and_then(SetValue::parse)
-                .is_some_and(|value| matches!(value, SetValue::In | SetValue::InPlus(_)))
+                .is_some_and(|value| {
+                    matches!(
+                        value,
+                        SetValue::In | SetValue::InPlus(_) | SetValue::InByte(_)
+                    )
+                })
     });
     if count(Role::InBuf) == 0 && wraps == 0 && !named_by_setup {
         issues.push(format!(
@@ -1818,7 +1882,7 @@ fn call_step_issues(
     for text in &step.args {
         let fail = |why: &str| {
             format!(
-                "{h}: argument {text:?} {why}; the closed grammar is $in, $len, $cap, $arg:<scalar>, a decimal integer, &<state or local> and <pointer local> (D-12)"
+                "{h}: argument {text:?} {why}; the closed grammar is $in, $len, $cap, $arg:<scalar>, a decimal integer, &<state or local>, <pointer local> and sizeof(<local>) (D-12)"
             )
         };
         match SetupArg::parse(text) {
@@ -1836,6 +1900,9 @@ fn call_step_issues(
                     .any(|local| local.name == name && local_is_pointer(local)) =>
             {
                 issues.push(fail("names no pointer local of the entry"));
+            }
+            Some(SetupArg::SizeOf(name)) if !entry.local.iter().any(|local| local.name == name) => {
+                issues.push(fail("names no local of the entry"));
             }
             Some(_) => {}
         }
@@ -1864,7 +1931,7 @@ fn set_step_issues(
     match step.value.as_deref().map(SetValue::parse) {
         Some(Some(_)) => {}
         Some(None) => issues.push(format!(
-            "{h}: value {:?} must be $in, $in+<n>, $len, $len-<n> or a decimal integer (D-12)",
+            "{h}: value {:?} must be $in, $in+<n>, $in[<n>], $len, $len-<n> or a decimal integer (D-12)",
             step.value.as_deref().unwrap_or_default()
         )),
         None => issues.push(format!("{h}: a set step needs a value (D-12)")),
@@ -1914,12 +1981,44 @@ fn mark_issues(g: &str, entry: &Entry, issues: &mut Vec<String>) {
     }
 }
 
+/// The key `local` (plan 03-08): a `local` role needs it and it names a pointer
+/// local of the entry; no other role takes it.
+fn local_key_issues(h: &str, arg: &ArgRole, entry: &Entry, issues: &mut Vec<String>) {
+    match (arg.role, arg.local.as_deref()) {
+        (Role::Local, None) => issues.push(format!(
+            "{h}: role local needs the key local, naming a pointer local of the entry (D-12)"
+        )),
+        (Role::Local, Some(name)) => {
+            if !entry
+                .local
+                .iter()
+                .any(|local| local.name == name && local_is_pointer(local))
+            {
+                issues.push(format!(
+                    "{h}: local {name:?} names no pointer local of the entry (D-12)"
+                ));
+            }
+        }
+        (_, Some(_)) => issues.push(format!("{h}: local is only allowed on local (D-12)")),
+        (_, None) => {}
+    }
+}
+
 /// The keys one role takes and the values they may have.
 fn arg_key_issues(h: &str, arg: &ArgRole, param: &str, issues: &mut Vec<String>) {
     let word = arg.role.word();
-    let takes_value = matches!(arg.role, Role::OutCap | Role::Scalar | Role::InoutLen);
+    // An inout_len initialised from the input length has no value of its own.
+    let from_input = arg.role == Role::InoutLen && arg.of.as_deref() == Some("in");
+    let takes_value =
+        matches!(arg.role, Role::OutCap | Role::Scalar | Role::InoutLen) && !from_input;
     match arg.role {
-        Role::InBuf | Role::OutBuf | Role::InLen | Role::StrLen | Role::Wrap => {
+        Role::InBuf
+        | Role::OutBuf
+        | Role::InLen
+        | Role::StrLen
+        | Role::Wrap
+        | Role::Null
+        | Role::Local => {
             if arg.name.is_some() {
                 issues.push(format!("{h}: role {word} takes no name (D-11)"));
             }
@@ -1969,15 +2068,21 @@ fn arg_key_issues(h: &str, arg: &ArgRole, param: &str, issues: &mut Vec<String>)
                 }
             }
         }
+    } else if from_input {
+        if arg.default.is_some() || !arg.sweep.is_empty() {
+            issues.push(format!(
+                "{h}: role inout_len with of = \"in\" takes no default or sweep; its initial value is the input length (D-11)"
+            ));
+        }
     } else if arg.default.is_some() || !arg.sweep.is_empty() {
         issues.push(format!(
             "{h}: default and sweep belong to out_cap, scalar and inout_len, not {word} (D-14)"
         ));
     }
     match (arg.role, arg.of.as_deref()) {
-        (Role::InoutLen, None | Some("out")) => {}
+        (Role::InoutLen, None | Some("out" | "in")) => {}
         (Role::InoutLen, Some(other)) => issues.push(format!(
-            "{h}: of = {other:?} names no output buffer; the only value is \"out\" (D-11)"
+            "{h}: of = {other:?} names neither the output buffer nor the input; the values are \"out\" and \"in\" (D-11)"
         )),
         (Role::StrLen, None) => issues.push(format!(
             "{h}: role str_len needs `of` naming its str (D-11)"

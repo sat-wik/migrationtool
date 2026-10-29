@@ -52,10 +52,16 @@ fn eqv_04_adapters_cli_lists_entries() {
         "stdout: {}",
         outcome.stdout
     );
+    // Every entry is drivable or logged (plan 03-08), so a logged entry prints its
+    // cause and no entry prints a no_roles row.
     assert!(
-        rows.iter()
-            .any(|row| row.starts_with("nanopb/pb_decode_ex no_roles")),
-        "an entry without roles prints a no_roles row: {}",
+        rows.contains(&"nanopb/pb_decode_ex dropped (not_expressible)"),
+        "a logged entry prints a dropped row: {}",
+        outcome.stdout
+    );
+    assert!(
+        !rows.iter().any(|row| row.contains(" no_roles ")),
+        "no committed entry is left without roles and without a drop row: {}",
         outcome.stdout
     );
     let last = rows.last().copied().unwrap_or_default();
@@ -262,15 +268,20 @@ fn eqv_04_adapters_cli_checks_the_floor() {
             std::fs::copy(&index, dir.join("index.json")).unwrap();
         }
     }
+    // Every entry with roles of six targets is logged, so each of them falls out of
+    // the count however many entries later plans give them.
+    let manifest_of = mt_capture::manifest::Manifest::load(&from.join("manifest.toml")).unwrap();
     let mut log = String::from("schema_version = 1\n");
-    for (target, entry) in [
-        ("lz4", "LZ4_decompress_safe"),
-        ("libfdt", "fdt_check_full"),
-        ("microcoap", "coap_parse"),
-        ("nimble", "ble_uuid_init_from_buf"),
-        ("nanopb", "pb_istream_from_buffer"),
-        ("zlib", "uncompress"),
-    ] {
+    for (target, entry) in ["lz4", "libfdt", "microcoap", "nimble", "nanopb", "zlib"]
+        .iter()
+        .flat_map(|target| {
+            manifest_of.target[*target]
+                .entry
+                .iter()
+                .filter(|entry| !entry.arg.is_empty())
+                .map(move |entry| (*target, entry.name.clone()))
+        })
+    {
         log.push_str(&format!(
             "\n[[dropped]]\ntarget = \"{target}\"\nentry = \"{entry}\"\ncause = \"attempt_failed\"\ndetail = \"x\"\nattempt = \"y\"\n"
         ));
@@ -285,6 +296,14 @@ fn eqv_04_adapters_cli_checks_the_floor() {
         "--check-floor",
     ]);
     assert_eq!(below.code, Some(1), "stdout: {}", below.stdout);
+    assert!(
+        below
+            .stdout
+            .lines()
+            .any(|l| l.starts_with("nanopb/pb_decode_ex no_roles")),
+        "an entry without roles and without a drop row prints a no_roles row: {}",
+        below.stdout
+    );
     assert!(
         below
             .stdout

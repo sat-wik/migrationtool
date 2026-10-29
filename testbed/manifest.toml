@@ -601,6 +601,59 @@ form = "wrapped"
 signature = "MQTTStatus_t (const MQTTPacketInfo_t *, uint16_t *, MQTTPublishInfo_t *, MQTTPropBuilder_t *, uint32_t, uint16_t)"
 accepted_wrapped = true
 
+# Argument roles (Phase 3 CONTEXT D-11, D-12, D-14). The packet information is a state
+# filled by set steps from the input, as MQTT_GetIncomingPacketTypeAndLength would fill
+# it for a packet whose remaining length takes one byte: the type is the first input
+# byte, the remaining data starts two bytes in and its length is the input length less
+# two (32-bit arithmetic: an input shorter than two bytes gives a huge length, which the
+# function refuses before it reads). All 15 committed seeds are packets with a one-byte
+# remaining length, so one fixed offset fits every seed. The property builder is NULL:
+# the function stores properties only when it is set. The packet identifier comes back
+# through a pointer. The largest packet is swept (4096 accepts every seed, 8 refuses the
+# longer ones) and so is the topic alias maximum (0 and 10).
+[[target.coremqtt.entry.arg]]
+role = "state"
+name = "packet"
+
+[[target.coremqtt.entry.arg]]
+role = "out_scalar"
+name = "packetId"
+
+[[target.coremqtt.entry.arg]]
+role = "state"
+name = "publishInfo"
+
+[[target.coremqtt.entry.arg]]
+role = "null"
+
+[[target.coremqtt.entry.arg]]
+role = "scalar"
+name = "maxPacketSize"
+default = 4096
+sweep = [8]
+
+[[target.coremqtt.entry.arg]]
+role = "scalar"
+name = "topicAliasMax"
+default = 0
+sweep = [10]
+
+[[target.coremqtt.entry.setup]]
+set = "packet.type"
+value = "$in[0]"
+
+[[target.coremqtt.entry.setup]]
+set = "packet.pRemainingData"
+value = "$in+2"
+
+[[target.coremqtt.entry.setup]]
+set = "packet.remainingLength"
+value = "$len-2"
+
+[[target.coremqtt.entry.setup]]
+set = "packet.headerLength"
+value = "2"
+
 [[target.coremqtt.entry]]
 name = "MQTT_DeserializeAck"
 header = "source/include/core_mqtt_serializer.h"
@@ -608,6 +661,55 @@ source = "source/core_mqtt_serializer.c"
 form = "wrapped"
 signature = "MQTTStatus_t (const MQTTPacketInfo_t *, uint16_t *, MQTTReasonCodeInfo_t *, MQTTPropBuilder_t *, const MQTTConnectionProperties_t *)"
 accepted_wrapped = true
+
+# Argument roles (Phase 3 CONTEXT D-11, D-12): the packet information is filled by set
+# steps from the input exactly as for MQTT_DeserializePublish (a one-byte remaining
+# length in all 15 seeds). The reason codes the function reports are a state; the
+# property builder is NULL. The connection properties are a state whose maximum packet
+# size (4096) and request-problem-information flag (1, the protocol's default) are set
+# before the snapshot, because the function refuses a maximum of 0.
+[[target.coremqtt.entry.arg]]
+role = "state"
+name = "packet"
+
+[[target.coremqtt.entry.arg]]
+role = "out_scalar"
+name = "packetId"
+
+[[target.coremqtt.entry.arg]]
+role = "state"
+name = "reasonCode"
+
+[[target.coremqtt.entry.arg]]
+role = "null"
+
+[[target.coremqtt.entry.arg]]
+role = "state"
+name = "connectProperties"
+
+[[target.coremqtt.entry.setup]]
+set = "packet.type"
+value = "$in[0]"
+
+[[target.coremqtt.entry.setup]]
+set = "packet.pRemainingData"
+value = "$in+2"
+
+[[target.coremqtt.entry.setup]]
+set = "packet.remainingLength"
+value = "$len-2"
+
+[[target.coremqtt.entry.setup]]
+set = "packet.headerLength"
+value = "2"
+
+[[target.coremqtt.entry.setup]]
+set = "connectProperties.maxPacketSize"
+value = "4096"
+
+[[target.coremqtt.entry.setup]]
+set = "connectProperties.requestProblemInfo"
+value = "1"
 
 [[target.coremqtt.config]]
 name = "default"
@@ -1231,6 +1333,36 @@ header = "lib/lz4frame.h"
 source = "lib/lz4frame.c"
 form = "direct"
 signature = "size_t (LZ4F_dctx *, LZ4F_frameInfo_t *, const void *, size_t *)"
+
+# Argument roles (Phase 3 CONTEXT D-11, D-12): the decompression context is made by the
+# declared setup call LZ4F_createDecompressionContext(&dctx, 100) into a pointer local
+# (100 is LZ4F_VERSION, the API version in lz4frame.h, which the function checks) and
+# passed by value; the frame information is a state; the source size is read and written
+# through a pointer, so it is an inout_len initialised from the input length (of = "in").
+[[target.lz4.entry.arg]]
+role = "local"
+local = "dctx"
+
+[[target.lz4.entry.arg]]
+role = "state"
+name = "info"
+
+[[target.lz4.entry.arg]]
+role = "in_buf"
+
+[[target.lz4.entry.arg]]
+role = "inout_len"
+name = "srcSize"
+of = "in"
+
+[[target.lz4.entry.local]]
+name = "dctx"
+type = "LZ4F_dctx *"
+
+[[target.lz4.entry.setup]]
+call = "LZ4F_createDecompressionContext"
+args = ["&dctx", "100"]
+expect = "0"
 
 [[target.lz4.config]]
 name = "default"

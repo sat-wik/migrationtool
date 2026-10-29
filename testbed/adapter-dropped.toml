@@ -40,3 +40,31 @@ entry = "mbedtls_asn1_get_tag"
 cause = "no_seeds"
 detail = "testbed/seeds/mbedtls/index.json lists no seed for mbedtls_asn1_get_tag; its 200 seeds all list mbedtls_x509_crt_parse_der, and they are not borrowed (D-22, D-28)"
 attempt = "none: the seed corpus lists no seed for this entry (D-28)"
+
+[[dropped]]
+target = "isotp"
+entry = "isotp_on_can_message"
+cause = "link_unresolved"
+detail = "isotp.c calls three functions the library leaves to the user (isotp_user.h): isotp_user_debug, isotp_user_get_ms and isotp_user_send_can; no captured object defines them, and the driver may not define them (no per-target C, D-11), so the driver cannot link: isotp_user_debug, isotp_user_get_ms, isotp_user_send_can"
+attempt = "designed the roles (state link, in_buf, in_len with max = 8, two 64-byte uint8_t locals, the setup call isotp_init_link(&link, 1, &sendbuf, 64, &recvbuf, 64)) and checked the link without declaring them: isotp.c compiled with the pinned flags and listed with arm-none-eabi-nm -u shows the three hooks undefined (the capture of isotp exists only in the image, so the pair itself was not linked); the roles were not committed because a declared entry that does not link makes the driver-build step of the image fail and skips every later vectors step"
+
+[[dropped]]
+target = "zlib"
+entry = "inflate"
+cause = "not_expressible"
+detail = "inflate needs a stream made by inflateInit_(strm, version, stream_size), whose version argument is the string \"1.3.2\" (ZLIB_VERSION); the setup grammar has no string-literal argument and no allowed form reaches it: string-literal setup argument"
+attempt = "read zlib.h and inflate.c at the pinned commit: inflateInit and inflateInit2 are macros over inflateInit_ and inflateInit2_, which return Z_VERSION_ERROR unless version is non-NULL and version[0] == ZLIB_VERSION[0]; inflateReset and inflateReset2 return Z_STREAM_ERROR on a stream without state (inflateStateCheck); sizeof(<local>) covers the stream_size argument but not the version, a NULL or input-derived version fails the check, and an object whose bytes spell the digit would need an integer assigned to a pointer member, which GCC 14 refuses; no form of the allowed list was found that reaches the string, none was added (D-24)"
+
+[[dropped]]
+target = "nanopb"
+entry = "pb_decode_ex"
+cause = "not_expressible"
+detail = "pb_decode_ex takes a pb_msgdesc_t that describes the message and a destination struct of the generated message type; the captured objects (pb_common, pb_decode, pb_encode) define no data symbol at all, and the generated descriptors come from protoc, which the capture stubs: message descriptor absent from the captured objects"
+attempt = "listed the symbols of the three captured nanopb objects with arm-none-eabi-nm (no D, R or B symbol) and read pb_decode.h and pb.h: the descriptor and the destination type exist only in generated code that the pinned capture does not build; no declared form can name an object that is in neither the headers nor the objects, so no roles were written"
+
+[[dropped]]
+target = "nimble"
+entry = "ble_hs_adv_parse_fields"
+cause = "link_unresolved"
+detail = "the driver links the pair's captured objects and five symbols stay undefined: ble_sm_alg_c1, ble_sm_alg_s1, ble_transport_ll_init, ble_transport_to_ll_acl_impl, ble_transport_to_ll_cmd_impl (the controller transport and the pairing algorithms are not in the captured objects)"
+attempt = "declared the roles (state fields, in_buf, in_len with max = 255) and built the driver once with the local capture in both configurations: the link reported the same five unresolved names as research Q3; the roles were removed"

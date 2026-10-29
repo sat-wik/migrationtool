@@ -1030,7 +1030,7 @@ pub fn run_vector_twice(
     let request = Request::entry(
         seed,
         adapter.output_capacity(combination),
-        &adapter.scalar_words(combination),
+        &adapter.scalar_words(combination, seed.len()),
     )
     .with_dump_plan(&ranges)
     .with_strings(&adapter.strings(combination));

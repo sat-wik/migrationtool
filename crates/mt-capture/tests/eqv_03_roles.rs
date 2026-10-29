@@ -1672,7 +1672,15 @@ fn eqv_03_roles_setup_and_local_parse_from_toml_and_stay_absent_otherwise() {
     }
     let json = plain.canonical_json().unwrap();
     assert!(!json.contains("\"setup\""), "no setup key when empty");
-    assert!(!json.contains("\"local\""), "no local key when empty");
+    // The key of the table, not the `local` role or its `local` key (plan 03-08).
+    assert!(!json.contains("\"local\": ["), "no local table when empty");
+    assert!(
+        committed()
+            .canonical_json()
+            .unwrap()
+            .contains("\"local\": ["),
+        "the pattern matches a committed local table"
+    );
 
     // http_parser_parse_url has no roles in the committed manifest.
     let marker = "signature = \"int (const char *, size_t, int, struct http_parser_url *)\"\n";
