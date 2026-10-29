@@ -320,3 +320,243 @@ fn eqv_04_adapters_cli_checks_the_floor() {
             .is_some_and(|l| l == "result: failed")
     );
 }
+
+// ---------------------------------------------------------------------------
+// Plan 03-08: `mt vectors sample` (CONTEXT D-21)
+// ---------------------------------------------------------------------------
+
+mod sample {
+    use std::collections::BTreeMap;
+    use std::path::Path;
+
+    use mt_vectors::corpus::{
+        HasUbSource, Provenance, ProvenanceBudgets, read_corpus, write_corpus,
+    };
+    use mt_vectors::vector::Vector;
+
+    use super::run_mt;
+
+    const HASH_A: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const HASH_B: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    const HASH_C: &str = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+
+    fn vector(argv: &[&str], stdin: &str) -> Vector {
+        let argv_json = argv
+            .iter()
+            .map(|word| format!("{word:?}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let text = format!(
+            "{{\"argv\":[{argv_json}],\"stdin\":{stdin:?},\"env\":{{}},\"stdout\":{{\"pattern\":\"\",\"is_regex\":false}},\"stderr\":{{\"pattern\":\"outcome=ok\",\"is_regex\":false}},\"rc\":0,\"lib_state_in\":{{}},\"lib_state_out\":{{}}}}"
+        );
+        Vector::from_json_bytes(text.as_bytes()).unwrap()
+    }
+
+    fn provenance(seed: &str, scalars: &[(&str, i64)]) -> Provenance {
+        Provenance {
+            seed: seed.to_owned(),
+            scalars: scalars
+                .iter()
+                .map(|(name, value)| ((*name).to_owned(), *value))
+                .collect::<BTreeMap<_, _>>(),
+            objects: BTreeMap::from([("build/x.o".to_owned(), HASH_B.to_owned())]),
+            archive: HASH_A.to_owned(),
+            driver_source: HASH_B.to_owned(),
+            driver_elf: HASH_A.to_owned(),
+            image: "ghcr.io/example/toolchain@sha256:0000".to_owned(),
+            executor_version: "0.1.0".to_owned(),
+            contract_version: "0.1.0".to_owned(),
+            policy_sha256: HASH_B.to_owned(),
+            budgets: ProvenanceBudgets {
+                timeout_ms: 10_000,
+                reserved_va: 0x1000_0000,
+                heap_arena: 1 << 20,
+                sentinel: 0xA5,
+                slack_fill: 0x5A,
+                max_input: 65_536,
+            },
+            outcome: "ok".to_owned(),
+            has_ub_source: HasUbSource::Unchecked,
+            unobserved: 0,
+            discarded_output_bytes: 0,
+            replay: "identical".to_owned(),
+        }
+    }
+
+    /// A corpus of `<target>/<config>/<entry>` with a vector for each seed and each
+    /// query index (`queries` > 0) or one per seed (`queries` = 0).
+    fn write(root: &Path, key: &str, seeds: &[(&str, &str)], queries: usize) {
+        let argv0 = key.to_owned();
+        let mut set = Vec::new();
+        for (hash, input) in seeds {
+            let combos: Vec<Option<usize>> = if queries == 0 {
+                vec![None]
+            } else {
+                (0..queries).map(Some).collect()
+            };
+            for combo in combos {
+                let length = input.len().to_string();
+                let mut argv = vec![argv0.as_str(), length.as_str()];
+                let query = combo.map(|index| format!("query{index}"));
+                if let Some(text) = &query {
+                    argv.push(text.as_str());
+                }
+                let scalars: Vec<(&str, i64)> = combo
+                    .map(|index| ("query", i64::try_from(index).unwrap()))
+                    .into_iter()
+                    .collect();
+                set.push((vector(&argv, input), provenance(hash, &scalars)));
+            }
+        }
+        let dir = root.join(key);
+        std::fs::create_dir_all(dir.parent().unwrap()).unwrap();
+        write_corpus(&dir, &set).unwrap();
+    }
+
+    #[test]
+    fn eqv_04_sample_cli_selects_one_vector_per_target() {
+        let tmp = tempfile::tempdir().unwrap();
+        let corpus = tmp.path().join("corpus");
+        // corejson: JSON_SearchT sweeps a string (three queries); its seeds are 4, 2,
+        // 1 and 1 bytes, the two shortest told apart by their sha256. Another
+        // entry and another configuration must not be chosen.
+        write(
+            &corpus,
+            "corejson/default/JSON_SearchT",
+            &[
+                (HASH_B, "aaaa"),
+                (HASH_C, "bb"),
+                (HASH_B, "c"),
+                (HASH_A, "d"),
+            ],
+            3,
+        );
+        write(
+            &corpus,
+            "corejson/default/JSON_Validate",
+            &[(HASH_A, "x")],
+            0,
+        );
+        write(
+            &corpus,
+            "corejson/depth-8/JSON_SearchT",
+            &[(HASH_A, "e")],
+            3,
+        );
+        // lz4: the first entry by name is LZ4F_getFrameInfo, which has no scalar.
+        write(
+            &corpus,
+            "lz4/default/LZ4F_getFrameInfo",
+            &[(HASH_A, "abc"), (HASH_B, "xy")],
+            0,
+        );
+        write(
+            &corpus,
+            "lz4/default/LZ4_decompress_safe",
+            &[(HASH_A, "z")],
+            0,
+        );
+
+        let out = tmp.path().join("out");
+        let args = |out: &Path, ids: &[&str]| -> Vec<String> {
+            let mut args: Vec<String> = vec![
+                "vectors".into(),
+                "sample".into(),
+                "--manifest".into(),
+                "testbed/manifest.toml".into(),
+                "--corpus-dir".into(),
+                corpus.to_str().unwrap().into(),
+                "--out".into(),
+                out.to_str().unwrap().into(),
+            ];
+            args.extend(ids.iter().map(|id| (*id).to_owned()));
+            args
+        };
+        let run = |out: &Path, ids: &[&str]| {
+            let owned = args(out, ids);
+            let refs: Vec<&str> = owned.iter().map(String::as_str).collect();
+            run_mt(&refs)
+        };
+
+        let selected = run(&out, &["corejson", "lz4"]);
+        assert_eq!(selected.code, Some(0), "stderr: {}", selected.stderr);
+        let rows: Vec<&str> = selected.stdout.lines().collect();
+        assert_eq!(rows.len(), 3, "{}", selected.stdout);
+        assert!(
+            rows[0].starts_with("corejson/default/JSON_SearchT ")
+                && rows[0].contains(&format!("seed={HASH_A} bytes=1")),
+            "the smallest seed, ties by sha256: {}",
+            rows[0]
+        );
+        assert!(
+            rows[1].starts_with("lz4/default/LZ4F_getFrameInfo ")
+                && rows[1].contains(&format!("seed={HASH_B} bytes=2")),
+            "{}",
+            rows[1]
+        );
+        assert_eq!(rows[2], "result: passed (2 rows)");
+
+        // One vector per target, in a one-vector corpus whose provenance is the
+        // CI corpus's own, byte for byte.
+        let sampled = read_corpus(&out.join("corejson/default/JSON_SearchT")).unwrap();
+        assert_eq!(sampled.vectors.len(), 1);
+        let (sha, picked) = sampled.vectors.iter().next().unwrap();
+        assert!(rows[0].contains(sha.as_str()), "{} {sha}", rows[0]);
+        assert_eq!(picked.stdin, "d");
+        let record = &sampled.index.vectors[sha];
+        assert_eq!(record.seed, HASH_A);
+        assert_eq!(
+            record.scalars,
+            BTreeMap::from([("query".to_owned(), 0)]),
+            "the first combination"
+        );
+        let original = std::fs::read(
+            corpus
+                .join("corejson/default/JSON_SearchT")
+                .join(format!("{sha}.json")),
+        )
+        .unwrap();
+        let copy = std::fs::read(
+            out.join("corejson/default/JSON_SearchT")
+                .join(format!("{sha}.json")),
+        )
+        .unwrap();
+        assert_eq!(original, copy, "the vector file is copied unchanged");
+        let names = |dir: &Path| -> Vec<String> {
+            let mut names: Vec<String> = std::fs::read_dir(dir)
+                .unwrap()
+                .map(|item| item.unwrap().file_name().to_string_lossy().into_owned())
+                .collect();
+            names.sort();
+            names
+        };
+        assert_eq!(names(&out), ["corejson", "lz4"]);
+        assert_eq!(names(&out.join("corejson")), ["default"]);
+        assert_eq!(names(&out.join("corejson/default")), ["JSON_SearchT"]);
+        assert_eq!(names(&out.join("lz4/default")), ["LZ4F_getFrameInfo"]);
+
+        // It fails closed: a drivable target without a corpus is an error and the
+        // output directory is not created; a non-empty output directory is refused.
+        let incomplete = tmp.path().join("incomplete");
+        let missing = run(&incomplete, &[]);
+        assert_eq!(missing.code, Some(2), "stdout: {}", missing.stdout);
+        assert!(missing.stderr.contains("cjson"), "{}", missing.stderr);
+        assert!(
+            !incomplete.exists(),
+            "nothing is written when the selection fails"
+        );
+        let again = run(&out, &["corejson", "lz4"]);
+        assert_eq!(again.code, Some(2), "stdout: {}", again.stdout);
+    }
+
+    #[test]
+    fn eqv_04_sample_cli_needs_its_options() {
+        let outcome = run_mt(&["vectors", "sample", "--manifest", "testbed/manifest.toml"]);
+        assert_eq!(outcome.code, Some(2), "stderr: {}", outcome.stderr);
+        assert!(
+            outcome.stderr.contains("--corpus-dir"),
+            "{}",
+            outcome.stderr
+        );
+    }
+}

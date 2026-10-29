@@ -624,13 +624,25 @@ fn eqv_04_workflow_static_captured_code_runs_only_in_run_guest() {
                 &call[2]
             );
             assert!(
-                matches!(&call[1], "vectors-run" | "vectors-rerun"),
+                matches!(
+                    &call[1],
+                    "vectors-run" | "vectors-rerun" | "vectors-sample-replay"
+                ),
                 "run_guest writes to {} on: {line}",
                 &call[1]
             );
+            // `replay` runs the committed sample and nothing else.
+            assert_eq!(
+                &call[2] == "replay",
+                &call[1] == "vectors-sample-replay",
+                "{line}"
+            );
         }
     }
-    assert_eq!(calls, 2, "run_guest is called twice, once per corpus");
+    assert_eq!(
+        calls, 3,
+        "run_guest is called three times: two corpora and the committed sample"
+    );
     // Only the self-test, the TRACTOR check, the build, the layout listing and
     // the comparison go through run_vectors.
     let allowed = Regex::new(r"\brun_vectors\s+(\S+)").unwrap();
@@ -639,7 +651,7 @@ fn eqv_04_workflow_static_captured_code_runs_only_in_run_guest() {
             assert!(
                 matches!(
                     &call[1],
-                    "selftest" | "tractor" | "build" | "check" | "layouts"
+                    "selftest" | "tractor" | "build" | "check" | "layouts" | "sample"
                 ),
                 "unexpected run_vectors subcommand {} on: {line}",
                 &call[1]
@@ -1012,4 +1024,124 @@ fn eqv_04_workflow_static_captures_travel_by_artifact() {
     );
     assert!(restore_code.contains("chmod -R a+rX"), "{restore_code}");
     assert!(!restore_code.contains("docker run"), "{restore_code}");
+}
+
+const SAMPLE_FIXTURE_STEP: &str = "Fixture vectors sample";
+const SAMPLE_REPLAY_STEP: &str = "Replay the committed sample";
+
+#[test]
+fn eqv_04_workflow_static_sample_steps() {
+    // D-21, T-03-29: the sample is made by CI in the pinned image and carried to the
+    // repository through a fixture notice whose tar sha256 is checked before commit;
+    // the next run replays the committed sample byte for byte.
+    let whole = workflow();
+    let text = vectors_job();
+    let run_at = text.find(&format!("- name: {RUN_STEP}")).unwrap();
+    let determinism_at = text.find(&format!("- name: {DETERMINISM_STEP}")).unwrap();
+    let fixture_at = text
+        .find(&format!("- name: {SAMPLE_FIXTURE_STEP}\n"))
+        .unwrap_or_else(|| panic!("{WORKFLOW} has no step {SAMPLE_FIXTURE_STEP:?}"));
+    let replay_at = text
+        .find(&format!("- name: {SAMPLE_REPLAY_STEP}"))
+        .unwrap_or_else(|| panic!("{WORKFLOW} has no step {SAMPLE_REPLAY_STEP:?}"));
+    assert!(
+        run_at < fixture_at && determinism_at < fixture_at && run_at < replay_at,
+        "both sample steps come after the run and the determinism steps"
+    );
+
+    // The fixture step: select, archive deterministically in an image tool, compress,
+    // encode and publish with the tar's sha256 as the last line.
+    let fixture = code_lines(&step_text(&text, SAMPLE_FIXTURE_STEP)).join("\n");
+    for needle in [
+        "run_vectors sample",
+        "--corpus-dir /out/vectors-run",
+        "--out /out/vectors-sample",
+        "image_tool",
+        "--sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner",
+        "gzip -n -9",
+        "base64",
+        "tar sha256",
+        "annotate notice \"fixture vectors-sample\"",
+    ] {
+        assert!(
+            fixture.contains(needle),
+            "the fixture step lacks {needle:?}:\n{fixture}"
+        );
+    }
+    let condition = fixture
+        .lines()
+        .find(|line| line.trim_start().starts_with("if:"))
+        .unwrap_or_else(|| panic!("the step has no `if:`:\n{fixture}"));
+    assert!(
+        condition.contains("steps.restore.outcome == 'success'")
+            && condition.contains("steps.vrun.outcome == 'success'"),
+        "{condition}"
+    );
+    assert!(!fixture.contains("continue-on-error") && !fixture.contains("testbed-"));
+    assert!(!fixture.contains("docker run"), "{fixture}");
+    // The last line of the notice is the hash line, then the parts are published
+    // in ranges of at most nine, as the other long fixtures are.
+    let sha_line = fixture.find("tar sha256").unwrap();
+    let encode = fixture.find("base64").unwrap();
+    assert!(
+        encode < sha_line,
+        "the hash line comes after the encoded tar"
+    );
+    let ranges = Regex::new(r#"annotate notice "fixture vectors-sample" \S+ (\d+) (\d+)"#).unwrap();
+    let mut published = Vec::new();
+    for name in [
+        SAMPLE_FIXTURE_STEP,
+        "Fixture vectors sample (parts 10 to 18)",
+        "Fixture vectors sample (parts 19 on)",
+    ] {
+        let step = code_lines(&step_text(&text, name)).join("\n");
+        let caps = ranges
+            .captures(&step)
+            .unwrap_or_else(|| panic!("{name:?} publishes no part range:\n{step}"));
+        published.push((
+            caps[1].parse::<u32>().unwrap(),
+            caps[2].parse::<u32>().unwrap(),
+        ));
+        assert!(!step.contains("docker run"), "{name:?}");
+    }
+    assert_eq!(published, [(1, 9), (10, 18), (19, 27)]);
+
+    // The replay step: the committed sample, the image's drivers, no network, and
+    // `no committed sample` while the directory does not exist.
+    let replay = code_lines(&step_text(&text, SAMPLE_REPLAY_STEP)).join("\n");
+    for needle in [
+        "run_guest vectors-sample-replay replay",
+        "--tree /opt/mt/testbed/vectors-sample",
+        "--scratch-dir /tmp/mt-slots",
+        "--work-dir /work",
+        "finish_vectors sample",
+        "no committed sample",
+        "chmod 0777",
+    ] {
+        assert!(
+            replay.contains(needle),
+            "the replay step lacks {needle:?}:\n{replay}"
+        );
+    }
+    let condition = replay
+        .lines()
+        .find(|line| line.trim_start().starts_with("if:"))
+        .unwrap_or_else(|| panic!("the step has no `if:`:\n{replay}"));
+    assert!(
+        condition.contains("steps.restore.outcome == 'success'")
+            && condition.contains("steps.vbuild.outcome == 'success'"),
+        "{condition}"
+    );
+    assert!(!replay.contains("continue-on-error") && !replay.contains("testbed-"));
+    assert!(!replay.contains("docker run"), "{replay}");
+
+    // The header comment lists both titles.
+    let header: String = whole
+        .lines()
+        .take_while(|line| line.starts_with('#'))
+        .collect::<Vec<_>>()
+        .join("\n");
+    for needle in ["fixture vectors-sample", "vectors-sample"] {
+        assert!(header.contains(needle), "the header lacks {needle}");
+    }
 }
