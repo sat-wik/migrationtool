@@ -30,8 +30,8 @@ Milestone v1.0 MVP. Each maps to exactly one roadmap phase.
 
 - [x] **EQV-01**: Equivalence contract v0 exists as a versioned document and a machine-readable policy: refinement, observation point at the C interface (return values, output buffers, global state across the boundary), UB action menu {return error (default), panic, preserve}, and a rule that the Rust never crashes or corrupts memory.
 - [x] **EQV-02**: A test-vector schema with exactly the fields `argv, stdin, env, stdout, stderr, rc, lib_state_in, lib_state_out, has_ub` validates vectors, round-trips in Rust types, rejects a single merged `lib_state`, and treats `has_ub` vectors as excluded from output comparison.
-- [ ] **EQV-03**: A per-target adapter declares each parser entry point and its argument roles so that buffer-in, buffer-out functions can be driven by vectors; at least 10 test-bed targets are drivable.
-- [ ] **EQV-04**: A C reference executor runs any vector against the target's original C build and records the expected result in a schema-valid vector; running the same vector twice gives identical results.
+- [x] **EQV-03**: A per-target adapter declares each parser entry point and its argument roles so that buffer-in, buffer-out functions can be driven by vectors; at least 10 test-bed targets are drivable.
+- [x] **EQV-04**: A C reference executor runs any vector against the target's original C build and records the expected result in a schema-valid vector; running the same vector twice gives identical results.
 
 ### UB Detection and Decision Log (UB)
 
@@ -176,8 +176,8 @@ Which phases cover which requirements.
 | BUILD-03 | Phase 2 | Complete |
 | EQV-01 | Phase 3 | Complete |
 | EQV-02 | Phase 3 | Complete |
-| EQV-03 | Phase 3 | Pending |
-| EQV-04 | Phase 3 | Pending |
+| EQV-03 | Phase 3 | Complete |
+| EQV-04 | Phase 3 | Complete |
 | UB-01 | Phase 4 | Pending |
 | UB-02 | Phase 4 | Pending |
 | UB-03 | Phase 4 | Pending |

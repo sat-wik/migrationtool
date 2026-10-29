@@ -6,16 +6,16 @@ current_phase: 03
 current_phase_name: Equivalence Contract and Test-Vector Schema
 current_plan: 10
 status: executing
-stopped_at: Completed 03-07-PLAN.md
-last_updated: "2026-10-29T16:24:27.219Z"
+stopped_at: Completed 03-08-PLAN.md
+last_updated: "2026-10-29T17:50:26.042Z"
 last_activity: 2026-10-29
 last_activity_desc: Phase 03 execution started
-state_head: 58f2931952e5ba780d66d820ec09576887643e7b
+state_head: f23172f54a590b4f6f81f95457ebb0fc90c905b3
 progress:
   total_phases: 12
   completed_phases: 2
   total_plans: 41
-  completed_plans: 40
+  completed_plans: 41
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-12)
 
 ## Current Position
 
-Phase: 03 (Equivalence Contract and Test-Vector Schema) — EXECUTING
+Phase: 03 (Equivalence Contract and Test-Vector Schema) — EXECUTED, awaiting verification
 Current Plan: 10
 Total Plans in Phase: 10
-Plan: 03-01 to 03-07, 03-09 and 03-10 done (03-07: declared setup sequences, locals, the setup_failed outcome, wrap, state arrays and set steps; httpparser, qcbor, zcbor and tinycbor cbor_value_validate drivable; 13 targets reproduced twice-identical in the D-31 image, testbed run 40905688514 = round trip 1 of 3, pushed up to the notices commit fdf8ad9); the 03-07 SUMMARY, STATE and ROADMAP commits are unpushed and ride with 03-08's first push; next 03-08. BLOCKER for 03-08: the testbed job is at exactly 50 of 50 annotations, so its first push needs a founder decision on the annotation layout
-Status: Ready to plan-execute 03-08
-Last activity: 2026-10-29 — Plan 03-07 complete
+Plan: 03-01 to 03-10 all done (03-08: the vectors steps moved to a second job, vectors, with its own annotation budget (D-32); mbedtls x509, coreMQTT publish and ack and lz4 LZ4F_getFrameInfo drivable, 15 drivable targets, every one of the 27 entries drivable or logged (isotp and nimble adv link_unresolved, zlib inflate and nanopb pb_decode_ex not_expressible); 15 CI-produced sample vectors committed in testbed/vectors-sample and replayed identical in testbed run 40922236736 (head 5e0d4a8), round trip 3 of 3, no slack); next /gsd-verify-work 3
+Status: Phase 3 plans executed; ready for /gsd-verify-work 3
+Last activity: 2026-10-29 — Plan 03-08 complete
 
 Progress: [██░░░░░░░░] 17%
 
@@ -91,6 +91,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 03 P05 | 75 min | 3 tasks | 29 files |
 | Phase 03 P06 | 66 min | 3 tasks | 30 files |
 | Phase 03 P07 | 19h 25m (spans a container restart and a usage-limit pause) | 3 tasks | 28 files |
+| Phase 03 P08 | 1h 30m | 3 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -164,6 +165,8 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 03]: mt vectors build and run print no_roles: <n> instead of one row per entry without roles because a job keeps 50 annotations (vectors notices use 49)
 - [Phase 03]: 03-07: setup steps are validated closed grammars; a failed step is setup_failed (status 0x100+k, rc the step's return, no label, compared); a wrap stands for in_buf and in_len; counted states and locals are arrays in one guarded mapping; at most 8 states per driver — Nothing from the manifest reaches C except parsed identifiers and decimals (T-03-25); a failed setup is defined behavior of the setup call and must not be excluded (T-03-26); bounded objects (T-03-27)
 - [Phase 03]: 03-08: D-32: the Phase 3 vectors steps run in a second job, vectors, of testbed.yml with its own 50-annotation budget (founder reply: Second job (Recommended)); the testbed job and its eight Phase 2 steps stay byte-identical (their text is pinned by sha256); the captures reach the vectors job as the artifact vectors-input; vectors-* notices are read from the vectors job id — The testbed job was at exactly 50 of GitHub's 50 annotations after plan 03-07; the artifact hand-off and the same pinned image and hardening keep the evidence equivalent. Reversible by moving the steps back.
+- [Phase 03]: 03-08: an entry that cannot link is logged link_unresolved with the unresolved names instead of declared (nimble ble_hs_adv_parse_fields: five names measured locally; isotp isotp_on_can_message: three user hooks derived from nm -u of isotp.c), because a declared entry that does not link makes vectors-build print result: failed and skips every later vectors step — Plan 03-08 deviation 3; the only way to drive isotp is a reviewed shared C shim for its user hooks, a founder item
+- [Phase 03]: 03-08: the committed sample rule is the default configuration, the first drivable entry by name, the vector of the first scalar combination with the smallest seed (ties by seed sha256); mt vectors sample fails closed and the files come only from the fixture vectors-sample notice after its tar sha256 is checked — D-21, T-03-29; testbed run 40922236736 replayed all 15 identical and regenerated the same tar
 
 ### Pending Todos
 
@@ -181,8 +184,6 @@ None yet.
 - [Init]: Open spec questions: first RTOS (Zephyr or FreeRTOS), acceptability of "return error" as UB default, IAR/Keil linking. First one gets recorded in Phase 2.
 - [Init]: TRACTOR corpus licence unchecked; use locally only until Phase 12 checks it.
 - [Init]: Before starting, check the day-job invention-assignment clause and keep work on own time and hardware.
-- Plans 03-07 and 03-08: the testbed job is at 49 of GitHub's 50 annotations (31 are Phase 2 fixture notices); decide how to stay within the cap before adding rows
-- Annotation cap: the testbed job is at exactly 50 of 50 annotations after 03-07 (vectors-layout 2/2 has 63 bytes of headroom, vectors-run 162, vectors-build 166); plan 03-08 cannot add listing rows without a founder decision (second vectors job, merge the 31 Phase 2 fixture notices, or one multi-part listing)
 
 ### Quick Tasks Completed
 
@@ -205,6 +206,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-29T16:08:33.202Z
-Stopped at: Completed 03-07-PLAN.md
+Last session: 2026-10-29T17:49:53.425Z
+Stopped at: Completed 03-08-PLAN.md
 Resume file: None
