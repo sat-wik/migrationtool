@@ -1033,7 +1033,9 @@ jobs:
           set -euo pipefail
           tar -xf "$RUNNER_TEMP/handoff/work.tar" -C "$RUNNER_TEMP/work"
           tar -xf "$RUNNER_TEMP/handoff/replay.tar" -C "$RUNNER_TEMP/out"
-          chmod -R a+rX "$RUNNER_TEMP/work" "$RUNNER_TEMP/out"
+          # Only the unpacked trees: the earlier steps' containers made other files in
+          # these directories (owned by the container user, not changeable by the runner).
+          chmod -R a+rX "$RUNNER_TEMP/work/capture" "$RUNNER_TEMP/work/run" "$RUNNER_TEMP/out/replay"
           ls "$RUNNER_TEMP/work/capture" "$RUNNER_TEMP/out/replay"
 
       # EQV-03, EQV-04 (plan 03-04, CONTEXT D-01, D-02, D-19, D-21): the reference
