@@ -359,3 +359,61 @@ pub fn replay_corpus(options: &ReplayOptions, dir: &Path) -> Result<ReplayReport
     }
     Ok(report)
 }
+
+/// Every corpus directory below `tree`: a directory that holds an `index.json`, in
+/// path order. A corpus directory is not entered; anything below the tree that is
+/// neither a directory nor a regular file (a symbolic link) is refused.
+///
+/// # Errors
+/// [`HarnessError::Io`] when a directory cannot be listed, [`HarnessError::Input`]
+/// for an entry that is neither a directory nor a regular file.
+pub fn corpus_dirs_below(tree: &Path) -> Result<Vec<PathBuf>, HarnessError> {
+    let mut found = Vec::new();
+    let mut stack = vec![tree.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let listing = std::fs::read_dir(&dir).map_err(|e| io("cannot list", &dir, e))?;
+        let mut subdirs = Vec::new();
+        let mut is_corpus = false;
+        for item in listing {
+            let item = item.map_err(|e| io("cannot list", &dir, e))?;
+            let path = item.path();
+            let kind = item.file_type().map_err(|e| io("cannot stat", &path, e))?;
+            if kind.is_dir() {
+                subdirs.push(path);
+            } else if kind.is_file() {
+                is_corpus |= item.file_name() == "index.json";
+            } else {
+                return Err(input(
+                    path.display().to_string(),
+                    "neither a directory nor a regular file",
+                ));
+            }
+        }
+        if is_corpus {
+            found.push(dir);
+        } else {
+            stack.extend(subdirs);
+        }
+    }
+    found.sort();
+    Ok(found)
+}
+
+/// Replay every corpus below `tree` (see [`corpus_dirs_below`]), in path order.
+///
+/// # Errors
+/// As [`corpus_dirs_below`] and [`replay_corpus`]; [`HarnessError::Input`] when the
+/// tree holds no corpus.
+pub fn replay_tree(
+    options: &ReplayOptions,
+    tree: &Path,
+) -> Result<Vec<ReplayReport>, HarnessError> {
+    let dirs = corpus_dirs_below(tree)?;
+    if dirs.is_empty() {
+        return Err(input(
+            tree.display().to_string(),
+            "the tree holds no corpus (no directory with an index.json)",
+        ));
+    }
+    dirs.iter().map(|dir| replay_corpus(options, dir)).collect()
+}

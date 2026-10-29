@@ -20,11 +20,12 @@ use mt_capture::testbed::{
 use mt_contract::Policy;
 use mt_contract::policy;
 use mt_harness::adapter_drops::{ADAPTER_FLOOR, testbed_drivable_targets};
-use mt_harness::replay::{ReplayOptions, check_corpora, replay_corpus};
+use mt_harness::replay::{ReplayOptions, check_corpora, replay_corpus, replay_tree};
 use mt_harness::run::{
     BuildOptions, RunOptions, Scope as VectorsScope, build_entries, layout_lines, list_adapters,
     render_build_listing, render_run_listing, run_entries,
 };
+use mt_harness::sample::{load_inputs, select_sample, write_sample};
 use mt_harness::selftest::run_selftest;
 use mt_harness::tools::ExecTools;
 use mt_toolchain::build_args::{self, Scope};
@@ -224,9 +225,34 @@ enum VectorsAction {
         /// `<work-dir>/tmp/vectors-replay`.
         #[arg(long)]
         scratch_dir: Option<PathBuf>,
+        /// Replay every corpus directory below this one (a directory with an
+        /// `index.json`), in path order: the committed sample is replayed this way.
+        #[arg(long, conflicts_with = "corpus_dirs")]
+        tree: Option<PathBuf>,
         /// The corpus directories to replay.
-        #[arg(required = true)]
+        #[arg(required_unless_present = "tree")]
         corpus_dirs: Vec<PathBuf>,
+    },
+    /// Choose the committed sample of a corpus tree and write it (EQV-04, D-21):
+    /// for each target with a drivable entry, in id order, the default
+    /// configuration, the first drivable entry by name, the vector of the first
+    /// scalar combination whose seed is the smallest (ties by sha256), copied with
+    /// its provenance into a one-vector corpus `<out>/<t>/default/<e>`. Prints
+    /// `<t>/<c>/<e> <vector sha256> seed=<seed sha256> bytes=<n>` per target, then
+    /// `result: passed (<n> rows)`. A drivable target without a corpus is an error
+    /// and nothing is written. Exit 0 when written, 2 for invalid input.
+    Sample {
+        /// The test-bed manifest; the adapter drop log is read next to it.
+        #[arg(long, default_value = "testbed/manifest.toml")]
+        manifest: PathBuf,
+        /// The corpus tree of a full run (`<dir>/<t>/<c>/<e>`).
+        #[arg(long)]
+        corpus_dir: PathBuf,
+        /// Where the sample is written; absent or empty.
+        #[arg(long)]
+        out: PathBuf,
+        /// Only these target ids; all targets of the manifest when none is given.
+        ids: Vec<String>,
     },
     /// Compare two corpus trees file by file (EQV-04, D-21). Fails closed: a file
     /// on one side only, an unreadable file, a file that is not a regular file,
@@ -886,8 +912,22 @@ fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
             pins,
             work_dir,
             scratch_dir,
+            tree,
             corpus_dirs,
-        } => replay_command(&manifest, &pins, work_dir, scratch_dir, &corpus_dirs),
+        } => replay_command(
+            &manifest,
+            &pins,
+            work_dir,
+            scratch_dir,
+            tree.as_deref(),
+            &corpus_dirs,
+        ),
+        VectorsAction::Sample {
+            manifest,
+            corpus_dir,
+            out,
+            ids,
+        } => sample_command(&manifest, &corpus_dir, &out, &ids),
         VectorsAction::Check { first, second } => check_command(&first, &second),
         VectorsAction::Layouts { work_dir } => layouts_command(work_dir),
         VectorsAction::Build { args, replay_dir } => build_command(args, replay_dir),
@@ -968,6 +1008,7 @@ fn replay_command(
     pins_path: &Path,
     work_dir: Option<PathBuf>,
     scratch_dir: Option<PathBuf>,
+    tree: Option<&Path>,
     corpus_dirs: &[PathBuf],
 ) -> anyhow::Result<u8> {
     let (tools, cfg) = exec_context(pins_path)?;
@@ -979,14 +1020,39 @@ fn replay_command(
         cfg,
         scratch_dir,
     };
+    let reports = match tree {
+        Some(tree) => replay_tree(&options, tree)
+            .with_context(|| format!("replaying the corpora below {}", tree.display()))?,
+        None => corpus_dirs
+            .iter()
+            .map(|dir| {
+                replay_corpus(&options, dir).with_context(|| format!("replaying {}", dir.display()))
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?,
+    };
     let mut failed = false;
-    for dir in corpus_dirs {
-        let report =
-            replay_corpus(&options, dir).with_context(|| format!("replaying {}", dir.display()))?;
+    for report in &reports {
         println!("{}", report.render());
         failed |= !report.passed();
     }
-    Ok(print_result(corpus_dirs.len(), failed))
+    Ok(print_result(reports.len(), failed))
+}
+
+/// Exit code of `mt vectors sample`: 0 written; any problem is an error (exit 2).
+fn sample_command(
+    manifest_path: &Path,
+    corpus_dir: &Path,
+    out: &Path,
+    ids: &[String],
+) -> anyhow::Result<u8> {
+    let (manifest, drops) = load_inputs(manifest_path).context("loading the test bed")?;
+    let choices =
+        select_sample(corpus_dir, &manifest, &drops, ids).context("choosing the sample")?;
+    write_sample(corpus_dir, &choices, out).context("writing the sample")?;
+    for choice in &choices {
+        println!("{}", choice.render());
+    }
+    Ok(print_result(choices.len(), choices.is_empty()))
 }
 
 /// Exit code of `mt vectors check`: 0 identical, 1 not identical.

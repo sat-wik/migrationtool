@@ -26,7 +26,8 @@
 //! - [`frame`] parses the result frame the driver writes,
 //! - [`classify`] maps a finished run to exactly one outcome,
 //! - [`run`] builds the drivers of a selection and runs the seeds into corpora,
-//! - [`replay`] compares corpora,
+//! - [`replay`] compares corpora and replays stored ones,
+//! - [`sample`] chooses and writes the committed sample of vectors,
 //! - [`selftest`] runs the executor's own cases in the pinned image.
 //!
 //! Every external program runs only through `mt_toolchain::runner`.
@@ -47,6 +48,7 @@ pub mod probe;
 pub mod replay;
 pub mod run;
 pub mod runtime;
+pub mod sample;
 pub mod selftest;
 pub mod tools;
 

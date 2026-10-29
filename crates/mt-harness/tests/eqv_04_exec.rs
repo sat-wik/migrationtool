@@ -1799,3 +1799,63 @@ fn eqv_04_tier_c_attempts() {
         );
     }
 }
+
+#[test]
+#[ignore = "reads the captures of an earlier local run; set MT_LOCAL_CAPTURES"]
+fn eqv_04_sample_is_chosen_and_replays_from_a_tree() {
+    // D-21: the sample is chosen from a corpus by the fixed rule, written as one-vector
+    // corpora, and replayed from the tree (`mt vectors replay --tree`) against the
+    // driver of the same build.
+    use mt_harness::replay::{ReplayOptions, replay_tree};
+    use mt_harness::sample::{load_inputs, select_sample, write_sample};
+
+    let work = local_work_dir();
+    let tmp = tempfile::tempdir().unwrap();
+    let scope = scope_for(
+        "corejson",
+        "default",
+        "JSON_SearchT",
+        &tmp.path().join("build"),
+        &work,
+    );
+    build_ok(&scope);
+    let corpus = tmp.path().join("corpus");
+    run_into(&scope, &corpus, &tmp.path().join("slots"));
+
+    let (manifest, drops) = load_inputs(&repo_root().join("testbed/manifest.toml")).unwrap();
+    let choices = select_sample(&corpus, &manifest, &drops, &["corejson".to_owned()]).unwrap();
+    assert_eq!(choices.len(), 1, "{choices:?}");
+    assert_eq!(
+        (
+            choices[0].target.as_str(),
+            choices[0].config.as_str(),
+            choices[0].entry.as_str()
+        ),
+        ("corejson", "default", "JSON_SearchT")
+    );
+    let sample = tmp.path().join("sample");
+    write_sample(&corpus, &choices, &sample).unwrap();
+    let written = read_corpus(&sample.join("corejson/default/JSON_SearchT")).unwrap();
+    assert_eq!(written.vectors.len(), 1);
+    assert!(written.vectors.contains_key(&choices[0].vector_sha256));
+
+    let options = ReplayOptions {
+        scope,
+        tools: host_tools(),
+        cfg: runner_config(),
+        scratch_dir: tmp.path().join("replay-slots"),
+    };
+    let reports = replay_tree(&options, &sample).unwrap();
+    assert_eq!(reports.len(), 1);
+    assert!(reports[0].passed(), "{}", reports[0].render());
+    println!(
+        "{}",
+        reports[0]
+            .render()
+            .replace(tmp.path().to_str().unwrap(), "<tmp>")
+    );
+    assert!(
+        replay_tree(&options, &tmp.path().join("slots")).is_err(),
+        "no corpus below"
+    );
+}

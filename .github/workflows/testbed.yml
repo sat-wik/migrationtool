@@ -57,6 +57,18 @@
 # and publishes vectors-layout, so the layouts of this compiler version can be
 # compared line for line with those of another.
 #
+# The committed sample (EQV-04, plan 03-08, CONTEXT D-21, T-03-29): `mt vectors sample`
+# chooses one vector per drivable target from the corpus of the twice-run vectors (the
+# default configuration, the first drivable entry by name, the smallest seed, the first
+# combination) and writes them as one-vector corpora; an image tool archives them as a
+# deterministic tar, which is compressed and published, base64 encoded and ending with
+# the tar's sha256, as the notice fixture vectors-sample (several steps, nine parts
+# each). The executor rebuilds the tar from the parts, checks that hash and commits the
+# files as testbed/vectors-sample; nothing else produces them. The next run replays the
+# committed sample through run_guest (`mt vectors replay --tree`) and publishes
+# vectors-sample: every vector must reproduce byte for byte, or it says that no sample
+# is committed yet.
+#
 # Network policy (D-12): fetch and the TRACTOR fetch (fetch_tractor) are the only
 # steps with network access. Validate, seeds, pairs, record, replay and compare go
 # through run_offline, which adds `--network none`; a test
@@ -1118,3 +1130,82 @@ jobs:
           rc=0
           if [ "$rerun_rc" -ne 0 ] || [ "$check_rc" -ne 0 ] || [ "$rows_rc" -ne 0 ]; then rc=1; fi
           finish_vectors determinism "$rc" vectors-determinism
+
+      # D-21, T-03-29: the committed sample. `mt vectors sample` chooses one vector per
+      # drivable target from the corpus of the run above and writes one-vector corpora
+      # into /out/vectors-sample; an image tool (no network, /work read-only) archives
+      # them as a deterministic tar; the notice carries the tar gzipped (gzip -n -9) and
+      # base64 encoded, and its last line is `tar sha256 <hex>` of the tar itself. The
+      # executor rebuilds the tar from the parts, checks that hash and unpacks it into
+      # testbed/vectors-sample before committing. The parts are published nine to a step.
+      - name: Fixture vectors sample
+        id: vsample
+        if: ${{ !cancelled() && steps.restore.outcome == 'success' && steps.vrun.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          set +e
+          run_vectors sample --manifest /opt/mt/testbed/manifest.toml --corpus-dir /out/vectors-run --out /out/vectors-sample > "$out/vectors-sample-select.txt" 2> "$out/vectors-sample-select.err"
+          rc=$?
+          set -e
+          cat "$out/vectors-sample-select.txt"
+          if [ "$rc" -ne 0 ]; then
+            cat "$out/vectors-sample-select.err" >&2
+            {
+              echo "sample selection exit code: $rc"
+              cat "$out/vectors-sample-select.txt"
+              tail -c 2500 "$out/vectors-sample-select.err"
+            } > "$out/fixture-vectors-sample.txt"
+            annotate error "fixture vectors-sample" "$out/fixture-vectors-sample.txt"
+            exit 1
+          fi
+          image_tool /out tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -cf /out/vectors-sample.tar -C /out vectors-sample
+          {
+            cat "$out/vectors-sample-select.txt"
+            echo "base64 of the gzip -n -9 of the tar:"
+            gzip -n -9 -c "$out/vectors-sample.tar" | base64 -w 76
+            echo "tar sha256 $(sha256sum "$out/vectors-sample.tar" | cut -d' ' -f1)"
+          } > "$out/fixture-vectors-sample.txt"
+          annotate notice "fixture vectors-sample" "$out/fixture-vectors-sample.txt" 1 9
+
+      - name: Fixture vectors sample (parts 10 to 18)
+        if: ${{ !cancelled() && steps.vsample.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture vectors-sample" "$RUNNER_TEMP/out/fixture-vectors-sample.txt" 10 18
+
+      - name: Fixture vectors sample (parts 19 on)
+        if: ${{ !cancelled() && steps.vsample.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          annotate notice "fixture vectors-sample" "$RUNNER_TEMP/out/fixture-vectors-sample.txt" 19 27
+
+      # D-21, T-03-31: the committed sample, replayed. Every corpus below
+      # testbed/vectors-sample is re-run twice through the driver built in this job and
+      # must reproduce its stored vector byte for byte, and its provenance (driver,
+      # archive and object hashes) must be this build's. Captured object code runs here,
+      # so the step goes through run_guest. While no sample is committed the step says
+      # so and passes.
+      - name: Replay the committed sample
+        id: vsamplereplay
+        if: ${{ !cancelled() && steps.restore.outcome == 'success' && steps.vbuild.outcome == 'success' }}
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/ci-lib.sh"
+          out="$RUNNER_TEMP/out"
+          if [ ! -d "$GITHUB_WORKSPACE/testbed/vectors-sample" ]; then
+            echo "no committed sample" > "$out/vectors-sample.txt"
+            : > "$out/vectors-sample.err"
+            finish_vectors sample 0 vectors-sample
+            exit 0
+          fi
+          mkdir -p "$out/vectors-sample-replay"
+          chmod 0777 "$out/vectors-sample-replay"
+          set +e
+          run_guest vectors-sample-replay replay --manifest /opt/mt/testbed/manifest.toml --pins /opt/mt/pins.toml --work-dir /work --scratch-dir /tmp/mt-slots --tree /opt/mt/testbed/vectors-sample > "$out/vectors-sample.txt" 2> "$out/vectors-sample.err"
+          rc=$?
+          set -e
+          finish_vectors sample "$rc" vectors-sample
