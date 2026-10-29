@@ -94,6 +94,14 @@ fn job_text(text: &str, name: &str) -> String {
         }
         body.push(line.to_owned());
     }
+    // The comment above the next job and the blank lines before it are not part
+    // of this one.
+    while body
+        .last()
+        .is_some_and(|line| line.trim().is_empty() || line.starts_with("  #"))
+    {
+        body.pop();
+    }
     body.join("\n")
 }
 
@@ -905,10 +913,12 @@ fn eqv_04_workflow_static_vectors_job_is_separate_and_equally_hardened() {
     for name in ["image_tool", "run_vectors", "run_guest"] {
         let body = function_body(&vectors, name);
         assert!(body.contains("--network none"), "{name} needs no network");
-        for needle in HELPER_HARDENING
-            .iter()
-            .filter(|n| !n.starts_with("/usr/local"))
-        {
+        for needle in HELPER_HARDENING {
+            // image_tool runs a tool of the image, not mt: it has no mt, pins or
+            // testbed mount.
+            if name == "image_tool" && needle.starts_with('/') {
+                continue;
+            }
             assert!(body.contains(needle), "{name} lacks {needle}");
         }
     }

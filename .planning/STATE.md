@@ -7,10 +7,10 @@ current_phase_name: Equivalence Contract and Test-Vector Schema
 current_plan: 10
 status: executing
 stopped_at: Completed 03-07-PLAN.md
-last_updated: "2026-10-29T16:08:33.388Z"
-last_activity: 2026-10-27
+last_updated: "2026-10-29T16:24:27.219Z"
+last_activity: 2026-10-29
 last_activity_desc: Phase 03 execution started
-state_head: 7ec42686678267e26413b6b3ca2f7bdf4ff0c910
+state_head: 58f2931952e5ba780d66d820ec09576887643e7b
 progress:
   total_phases: 12
   completed_phases: 2
@@ -163,6 +163,7 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 03]: ADAPTER_FLOOR is 10 and counts retained targets with a seeded, unlogged entry with roles; the CLI validates the drop log rows but not the never-both rule
 - [Phase 03]: mt vectors build and run print no_roles: <n> instead of one row per entry without roles because a job keeps 50 annotations (vectors notices use 49)
 - [Phase 03]: 03-07: setup steps are validated closed grammars; a failed step is setup_failed (status 0x100+k, rc the step's return, no label, compared); a wrap stands for in_buf and in_len; counted states and locals are arrays in one guarded mapping; at most 8 states per driver — Nothing from the manifest reaches C except parsed identifiers and decimals (T-03-25); a failed setup is defined behavior of the setup call and must not be excluded (T-03-26); bounded objects (T-03-27)
+- [Phase 03]: 03-08: D-32: the Phase 3 vectors steps run in a second job, vectors, of testbed.yml with its own 50-annotation budget (founder reply: Second job (Recommended)); the testbed job and its eight Phase 2 steps stay byte-identical (their text is pinned by sha256); the captures reach the vectors job as the artifact vectors-input; vectors-* notices are read from the vectors job id — The testbed job was at exactly 50 of GitHub's 50 annotations after plan 03-07; the artifact hand-off and the same pinned image and hardening keep the evidence equivalent. Reversible by moving the steps back.
 
 ### Pending Todos
 

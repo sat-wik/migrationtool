@@ -161,6 +161,14 @@ The TRACTOR format details measured in 03-RESEARCH.md (pinned corpus commit `379
   - **Pins comment:** the `container/pins.toml` comment "user mode cannot run bare-metal Cortex-M images" may be reworded in the same change.
   - **Reversibility:** costly. Every stored vector records the image digest (D-19).
 
+### Founder decision at plan 03-08 (2026-10-29)
+
+- **D-32: The Phase 3 vectors steps move to a second job of `testbed.yml`, `vectors`, with its own annotation budget.** The founder was asked how plan 03-08 should stay within GitHub's 50 annotations per job (the `testbed` job was at exactly 50 of 50 after plan 03-07, so 03-08 could not add a row to a listing or a notice) and answered, quoted: "Second job (Recommended)".
+  - **Meaning:** the executor self-test, the TRACTOR sample, the reference driver build, the layouts, the twice-run vectors, the rerun comparison and plan 03-08's sample steps run in the job `vectors`; the existing `testbed` job, its eight Phase 2 steps and their `testbed-` notices stay byte-identical (a static test pins the sha256 of each step's text, and the comparison with `02-22-CI-NOTICES.md` from line 5 on must still pass), and the Phase 2 fixture notices stay in that job unchanged.
+  - **Constraints held:** the second job runs in the same pinned image by digest (it pulls it itself and publishes `vectors-image`), with the same hardening (no network for anything that runs captured or upstream code; `fetch_tractor` stays the one networked vectors helper) and the same helpers (`image_tool`, `run_vectors`, `run_guest`, `fetch_tractor`, `finish_vectors`). The verified captures, the builds and the replay reports reach it as the artifact `vectors-input` (two tar files made in the image, so the container user's files are read by their owner), made by the existing `actions/upload-artifact` and read with the existing `actions/download-artifact`, both already pinned by commit SHA; no new action. It fetches and rebuilds nothing.
+  - **Reading notices:** from now on the `vectors-*` notices are read from the `vectors` job's id (`gh api repos/.../actions/runs/<run>/jobs`), and the `testbed-*` notices from the `testbed` job's id; every round trip records both job ids.
+  - **Reversibility:** reversible. Moving the steps back is a workflow edit, but the annotation cap would return.
+
 ### Claude's Discretion
 
 - **Executor internals:** how the driver is generated and linked (startup code, newlib with semihosting or a minimal stub). The constraints are the pinned toolchain, the shipped `.specs` names (02-21 `SHIPPED_SPECS`) and determinism.
