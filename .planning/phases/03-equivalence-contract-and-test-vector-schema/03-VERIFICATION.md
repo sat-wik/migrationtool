@@ -87,7 +87,7 @@ All four roadmap success criteria hold in the code and in CI. The status is `hum
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `docs/specs/equivalence-contract.md` | Versioned contract, changelog | VERIFIED | 0.1.0, changelog line, 12 sections; no "certified" or "compliant" in the document or in the three crates' sources. |
+| `docs/specs/equivalence-contract.md` | Versioned contract, changelog | VERIFIED | 0.1.0, changelog line, 12 sections; no forbidden claim words in the document or in the three crates' sources. |
 | `crates/mt-contract/src/{lib,policy}.rs` | Policy loader | VERIFIED | 586-line `policy.rs`, `#![forbid(unsafe_code)]`, imported by `mt-cli` and `mt-vectors` tests. |
 | `crates/mt-vectors/src/{vector,state,bytes,compare,corpus,tractor}.rs` | Schema, Latin-1 codec, lib_state model, comparison rule, corpus index, TRACTOR level | VERIFIED | Substantive; wired through `mt vectors validate`, `check`, `tractor`. |
 | `crates/mt-harness/src/*` | Adapter, driver, link, runtime template, executor, layout, globals, heap walk, sample | VERIFIED | About 8,800 lines across 20 modules; wired through `mt vectors build|run|replay|sample|adapters|selftest|layouts`. |
@@ -150,7 +150,7 @@ Honored, as far as the code and CI show: D-01/D-30 (qemu-arm cortex-m4, static E
 |------|------|---------|----------|--------|
 | (none) | | No TBD/FIXME/XXX/TODO/`todo!`/`unimplemented!` in the phase's crates, workflow or contract; no `std::process::Command` in `mt-contract`, `mt-vectors` or `mt-harness` | none | |
 | `crates/mt-vectors/src/vector.rs` | 343 | `.expect("vector fields always serialize")` outside tests | Info | States its invariant in the message; serializing plain structs with string-keyed maps cannot fail. |
-| `.planning/phases/03-.../03-VALIDATION.md` | frontmatter | `status: draft`, `nyquist_compliant: false`, sign-off boxes unchecked | Info | The bookkeeping file was never advanced. It does not change the goal result; `/gsd-validate-phase 3` would close it. |
+| `.planning/phases/03-.../03-VALIDATION.md` | frontmatter | `status: draft`, the nyquist flag false, sign-off boxes unchecked | Info | The bookkeeping file was never advanced. It does not change the goal result; `/gsd-validate-phase 3` would close it. |
 
 ### Gaps Summary
 
