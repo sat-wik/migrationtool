@@ -2,46 +2,47 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 milestone_name: MVP
-current_phase: 03
-current_phase_name: Equivalence Contract and Test-Vector Schema
-current_plan: 10
-status: executing
-stopped_at: Completed 03-08-PLAN.md
-last_updated: "2026-10-29T17:50:26.042Z"
-last_activity: 2026-10-29
-last_activity_desc: Phase 03 execution started
-state_head: f23172f54a590b4f6f81f95457ebb0fc90c905b3
+current_phase: 4
+current_phase_name: UB Detection and Decision Log
+current_plan: Not started
+status: planning
+stopped_at: Phase 03 complete, ready to plan Phase 4
+last_updated: "2026-10-30T14:23:39.640Z"
+last_activity: 2026-10-30
+last_activity_desc: Phase 03 complete, transitioned to Phase 4
+state_head: 2132988d1adbc82e1127ece5f3f4dc027139d486
 progress:
   total_phases: 12
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 41
   completed_plans: 41
+  percent: 25
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-12)
+See: .planning/PROJECT.md (updated 2026-10-30)
 
 **Core value:** Every migrated module ships with evidence, from a harness proven to catch planted bugs, that the Rust matches the C on every defined-behavior input; metric is the share of C modules reaching full evidence with zero divergences.
-**Current focus:** Phase 03 — Equivalence Contract and Test-Vector Schema
+**Current focus:** Phase 4 — UB Detection and Decision Log
 
 ## Current Position
 
-Phase: 03 (Equivalence Contract and Test-Vector Schema) — EXECUTED, awaiting verification
-Current Plan: 10
+Phase: 4 — UB Detection and Decision Log
+Current Plan: Not started
 Total Plans in Phase: 10
-Plan: 03-01 to 03-10 all done (03-08: the vectors steps moved to a second job, vectors, with its own annotation budget (D-32); mbedtls x509, coreMQTT publish and ack and lz4 LZ4F_getFrameInfo drivable, 15 drivable targets, every one of the 27 entries drivable or logged (isotp and nimble adv link_unresolved, zlib inflate and nanopb pb_decode_ex not_expressible); 15 CI-produced sample vectors committed in testbed/vectors-sample and replayed identical in testbed run 40922236736 (head 5e0d4a8), round trip 3 of 3, no slack); next /gsd-verify-work 3
-Status: Phase 3 plans executed; ready for /gsd-verify-work 3
-Last activity: 2026-10-29 — Plan 03-08 complete
+Plan: Not started (Phase 03 complete: 10/10 plans, UAT 8/8 passed 2026-10-30, verification passed)
+Status: Ready to plan
+Last activity: 2026-10-30 — Phase 03 complete, transitioned to Phase 4
 
-Progress: [██░░░░░░░░] 17%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 31
+- Total plans completed: 41
 - Average duration: - min
 - Total execution time: 0.0 hours
 
@@ -51,6 +52,7 @@ Progress: [██░░░░░░░░] 17%
 |-------|-------|-------|----------|
 | 01 | 9 | - | - |
 | 2 | 22 | - | - |
+| 03 | 10 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: none yet
@@ -167,6 +169,7 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 03]: 03-08: D-32: the Phase 3 vectors steps run in a second job, vectors, of testbed.yml with its own 50-annotation budget (founder reply: Second job (Recommended)); the testbed job and its eight Phase 2 steps stay byte-identical (their text is pinned by sha256); the captures reach the vectors job as the artifact vectors-input; vectors-* notices are read from the vectors job id — The testbed job was at exactly 50 of GitHub's 50 annotations after plan 03-07; the artifact hand-off and the same pinned image and hardening keep the evidence equivalent. Reversible by moving the steps back.
 - [Phase 03]: 03-08: an entry that cannot link is logged link_unresolved with the unresolved names instead of declared (nimble ble_hs_adv_parse_fields: five names measured locally; isotp isotp_on_can_message: three user hooks derived from nm -u of isotp.c), because a declared entry that does not link makes vectors-build print result: failed and skips every later vectors step — Plan 03-08 deviation 3; the only way to drive isotp is a reviewed shared C shim for its user hooks, a founder item
 - [Phase 03]: 03-08: the committed sample rule is the default configuration, the first drivable entry by name, the vector of the first scalar combination with the smallest seed (ties by seed sha256); mt vectors sample fails closed and the files come only from the fixture vectors-sample notice after its tar sha256 is checked — D-21, T-03-29; testbed run 40922236736 replayed all 15 identical and regenerated the same tar
+- [Phase 03 UAT]: Founder decisions 2026-10-30: keep D-07 whole-buffer record (lz4 overshoot compared); globals keys stay C identifiers (name.N statics fail the run until a target needs them); isotp stays link_unresolved, no C shim; smallest-seed sample adequate; timeout label `timeout` rc -9 confirmed; QEMU 10.0.2 accepted over D-31's 8.2.x
 
 ### Pending Todos
 
@@ -206,6 +209,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-29T17:49:53.425Z
-Stopped at: Completed 03-08-PLAN.md
+Last session: 2026-10-30
+Stopped at: Phase 03 complete, ready to plan Phase 4
 Resume file: None

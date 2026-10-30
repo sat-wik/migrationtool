@@ -16,7 +16,7 @@
     {
       "number": "3",
       "name": "Equivalence Contract and Test-Vector Schema",
-      "status": "in_progress"
+      "status": "complete"
     },
     {
       "number": "4",
@@ -66,8 +66,8 @@
   ],
   "next": {
     "command": "/gsd:progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 03 of 12 · executing"
+    "label": "Advance to the next step (plan phase 4)",
+    "reason": "Phase 4 of 12 — needs a plan"
   },
-  "updated_at": "2026-10-29T16:08:24.988Z"
+  "updated_at": "2026-10-30T14:23:39.654Z"
 }

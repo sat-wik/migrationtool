@@ -24,13 +24,13 @@ Full list, IDs and traceability: `.planning/REQUIREMENTS.md`. Roadmap: `.plannin
 ### Validated
 
 - ✓ Pinned, reproducible container with one LLVM (16) for all C-side analysis; analysers run as subprocesses (TOOL-01..04) — Phase 1 (verified 2026-10-12; image ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee, manifest-identical builds; LLVM pin provisional until Phase 6 R1)
+- ✓ Equivalence contract v0 (refinement) and a TRACTOR-compatible test-vector schema, with a C reference executor (EQV) — Phase 3 (verified 2026-10-30; contract 0.1.0, 15 drivable targets, executor under qemu-arm -cpu cortex-m4 identical on a second run, testbed run 40922236736)
 
 ### Active
 
 Milestone v1.0 MVP (spec months 0-3), 63 requirements across 12 phases:
 
 - [ ] Test bed of 10-20 open-source C parsers whose real builds are captured and replayed exactly, per shipped configuration (BED, BUILD)
-- [ ] Equivalence contract v0 (refinement) and a TRACTOR-compatible test-vector schema, with a C reference executor (EQV)
 - [ ] UB detection: separate ASan+UBSan and MSan builds, -O0 vs real-flags differential, C-side symbolic scan, UB decisions log with error default (UB)
 - [ ] Differential fuzzing harness on an ILP32, unsigned-char configuration that matches the Cortex-M target, with C-side branch coverage (DIFF)
 - [ ] Go/no-go spikes for Rust-to-KLEE (R1) and c2rust-output-as-Kani-reference (R2) (SYM)
@@ -174,6 +174,11 @@ For the open-source test bed the UB-decision approver is recorded as the founder
 | MVP "full evidence" excludes Kani (D-14) | Kani is spec-v1 and R2 is unproven | Assumed — confirm (A-01) |
 | 12 phases, sized 1-2 weeks of part-time work each | Builder constraint outranks the default "standard" granularity (4-6 phases) | Assumed — see A-09 |
 | First RTOS ecosystem (Zephyr vs FreeRTOS) | Spec open question; parsers are RTOS-independent so it is not blocking | Deferred (D-18) |
+| Keep D-07 whole-buffer record (Phase 3 UAT) | LZ4_decompress_safe's overshoot and partial writes are boundary-visible; the Rust must match them | Done — Phase 3 |
+| globals keys stay C identifiers; a changed `name.N` static fails the run (Phase 3 UAT) | Key grammar is costly to reverse (D-06); no committed target triggers it | Revisit when a target changes one |
+| isotp_on_can_message stays link_unresolved; no per-target C shim (Phase 3 UAT) | D-11 forbids per-target hand-written C; floor met with 15 drivable targets | Done — Phase 3 |
+| Smallest-seed committed sample; timeout = has_ub `timeout`, rc -9 (Phase 3 UAT) | Deterministic offline reference; timeouts never count as a pass | Done — Phase 3 |
+| QEMU 10.0.2 (bookworm-backports) accepted in place of D-31's 8.2.x (Phase 3 UAT) | M-profile commpage cause is gone; every vectors job green | Done — Phase 3 |
 
 ## Assumptions to Confirm
 
@@ -208,4 +213,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-12 after Phase 1*
+*Last updated: 2026-10-30 after Phase 3*
