@@ -370,14 +370,19 @@ impl Ub {
                 ));
             }
             let value_ok = match &code.value {
-                ErrorValue::Integer(_) => true,
-                ErrorValue::Text(text) => is_decimal_integer(text) || is_c_identifier(text),
+                ErrorValue::Integer(n) => fits_return_window(*n),
+                ErrorValue::Text(text) => {
+                    (is_decimal_integer(text) && text.parse::<i64>().is_ok_and(fits_return_window))
+                        || is_c_identifier(text)
+                }
             };
             if !value_ok {
                 issues.push(format!(
-                    "ub.error_code[{i}].value: {} is neither a decimal integer nor a C \
-                     identifier (D-17)",
-                    code.value
+                    "ub.error_code[{i}].value: {} is neither a decimal integer within \
+                     {}..={} nor a C identifier (D-17)",
+                    code.value,
+                    i32::MIN,
+                    u32::MAX
                 ));
             }
         }
@@ -536,6 +541,12 @@ fn is_c_identifier(text: &str) -> bool {
 }
 
 /// An optional leading `-` and at least one decimal digit.
+/// Whether `n` fits the 32-bit return convention: the window of a state value,
+/// `i32::MIN..=u32::MAX`.
+fn fits_return_window(n: i64) -> bool {
+    (i64::from(i32::MIN)..=i64::from(u32::MAX)).contains(&n)
+}
+
 fn is_decimal_integer(text: &str) -> bool {
     let digits = text.strip_prefix('-').unwrap_or(text);
     !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())

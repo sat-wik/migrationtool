@@ -391,6 +391,9 @@ fn eqv_01_error_codes_are_checked() {
         "\"_E1\"",
         "-1",
         "0",
+        "4294967295",
+        "-2147483648",
+        "\"4294967295\"",
     ] {
         let text = error_codes(&entry("JSON_Validate", value));
         let policy = verdict(&text).unwrap_or_else(|e| panic!("{value}: {e}"));
@@ -406,6 +409,11 @@ fn eqv_01_error_codes_are_checked() {
         "\"- 1\"",
         "\"1bad\"",
         "\"--1\"",
+        "4294967296",
+        "-2147483649",
+        "\"4294967296\"",
+        "\"-99999999999\"",
+        "\"99999999999999999999\"",
     ] {
         let err = verdict(&error_codes(&entry("JSON_Validate", value))).unwrap_err();
         assert!(err.contains("value"), "{value}: {err}");
