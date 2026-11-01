@@ -118,7 +118,7 @@ pub fn build_driver(
 /// `#include`, `#define` or `#undef` directive with no control character but a
 /// tab. The lines come from Phase 2's probe builder, which checks them the same
 /// way; this is the second check, at the point they enter C source.
-fn is_prefix_line(line: &str) -> bool {
+pub(crate) fn is_prefix_line(line: &str) -> bool {
     let Some(directive) = line.strip_prefix('#').map(str::trim_start) else {
         return false;
     };
@@ -130,12 +130,13 @@ fn is_prefix_line(line: &str) -> bool {
     known && !line.chars().any(|c| c.is_control() && c != '\t') && !joins_or_comments(line)
 }
 
-/// True when a line would splice with the next one (a trailing backslash) or
-/// open a comment (`/*`, or `//` outside a string literal) once written into the
-/// template. Phase 2's logical-line pass has already joined continuations and
-/// replaced comments, so none of these occurs in a genuine prefix line.
+/// True when a line would splice with the next one (a trailing backslash, or
+/// the trigraph `??/` that a strict `-std=c99` reads as one) or open a comment
+/// (`/*`, or `//` outside a string literal) once written into the template.
+/// Phase 2's logical-line pass has already joined continuations and replaced
+/// comments, so none of these occurs in a genuine prefix line.
 fn joins_or_comments(line: &str) -> bool {
-    if line.trim_end().ends_with('\\') || line.contains("/*") {
+    if line.trim_end().ends_with('\\') || line.contains("/*") || line.contains("??/") {
         return true;
     }
     let mut quote: Option<char> = None;

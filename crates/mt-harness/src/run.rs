@@ -35,7 +35,7 @@ use crate::adapter_drops::AdapterDropLog;
 use crate::budget::Budgets;
 use crate::classify::{Outcome, classify};
 use crate::decode::{Regions, apply_marks, check_marks, decode_value};
-use crate::driver::render_entry_driver;
+use crate::driver::{is_prefix_line, render_entry_driver};
 use crate::exec::{Request, Slot, run_driver};
 use crate::frame::{Frame, parse_frame};
 use crate::globals::{
@@ -480,7 +480,15 @@ fn include_lines(pair: &PairInputs, entry: &Entry, unit: &CcEntry) -> Result<Vec
         IncludePrefix::HeaderFirst | IncludePrefix::NotReproducible(_) => probe_source(&header),
     }
     .map_err(|e| e.to_string())?;
-    Ok(text.lines().map(str::to_owned).collect())
+    let lines: Vec<String> = text.lines().map(str::to_owned).collect();
+    // The probe source and the driver source both take these lines, so they are
+    // checked once, here, before either is written (IN-09).
+    if let Some(bad) = lines.iter().find(|line| !is_prefix_line(line)) {
+        return Err(format!(
+            "{bad:?} is not a single #include, #define or #undef line"
+        ));
+    }
+    Ok(lines)
 }
 
 /// The defining unit's compile command.

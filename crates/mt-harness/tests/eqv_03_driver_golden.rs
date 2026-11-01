@@ -284,3 +284,15 @@ fn eqv_03_driver_names_never_reach_rendering() {
     let url = "#define HOME \"http://example.invalid/\"";
     assert!(render_entry_driver(&adapter, &lines(&[url])).is_ok());
 }
+
+/// IN-09: the trigraph `??/` is a backslash under a strict `-std=c99`, so a
+/// line ending in it splices with the next line exactly as `\` does.
+#[test]
+fn eqv_03_driver_include_line_with_trigraph_splice_is_refused() {
+    let adapter = adapter_of("corejson", "JSON_Validate");
+    for bad in ["#define X 1 ??/", "#define X ??/ 1"] {
+        let result = render_entry_driver(&adapter, &lines(&[bad]));
+        assert!(result.is_err(), "{bad:?} must be refused");
+    }
+    assert!(render_entry_driver(&adapter, &lines(&["#define X 1 ?? 2"])).is_ok());
+}
