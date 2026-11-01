@@ -12,6 +12,7 @@ use mt_capture::manifest::{Manifest, Role};
 use mt_toolchain::runner::RunnerConfig;
 use mt_vectors::bytes::decode_latin1;
 use mt_vectors::corpus::CorpusIndex;
+use mt_vectors::sha256_hex;
 use mt_vectors::vector::Vector;
 
 use crate::HarnessError;
@@ -272,6 +273,13 @@ pub fn replay_corpus(options: &ReplayOptions, dir: &Path) -> Result<ReplayReport
             e.to_string(),
         )
     })?;
+    manifest.validate().map_err(|e| {
+        input(
+            options.scope.manifest_path.display().to_string(),
+            e.to_string(),
+        )
+    })?;
+    check_corpus_shape(dir, &index, &manifest)?;
     let entry = manifest
         .target
         .get(&index.target)
@@ -325,6 +333,10 @@ pub fn replay_corpus(options: &ReplayOptions, dir: &Path) -> Result<ReplayReport
             report.differing.push(sha.clone());
             continue;
         };
+        if sha256_hex(&stored) != *sha {
+            report.differing.push(sha.clone());
+            continue;
+        }
         let Ok(vector) = Vector::from_json_bytes(&stored) else {
             report.differing.push(sha.clone());
             continue;
@@ -358,6 +370,72 @@ pub fn replay_corpus(options: &ReplayOptions, dir: &Path) -> Result<ReplayReport
         }
     }
     Ok(report)
+}
+
+/// The structural checks `read_corpus` makes, applied to a corpus before it is
+/// replayed (EQV-04; threats T-03-13, T-03-17): the index keys are lowercase
+/// sha256 names, the target and configuration are a manifest target and one of
+/// its configurations, and the directory holds the index and the index's files
+/// only, all regular files.
+///
+/// # Errors
+/// [`HarnessError::Input`] for the first structural problem found,
+/// [`HarnessError::Io`] when the directory cannot be listed.
+pub fn check_corpus_shape(
+    dir: &Path,
+    index: &CorpusIndex,
+    manifest: &Manifest,
+) -> Result<(), HarnessError> {
+    let what = dir.join("index.json").display().to_string();
+    let known = manifest.target.get(&index.target).is_some_and(|target| {
+        target
+            .config
+            .iter()
+            .any(|config| config.name == index.config)
+    });
+    if !known {
+        return Err(input(
+            what,
+            format!(
+                "the manifest has no configuration {}/{}",
+                index.target, index.config
+            ),
+        ));
+    }
+    for key in index.vectors.keys() {
+        let well_formed =
+            key.len() == 64 && key.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'));
+        if !well_formed {
+            return Err(input(
+                what,
+                format!("the index key {key:?} is not a lowercase sha256"),
+            ));
+        }
+    }
+    for item in std::fs::read_dir(dir).map_err(|e| io("cannot list", dir, e))? {
+        let item = item.map_err(|e| io("cannot list", dir, e))?;
+        let name = item.file_name().to_string_lossy().into_owned();
+        let kind = item
+            .file_type()
+            .map_err(|e| io("cannot inspect", &item.path(), e))?;
+        if !kind.is_file() {
+            return Err(input(
+                dir.display().to_string(),
+                format!("{name} is not a regular file"),
+            ));
+        }
+        let listed = name == "index.json"
+            || name
+                .strip_suffix(".json")
+                .is_some_and(|stem| index.vectors.contains_key(stem));
+        if !listed {
+            return Err(input(
+                dir.display().to_string(),
+                format!("{name} is not in the index"),
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Every corpus directory below `tree`: a directory that holds an `index.json`, in
