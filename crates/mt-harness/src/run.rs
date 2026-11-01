@@ -275,6 +275,13 @@ impl BuildRow {
     pub const fn is_failure(&self) -> bool {
         !matches!(self.state, BuildState::Built { .. } | BuildState::NoRoles)
     }
+
+    /// True when a driver was built: the only state that is evidence of work.
+    /// A listing of `no_roles` rows alone built nothing.
+    #[must_use]
+    pub const fn did_work(&self) -> bool {
+        matches!(self.state, BuildState::Built { .. })
+    }
 }
 
 /// The record `build.json` holds: how a driver was built, and what it was built
@@ -888,6 +895,13 @@ impl RunRow {
     #[must_use]
     pub const fn is_failure(&self) -> bool {
         matches!(self.state, RunState::NotBuilt(_) | RunState::Failed(_))
+    }
+
+    /// True when vectors were written: the only state that is evidence of
+    /// work. A listing of `no_roles` rows alone ran nothing.
+    #[must_use]
+    pub const fn did_work(&self) -> bool {
+        matches!(self.state, RunState::Ran(_))
     }
 }
 

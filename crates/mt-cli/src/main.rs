@@ -947,10 +947,11 @@ fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
     }
 }
 
-/// Whether a listing failed: an empty listing is "nothing ran", which is never
-/// a pass (EQV-04), and otherwise any failing row fails it.
-const fn listing_failed(rows: usize, any_failure: bool) -> bool {
-    rows == 0 || any_failure
+/// Whether a listing failed: a listing in which no row did work (an empty
+/// listing, or one of `no_roles` rows only) is "nothing ran", which is never a
+/// pass (EQV-04), and otherwise any failing row fails it.
+const fn listing_failed(worked_rows: usize, any_failure: bool) -> bool {
+    worked_rows == 0 || any_failure
 }
 
 /// The closing line of an adapters, build or run listing.
@@ -1104,7 +1105,10 @@ fn build_command(args: TestbedArgs, replay_dir: Option<PathBuf>) -> anyhow::Resu
     }
     Ok(print_result(
         rows.len(),
-        listing_failed(rows.len(), rows.iter().any(|row| row.is_failure())),
+        listing_failed(
+            rows.iter().filter(|row| row.did_work()).count(),
+            rows.iter().any(|row| row.is_failure()),
+        ),
     ))
 }
 
@@ -1131,7 +1135,10 @@ fn run_command(
     }
     Ok(print_result(
         rows.len(),
-        listing_failed(rows.len(), rows.iter().any(|row| row.is_failure())),
+        listing_failed(
+            rows.iter().filter(|row| row.did_work()).count(),
+            rows.iter().any(|row| row.is_failure()),
+        ),
     ))
 }
 
@@ -1316,11 +1323,58 @@ fn toolchain_command(action: ToolchainAction) -> anyhow::Result<u8> {
 #[cfg(test)]
 mod tests {
     use super::listing_failed;
+    use mt_harness::run::{BuildRow, BuildState, RunRow, RunState};
 
     #[test]
     fn eqv_04_empty_listing_is_a_failure() {
         assert!(listing_failed(0, false));
         assert!(listing_failed(3, true));
         assert!(!listing_failed(3, false));
+    }
+
+    fn build_row(state: BuildState) -> BuildRow {
+        BuildRow {
+            target: "t".to_owned(),
+            config: "c".to_owned(),
+            entry: "e".to_owned(),
+            state,
+        }
+    }
+
+    fn run_row(state: RunState) -> RunRow {
+        RunRow {
+            target: "t".to_owned(),
+            config: "c".to_owned(),
+            entry: "e".to_owned(),
+            state,
+        }
+    }
+
+    #[test]
+    fn eqv_04_listing_of_only_no_roles_rows_is_a_failure() {
+        let builds = [
+            build_row(BuildState::NoRoles),
+            build_row(BuildState::NoRoles),
+        ];
+        let worked = builds.iter().filter(|r| r.did_work()).count();
+        assert!(
+            !builds.iter().any(BuildRow::is_failure),
+            "not a row failure"
+        );
+        assert!(listing_failed(worked, false), "but nothing was built");
+
+        let runs = [run_row(RunState::NoRoles)];
+        let worked = runs.iter().filter(|r| r.did_work()).count();
+        assert!(!runs.iter().any(RunRow::is_failure));
+        assert!(listing_failed(worked, false), "and nothing ran");
+
+        let mixed = [
+            build_row(BuildState::NoRoles),
+            build_row(BuildState::Built {
+                driver_sha256: "0".repeat(64),
+            }),
+        ];
+        let worked = mixed.iter().filter(|r| r.did_work()).count();
+        assert!(!listing_failed(worked, false), "one built driver is work");
     }
 }
