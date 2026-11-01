@@ -524,3 +524,23 @@ fn eqv_01_override_report_lists_every_override() {
     assert!(plain.lines().any(|l| l == "default_change=none"), "{plain}");
     assert!(plain.lines().any(|l| l == "overrides=0"), "{plain}");
 }
+
+/// IN-07: a `*.toml` whose name is not UTF-8 is reported, not skipped.
+#[cfg(unix)]
+#[test]
+fn eqv_01_load_dir_reports_a_non_utf8_policy_file() {
+    use std::ffi::OsString;
+    use std::os::unix::ffi::OsStringExt;
+
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("corejson.toml"), BASE).unwrap();
+    let mut name = b"stray-".to_vec();
+    name.push(0xff);
+    name.extend_from_slice(b".toml");
+    std::fs::write(dir.path().join(OsString::from_vec(name)), BASE).unwrap();
+
+    let err = mt_contract::policy::load_dir(dir.path(), &["corejson".to_owned()])
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("not valid UTF-8"), "{err}");
+}

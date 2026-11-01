@@ -340,6 +340,7 @@ name = "mt-contract"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "tempfile",
  "thiserror",
  "toml",
 ]

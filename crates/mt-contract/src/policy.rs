@@ -448,15 +448,22 @@ pub fn load_dir(dir: &Path, ids: &[String]) -> Result<Vec<Policy>, PolicyError> 
         source,
     };
     let mut stems = BTreeSet::new();
+    let mut not_utf8 = Vec::new();
     for entry in std::fs::read_dir(dir).map_err(read)? {
         let path = entry.map_err(read)?.path();
-        if path.extension().is_some_and(|e| e == "toml")
-            && let Some(stem) = path.file_stem().and_then(|s| s.to_str())
-        {
-            stems.insert(stem.to_owned());
+        if path.extension().is_some_and(|e| e == "toml") {
+            match path.file_stem().and_then(|s| s.to_str()) {
+                Some(stem) => {
+                    stems.insert(stem.to_owned());
+                }
+                None => not_utf8.push(path.display().to_string()),
+            }
         }
     }
     let mut issues = Vec::new();
+    for path in &not_utf8 {
+        issues.push(format!("{path} has a file name that is not valid UTF-8"));
+    }
     for id in ids {
         if !stems.contains(id) {
             issues.push(format!(
