@@ -529,6 +529,35 @@ pub fn build_entries(opts: &BuildOptions) -> Result<Vec<BuildRow>, HarnessError>
     Ok(rows)
 }
 
+/// Decide the return kind of an entry from the DWARF layout of its return type
+/// (EQV-04). `rc` is 32 bits wide, so an integer or enum return of more than
+/// four bytes is refused here whatever its spelling: a typedef such as
+/// `intmax_t` would otherwise be truncated and the upper word never compared.
+///
+/// # Errors
+///
+/// The reason text for a return type that cannot be recorded.
+pub fn resolved_return_kind(
+    layout: Option<&CType>,
+    return_text: &str,
+) -> Result<ReturnKind, String> {
+    let Some(ty) = layout else {
+        return Ok(ReturnKind::Integer);
+    };
+    match &ty.kind {
+        Kind::Int { .. } | Kind::Enum { .. } if ty.size > 4 => Err(format!(
+            "the return type {return_text} is {} bytes; a 32-bit rc cannot hold it",
+            ty.size
+        )),
+        Kind::Int { .. } | Kind::Enum { .. } => Ok(ReturnKind::Integer),
+        Kind::Struct { .. } | Kind::Union { .. } => Ok(ReturnKind::Struct),
+        Kind::Pointer { .. } => Ok(ReturnKind::Pointer),
+        Kind::Float | Kind::Array { .. } => Err(format!(
+            "the return type {return_text} cannot be recorded as a 32-bit rc or as a returned value"
+        )),
+    }
+}
+
 fn build_entry(
     opts: &BuildOptions,
     pair: &PairInputs,
@@ -586,16 +615,9 @@ fn build_entry(
     };
     let mut adapter = adapter.clone();
     if resolve_return {
-        let kind = match layouts.states.get(RET_NAME).map(|ty| &ty.kind) {
-            Some(Kind::Int { .. } | Kind::Enum { .. }) | None => ReturnKind::Integer,
-            Some(Kind::Struct { .. } | Kind::Union { .. }) => ReturnKind::Struct,
-            Some(Kind::Pointer { .. }) => ReturnKind::Pointer,
-            Some(Kind::Float | Kind::Array { .. }) => {
-                return Ok(BuildState::Refused(format!(
-                    "the return type {} cannot be recorded as a 32-bit rc or as a returned value",
-                    adapter.return_text()
-                )));
-            }
+        let kind = match resolved_return_kind(layouts.states.get(RET_NAME), adapter.return_text()) {
+            Ok(kind) => kind,
+            Err(reason) => return Ok(BuildState::Refused(reason)),
         };
         if kind == ReturnKind::Integer {
             layouts.states.remove(RET_NAME);
