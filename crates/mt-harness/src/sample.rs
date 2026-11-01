@@ -140,7 +140,10 @@ pub fn select_sample(
         let scalars = adapter.scalars_by_name(first);
         let mut best: Option<(usize, String, String)> = None;
         for (sha, vector) in &corpus.vectors {
-            let provenance = &corpus.index.vectors[sha];
+            let provenance =
+                corpus.index.vectors.get(sha).ok_or_else(|| {
+                    input(&key, format!("{sha}: the corpus index has no provenance"))
+                })?;
             if provenance.scalars != scalars {
                 continue;
             }

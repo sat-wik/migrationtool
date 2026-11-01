@@ -219,6 +219,8 @@ impl StateValue {
                 ),
             ));
         };
+        // Invariant: `shape` comes from `present`, which keeps only the keys
+        // that `object.contains_key`, so the index cannot miss.
         let body = &object[*shape];
         match *shape {
             "value" => Self::integer(path, c_type, body),
@@ -330,6 +332,9 @@ impl StateValue {
                 let keys: Vec<&str> = map.keys().map(String::as_str).collect();
                 match keys.as_slice() {
                     ["buffer", "offset"] => {
+                        // Invariant: the key match above proves both keys exist
+                        // (`map.keys()` of a sorted `serde_json::Map`), so the
+                        // two indexings below cannot miss.
                         let region = text_of(path, "buffer", &map["buffer"])?;
                         if !region_is_well_formed(region) {
                             return Err(error(

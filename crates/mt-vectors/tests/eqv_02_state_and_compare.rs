@@ -290,3 +290,24 @@ fn eqv_02_compares_only_the_observation_point() {
         }
     );
 }
+
+/// IN-03: the canonical form (file names, the pointer key match) relies on
+/// `serde_json::Map` keeping its keys sorted. Enabling `preserve_order`
+/// anywhere in the dependency graph would break that; this test says so.
+#[test]
+fn eqv_02_serde_json_map_keeps_keys_sorted() {
+    let mut map = serde_json::Map::new();
+    map.insert("b".to_owned(), json!(1));
+    map.insert("a".to_owned(), json!(2));
+    let keys: Vec<&str> = map.keys().map(String::as_str).collect();
+    assert_eq!(
+        keys,
+        ["a", "b"],
+        "serde_json `preserve_order` is enabled; canonical vector bytes would change"
+    );
+    let pointer = json!({"type": "int *", "pointer": {"offset": 0, "buffer": "in"}});
+    assert!(
+        state_value(&pointer).is_ok(),
+        "a pointer object matches whatever its key order in the file"
+    );
+}
