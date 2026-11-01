@@ -1247,9 +1247,11 @@ fn target_issues(id: &str, target: &Target, issues: &mut Vec<String>) {
         || !id
             .bytes()
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+        || id.starts_with('_')
     {
         issues.push(format!(
-            "{f}: the id must be lower-case letters, digits and underscores"
+            "{f}: the id must be lower-case letters, digits and underscores, \
+             starting with a letter or digit"
         ));
     }
     if target.category.is_empty() {
@@ -2255,9 +2257,11 @@ fn equals_recipe(config: &Config, args: &BuildArgs) -> bool {
             .is_none_or(|t| args.cmake_target.as_ref() == Some(t))
 }
 
-/// `[a-z0-9-]+`.
+/// `[a-z0-9][a-z0-9-]*`: the grammar of the vector `argv[0]` configuration, so a
+/// name is never a leading-`-` path component or CLI value.
 fn is_config_name(text: &str) -> bool {
     !text.is_empty()
+        && !text.starts_with('-')
         && text
             .bytes()
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
@@ -2284,7 +2288,7 @@ fn config_issues(f: &str, target: &Target, issues: &mut Vec<String>) {
         }
         if !is_config_name(&config.name) {
             issues.push(format!(
-                "{g}.name: must be lower-case letters, digits and hyphens"
+                "{g}.name: must be lower-case letters, digits and hyphens, not starting with a hyphen"
             ));
         }
         if config.name == "default" {

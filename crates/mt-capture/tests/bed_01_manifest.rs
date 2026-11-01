@@ -685,3 +685,14 @@ fn bed_01_image_digest_must_be_sha256_and_64_lowercase_hex() {
     let without = remove_between(SMALL, "[image]", "[baseline]");
     assert!(outcome(&without).unwrap_err().contains("image"));
 }
+
+#[test]
+fn bed_01_target_ids_and_config_names_start_with_a_letter_or_digit() {
+    // WR-08: the vector `argv[0]` grammar and the policy module grammar need a
+    // leading letter or digit, so the manifest must not accept anything looser.
+    assert_fails_naming(&mutate("demo_make", "_demo_make"), "starting with a letter");
+    assert_fails_naming(
+        &mutate("name = \"no-float\"", "name = \"-no-float\""),
+        "not starting with a hyphen",
+    );
+}
