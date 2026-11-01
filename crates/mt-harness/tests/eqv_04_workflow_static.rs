@@ -1155,7 +1155,7 @@ fn eqv_04_workflow_static_sample_steps() {
     assert_eq!(published, [(1, 9), (10, 18), (19, 27)]);
 
     // The replay step: the committed sample, the image's drivers, no network, and
-    // `no committed sample` while the directory does not exist.
+    // a failure (`no committed sample`, exit 1) while the directory does not exist.
     let replay = code_lines(&step_text(&text, SAMPLE_REPLAY_STEP)).join("\n");
     for needle in [
         "run_guest vectors-sample-replay replay",
@@ -1182,6 +1182,21 @@ fn eqv_04_workflow_static_sample_steps() {
     );
     assert!(!replay.contains("continue-on-error") && !replay.contains("testbed-"));
     assert!(!replay.contains("docker run"), "{replay}");
+    // WR-05: the branch for a missing sample directory fails the step.
+    assert!(
+        replay.contains("finish_vectors sample 1 vectors-sample || true")
+            && !replay.contains("finish_vectors sample 0"),
+        "a missing sample must not pass:\n{replay}"
+    );
+    let missing = replay
+        .split("no committed sample")
+        .nth(1)
+        .and_then(|rest| rest.split("fi\n").next())
+        .unwrap_or_else(|| panic!("no missing-sample branch:\n{replay}"));
+    assert!(
+        missing.contains("exit 1") && !missing.contains("exit 0"),
+        "{missing}"
+    );
 
     // The header comment lists both titles.
     let header: String = whole

@@ -1207,8 +1207,8 @@ jobs:
       # testbed/vectors-sample is re-run twice through the driver built in this job and
       # must reproduce its stored vector byte for byte, and its provenance (driver,
       # archive and object hashes) must be this build's. Captured object code runs here,
-      # so the step goes through run_guest. While no sample is committed the step says
-      # so and passes.
+      # so the step goes through run_guest. A missing sample directory fails the step
+      # (WR-05): the sample is committed, so its absence must not turn the gate green.
       - name: Replay the committed sample
         id: vsamplereplay
         if: ${{ !cancelled() && steps.restore.outcome == 'success' && steps.vbuild.outcome == 'success' }}
@@ -1218,9 +1218,9 @@ jobs:
           out="$RUNNER_TEMP/out"
           if [ ! -d "$GITHUB_WORKSPACE/testbed/vectors-sample" ]; then
             echo "no committed sample" > "$out/vectors-sample.txt"
-            : > "$out/vectors-sample.err"
-            finish_vectors sample 0 vectors-sample
-            exit 0
+            echo "testbed/vectors-sample is missing; the committed sample is replayed on every run" > "$out/vectors-sample.err"
+            finish_vectors sample 1 vectors-sample || true
+            exit 1
           fi
           mkdir -p "$out/vectors-sample-replay"
           chmod 0777 "$out/vectors-sample-replay"
