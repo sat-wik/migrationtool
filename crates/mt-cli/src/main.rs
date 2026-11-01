@@ -1277,13 +1277,7 @@ fn policy_check_command(manifest: Option<&Path>, files: &[PathBuf]) -> anyhow::R
 
 /// Exit code of `mt vectors selftest`: 0 passed, 1 a row failed.
 fn selftest_command(pins_path: &Path, work_dir: Option<PathBuf>) -> anyhow::Result<u8> {
-    let pins = Pins::load(pins_path).context("loading the pins file")?;
-    pins.validate().context("validating the pins file")?;
-    let tools = ExecTools::from_pins(&pins)?;
-    let cfg = RunnerConfig::new(
-        pins.image.tool_path.clone(),
-        pins.image.source_date_epoch.clone(),
-    );
+    let (tools, cfg) = exec_context(pins_path)?;
     let chosen = work_dir
         .or_else(|| std::env::var_os("MT_WORK_DIR").map(PathBuf::from))
         .unwrap_or_else(|| PathBuf::from(".mt-work"));

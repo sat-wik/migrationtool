@@ -12,12 +12,10 @@ use mt_toolchain::runner::{self, RunRecord, RunRequest, RunnerConfig};
 
 use crate::adapter::Adapter;
 use crate::budget::Budgets;
+use crate::link::{failure, healthy};
 use crate::runtime::{Placeholders, render};
 use crate::tools::ExecTools;
 use crate::{HarnessError, sha256_hex};
-
-/// The most stderr text kept in a build error.
-const STDERR_EXCERPT: usize = 2000;
 
 /// A built driver and the evidence of how it was built.
 #[derive(Debug, Clone)]
@@ -86,22 +84,8 @@ pub fn build_driver(
         tool_version: tools.versions.get("arm_gcc").cloned(),
     };
     let output = runner::run(cfg, &request)?;
-    let record = &output.record;
-    let healthy = record.exit.code == Some(0)
-        && !record.exit.timed_out
-        && !record.exit.tree_kill_sent
-        && record.stdout.complete
-        && record.stderr.complete;
-    if !healthy {
-        let text = String::from_utf8_lossy(&output.stderr);
-        let excerpt: String = text.chars().take(STDERR_EXCERPT).collect();
-        return Err(HarnessError::Build {
-            step: "arm-none-eabi-gcc link of driver.elf".to_owned(),
-            detail: format!(
-                "exit code {:?}, signal {:?}, timed out {}; stderr: {excerpt}",
-                record.exit.code, record.exit.signal, record.exit.timed_out
-            ),
-        });
+    if !healthy(&output) {
+        return Err(failure("arm-none-eabi-gcc link of driver.elf", &output));
     }
     let elf = std::fs::read(&elf_path).map_err(|err| io("cannot read", &elf_path, err))?;
     Ok(DriverBuild {
