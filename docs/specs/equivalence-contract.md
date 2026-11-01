@@ -56,12 +56,12 @@ A vector holds at most the nine fields of the TRACTOR test-vector format: `argv`
 | `env` | Always `{}`. |
 | `stdout` | The output buffer bytes after the call, as `{"pattern": "<string>", "is_regex": false}`; the pattern uses the byte codec. A bare string is not written. |
 | `stderr` | The executor's own text only, as `{"pattern": "outcome=<class>"}` with `is_regex` false, optionally followed by fixed detail words (for example `step=<k>` after `setup_failed`). It never holds guest output, an address or a time. |
-| `rc` | The C return value as a 32-bit signed integer. A `void` function gives 0; a pointer gives 0 for NULL and 1 otherwise; a struct returned by value or a return wider than 32 bits goes to `lib_state_out.ret` and `rc` is 0. On a fault `rc` is `-signal` (TRACTOR's convention, for example -11). On a timeout `rc` is -9. |
+| `rc` | The C return value as a 32-bit signed integer. A `void` function gives 0; a pointer gives 0 for NULL and 1 otherwise; a struct or union returned by value goes to `lib_state_out.ret` and `rc` is 0. An integer or enum return wider than 32 bits (for example `int64_t` or `intmax_t`, by spelling or by the size DWARF reports for a typedef) is refused when the adapter is built: no vector is recorded for such an entry until `ret` recording for wide integers exists. A float or array return is refused too. On a fault `rc` is `-signal` (TRACTOR's convention, for example -11). On a timeout `rc` is -9. |
 | `lib_state_in` | The state after any setup steps and before the entry (see Library state). |
 | `lib_state_out` | The state after the entry. |
 | `has_ub` | Absent when no UB was observed, and never `false`: TRACTOR's tools treat any present `has_ub` key as UB. When present it is a label naming its source (see Outcomes). |
 
-**Byte codec.** Bytes go into the text fields `stdin` and `stdout.pattern` by the Latin-1 identity: byte `b` becomes the character U+00`b`, written as a JSON string with `\u00XX` escapes for control characters, `"` and `\`. It is lossless for all 256 byte values. The codec is the same everywhere in the tool; decoders reject a character above U+00FF.
+**Byte codec.** Bytes go into the text fields `stdin` and `stdout.pattern` by the Latin-1 identity: byte `b` becomes the character U+00`b`, written as a JSON string by `serde_json` (the same serialiser that writes the vector file): `"` and `\` are escaped, the control characters U+0008, U+0009, U+000A, U+000C and U+000D use the short escapes `\b`, `\t`, `\n`, `\f` and `\r`, every other control character below U+0020 uses `\u00XX`, and all other characters, including U+007F to U+00FF, are written as themselves in UTF-8. A vector file is `serde_json::to_vec_pretty` of the nine fields in the order above with sorted maps and one trailing newline, and its sha256 is the file name; an independent reader must reproduce exactly those bytes. It is lossless for all 256 byte values. The codec is the same everywhere in the tool; decoders reject a character above U+00FF.
 
 **`is_regex` is always false** in our vectors: output is compared exactly.
 
@@ -83,7 +83,7 @@ A vector holds at most the nine fields of the TRACTOR test-vector format: `argv`
 Reserved top-level names in a `lib_state` object:
 
 - `globals`: the writable globals whose bytes differ from the image's initial bytes, keyed `<object path>:<symbol>`.
-- `ret`: a struct returned by value, the full value of a return wider than 32 bits, or a returned pointer classified like any pointer.
+- `ret`: a struct or union returned by value, or a returned pointer classified like any pointer. An integer return wider than 32 bits is not recorded here; such an entry is refused (see `rc`).
 - `heap`: the objects in the driver's arena that are reachable from recorded pointers through typed edges, keyed by decimal offset, each decoded with its pointee type. A `char` pointee is recorded as the NUL-terminated bytes in hex. The walk stops after 4096 objects; the remaining pointers are then recorded as unobserved with a reason.
 - `in`: the input buffer's bytes after the call, only for an input the adapter declares mutable.
 

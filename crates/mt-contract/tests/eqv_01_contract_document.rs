@@ -142,3 +142,22 @@ fn eqv_01_contract_document_makes_no_claim() {
         }
     }
 }
+
+/// IN-02: the document describes what the code does for a wide return and for
+/// the JSON escapes of the byte codec.
+#[test]
+fn eqv_01_contract_document_matches_return_and_codec_behavior() {
+    let text = read(DOCUMENT);
+    assert!(
+        !text.contains("a return wider than 32 bits goes to"),
+        "the code refuses wide integer returns; it never records them in `ret`"
+    );
+    assert!(
+        text.contains("wider than 32 bits") && text.contains("is refused"),
+        "the document must say a wide integer return is refused"
+    );
+    assert!(
+        text.contains("serde_json") && text.contains("`\\n`"),
+        "the document must describe the serde_json escapes, short ones included"
+    );
+}
