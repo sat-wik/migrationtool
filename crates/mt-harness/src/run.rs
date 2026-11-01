@@ -1259,7 +1259,7 @@ fn record_state(
     Ok((before, after))
 }
 
-fn policy_of(scope: &Scope, target: &str) -> Result<String, String> {
+pub(crate) fn policy_of(scope: &Scope, target: &str) -> Result<String, String> {
     let path = scope
         .testbed_dir()
         .join("policy")

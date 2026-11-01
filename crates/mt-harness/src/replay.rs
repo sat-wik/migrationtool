@@ -9,17 +9,19 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use mt_capture::manifest::{Manifest, Role};
+use mt_contract::CONTRACT_VERSION;
 use mt_toolchain::runner::RunnerConfig;
 use mt_vectors::bytes::decode_latin1;
-use mt_vectors::corpus::CorpusIndex;
+use mt_vectors::corpus::{CorpusIndex, Provenance};
 use mt_vectors::sha256_hex;
 use mt_vectors::vector::Vector;
 
-use crate::HarnessError;
 use crate::adapter::{Adapter, Combination};
 use crate::budget::Budgets;
 use crate::run::{Exec, Scope, load_driver, run_vector_twice};
+use crate::run::{budgets_record, policy_of};
 use crate::tools::ExecTools;
+use crate::{EXECUTOR_VERSION, HarnessError};
 
 /// The result of comparing two corpus trees.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -185,6 +187,85 @@ fn input(what: impl Into<String>, detail: impl Into<String>) -> HarnessError {
     }
 }
 
+/// The provenance fields of one stored vector that this replay can re-derive
+/// without the network or the image, and that do not match, as field names.
+///
+/// Compared: `seed` (sha256 of the vector's own stdin), `scalars` (the scalar
+/// arguments the adapter reads from `argv`), `executor_version`,
+/// `contract_version`, `budgets`, `policy_sha256` (`None` when the module's
+/// policy file cannot be read, which never matches), and `record` (the shape of
+/// the record, including that `outcome` is the vector's own outcome class).
+/// Not compared: `image`, which names the image that made the corpus and so
+/// differs, with identical tool output, whenever the image is rebuilt (the
+/// driver, archive and object hashes already pin the tool output), and the
+/// counters `unobserved`, `discarded_output_bytes`, `has_ub_source` and
+/// `replay`, which only a full re-run observes.
+#[must_use]
+pub fn provenance_mismatches(
+    provenance: &Provenance,
+    vector: &Vector,
+    adapter: &Adapter,
+    budgets: &Budgets,
+    policy_sha256: Option<&str>,
+) -> Vec<&'static str> {
+    let mut fields = Vec::new();
+    let seed = decode_latin1(&vector.stdin).ok();
+    if seed.as_deref().map(sha256_hex).as_deref() != Some(provenance.seed.as_str()) {
+        fields.push("seed");
+    }
+    let scalars_match = seed
+        .as_deref()
+        .and_then(|seed| combination_of(adapter, vector, seed.len()).ok())
+        .is_some_and(|combination| provenance.scalars == adapter.scalars_by_name(&combination));
+    if !scalars_match {
+        fields.push("scalars");
+    }
+    if provenance.executor_version != EXECUTOR_VERSION {
+        fields.push("executor_version");
+    }
+    if provenance.contract_version != CONTRACT_VERSION {
+        fields.push("contract_version");
+    }
+    if provenance.budgets != budgets_record(budgets) {
+        fields.push("budgets");
+    }
+    if policy_sha256 != Some(provenance.policy_sha256.as_str()) {
+        fields.push("policy_sha256");
+    }
+    if !provenance.issues(vector).is_empty() {
+        fields.push("record");
+    }
+    fields
+}
+
+/// A corpus directory must sit at `<...>/<target>/<config>/<entry>` for the
+/// target, configuration and entry its index names: a corpus moved elsewhere
+/// is refused rather than replayed under another identity.
+///
+/// # Errors
+/// [`HarnessError::Input`] when the last three path components differ.
+pub fn check_corpus_location(dir: &Path, index: &CorpusIndex) -> Result<(), HarnessError> {
+    let resolved = std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
+    let tail: Vec<String> = resolved
+        .components()
+        .rev()
+        .take(3)
+        .map(|component| component.as_os_str().to_string_lossy().into_owned())
+        .collect();
+    let expected = [&index.entry, &index.config, &index.target];
+    if tail.len() == 3 && tail.iter().zip(expected).all(|(have, want)| have == want) {
+        Ok(())
+    } else {
+        Err(input(
+            dir.display().to_string(),
+            format!(
+                "the corpus is not at <...>/{}/{}/{}, the target, configuration and entry its index names",
+                index.target, index.config, index.entry
+            ),
+        ))
+    }
+}
+
 /// The combination a stored vector was made with: `argv[1..]` are the
 /// non-pointer parameters in order, the input length first where there is an
 /// `in_len`.
@@ -254,7 +335,9 @@ fn combination_of(
 /// Re-run every vector of the corpus in `dir` (`<corpus>/<target>/<config>/
 /// <entry>`) twice through the current build and compare the canonical bytes
 /// with the stored file, then compare each provenance record's driver, archive
-/// and object hashes with `build.json` (CONTEXT D-21; threat T-03-17). A stored
+/// and object hashes with `build.json`, and the provenance fields that can be
+/// re-derived offline (see [`provenance_mismatches`]; CONTEXT D-21; threat
+/// T-03-17). A stored
 /// file that was edited, cannot be read, or does not parse counts as differing;
 /// the corpus is read file by file so one bad file does not hide the rest.
 ///
@@ -280,6 +363,7 @@ pub fn replay_corpus(options: &ReplayOptions, dir: &Path) -> Result<ReplayReport
         )
     })?;
     check_corpus_shape(dir, &index, &manifest)?;
+    check_corpus_location(dir, &index)?;
     let entry = manifest
         .target
         .get(&index.target)
@@ -304,6 +388,7 @@ pub fn replay_corpus(options: &ReplayOptions, dir: &Path) -> Result<ReplayReport
         budgets: &budgets,
     };
     let slot_dir = options.scratch_dir.join("replay");
+    let policy_sha256 = policy_of(&options.scope, &index.target).ok();
     let mut report = ReplayReport {
         dir: dir.to_path_buf(),
         vectors: index.vectors.len(),
@@ -357,6 +442,15 @@ pub fn replay_corpus(options: &ReplayOptions, dir: &Path) -> Result<ReplayReport
             &seed,
             &combination,
         )?;
+        for field in provenance_mismatches(
+            provenance,
+            &vector,
+            &loaded.adapter,
+            &budgets,
+            policy_sha256.as_deref(),
+        ) {
+            report.provenance_mismatch.push(format!("{sha} {field}"));
+        }
         let reproduced = vector.argv.first() == Some(&loaded.adapter.argv0())
             && observed.is_ok_and(|done| {
                 done.vector
