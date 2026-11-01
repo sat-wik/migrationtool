@@ -947,6 +947,12 @@ fn vectors_command(action: VectorsAction) -> anyhow::Result<u8> {
     }
 }
 
+/// Whether a listing failed: an empty listing is "nothing ran", which is never
+/// a pass (EQV-04), and otherwise any failing row fails it.
+const fn listing_failed(rows: usize, any_failure: bool) -> bool {
+    rows == 0 || any_failure
+}
+
 /// The closing line of an adapters, build or run listing.
 fn print_result(rows: usize, failed: bool) -> u8 {
     if failed {
@@ -965,7 +971,7 @@ fn adapters_command(manifest: &Path, check_floor: bool) -> anyhow::Result<u8> {
     for row in &rows {
         println!("{}", row.render());
     }
-    let mut failed = rows.iter().any(|row| row.is_failure());
+    let mut failed = listing_failed(rows.len(), rows.iter().any(|row| row.is_failure()));
     if check_floor {
         let drivable =
             testbed_drivable_targets(manifest).context("counting the drivable targets")?;
@@ -1098,7 +1104,7 @@ fn build_command(args: TestbedArgs, replay_dir: Option<PathBuf>) -> anyhow::Resu
     }
     Ok(print_result(
         rows.len(),
-        rows.iter().any(|row| row.is_failure()),
+        listing_failed(rows.len(), rows.iter().any(|row| row.is_failure())),
     ))
 }
 
@@ -1125,7 +1131,7 @@ fn run_command(
     }
     Ok(print_result(
         rows.len(),
-        rows.iter().any(|row| row.is_failure()),
+        listing_failed(rows.len(), rows.iter().any(|row| row.is_failure())),
     ))
 }
 
@@ -1304,5 +1310,17 @@ fn toolchain_command(action: ToolchainAction) -> anyhow::Result<u8> {
         ToolchainAction::ManifestDiff { first, second } => {
             manifest_diff_command(&first, &second).map(|identical| u8::from(!identical))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::listing_failed;
+
+    #[test]
+    fn eqv_04_empty_listing_is_a_failure() {
+        assert!(listing_failed(0, false));
+        assert!(listing_failed(3, true));
+        assert!(!listing_failed(3, false));
     }
 }
