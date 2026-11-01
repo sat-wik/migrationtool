@@ -526,3 +526,7 @@ ENV PATH="${TOOL_PATH}" \
 RUN set -eux; \
     : "${TOOL_PATH:?}"; \
     mkdir -p /opt/mt
+# The image runs unprivileged by default, the way every CI invocation runs it
+# (`--user 65534:65534`). The installed trees are world-readable (`chmod -R
+# a+rX`); a caller that needs root passes `--user 0:0` explicitly.
+USER 65534:65534

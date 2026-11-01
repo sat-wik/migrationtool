@@ -3080,3 +3080,19 @@ fn eqv_04_pin_discovery_lists_backports_qemu_versions() {
         "the header comment must name qemu-backports"
     );
 }
+
+/// IN-05: the final stage ends as the unprivileged user 65534:65534, so a
+/// caller that forgets `--user` does not get root.
+#[test]
+fn tool_03_final_stage_runs_as_the_unprivileged_user() {
+    let instructions = dockerfile_instructions(&read_repo_file("container/Dockerfile"));
+    let final_stage = instructions
+        .iter()
+        .rposition(|(keyword, args)| keyword == "FROM" && args.ends_with(" AS final"))
+        .expect("a `FROM ... AS final` stage");
+    let last_user = instructions[final_stage..]
+        .iter()
+        .rfind(|(keyword, _)| keyword == "USER")
+        .map(|(_, args)| args.as_str());
+    assert_eq!(last_user, Some("65534:65534"));
+}
