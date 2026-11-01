@@ -50,16 +50,6 @@ The in-image replay of the sample could not be run here. The comparisons use onl
 **Files modified:** `crates/mt-harness/src/run.rs`, `crates/mt-cli/src/main.rs`
 **Applied fix:** `BuildRow::did_work` (state `Built`) and `RunRow::did_work` (state `Ran`) were added. `build_command` and `run_command` now pass the count of rows that did work to `listing_failed`, so a non-empty listing of `no_roles` rows alone fails with exit 1. The printed row count is still `rows.len()`. Test `eqv_04_listing_of_only_no_roles_rows_is_a_failure`.
 
-### WR-03: `struct mt_ksigaction` does not match the kernel `sigaction` layout (uninitialised padding becomes the signal mask)
-
-**Status:** skipped
-**Reason:** The fix edits `crates/mt-harness/src/runtime.c`, which feeds every `driver_source` and `driver_elf` hash recorded in the committed `testbed/vectors-sample`. The task forbids changing `runtime.c` and regenerating the sample. Still open: it should be done together with a CI regeneration of the sample.
-
-### IN-01: `MAP_FIXED` mappings silently replace whatever is already at the address
-
-**Status:** skipped
-**Reason:** Same as WR-03. The fix (`MAP_FIXED_NOREPLACE`, the extra `_Static_assert`, bounding `mt_fields[1].len`) is in `runtime.c`, so it changes the driver hashes of the committed sample. Still open.
-
 ### IN-02: The contract document describes two behaviours the code does not have
 
 **Status:** fixed
@@ -116,6 +106,18 @@ The in-image replay of the sample could not be run here. The comparisons use onl
 **Commit:** 4e35d59
 **Files modified:** `crates/mt-harness/src/driver.rs`, `crates/mt-harness/src/run.rs`, `crates/mt-harness/tests/eqv_03_driver_golden.rs`
 **Applied fix:** `joins_or_comments` also refuses a line containing `??/`. `is_prefix_line` is now `pub(crate)` and `include_lines()` in `run.rs` checks every line once, so the probe sink and the driver sink see only checked lines. Both changes only refuse more; accepted lines render the same text, and the golden driver test is unchanged and passing. Test `eqv_03_driver_include_line_with_trigraph_splice_is_refused`. The false refusal of `/*` inside a string literal is kept (safe side).
+
+## Skipped Issues
+
+### WR-03: `struct mt_ksigaction` does not match the kernel `sigaction` layout (uninitialised padding becomes the signal mask)
+
+**Status:** skipped
+**Reason:** The fix edits `crates/mt-harness/src/runtime.c`, which feeds every `driver_source` and `driver_elf` hash recorded in the committed `testbed/vectors-sample`. The task forbids changing `runtime.c` and regenerating the sample. Still open: it should be done together with a CI regeneration of the sample.
+
+### IN-01: `MAP_FIXED` mappings silently replace whatever is already at the address
+
+**Status:** skipped
+**Reason:** Same as WR-03. The fix (`MAP_FIXED_NOREPLACE`, the extra `_Static_assert`, bounding `mt_fields[1].len`) is in `runtime.c`, so it changes the driver hashes of the committed sample. Still open.
 
 ---
 
