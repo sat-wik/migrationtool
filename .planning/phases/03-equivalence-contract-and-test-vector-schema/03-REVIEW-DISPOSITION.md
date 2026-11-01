@@ -17,7 +17,7 @@ findings:
     title: "`mt vectors build` and `mt vectors run` report `result: passed (0 rows)` and exit 0 on an empty selection"
   - id: WR-03
     severity: warning
-    disposition: open
+    disposition: skipped
     title: "`struct mt_ksigaction` does not match the kernel `sigaction` layout (uninitialised padding becomes the signal mask)"
   - id: WR-04
     severity: warning
@@ -29,7 +29,7 @@ findings:
     title: "The \"Replay the committed sample\" step passes silently when the sample directory is missing"
   - id: WR-06
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`is_prefix_line` does not enforce \"a single directive\" and lets line-splicing and comment openers into the C source"
   - id: WR-07
     severity: warning
@@ -37,7 +37,7 @@ findings:
     title: "Policy `error_code` values are not range-checked against the function's return type"
   - id: WR-08
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Identifier grammars for target ids and configuration names disagree between the manifest, the policy loader and the vector schema"
   - id: IN-01
     severity: info
@@ -67,9 +67,9 @@ findings:
     severity: info
     disposition: open
     title: "Policy loader silently ignores `.toml` files whose stem is not valid UTF-8"
-open: 10
+open: 7
 total: 16
-recorded: 2026-11-01T02:25:39.378Z
+recorded: 2026-11-01T02:25:51.607Z
 ---
 
 # Phase 03: Code Review Disposition
@@ -79,12 +79,12 @@ recorded: 2026-11-01T02:25:39.378Z
 | CR-01 | critical | fixed | 03-REVIEW-FIX.md |
 | WR-01 | warning | fixed | 03-REVIEW-FIX.md |
 | WR-02 | warning | fixed | 03-REVIEW-FIX.md |
-| WR-03 | warning | open | - |
+| WR-03 | warning | skipped | 03-REVIEW-FIX.md |
 | WR-04 | warning | fixed | 03-REVIEW-FIX.md |
 | WR-05 | warning | fixed | 03-REVIEW-FIX.md |
-| WR-06 | warning | open | - |
+| WR-06 | warning | fixed | 03-REVIEW-FIX.md |
 | WR-07 | warning | fixed | 03-REVIEW-FIX.md |
-| WR-08 | warning | open | - |
+| WR-08 | warning | fixed | 03-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
