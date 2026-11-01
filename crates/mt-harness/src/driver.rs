@@ -127,7 +127,37 @@ fn is_prefix_line(line: &str) -> bool {
             .strip_prefix(name)
             .is_some_and(|after| after.starts_with([' ', '\t']) && !after.trim().is_empty())
     });
-    known && !line.chars().any(|c| c.is_control() && c != '\t')
+    known && !line.chars().any(|c| c.is_control() && c != '\t') && !joins_or_comments(line)
+}
+
+/// True when a line would splice with the next one (a trailing backslash) or
+/// open a comment (`/*`, or `//` outside a string literal) once written into the
+/// template. Phase 2's logical-line pass has already joined continuations and
+/// replaced comments, so none of these occurs in a genuine prefix line.
+fn joins_or_comments(line: &str) -> bool {
+    if line.trim_end().ends_with('\\') || line.contains("/*") {
+        return true;
+    }
+    let mut quote: Option<char> = None;
+    let mut escaped = false;
+    let mut previous = '\0';
+    for c in line.chars() {
+        if let Some(open) = quote {
+            if escaped {
+                escaped = false;
+            } else if c == '\\' {
+                escaped = true;
+            } else if c == open {
+                quote = None;
+            }
+        } else if c == '"' || c == '\'' {
+            quote = Some(c);
+        } else if c == '/' && previous == '/' {
+            return true;
+        }
+        previous = c;
+    }
+    false
 }
 
 /// Render the driver of one entry from the shared template: the include lines

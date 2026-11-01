@@ -271,9 +271,16 @@ fn eqv_03_driver_names_never_reach_rendering() {
         "#pragma once",
         "#define",
         "  #include <a.h>\r",
+        "#define X 1 \\",
+        "#define X 1 /* opens a comment",
+        "#define X 1 // comments the rest out",
+        "#define X \"a\\\\\" // after an escaped backslash",
     ] {
         let result = render_entry_driver(&adapter, &lines(&[bad]));
         assert!(result.is_err(), "{bad:?} must be refused");
     }
     assert!(render_entry_driver(&adapter, &lines(&["#include <a.h>"])).is_ok());
+    // A `//` inside a string literal is not a comment.
+    let url = "#define HOME \"http://example.invalid/\"";
+    assert!(render_entry_driver(&adapter, &lines(&[url])).is_ok());
 }
