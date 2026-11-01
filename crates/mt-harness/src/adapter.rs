@@ -1236,8 +1236,8 @@ const DROPPED_PREFIX: [&str; 6] = [
 /// optimisation, debug and warning options, `-std=*`, dependency-file options
 /// with their operands, `-fPIC`, `-fpic`, the stack-protector, visibility and
 /// section options, `-pedantic`, and the manifest's baseline flags, which the
-/// driver adds itself. Any other option is an error, so a flag that might
-/// change the layout is never silently ignored.
+/// driver adds itself. Any other option, and any `@file` response file, is an
+/// error, so a flag that might change the layout is never silently ignored.
 ///
 /// # Errors
 /// [`AdapterError::UnhandledFlag`] naming the first option that is neither kept
@@ -1270,10 +1270,12 @@ pub fn driver_flags(arguments: &[String]) -> Result<Vec<String>, AdapterError> {
             || text.starts_with("-fpack-struct")
         {
             kept.push(argument.clone());
-        } else if text.starts_with('-') {
+        } else if text.starts_with('-') || text.starts_with('@') {
+            // `@file` splices a response file of options the allowlist never
+            // saw, so it is refused like any other unknown option.
             return Err(AdapterError::UnhandledFlag(argument.clone()));
         }
-        // An argument that does not start with `-` is the source file.
+        // An argument that starts with neither `-` nor `@` is the source file.
     }
     Ok(kept)
 }

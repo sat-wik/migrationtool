@@ -564,3 +564,14 @@ fn eqv_03_adapter_tier_c_forms_are_refused_when_they_do_not_fit() {
     entry.arg[3].default = Some(4);
     refuse(&entry, &["inout_len"]);
 }
+
+/// IN-06: a response file is never taken for the source file; its options are
+/// unseen, so the flags fail closed.
+#[test]
+fn eqv_03_driver_flags_refuse_a_response_file() {
+    let arguments = strings(&["gcc", "-mthumb", "@flags.rsp", "-c", "x.c"]);
+    assert_eq!(
+        driver_flags(&arguments).unwrap_err(),
+        AdapterError::UnhandledFlag("@flags.rsp".to_owned())
+    );
+}
