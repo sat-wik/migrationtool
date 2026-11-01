@@ -1046,6 +1046,34 @@ fn eqv_04_workflow_static_captures_travel_by_artifact() {
     assert!(!restore_code.contains("docker run"), "{restore_code}");
 }
 
+#[test]
+fn eqv_04_workflow_static_restore_vets_the_archives_before_unpacking() {
+    // WR-04: the tars come from directories the untrusted build container could
+    // write. The restore step lists each one and refuses non-regular members and
+    // links that leave the tree, and unpacks without owner or permissions.
+    let vectors = vectors_job();
+    let restore = step_text(&vectors, RESTORE_STEP);
+    let code = code_lines(&restore).join("\n");
+    assert!(code.contains("safe_untar()"), "{code}");
+    assert!(code.contains("tar -tvf"), "{code}");
+    assert!(
+        code.contains("--no-same-owner") && code.contains("--no-same-permissions"),
+        "{code}"
+    );
+    for archive in ["work.tar", "replay.tar"] {
+        assert!(
+            code.lines()
+                .any(|line| line.trim_start().starts_with("safe_untar ") && line.contains(archive)),
+            "{archive} is not unpacked through safe_untar:\n{code}"
+        );
+    }
+    let bare: Vec<&str> = code
+        .lines()
+        .filter(|line| line.trim_start().starts_with("tar -xf"))
+        .collect();
+    assert_eq!(bare.len(), 1, "one extraction, inside safe_untar: {bare:?}");
+}
+
 const SAMPLE_FIXTURE_STEP: &str = "Fixture vectors sample";
 const SAMPLE_REPLAY_STEP: &str = "Replay the committed sample";
 

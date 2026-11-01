@@ -1031,8 +1031,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tar -xf "$RUNNER_TEMP/handoff/work.tar" -C "$RUNNER_TEMP/work"
-          tar -xf "$RUNNER_TEMP/handoff/replay.tar" -C "$RUNNER_TEMP/out"
+          # WR-04: these tars were made from directories the untrusted build container
+          # could write, and are unpacked here as the runner user. List each one first and
+          # refuse any member that is not a regular file, a directory or a symlink, and any
+          # symlink whose target is absolute or leaves the tree, so no later member can be
+          # written through a link to somewhere outside the destination.
+          safe_untar() {
+            local archive="$1" dest="$2" listing
+            listing="$(tar -tvf "$archive")"
+            if printf '%s\n' "$listing" | grep -v -E '^[-dl]'; then
+              echo "::error::$archive holds a member that is not a file, directory or symlink"
+              return 1
+            fi
+            if printf '%s\n' "$listing" | grep -E '^l.* -> (/|(.*/)?\.\.(/|$))'; then
+              echo "::error::$archive holds a symlink that is absolute or leaves the tree"
+              return 1
+            fi
+            tar -xf "$archive" -C "$dest" --no-same-owner --no-same-permissions
+          }
+          safe_untar "$RUNNER_TEMP/handoff/work.tar" "$RUNNER_TEMP/work"
+          safe_untar "$RUNNER_TEMP/handoff/replay.tar" "$RUNNER_TEMP/out"
           # Only the unpacked trees: the earlier steps' containers made other files in
           # these directories (owned by the container user, not changeable by the runner).
           chmod -R a+rX "$RUNNER_TEMP/work/capture" "$RUNNER_TEMP/work/run" "$RUNNER_TEMP/out/replay"
