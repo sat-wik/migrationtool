@@ -540,13 +540,13 @@ fn is_c_identifier(text: &str) -> bool {
         && bytes.all(|b| b.is_ascii_alphanumeric() || b == b'_')
 }
 
-/// An optional leading `-` and at least one decimal digit.
 /// Whether `n` fits the 32-bit return convention: the window of a state value,
 /// `i32::MIN..=u32::MAX`.
 fn fits_return_window(n: i64) -> bool {
     (i64::from(i32::MIN)..=i64::from(u32::MAX)).contains(&n)
 }
 
+/// An optional leading `-` and at least one decimal digit.
 fn is_decimal_integer(text: &str) -> bool {
     let digits = text.strip_prefix('-').unwrap_or(text);
     !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
