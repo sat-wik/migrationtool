@@ -55,7 +55,7 @@ status: partial
 **Commit:** cf3d3c3
 **Applied fix:** The missing-directory branch now writes an error message, calls `finish_vectors sample 1 vectors-sample || true` (publishes the error notice) and `exit 1`. The header comment was updated. The explicit-input opt-out was not added. The existing `eqv_04_workflow_static_sample_steps` test was extended to assert the branch fails. **CI verification pending.**
 
-### WR-06: `is_prefix_line` does not enforce "a single directive"
+### WR-06: `is_prefix_line` does not enforce "a single directive" and lets line-splicing and comment openers into the C source
 
 **Files modified:** `crates/mt-harness/src/driver.rs`, `crates/mt-harness/tests/eqv_03_driver_golden.rs`
 **Commit:** 6c06e69
@@ -67,7 +67,7 @@ status: partial
 **Commit:** 43af8c5
 **Applied fix:** Integer values and decimal-text values must fit `i32::MIN..=u32::MAX` (same window as `StateValue::Int`); text that overflows `i64` is refused. Boundary values (`4294967295`, `-2147483648`) are accepted and the first values outside the window are refused in `eqv_01_error_codes_are_checked`. All committed policies still validate.
 
-### WR-08: Identifier grammars disagree between the manifest, the policy loader and the vector schema
+### WR-08: Identifier grammars for target ids and configuration names disagree between the manifest, the policy loader and the vector schema
 
 **Files modified:** `crates/mt-capture/src/manifest.rs`, `crates/mt-capture/tests/bed_01_manifest.rs`
 **Commit:** 0f9264e
@@ -75,7 +75,7 @@ status: partial
 
 ## Skipped Issues
 
-### WR-03: `struct mt_ksigaction` does not match the kernel `sigaction` layout
+### WR-03: `struct mt_ksigaction` does not match the kernel `sigaction` layout (uninitialised padding becomes the signal mask)
 
 **File:** `crates/mt-harness/src/runtime.c:257-262, 292-296`
 **Reason:** The claim reproduces by reading the code (`unsigned long long mask` sits at offset 16 on ARM, the kernel reads the mask at offset 12). The fix was skipped because `runtime.c` is compiled into every generated driver (`RUNTIME_TEMPLATE`), so any edit changes the `driver_source` and `driver_elf` sha256 of every driver. Those hashes are recorded in the provenance of the committed vectors under `testbed/vectors-sample`, so the CI sample replay would report provenance mismatches until the sample is regenerated. Regenerating the sample is outside this fix pass. Suggested follow-up: change the struct to `unsigned long mask[2]` zeroed together with the rest of `act`, then regenerate `testbed/vectors-sample` in CI in the same change.
