@@ -13,11 +13,11 @@ findings:
     title: "A listing whose rows are all `no_roles` still prints `result: passed` and exits 0"
   - id: WR-03
     severity: warning
-    disposition: fixed
+    disposition: skipped
     title: "`struct mt_ksigaction` does not match the kernel `sigaction` layout (uninitialised padding becomes the signal mask)"
   - id: IN-01
     severity: info
-    disposition: fixed
+    disposition: skipped
     title: "`MAP_FIXED` mappings silently replace whatever is already at the address"
   - id: IN-02
     severity: info
@@ -77,7 +77,7 @@ findings:
     title: "Identifier grammars for target ids and configuration names disagree between the manifest, the policy loader and the vector schema"
 open: 0
 total: 18
-recorded: 2026-11-01T05:08:41.355Z
+recorded: 2026-11-01T05:09:09.485Z
 ---
 
 # Phase 03: Code Review Disposition
@@ -86,8 +86,8 @@ recorded: 2026-11-01T05:08:41.355Z
 |---------|----------|-------------|--------|
 | WR-01 | warning | fixed | 03-REVIEW-FIX.md |
 | WR-02 | warning | fixed | 03-REVIEW-FIX.md |
-| WR-03 | warning | fixed | 03-REVIEW-FIX.md |
-| IN-01 | info | fixed | 03-REVIEW-FIX.md |
+| WR-03 | warning | skipped | 03-REVIEW-FIX.md |
+| IN-01 | info | skipped | 03-REVIEW-FIX.md |
 | IN-02 | info | fixed | 03-REVIEW-FIX.md |
 | IN-03 | info | fixed | 03-REVIEW-FIX.md |
 | IN-04 | info | fixed | 03-REVIEW-FIX.md |
