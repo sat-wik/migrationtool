@@ -1,17 +1,22 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 //! EQV-04: static checks of the `run_vectors` helper and the self-test step of
 //! `.github/workflows/testbed.yml`. They read the repository file and run under
-//! plain `cargo test`, with no Docker and no network.
+//! plain `cargo test`, with no Docker and no network. One test, the one for
+//! `safe_untar`, also runs the restore step's function with the host's bash and
+//! GNU tar through the mt-toolchain runner, on tars it builds in a temporary
+//! directory; it still uses no Docker and no network.
 //!
 //! The Phase 3 steps live in their own job, `vectors` (CONTEXT D-32), so that
 //! they have an annotation budget of their own: the `testbed` job is at GitHub's
 //! 50 annotations. Every check of a vectors step or helper reads the text of that
 //! job; the `testbed` job keeps the eight Phase 2 steps unchanged.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use mt_toolchain::runner::{self, RunOutput, RunRequest, RunnerConfig};
 use regex::Regex;
 
 const WORKFLOW: &str = ".github/workflows/testbed.yml";
@@ -1207,4 +1212,255 @@ fn eqv_04_workflow_static_sample_steps() {
     for needle in ["fixture vectors-sample", "vectors-sample"] {
         assert!(header.contains(needle), "the header lacks {needle}");
     }
+}
+
+/// One member of a tree that a `safe_untar` case archives.
+enum Member {
+    Dir,
+    File,
+    /// A symlink with this target.
+    Link(&'static str),
+}
+
+/// How a `safe_untar` case archive is made.
+enum Archive {
+    /// A tree of (path below the archive root, member), archived with
+    /// `tar -cf ARCHIVE -C ROOT <top-level names>` like `-C /work capture run`.
+    Tree(Vec<(&'static str, Member)>),
+}
+
+/// One row of the `safe_untar` table.
+struct UntarCase {
+    label: &'static str,
+    archive: Archive,
+    /// True when the guard must accept the archive and extract it.
+    accepted: bool,
+    /// For a refused row: a fragment the `::error::` line must contain.
+    message: &'static str,
+}
+
+/// The GNU tar of this host. There is no skip path: a vacuous pass is how the
+/// WR-04 regression got through.
+fn host_tar() -> PathBuf {
+    ["/usr/bin/tar", "/bin/tar"]
+        .iter()
+        .map(PathBuf::from)
+        .find(|path| path.exists())
+        .expect("GNU tar is at neither /usr/bin/tar nor /bin/tar")
+}
+
+/// One tool run through the mt-toolchain runner, as the other harness tests do.
+fn run_tool(tool_name: &str, argv: Vec<OsString>, cwd: &Path) -> RunOutput {
+    runner::run(
+        &RunnerConfig::new("/usr/bin:/bin", "1791158400"),
+        &RunRequest {
+            tool_name: tool_name.to_owned(),
+            argv,
+            cwd: cwd.to_path_buf(),
+            extra_env: BTreeMap::new(),
+            tool_version: None,
+        },
+    )
+    .unwrap()
+}
+
+/// The script the test runs: the function body read from the restore step of the
+/// workflow (never a copy), under the step's `set -euo pipefail`.
+fn safe_untar_script() -> String {
+    let body = function_body(&step_text(&vectors_job(), RESTORE_STEP), "safe_untar");
+    format!("set -euo pipefail\nsafe_untar() {{\n{body}\n}}\nsafe_untar \"$1\" \"$2\"\n")
+}
+
+/// Build the archive of one case under `dir` and return its path.
+fn build_case_archive(dir: &Path, case: &UntarCase) -> PathBuf {
+    let archive = dir.join("case.tar");
+    let Archive::Tree(members) = &case.archive;
+    let src = dir.join("src");
+    fs::create_dir_all(&src).unwrap();
+    let mut tops = BTreeSet::new();
+    for (path, member) in members {
+        let full = src.join(path);
+        fs::create_dir_all(full.parent().unwrap()).unwrap();
+        match member {
+            Member::Dir => fs::create_dir_all(&full).unwrap(),
+            Member::File => fs::write(&full, b"content\n").unwrap(),
+            Member::Link(target) => std::os::unix::fs::symlink(target, &full).unwrap(),
+        }
+        tops.insert((*path).split('/').next().unwrap().to_owned());
+    }
+    let mut argv: Vec<OsString> = vec![
+        host_tar().into_os_string(),
+        "-cf".into(),
+        archive.clone().into_os_string(),
+        "-C".into(),
+        src.into_os_string(),
+    ];
+    argv.extend(tops.into_iter().map(OsString::from));
+    let made = run_tool("tar", argv, dir);
+    assert_eq!(
+        made.record.exit.code,
+        Some(0),
+        "{}: tar -cf: {}",
+        case.label,
+        String::from_utf8_lossy(&made.stderr)
+    );
+    archive
+}
+
+/// Run the workflow's `safe_untar` on `archive` into `dest`.
+fn run_safe_untar(dir: &Path, archive: &Path, dest: &Path) -> RunOutput {
+    let script = dir.join("safe_untar.sh");
+    fs::write(&script, safe_untar_script()).unwrap();
+    run_tool(
+        "bash",
+        vec![
+            OsString::from("/bin/bash"),
+            script.into_os_string(),
+            archive.as_os_str().to_owned(),
+            dest.as_os_str().to_owned(),
+        ],
+        dir,
+    )
+}
+
+/// Run one row; `None` when it behaves as expected, else a description.
+fn check_untar_case(case: &UntarCase) -> Option<String> {
+    let dir = tempfile::tempdir().unwrap();
+    let archive = build_case_archive(dir.path(), case);
+    let dest = dir.path().join("dest");
+    fs::create_dir_all(&dest).unwrap();
+    let out = run_safe_untar(dir.path(), &archive, &dest);
+    let code = out.record.exit.code;
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    let report = |expected: &str, why: &str| {
+        Some(format!(
+            "{}: {expected}, but {why}\n  exit: {code:?}\n  stdout: {stdout}\n  stderr: {stderr}",
+            case.label
+        ))
+    };
+    if case.accepted {
+        if code != Some(0) {
+            return report("accepted (exit 0)", "the guard did not accept it");
+        }
+        let Archive::Tree(members) = &case.archive;
+        for (path, member) in members {
+            let extracted = dest.join(path);
+            let ok = match member {
+                Member::Dir => extracted.is_dir(),
+                Member::File => extracted.is_file(),
+                Member::Link(target) => {
+                    fs::symlink_metadata(&extracted).is_ok_and(|meta| meta.is_symlink())
+                        && fs::read_link(&extracted).is_ok_and(|read| read == Path::new(target))
+                }
+            };
+            if !ok {
+                return report(
+                    "accepted and extracted",
+                    &format!("{path} is not extracted"),
+                );
+            }
+        }
+        None
+    } else {
+        if code != Some(1) {
+            return report("refused (exit 1)", "the exit status differs");
+        }
+        if !stdout.contains("::error::") || !stdout.contains(case.message) {
+            return report(
+                &format!("refused with an ::error:: line saying {:?}", case.message),
+                "the message differs",
+            );
+        }
+        if fs::read_dir(&dest).unwrap().next().is_some() {
+            return report(
+                "refused with an empty destination",
+                "something was extracted",
+            );
+        }
+        None
+    }
+}
+
+#[test]
+fn eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_ones() {
+    // The gap of 03-VERIFICATION.md (Truth 4): the WR-04 guard refused every link
+    // target with a `..` component, including the in-tree links of the captures
+    // (nanopb's `spm_headers/nanopb/pb.h -> ../../pb.h`, nimble's
+    // `npl_sycfg.h -> ../syscfg/syscfg.h`), so the vectors job never got past its
+    // restore step. This runs the function the workflow holds, on real tars.
+    assert!(Path::new("/bin/bash").exists(), "/bin/bash is required");
+    let cases = vec![
+        UntarCase {
+            label: "accept_one_up",
+            archive: Archive::Tree(vec![
+                ("a", Member::Dir),
+                ("a/x.h", Member::File),
+                ("a/b", Member::Dir),
+                ("a/b/c.h", Member::Link("../x.h")),
+            ]),
+            accepted: true,
+            message: "",
+        },
+        UntarCase {
+            label: "accept_two_up",
+            archive: Archive::Tree(vec![
+                ("x.h", Member::File),
+                ("a/b", Member::Dir),
+                ("a/b/c.h", Member::Link("../../x.h")),
+            ]),
+            accepted: true,
+            message: "",
+        },
+        UntarCase {
+            label: "accept_nanopb_ci",
+            archive: Archive::Tree(vec![
+                ("run/nanopb/default/src/pb.h", Member::File),
+                (
+                    "run/nanopb/default/src/spm_headers/nanopb/pb.h",
+                    Member::Link("../../pb.h"),
+                ),
+            ]),
+            accepted: true,
+            message: "",
+        },
+        UntarCase {
+            label: "accept_nimble_ci",
+            archive: Archive::Tree(vec![
+                (
+                    "run/nimble/default/src/porting/npl/riot/include/syscfg/syscfg.h",
+                    Member::File,
+                ),
+                (
+                    "run/nimble/default/src/porting/npl/riot/include/npl_syscfg/npl_sycfg.h",
+                    Member::Link("../syscfg/syscfg.h"),
+                ),
+            ]),
+            accepted: true,
+            message: "",
+        },
+        UntarCase {
+            label: "refuse_absolute",
+            archive: Archive::Tree(vec![("a", Member::Link("/etc/passwd"))]),
+            accepted: false,
+            message: "leaves the tree",
+        },
+        UntarCase {
+            label: "refuse_past_top",
+            archive: Archive::Tree(vec![
+                ("a", Member::Dir),
+                ("a/b", Member::Link("../../../x")),
+            ]),
+            accepted: false,
+            message: "leaves the tree",
+        },
+    ];
+    let failures: Vec<String> = cases.iter().filter_map(check_untar_case).collect();
+    assert!(
+        failures.is_empty(),
+        "{} of {} rows failed:\n{}",
+        failures.len(),
+        cases.len(),
+        failures.join("\n")
+    );
 }
