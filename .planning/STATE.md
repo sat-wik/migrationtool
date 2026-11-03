@@ -4,18 +4,18 @@ milestone: v1.0
 milestone_name: MVP
 current_phase: 03
 current_phase_name: Equivalence Contract and Test-Vector Schema
-current_plan: 1
+current_plan: 11
 status: executing
-stopped_at: Phase 03 complete, ready to plan Phase 4
-last_updated: "2026-11-03T22:52:38.360Z"
+stopped_at: Completed 03-11-PLAN.md
+last_updated: "2026-11-03T23:22:57.848Z"
 last_activity: 2026-11-03
 last_activity_desc: Phase 03 execution started
-state_head: 1cba9cc93a2f76b33cf49465587169246a29e361
+state_head: cb55dfa7f2c8aca319897b712a228486cad2cbd9
 progress:
   total_phases: 12
   completed_phases: 3
   total_plans: 42
-  completed_plans: 41
+  completed_plans: 42
 ---
 
 # Project State
@@ -30,10 +30,10 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 ## Current Position
 
 Phase: 03 (Equivalence Contract and Test-Vector Schema) — EXECUTING
-Current Plan: 1
+Current Plan: 11
 Total Plans in Phase: 11
-Plan: 1 of 11
-Status: Executing Phase 03
+Plan: 11 of 11 (gap closure, complete; phase 3 re-verification pending)
+Status: Plan 03-11 complete, run /gsd-verify-work 3
 Last activity: 2026-11-03 — Phase 03 execution started
 
 Progress: [███░░░░░░░] 25%
@@ -93,6 +93,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P06 | 66 min | 3 tasks | 30 files |
 | Phase 03 P07 | 19h 25m (spans a container restart and a usage-limit pause) | 3 tasks | 28 files |
 | Phase 03 P08 | 1h 30m | 3 tasks | 22 files |
+| Phase 03 P11 | 31 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -169,6 +170,7 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 03]: 03-08: an entry that cannot link is logged link_unresolved with the unresolved names instead of declared (nimble ble_hs_adv_parse_fields: five names measured locally; isotp isotp_on_can_message: three user hooks derived from nm -u of isotp.c), because a declared entry that does not link makes vectors-build print result: failed and skips every later vectors step — Plan 03-08 deviation 3; the only way to drive isotp is a reviewed shared C shim for its user hooks, a founder item
 - [Phase 03]: 03-08: the committed sample rule is the default configuration, the first drivable entry by name, the vector of the first scalar combination with the smallest seed (ties by seed sha256); mt vectors sample fails closed and the files come only from the fixture vectors-sample notice after its tar sha256 is checked — D-21, T-03-29; testbed run 40922236736 replayed all 15 identical and regenerated the same tar
 - [Phase 03 UAT]: Founder decisions 2026-10-30: keep D-07 whole-buffer record (lz4 overshoot compared); globals keys stay C identifiers (name.N statics fail the run until a target needs them); isotp stays link_unresolved, no C shim; smallest-seed sample adequate; timeout label `timeout` rc -9 confirmed; QEMU 10.0.2 accepted over D-31's 8.2.x
+- [Phase 03]: 03-11: safe_untar refuses a '..' that pops an archive symlink even where it would land inside the tree (fail closed); member names come from tar -tf, not from splitting the -tv line
 
 ### Pending Todos
 
@@ -208,6 +210,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-30
-Stopped at: Phase 03 complete, ready to plan Phase 4
+Last session: 2026-11-03T23:22:57.687Z
+Stopped at: Completed 03-11-PLAN.md
 Resume file: None
