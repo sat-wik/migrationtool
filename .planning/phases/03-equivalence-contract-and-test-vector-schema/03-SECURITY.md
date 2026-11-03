@@ -11,7 +11,7 @@ created: "2026-11-03"
 # Phase 03 — Security
 
 > Per-phase security contract: threat register, accepted risks, and audit trail.
-> Register authored at plan time in the 03-01..03-10-PLAN.md `<threat_model>` blocks (T-03-01..T-03-41 and the phase-wide T-03-SC row). T-03-42 is registered from the 03-08-SUMMARY threat flag `artifact-extraction`, whose mitigation the code review (WR-04) found incomplete and the fix commit 8bdbd61 completed.
+> Register authored at plan time in the 03-01..03-10-PLAN.md `<threat_model>` blocks (T-03-01..T-03-41 and the phase-wide T-03-SC row). T-03-42 is registered from the 03-08-SUMMARY threat flag `artifact-extraction`, whose mitigation the code review (WR-04) found incomplete and the fix commit 8bdbd61 completed; the gap-closure plan 03-11 restated T-03-42 for the same component (the 8bdbd61 rule over-refused in-tree links) and added T-03-43..T-03-46.
 
 ---
 
@@ -99,7 +99,11 @@ created: "2026-11-03"
 | T-03-39 | Repudiation | re-baselined Phase 2 notices | medium | mitigate | the changed sections are shown with their diffs; 02-22 is rewritten only after the founder's `rebaseline` reply, quoted in the SUMMARY; its header names the new run, the reply and the commit (7c55dbe) holding the previous content; all or none of the changed sections move. **Evidence (2026-11-03):** `02-22-CI-NOTICES.md` header names run 40451139101 and the founder's `rebaseline` reply, and commit 7c55dbe holding the previous sections exists | closed |
 | T-03-40 | Elevation of privilege | GHCR publish token | high | mitigate | no workflow change in this plan; packages write exists only in the publish job, guarded to a push to main (tool_03_workflow_publishes_by_digest_with_least_privilege unchanged). **Evidence (2026-11-03):** cited tests present and green at `332f7d0`: `tool_03_workflow_publishes_by_digest_with_least_privilege` | closed |
 | T-03-41 | Repudiation | merge-back of origin/main | medium | mitigate | merge only (fast-forward allowed), never rebase or force push; conflicts stop for the founder. **Evidence (2026-11-03):** the merge-back 414f3bb is a merge commit of origin/main; no rebase or force push in the branch history | closed |
-| T-03-42 | Tampering | the vectors job's restore of the testbed job's hand-off tars (`work.tar`, `replay.tar`) on the runner; the trees were written by upstream build code in no-network containers (03-08-SUMMARY threat flag `artifact-extraction`, code review WR-04) | medium | mitigate | `safe_untar` lists each archive first and refuses any member that is not a file, a directory or a symlink, and any symlink whose target is absolute or contains `..`, then extracts with `--no-same-owner --no-same-permissions` (commit 8bdbd61); the flag's earlier controls remain: relative member names, no `-P` or `--absolute-names`, an ephemeral runner with `contents: read` and no secret. **Evidence (2026-11-03):** `safe_untar` defined and used for both tars (`.github/workflows/testbed.yml` 1039-1053); `eqv_04_workflow_static_restore_vets_the_archives_before_unpacking` green; first CI run of the step is pending | closed |
+| T-03-42 | Tampering / Elevation of privilege | the vectors job's restore of the testbed job's hand-off tars (`work.tar`, `replay.tar`) on the runner; the trees were written by upstream build code in no-network containers (03-08-SUMMARY threat flag `artifact-extraction`, code review WR-04, plan 03-11) | high | mitigate | `safe_untar` lists each archive first, refuses an empty archive, any member that is not a file, a directory or a symlink, any member name that is absolute or has a `..` component, and any symlink whose target is absolute or, walked from the link's own directory, pops past the top or pops a component that is itself an archive symlink (fail-closed); only then one extraction with `--no-same-owner --no-same-permissions` (8bdbd61, refined by 03-11 `24c953a`, `752badf`). **Evidence (2026-11-03):** messages `has no members`, `holds a member name that is absolute or leaves the tree`, `holds a symlink that is absolute or leaves the tree` and `local -A islink` in the restore step of `.github/workflows/testbed.yml`; `eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_ones` (19 real-tar rows, refused rows incl. refuse_up_through_link, refuse_dotdot_member_name, refuse_absolute_member_name, refuse_hard_link) and `eqv_04_workflow_static_restore_vets_the_archives_before_unpacking` green; step 'Unpack the captures of the testbed job' success in testbed run 41735869792 (head `752badf`) | closed |
+| T-03-43 | Tampering | listing parse in `safe_untar`: a member name containing ` -> ` makes the guard read an in-tree suffix as the target (plan 03-11) | medium | mitigate | name taken from `tar -tf`, target is what follows that exact name and ` -> ` in the `tar -tvf` line; equal listing lengths required; an unlocatable target is refused. **Evidence (2026-11-03):** messages `tar -tf and tar -tvf list different members` and `cannot read the target of the symlink` in the restore step; rows refuse_arrow_in_name and accept_arrow_in_name green | closed |
+| T-03-44 | Denial of service | an over-broad guard refusing legitimate in-tree links so the evidence steps never run (the WR-04 regression, plan 03-11) | medium | mitigate | accepted rows include the CI-observed nanopb and nimble shapes; the workflow's own function accepted the local capture and run tars with all 10 links before the push; refusals name member and target. **Evidence (2026-11-03):** rows accept_nanopb_ci and accept_nimble_ci green; testbed run 41735869792: every vectors step after the restore success, none skipped (`03-11-SUMMARY.md`) | closed |
+| T-03-45 | Repudiation | a green vectors job claimed while its evidence steps were skipped, or the gap claimed closed on local or agent-reported evidence (plan 03-11) | medium | mitigate | step conclusions and the run conclusion read with gh api for the last trigger-path commit; the region diff and exact call-line assertion forbid a soft-failed or re-conditioned step; notices generated from the annotations. **Evidence (2026-11-03):** orchestrator re-read run 41735869792 with gh api: `.github/workflows/testbed.yml 752badf… success`, the seven named vectors steps success; no `continue-on-error:` key in the workflow; the restore test asserts both exact call lines | closed |
+| T-03-46 | Denial of service | the bash walk over every member of a large capture tar slows the restore step (plan 03-11) | low | accept | linear in members; measured; see Accepted Risks Log AR-03-46. **Evidence (2026-11-03):** restore step 2 s in run 41735869792; vectors job 4 min 31 s of 45 | closed |
 
 *Status: open · closed · open — below high threshold (non-blocking)*
 *Severity: critical > high > medium > low — only open threats at or above workflow.security_block_on count toward threats_open*
@@ -107,7 +111,7 @@ created: "2026-11-03"
 
 Related open code-review findings (`03-REVIEW-DISPOSITION.md`, skipped by the fix passes because editing `runtime.c` changes the driver hashes recorded in the committed sample): WR-03 (`struct mt_ksigaction` layout leaves the handler's signal mask to stack padding) and IN-01 (`MAP_FIXED` mappings can silently replace an existing mapping) both touch the in-guest handler and guard mappings that T-03-01 relies on. T-03-01 stays closed on its evidence: the overrun cases give `fault`, `rc = -11` and no core file locally (`eqv_04_overrun_is_a_fault`) and in the pinned image (testbed run 40922236736: `no core file after overrun`, `determinism 100 runs 1 hash`). The two fixes remain owed.
 
-Not yet run in CI: the code-review fix commits `6c58482..90767fd` postdate the last testbed and container runs, including the `safe_untar` step (T-03-42) and the Dockerfile `USER 65534:65534` line. Their static tests pass at `332f7d0`.
+Run in CI since 2026-11-03: testbed run 41735869792 on `752badf` (plan 03-11) ran the code-review fix commits `6c58482..90767fd` together with the corrected `safe_untar` step (T-03-42) in the pinned image, and its vectors job was green; ci 41735869789 and container 41735869785 were success on the same head. The Dockerfile `USER 65534:65534` line is unchanged since its static test.
 
 ---
 
@@ -115,10 +119,10 @@ Not yet run in CI: the code-review fix commits `6c58482..90767fd` postdate the l
 
 | Risk ID | Threat Ref | Rationale | Accepted By | Date |
 |---------|------------|-----------|-------------|------|
+| AR-03-46 | T-03-46 | Low severity: the restore walk is linear in archive members, measured at 2 s for the CI capture tar and about 3 s for a synthetic 30,801-member tar, against a 45-minute job; step durations are visible in every run | plan 03-11 threat model (accept disposition) | 2026-11-03 |
 
 *Accepted risks do not resurface in future audit runs.*
 
-No accepted risks.
 
 ---
 
@@ -127,6 +131,7 @@ No accepted risks.
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
 | 2026-11-03 | 43 | 43 | 0 | orchestrator (L1 grep depth, block_on high; short-circuit: register authored at plan time, 0 open). Every test a mitigation cites exists and passes at `332f7d0` (workspace suite and the 23 ignored local proofs); the other controls located by file and line above |
+| 2026-11-03 | 47 | 47 | 0 | orchestrator after plan 03-11 (L1 grep depth, block_on high; short-circuit: register authored at plan time, 0 open). T-03-42 restated and re-evidenced; T-03-43..T-03-45 mitigated with green tests and testbed run 41735869792; T-03-46 accepted (AR-03-46) |
 
 ---
 
@@ -137,4 +142,4 @@ No accepted risks.
 - [x] `threats_open: 0` confirmed
 - [x] `status: verified` set in frontmatter
 
-**Approval:** verified 2026-11-03 (43/43 closed at L1, block_on high)
+**Approval:** verified 2026-11-03 (47/47 closed at L1, block_on high; re-audited after plan 03-11)
