@@ -3,14 +3,26 @@ phase: 03
 review: 03-REVIEW.md
 titles: json
 findings:
+  - id: CR-01
+    severity: critical
+    disposition: open
+    title: "`safe_untar` accepts a symlink that resolves outside the destination when a second link aliases a directory holding a link"
+  - id: WR-01
+    severity: warning
+    disposition: open
+    title: "the target is cut from the verbose line by the first occurrence of ` NAME -> `, so the owner field can forge it"
+  - id: WR-02
+    severity: warning
+    disposition: open
+    title: "the test table does not pin the shape of CR-01, and some refuse rows can pass for the wrong reason"
+  - id: IN-01
+    severity: info
+    disposition: open
+    title: "the test needs GNU tar and bash 4.3 or later on the host, but only checks that `/bin/bash` exists"
   - id: WR-03
     severity: warning
     disposition: skipped
     title: "`struct mt_ksigaction` does not match the kernel `sigaction` layout (uninitialised padding becomes the signal mask)"
-  - id: IN-01
-    severity: info
-    disposition: deferred
-    title: "`MAP_FIXED` mappings silently replace whatever is already at the address, and no assert covers the input mapping"
   - id: IN-10
     severity: info
     disposition: open
@@ -23,14 +35,6 @@ findings:
     severity: info
     disposition: open
     title: "The byte-codec paragraph still leaves out the hex case of `\\u00XX`, so an independent reader cannot reproduce the file names"
-  - id: WR-01
-    severity: warning
-    disposition: fixed
-    title: "Replay still does not compare most provenance fields, so an edited provenance record or a changed policy is not detected"
-  - id: WR-02
-    severity: warning
-    disposition: fixed
-    title: "A listing whose rows are all `no_roles` still prints `result: passed` and exits 0"
   - id: IN-02
     severity: info
     disposition: fixed
@@ -63,10 +67,6 @@ findings:
     severity: info
     disposition: fixed
     title: "Include-prefix hardening is incomplete: trigraph splice, and the probe path is not covered"
-  - id: CR-01
-    severity: critical
-    disposition: fixed
-    title: "A return value that is a typedef of a 64-bit integer is silently truncated to 32 bits"
   - id: WR-04
     severity: warning
     disposition: fixed
@@ -87,22 +87,23 @@ findings:
     severity: warning
     disposition: fixed
     title: "Identifier grammars for target ids and configuration names disagree between the manifest, the policy loader and the vector schema"
-open: 3
+open: 7
 total: 21
-recorded: 2026-11-03T05:07:11.711Z
+recorded: 2026-11-03T23:38:46.806Z
 ---
 
 # Phase 03: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-03 | warning | skipped | 03-REVIEW-FIX.md |
-| IN-01 | info | deferred | skipped by fix iteration 2 (03-REVIEW-FIX.md): the fix is in runtime.c, which feeds the committed sample's driver hashes; owed with WR-03 and a sample regeneration |
-| IN-10 | info | open | - |
-| IN-11 | info | open | - |
-| IN-12 | info | open | - |
-| WR-01 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
-| WR-02 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| CR-01 | critical | open | - |
+| WR-01 | warning | open | - |
+| WR-02 | warning | open | - |
+| IN-01 | info | open | - |
+| WR-03 | warning | skipped | 03-REVIEW-FIX.md (not in the current review) |
+| IN-10 | info | open | - (not in the current review) |
+| IN-11 | info | open | - (not in the current review) |
+| IN-12 | info | open | - (not in the current review) |
 | IN-02 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | IN-03 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | IN-04 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
@@ -111,7 +112,6 @@ recorded: 2026-11-03T05:07:11.711Z
 | IN-07 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | IN-08 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | IN-09 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
-| CR-01 | critical | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | WR-04 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | WR-05 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | WR-06 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
