@@ -1,8 +1,8 @@
 ---
 phase: 03-equivalence-contract-and-test-vector-schema
-verified: 2026-11-03T06:00:00Z
+verified: 2026-11-03T23:42:13Z
 status: gaps_found
-score: 3/4 must-haves verified
+score: 12/13 must-haves verified
 covered_files:
   - ".github/workflows/testbed.yml"
   - ".planning/phases/03-equivalence-contract-and-test-vector-schema/03-01-PLAN.md"
@@ -25,63 +25,62 @@ covered_files:
   - ".planning/phases/03-equivalence-contract-and-test-vector-schema/03-09-SUMMARY.md"
   - ".planning/phases/03-equivalence-contract-and-test-vector-schema/03-10-PLAN.md"
   - ".planning/phases/03-equivalence-contract-and-test-vector-schema/03-10-SUMMARY.md"
-  - "container/Dockerfile"
-  - "crates/mt-capture/src/manifest.rs"
-  - "crates/mt-cli/src/main.rs"
-  - "crates/mt-contract/src/policy.rs"
-  - "crates/mt-harness/src/adapter.rs"
-  - "crates/mt-harness/src/driver.rs"
-  - "crates/mt-harness/src/replay.rs"
-  - "crates/mt-harness/src/run.rs"
-  - "crates/mt-harness/src/sample.rs"
-  - "crates/mt-vectors/src/state.rs"
-  - "crates/mt-vectors/src/vector.rs"
-  - "docs/specs/equivalence-contract.md"
-  - "testbed/adapter-dropped.toml"
-  - "testbed/manifest.toml"
-covered_digest: "v3:sha256:f5b54dc55d0c4e9dcd99464e9c10f905ad678c2932a3f0eb760616338ea1be40"
+  - ".planning/phases/03-equivalence-contract-and-test-vector-schema/03-11-PLAN.md"
+  - ".planning/phases/03-equivalence-contract-and-test-vector-schema/03-11-SUMMARY.md"
+  - "crates/mt-harness/tests/eqv_04_workflow_static.rs"
+covered_digest: "v3:sha256:d650f6b09e3a17900516f5cc0396126f67c9d484ca5f758c344244a1e37e7cf6"
 behavior_unverified: 0
 overrides_applied: 0
 re_verification:
-  previous_status: passed
-  previous_score: 4/4
-  gaps_closed: []
-  gaps_remaining: []
-  regressions:
-    - "Truth 4 CI evidence: the vectors job, green on 5e0d4a8, is red at HEAD since the WR-04 review fix (8bdbd61). Its build, run, determinism and committed-sample replay steps have not run since."
+  previous_status: gaps_found
+  previous_score: 3/4
+  gaps_closed:
+    - "Gap item 1, over-refusal half: safe_untar no longer refuses every link target with a `..` component; the CI-observed nanopb and nimble in-tree links are accepted (workflow's own function accepted a tar of the local capture and run trees: exit 0, 10 of 10 links extracted)"
+    - "Gap item 2: a behavioural test now runs the workflow's own safe_untar (extracted with function_body, no copy) on 19 real GNU-tar archives; passes at HEAD (14 of 14 tests in the file, 557 in the workspace)"
+    - "Gap item 3: testbed run 41735869792 on 752badf, the last trigger-path commit, is success; the vectors job and all seven named evidence steps are success, none skipped (read with gh api)"
+  gaps_remaining:
+    - "Gap item 1, soundness half (plan 03-11 must-have truth 1): the guard does not refuse a link that reaches a `..` through a second link aliasing a directory that holds an archive link (CR-01)"
+  regressions: []
 gaps:
-  - truth: "The C reference executor runs any vector against the target's original C build, stores the result in a schema-valid vector, and running it twice gives byte-identical results (demonstrated in the pinned image by the testbed workflow)"
+  - truth: "Plan 03-11 must-have truth 1 / EQV-04 gap item 1: safe_untar refuses a symlink when its target, joined to the link's own directory and walked component by component, pops past the top of the tree or pops a component that is itself a symlink of the same archive"
     status: partial
-    reason: "The executor itself works at HEAD (verified locally under qemu-arm 8.2.2 with arm-none-eabi-gcc 13.2.1: 556 default tests and 23 ignored tests pass). But the CI gate that proves it in the pinned image is broken. Fix commit 8bdbd61 (WR-04) added a safe_untar check to the vectors job whose symlink regex rejects every relative symlink containing a `..` component, including in-tree ones such as nimble's `npl_sycfg.h -> ../syscfg/syscfg.h` and nanopb's `pb.h -> ../../pb.h`. The step 'Unpack the captures of the testbed job' fails on GitHub run 41275770544 (head a016909, workflow file identical to HEAD) and on the earlier run 41265174150. Steps 'Build the reference drivers', 'Publish the state layouts', 'Run the reference vectors twice', 'vectors determinism', the sample steps and 'Replay the committed sample' are all skipped, so no in-image run exists for the code at HEAD. This includes the provenance comparison that WR-01 (90767fd) added to the replay: it has run only in offline unit tests, never against the committed sample in the image. Neither REVIEW-FIX nor the re-review mentions the red run (both say CI-only paths were not run)."
+    reason: "The in-tree half is fixed and shown in the image. The refusing half has a bypass that I reproduced with the workflow's own function (extracted from .github/workflows/testbed.yml at HEAD, bash 5.2, GNU tar 1.35). Archive members in order: m/ m/n/ m/n/d/ (dirs), m/n/d/p -> ../../.. (resolves to the top of the tree, accepted like accept_up_to_top), X -> m/n (all pushes), e -> X/d/p/.. . The function exits 0 and extracts. readlink -f dest/e is the parent of the destination, which in the workflow is $RUNNER_TEMP (holds ci-lib.sh, sourced by every later step). Cause: the first pass records links by exact normalised name (islink[m/n/d/p]), the walk pops-checks only the exact joined stack, and X/d/p is not a key, so the pop of p (which is a symlink of the same archive) is taken for the pop of a real directory. The truth's literal wording ('pops a component that is itself a symlink of the same archive') is false for this input. Exploitability today is bounded by GNU tar's own refusal: a follow-up member e/pwn.txt made GNU tar 1.35 fail with 'Cannot open: Not a directory' (reproduced), so no write outside the destination was observed. That is tar's behaviour, not the guard's, and the escaping link stays in $RUNNER_TEMP/work. The register treats it as a failed mitigation of T-03-42 (high, threats_open 1, block_on high). The 19-row table has no row for this shape, so the suite and CI stay green on a guard that accepts it (review WR-02)."
     artifacts:
       - path: ".github/workflows/testbed.yml"
-        issue: "safe_untar (lines ~1039-1050): the symlink guard `grep -E '^l.* -> (/|(.*/)?\\.\\.(/|$))'` matches any target with a `..` component, so legitimate in-tree relative links in the capture tar are refused. I replayed the regex on two listing lines copied from the CI log and it matches both."
+        issue: "safe_untar second pass (lines 1121-1139): a non-`..` component is pushed onto the stack without checking whether the joined stack is an archive link, so a path that descends through an aliasing link (X/d/p) hides the link p from the later pop-of-link test. The comment at lines 1034-1048 claims the walk fails closed where it cannot tell where a path lands; it does not for this shape."
       - path: "crates/mt-harness/tests/eqv_04_workflow_static.rs"
-        issue: "The test only checks that the text `safe_untar()` is present and used for both tars. It never feeds the guard a listing with a legitimate relative symlink, so it passed while the job failed."
+        issue: "The table (about lines 1423-1593) has no alias row; refused link rows all assert the fragment 'leaves the tree', which the member-name message also contains; the test checks that dest is empty but not that nothing outside dest changed; the branches 'cannot read the target of the symlink' and 'tar -tf and tar -tvf list different members' have no row."
     missing:
-      - "Make safe_untar refuse only a symlink that is absolute or whose target, resolved against the member's own directory, leaves the tree (for example normalise `dirname(member)/target` and test the result for a leading `..`), instead of any `..` component"
-      - "Add a behavioural test of the guard: an in-tree link such as `a/b/c.h -> ../x.h` and `a/b/c.h -> ../../x.h` accepted, `a -> /etc/passwd` and `a/b -> ../../../x` refused"
-      - "Push and obtain a green `vectors` job at the new head, so that build, run, determinism and the replay of testbed/vectors-sample (with the WR-01 checks) run in the pinned image again"
+      - "In safe_untar's second pass, before a non-`..` component is pushed onto a non-empty stack, join the stack and look it up in `islink`; if it is an archive link, set `left=1` (refuse). This makes the logical path equal the physical path, so the existing pop-of-link test is exact. The link's own dirname components pass through the same branch, so they are covered. I applied exactly this to a scratch copy of the extracted function: the CR-01 archive then exits 1 with '::error::... holds a symlink that is absolute or leaves the tree: e -> X/d/p/..', and the local capture and run trees still exit 0 with 10 of 10 links extracted. Rewrite the comment above the function to state the real rule: a link target may not descend into or pop an archive symlink."
+      - "Add test rows, built as real tars like the existing ones: `refuse_alias_up_through_link` with the six CR-01 members in that order (exit 1, empty dest), and one row where a target descends through an archive link without any `..` after it (for example `X -> m/n`, `c -> X/y`), to pin the fail-closed decision. Give the link-walk refusal a message fragment that the member-name refusal does not share (assert 'holds a symlink' on link rows). Put a sentinel file beside `dest` in check_untar_case and assert the directory outside `dest` is unchanged after every row."
+      - "Close review WR-01 in the same edit (same function, same register entry T-03-43): list with `tar --numeric-owner -tvf` so the owner column is digits and a slash and cannot contain ` -> `; add a row with a forged uname (Python tarfile `uname='u a -> p/q/r/s/t'` on `a -> ../../../../etc`, directories p/q/r/s/t present). I reproduced the forgery: the current guard exits 0 on that archive."
+      - "Push, obtain a green testbed run for the new last trigger-path head (gh api: run success; vectors steps 'Unpack the captures of the testbed job', 'Build the reference drivers', 'Publish the state layouts', 'Run the reference vectors twice', 'Run the vectors again and compare (vectors determinism)', 'Fixture vectors sample', 'Replay the committed sample' each success), write 03-12 notices, then set CR-01, WR-01 and WR-02 to fixed in 03-REVIEW-DISPOSITION.md, close T-03-42 (and re-evidence T-03-43) in 03-SECURITY.md, and update the 03-11 rows of 03-VALIDATION.md, whose claim of a '`..` through an archive link' refusal holds only for the exact-name case."
 deferred: []
+advisory: []
+behavior_unverified_items: []
 human_verification:
   - test: "Re-read the three passages of docs/specs/equivalence-contract.md that changed after the founder's UAT item 1 (commit dd1deeb, 2026-11-01): the `rc` row, the `ret` bullet under Library state, and the Byte codec paragraph"
     expected: "The new wording matches the decisions it restates (D-05 'rc: the C return value', D-06, D-25 Latin-1 identity). Specifically: (a) a struct or union return goes to lib_state_out.ret with rc 0; (b) an integer or enum return wider than 32 bits is now refused when the adapter is built (before this it was promised to go to `ret`, but the code never did that and truncated it before CR-01); (c) the codec paragraph now names serde_json escapes (short escapes for \\b \\t \\n \\f \\r, \\u00XX for other control characters, other characters as UTF-8) and says the vector file is serde_json::to_vec_pretty output with sorted maps and one trailing newline"
     why_human: "UAT item 1 (pass, 2026-10-30) judged the earlier text. The document changed afterwards, still under version 0.1.0 with no changelog line (review IN-11). The change narrows a promise rather than adding a rule, and no committed vector or policy depends on the withdrawn promise (checked: testbed/policy and testbed/vectors-sample are unchanged since the UAT). Whether a correction without a version bump is acceptable is a founder call."
-behavior_unverified_items: []
 ---
 
 # Phase 3: Equivalence Contract and Test-Vector Schema Verification Report
 
 **Phase Goal:** "Equivalent" is written down and machine-checkable, and the original C can be run against any test vector to produce a deterministic reference result.
-**Verified:** 2026-11-03
+**Verified:** 2026-11-03T23:42:13Z (HEAD 70e28ee)
 **Status:** gaps_found
-**Re-verification:** Yes. The report of 2026-10-30 (status passed) is stale: commits 6c58482..90767fd changed 25 non-planning files after the UAT of 2026-10-30. Everything below was checked against HEAD (286baca).
+**Re-verification:** Yes, after gap-closure plan 03-11. Previous report: gaps_found, 3/4.
 
-The contract, the schema, the adapters and the executor are all present and work at HEAD. One regression stops the phase from passing: a review fix broke the CI job that proves the executor and the committed sample in the pinned image, and nobody noticed because both fix reports say the CI paths were not run.
+Plan 03-11 did what it said for the CI failure. The vectors job is green again in the pinned image with every evidence step run, and the executor, contract, schema and adapters are unchanged and still pass. But the guard that plan 03-11 rewrote does not meet its own central must-have: it accepts a link that resolves outside the destination (CR-01, reproduced here). The gap is therefore narrowed, not closed.
 
-## What changed since the last verification
+## Decision on CR-01
 
-`git diff e23098d..HEAD` (the commit that closed the UAT) touches 25 files outside `.planning`. Unchanged since the UAT: `crates/mt-harness/src/runtime.c`, `classify.rs`, `globals.rs`, everything under `testbed/` (policies, manifest, adapter log, the 15-corpus sample, tractor pin) and the container pins. Changed: the CI workflow (WR-04, WR-05), `Dockerfile` (IN-05, `USER 65534:65534` as last instruction), `mt-capture` manifest id/config grammar (WR-08), `policy.rs` (WR-07 error_code range, IN-07, IN-08), `adapter.rs` (IN-06), `driver.rs` (WR-06, IN-04, IN-09), `run.rs` and `main.rs` (CR-01, WR-02), `replay.rs` (WR-01), `sample.rs` and `state.rs` (IN-03), and `docs/specs/equivalence-contract.md` (IN-02).
+Question put to this verification: does CR-01 leave Truth 4, or only plan 03-11's must-haves, partial?
+
+- **ROADMAP criterion 4 (Truth 4) is VERIFIED.** It says the executor runs a vector against the original C build, stores a schema-valid result, and gives byte-identical results on a second run, shown in the pinned image. All of that holds at HEAD, and the in-image demonstration that was missing is back (testbed run 41735869792, below). CR-01 sits in a hand-off defence around the tar of the build output. It does not stop the executor, the sample replay or the determinism check from running, and it did not stop them in the run. The previous report put the broken step under Truth 4 only because a red restore step skipped the demonstration. That reason is gone.
+- **Plan 03-11 must-have truth 1 is FAILED (partial).** It promises a refusal when a link "pops a component that is itself a symlink of the same archive". In CR-01, `e -> X/d/p/..` pops `p`, which is `m/n/d/p`, a symlink of the same archive, and the guard exits 0. The sentence is false for a reproduced input. The truth's own gap item, "refuse only a symlink that is absolute or whose target ... leaves the tree", has the same defect on its refusing side.
+- **Consequence:** the verdict is `gaps_found`, not `passed`. T-03-42 is a high-severity threat re-opened with a reproduced bypass, and its `block_on` gate counts it (`threats_open: 1`). I count it against the must-haves and not as an advisory, because the behaviour that is wrong is the one the plan wrote down as a truth and the register lists as the mitigation. I do not claim an exploit: GNU tar 1.35 refuses to write through the escaping link (reproduced), so what remains is a guard whose stated contract is wrong, one tar-version dependency away from a write outside the destination.
+- Counted separately: review WR-01 (the owner column can forge the parsed target) is a second, lower-severity hole in the same function. I reproduced it too (forged uname, guard exits 0 on `a -> ../../../../etc`). It does not touch a plan truth word for word, but it makes T-03-43's evidence ("target is what follows that exact name") overstated. It is listed in the same gap as a recommended fix in the same edit.
 
 ## Goal Achievement
 
@@ -89,132 +88,125 @@ The contract, the schema, the adapters and the executor are all present and work
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Contract v0 exists as a versioned document and a policy file the harness loads: refinement, observation point at the C interface, UB menu {return error, panic, preserve} with return error as default and a recorded setting to change it | VERIFIED | `docs/specs/equivalence-contract.md` at 0.1.0 with changelog. `mt vectors policy-check --manifest testbed/manifest.toml` exit 0, 16 of 16 lines read `valid default=return_error overrides=0`. Tests `eqv_01_rejects_unknown_key`, `eqv_01_default_change_required_to_change_default` and the rest of the `eqv_01_*` group pass in my run. The post-UAT policy changes (WR-07 range check to `i32::MIN..=u32::MAX`, IN-07 non-UTF-8 file name reported) only refuse more; new test `eqv_01_load_dir_reports_a_non_utf8_policy_file` passes. |
-| 2 | A schema with exactly the nine fields validates and round-trips in Rust types; a merged `lib_state` is rejected; at least 3 TRACTOR public-corpus vectors load unchanged | VERIFIED | Tampered copy of a committed sample vector with `lib_state_in` renamed `lib_state`: `mt vectors validate` exit 2, "unknown field `lib_state`, expected one of `argv`, `stdin`, `env`, `stdout`, `stderr`, `rc`, `lib_state_in`, `lib_state_out`, `has_ub`". Adding `"has_ub": false`: exit 2 ("invalid type: boolean `false`, expected a string"). All 15 committed corpora pass `mt vectors validate <dir>` ("valid corpus 1 vectors"). Ignored test `eqv_02_tractor_vectors_load_unchanged` passed against the local TRACTOR tree at the pinned commit (this closes the gap the old report left, where only CI had run it). `eqv_02_rejects_merged_lib_state`, `eqv_02_tractor_pin_has_no_content`, `eqv_02_has_ub_vectors_are_excluded_from_comparison`, and the new `eqv_02_serde_json_map_keeps_keys_sorted` pass. |
-| 3 | At least 10 test-bed targets have an entry-point adapter declaring the function and its argument roles | VERIFIED | `mt vectors adapters --manifest testbed/manifest.toml --check-floor`: exit 0, "drivable targets: 15 (floor 10)", "result: passed (27 rows)". `eqv_03_adapter_floor_is_ten` passes. The manifest grammar tightening (WR-08: ids and config names may not start with `_` or `-`) did not drop any target. `testbed/` is unchanged since the UAT. |
-| 4 | The C reference executor runs any vector against the target's original C build, stores the result in a schema-valid vector, and running it twice gives byte-identical results | PARTIAL (gap) | Code and local behaviour at HEAD: VERIFIED. `cargo test --workspace --locked`: 556 passed, 0 failed, 23 ignored. With `MT_LOCAL_CAPTURES` and `MT_LOCAL_TRACTOR` set, `cargo test --workspace --locked -- --ignored`: 23 passed, 0 failed (includes `eqv_04_run_twice_is_byte_identical`, `eqv_04_replay_reproduces_stored_vectors`, `eqv_04_sample_is_chosen_and_replays_from_a_tree`, `eqv_04_state_is_recorded_field_by_field`, `eqv_04_setup_failure_is_a_compared_outcome`, `eqv_04_sentinel_prefill_recorded`). The qemu-arm selftest cases (`eqv_04_overrun_is_a_fault`, `eqv_04_slack_write_is_detected`, abort, timeout) ran for real on this host in the default run. In-image evidence: NOT reproduced at HEAD. See the gap below and the CI table. |
+| 1 | Contract v0: versioned document and loaded policy file; refinement, observation point, UB menu with return error as default and a recorded way to change it | VERIFIED (regression check) | `mt vectors policy-check --manifest testbed/manifest.toml`: 16 lines `valid default=return_error overrides=0`. Only `.github/workflows/testbed.yml` and the workflow test changed outside `.planning` since the previous report (`git diff --name-only 286baca HEAD -- . ':!.planning'`), so the evidence of the previous report stands. |
+| 2 | Nine-field schema validates and round-trips; merged `lib_state` rejected; at least 3 TRACTOR vectors load unchanged | VERIFIED (regression check) | Same unchanged code. Workspace suite 557 passed, 0 failed (includes the `eqv_02_*` group). Previous tampered-copy checks stand. |
+| 3 | At least 10 test-bed targets have an entry-point adapter with argument roles | VERIFIED (regression check) | `mt vectors adapters --manifest testbed/manifest.toml --check-floor`: "drivable targets: 15 (floor 10)", "result: passed (27 rows)". |
+| 4 | The C reference executor runs any vector against the target's original C build, stores the result in a schema-valid vector, and running it twice gives byte-identical results (shown in the pinned image by the testbed workflow) | VERIFIED | Executor and local evidence unchanged and green (557 default tests). In-image: testbed run 41735869792 (head 752badf), see CI evidence. Restore, build, layouts, twice-run vectors, determinism rerun, sample fixture and committed-sample replay all ran and succeeded. The guard defect (gap below) does not bear on this criterion. |
 
-**Score:** 3/4 truths verified (0 behavior-unverified).
+### Plan 03-11 must-haves
 
-### CI evidence at HEAD (GitHub, read with `gh`)
+| # | Truth | Status | Evidence |
+|---|-------|--------|----------|
+| P1 | safe_untar refuses a symlink only when absolute, or when the walked target pops past the top or pops a component that is itself a symlink of the same archive; CI-observed nanopb and nimble links accepted | FAILED (partial) | In-tree half verified: rows accept_nanopb_ci and accept_nimble_ci pass, and the function accepts the local capture and run trees (10 of 10 links). Refusing half false for the alias shape of CR-01 (reproduced; see gap). |
+| P2 | Rest of WR-04 kept: non file/dir/symlink refused; absolute or `..` member names refused; nothing extracted before the listing passes; one extraction with `--no-same-owner --no-same-permissions`; both archives through safe_untar | VERIFIED | Code read at lines 1049-1146: `grep -v -E '^[-dl]'` check, `case "/$name/"` member-name check, single `tar -xf ... --no-same-owner --no-same-permissions` after both passes, two call lines (`grep -c 'safe_untar "$RUNNER_TEMP/handoff/'` prints 2). |
+| P3 | Behavioural test runs the workflow's own function on real tars, with the listed accept and refuse rows | VERIFIED (as written) | `eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_ones ... ok`; all 19 labels are present; the test extracts the function with `function_body` and has no copy of the guard. It does not pin CR-01 (part of the gap). |
+| P4 | The testbed run for the last trigger-path commit concludes success and the seven vectors steps are success, none skipped | VERIFIED | gh api: run 41735869792 path `.github/workflows/testbed.yml`, head 752badfc854dbcf4e3b27dfc3971f23798915d6d, completed, success. `git log -1 -- testbed crates Cargo.toml Cargo.lock container/pins.toml container/README.md .github/workflows/testbed.yml` is 752badf. |
+| P5 | All committed corpora replay `identical 1` in the pinned image; rerun identical; at least 10 targets twice=identical; testbed notices equal 02-22 from line 5 | VERIFIED | `03-11-VECTORS-NOTICES.md`: 15 lines ending `identical 1` (15 `index.json` under testbed/vectors-sample), `rerun rows are identical to the first run's rows`, `identical 5768 files`. `diff <(sed '1,4d' 02-22-CI-NOTICES.md) <(sed '1,4d' 03-11-CI-NOTICES.md)` is empty. These are the notice texts the CI run produced; I read the run and step conclusions with gh api, not the annotation text. |
+| P6 | Edge boundary: `a/up -> ..` accepted; `a/up2 -> ../..`, `a -> ../x`, `a -> b/../../x` refused | VERIFIED | Rows accept_up_to_top, refuse_one_past_top, refuse_top_level_up, refuse_down_then_up pass. |
+| P7 | Edge adjacency: dot-only components and `.` handled; names containing ` -> ` read by exact `tar -tf` name | VERIFIED | Rows accept_dot_components, accept_arrow_in_name, refuse_arrow_in_name pass. (The owner-column forgery, WR-01, is a different route into the same parse and is in the gap.) |
+| P8 | Edge ordering: verdict independent of member order; `d/up -> ..` then `e -> d/up/..` refused; one extraction after every member passed | VERIFIED for the shape stated | refuse_up_through_link passes; the first pass records all links before the second pass walks. The alias variant is the gap (P1). |
+| P9 | Edge empty: an archive with no members refused with 'no members' | VERIFIED | Row refuse_empty_archive passes. |
 
-The last `testbed` workflow run on this branch is 41275770544 (head a016909, 2026-11-01). `git diff a016909 HEAD -- . ':!.planning'` is empty, so it is the run for the code at HEAD. Job results:
+Prohibitions of plan 03-11 (all three, test tier, all hold): no `continue-on-error:` key in the workflow (grep empty), the region outside the restore step is byte-identical to 83352a1 (diff empty), the two call lines are exact (asserted by the static test), `git diff --name-only 83352a1 HEAD -- . ':!.planning'` prints only the workflow and the workflow test, `testbed/vectors-sample` is unchanged, and the closure claim rests on a gh api read of the run, not on local runs.
 
-| Job | Result | Notes |
-|-----|--------|-------|
-| `mt` | success | static build |
-| `testbed` | success | capture and replay of the 16 pairs |
-| `vectors` | FAILURE | steps up to 'Download the captures of the testbed job' succeed, including 'Run the executor self-test in the pinned image' and the TRACTOR load; 'Unpack the captures of the testbed job' fails; the next eight steps are skipped |
+**Score:** 12/13 (4 ROADMAP criteria + 9 plan 03-11 truths; the one failed is P1). 0 behavior-unverified.
 
-Log line of the failure: `##[error]/home/runner/work/_temp/handoff/work.tar holds a symlink that is absolute or leaves the tree`, printed after a listing of `nobody/nogroup` symlinks such as `run/nanopb/default/src/spm_headers/nanopb/pb.h -> ../../pb.h`. The earlier run 41265174150 (after the first fix pass) failed the same way. Run 40922236736 (green on 5e0d4a8) is the last in-image run of build, run, determinism and the sample replay, and it predates every fix that followed the UAT.
+### CI evidence (GitHub, read with `gh api` only)
 
-What the in-image selftest at HEAD does show: qemu-arm in the pinned image still starts `cortex-m4`, and the outcome cases (including `beyond-reserve` as `executor_error`) pass. UAT item 8 (QEMU 10.0.2 accepted) is therefore not disturbed.
+Run 41735869792, `.github/workflows/testbed.yml`, head 752badfc854dbcf4e3b27dfc3971f23798915d6d, completed, success. Jobs: `mt` 126264790431 success, `testbed` 126265405983 success, `vectors` 126268645422 success. Same head: `ci` 41735869789 success, `container` 41735869785 success (listed by `actions/runs?head_sha=`).
+
+Vectors job steps, from `.jobs[] | select(.name=="vectors") | .steps[]`, all `success`: Set up job, checkout, download-artifact, Make mt executable, Write the annotation and docker helpers, Pull the image by digest, Run the executor self-test in the pinned image, Fetch the TRACTOR sample and load it unchanged, Download the captures of the testbed job, **Unpack the captures of the testbed job**, **Build the reference drivers**, **Publish the state layouts**, **Run the reference vectors twice**, **Run the vectors again and compare (vectors determinism)**, **Fixture vectors sample** (and parts 10 to 18, 19 on), **Replay the committed sample**, Post checkout, Complete job. None skipped.
+
+Scope of this evidence: it shows the restore step accepts the real capture tars and that every later step then ran, including the WR-01 provenance comparison of 90767fd against the committed sample. It cannot show that the guard refuses hostile archives. A green run is also green for CR-01.
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `docs/specs/equivalence-contract.md` | Versioned contract, changelog | VERIFIED (see human item) | 0.1.0, one changelog line; edited after the UAT without an erratum (review IN-11, open). No forbidden claim words. |
-| `crates/mt-contract/src/{lib,policy}.rs` | Policy loader | VERIFIED | `#![forbid(unsafe_code)]`; no `process::Command`. |
-| `crates/mt-vectors/src/*` | Schema, codec, state, compare, corpus, TRACTOR | VERIFIED | Only comment and test changes since the UAT. |
-| `crates/mt-harness/src/*` | Adapter, driver, executor, replay, sample | VERIFIED locally | `resolved_return_kind` (CR-01) refuses an integer or enum return over 4 bytes by DWARF size; `eqv_04_return_width` passes. `provenance_mismatches` and `check_corpus_location` (WR-01) exist, are used by `replay_corpus`, and `eqv_04_replay_provenance_accepts_every_committed_vector` passes over the 15 committed vectors. |
-| `testbed/policy/*.toml`, `testbed/manifest.toml`, `testbed/adapter-dropped.toml`, `testbed/tractor-pin.toml`, `testbed/vectors-sample/` | Policies, roles, drop log, pin, sample | VERIFIED | Unchanged since the UAT; 16 policies valid; 15 corpora valid. |
-| `.github/workflows/testbed.yml` | `testbed` and `vectors` jobs both green | FAILED | `vectors` job red at HEAD (gap above). |
-| `container/Dockerfile` | Final stage unprivileged | VERIFIED by test only | `USER 65534:65534` is the last instruction; `tool_03_final_stage_runs_as_the_unprivileged_user` passes. The image was not rebuilt after the change; the `container` workflow succeeded on run 41275770661, the same head. |
+| `.github/workflows/testbed.yml` (restore step) | safe_untar that vets each symlink by where it resolves | PARTIAL | Exists, substantive, wired (two call lines, step `restore` gates the later steps by `steps.restore.outcome == 'success'`), in-image green. Rule unsound for aliased links (gap). |
+| `crates/mt-harness/tests/eqv_04_workflow_static.rs` | Behavioural test on real tars, 19 labels | VERIFIED as written; incomplete | Present, wired to the workflow through `function_body(&step_text(&vectors_job(), RESTORE_STEP), "safe_untar")`, passes. Lacks the alias row and an outside-the-destination check. |
+| `03-11-CI-NOTICES.md`, `03-11-VECTORS-NOTICES.md` | Notices of the green run | VERIFIED | Present; checks above. |
+| Everything else (contract, policies, schema, adapters, executor, sample, Dockerfile) | | VERIFIED (unchanged) | No change outside the two files since the previous report. |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|----|-----|--------|---------|
-| manifest roles | generated driver | `mt vectors build` | WIRED (local) | `eqv_04_exec` tests build and run drivers. Not exercised in the image at HEAD (job skipped). |
-| captured objects | driver link | sha256 recheck | WIRED | `eqv_04_refuses_modified_object` passes. |
-| driver | vector files + provenance | `mt vectors run` / `replay` | WIRED (local) | Replay now also compares seed, scalars, executor and contract versions, budgets, policy hash and the record shape, and checks the corpus location. In-image replay of the sample not run at HEAD. |
-| policy | run | policy loaded first | WIRED | `policy_of` is `pub(crate)` and shared by run and replay. |
-| TRACTOR pin | local loader | `mt vectors tractor` | WIRED | Local ignored test and CI step 'Fetch the TRACTOR sample' both succeed at HEAD. |
-| testbed job output | vectors job | `safe_untar` of work.tar / replay.tar | NOT_WIRED | The guard rejects the tar, so the hand-off fails. |
+| testbed job `work.tar`, `replay.tar` | vectors job restore step | artifact `vectors-input`, `safe_untar` | WIRED | Run 41735869792: restore success. |
+| restore step | build, run, determinism, sample, replay steps | `if: steps.restore.outcome == 'success'` | WIRED | All ran and succeeded. |
+| workflow `safe_untar` | behavioural test | `function_body` | WIRED | |
+| manifest roles, driver, vector files, policy, TRACTOR pin | | | WIRED | Unchanged; in-image run now covers them again. |
 
 ### Data-Flow Trace (Level 4)
 
-| Artifact | Data | Source | Produces Real Data | Status |
-|----------|------|--------|--------------------|--------|
-| committed sample vectors | `rc`, `stdout`, `lib_state_out` | qemu-arm run of captured object code | Yes (unchanged since the UAT; locally re-run by `eqv_04_sample_is_chosen_and_replays_from_a_tree` on the host toolchain) | FLOWING |
-| `mt vectors build|run` row counts | did-work count | classified rows | Yes; WR-02 makes an all-`no_roles` listing exit 1, `eqv_04_listing_of_only_no_roles_rows_is_a_failure` passes | FLOWING |
+Unchanged from the previous report (committed sample vectors from qemu-arm runs of captured objects: FLOWING). The in-image replay of all 15 committed corpora is now evidenced.
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Workspace tests | `cargo test --workspace --locked` | 556 passed, 0 failed, 23 ignored | PASS |
-| Ignored proofs with local captures, TRACTOR, qemu-arm | `MT_LOCAL_CAPTURES=... MT_LOCAL_TRACTOR=... cargo test --workspace --locked -- --ignored` | 23 passed, 0 failed (host toolchain, not the pinned image) | PASS |
-| Policies | `mt vectors policy-check --manifest testbed/manifest.toml` | exit 0, 16 valid | PASS |
-| Floor | `mt vectors adapters --manifest testbed/manifest.toml --check-floor` | exit 0, 15 drivable | PASS |
-| Sample valid | `mt vectors validate testbed/vectors-sample/*/default/*` | 15 of 15 valid corpus | PASS |
-| Merged `lib_state` | `mt vectors validate` on a tampered copy | exit 2 | PASS |
-| `has_ub: false` | `mt vectors validate` on a tampered copy | exit 2 | PASS |
-| WR-04 guard on legitimate symlinks | the guard's grep on two listing lines from the CI log | both match (would be refused) | FAIL |
+| fmt, clippy, workspace tests | `cargo fmt --check`; `cargo clippy --all-targets -- -D warnings`; `cargo test --workspace --locked` | fmt ok, clippy finished clean, 557 passed 0 failed | PASS |
+| Workflow guard test | `cargo test -p mt-harness --test eqv_04_workflow_static` | 14 passed | PASS |
+| Guard on local capture and run trees | workflow function extracted with awk, `set -euo pipefail`, on `tar -cf ... -C .mt-work capture run` | exit 0, 10 links extracted | PASS |
+| Guard on CR-01 archive (`m/n/d/p -> ../../..`, `X -> m/n`, `e -> X/d/p/..`) | same extracted function | exit 0; `readlink -f dest/e` is the parent of dest | FAIL (should refuse) |
+| Write through the escaping link | add member `e/pwn.txt` and extract | GNU tar 1.35: `Cannot open: Not a directory`; nothing written outside | tar's own layer holds |
+| Guard on forged-uname archive (WR-01) | `a -> ../../../../etc` with `uname='u a -> p/q/r/s/t'` | exit 0 | FAIL (should refuse) |
+| Proposed CR-01 fix in a scratch copy of the extracted function | push-through-link check | CR-01 archive exit 1; local trees exit 0 with 10 links | PASS (fix is viable; not applied to the repository) |
+| Policies, adapter floor | see Truths 1 and 3 | 16 valid, 15 drivable | PASS |
+| Debt markers in the two changed files | grep for TBD/FIXME/XXX | none found | PASS |
 
-Not run: `cargo clippy`, `cargo fmt --check`, `cargo deny check` (the fix report says it ran them; not repeated here).
+Not run here: `cargo deny check`, the ignored local proofs (the files changed since the last full run are a workflow and its static test; the ignored group covers the executor, which is unchanged).
 
 ### Probe Execution
 
-SKIPPED. Phase 3 declares no `probe-*.sh` scripts; the in-image probe is `mt vectors selftest`, whose last CI result is above.
+SKIPPED. Phase 3 declares no `probe-*.sh`; the in-image probe is `mt vectors selftest`, which passed in the run above.
 
 ### Requirements Coverage
 
 | Requirement | Source Plans | Description | Status | Evidence |
 |-------------|-------------|-------------|--------|----------|
 | EQV-01 | 03-02 | Versioned contract and policy | SATISFIED | Truth 1 |
-| EQV-02 | 03-03 | Nine-field schema, round trip, merged `lib_state` rejected, `has_ub` excluded | SATISFIED | Truth 2 |
-| EQV-03 | 03-04, 03-05, 03-06, 03-07 | Adapter declares entry and roles; at least 10 targets drivable | SATISFIED | Truth 3 (15) |
-| EQV-04 | 03-01, 03-04..03-07, 03-09, 03-10 | C reference executor, schema-valid result, identical on a second run | PARTIALLY SATISFIED | Satisfied by the code and by local runs at HEAD. The pinned-image demonstration is red at HEAD (gap). |
+| EQV-02 | 03-03 | Nine-field schema, round trip, merged `lib_state` rejected | SATISFIED | Truth 2 |
+| EQV-03 | 03-04 to 03-08 | Adapter declares entry and roles; at least 10 drivable | SATISFIED | Truth 3 (15) |
+| EQV-04 | 03-01, 03-04..03-07, 03-09, 03-10, 03-11 | Reference executor, schema-valid result, identical on a second run | SATISFIED for the requirement text (Truth 4 verified in the image); phase carries an open hand-off-guard gap | Truth 4; gap above |
 
-Plan frontmatter `requirements:` was read from all ten plans. IDs found: EQV-04 (03-01, 03-09, 03-10), EQV-01 (03-02), EQV-02 (03-03), EQV-03 and EQV-04 (03-04 to 03-07). 03-08 has no `requirements:` line in the first 60 lines; its work belongs to EQV-03 and EQV-04 per its summary. All four IDs appear in REQUIREMENTS.md (marked Complete) and nothing else maps to Phase 3, so there are no orphaned requirements. REQUIREMENTS.md marks EQV-04 Complete; that mark should wait for the CI fix.
+Plan frontmatter `requirements:` read from all eleven plans: EQV-04 (03-01, 03-09, 03-10, 03-11), EQV-01 (03-02), EQV-02 (03-03), EQV-03 and EQV-04 (03-04 to 03-07 and 03-08). All four IDs appear in REQUIREMENTS.md and nothing else maps to Phase 3, so there are no orphans.
+
+Bookkeeping to fix when the gap closes: REQUIREMENTS.md still has EQV-01, EQV-02 and EQV-03 unchecked with traceability "Gaps Found", while EQV-04 is checked "Complete". The first three are satisfied by this report's evidence and are stale. The EQV-04 mark was set while the guard gap was open; leave it but do not treat phase 3 as shippable until the gap closes.
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `.github/workflows/testbed.yml` | ~1039-1050 | Over-broad symlink guard (`..` anywhere in the target) | BLOCKER | Breaks the vectors job (the gap). |
-| `crates/mt-harness/tests/eqv_04_workflow_static.rs` | 1057-1074 | Test checks for the presence of `safe_untar` text only | WARNING | A presence check passed while the guard was wrong; the behaviour is untested. |
-| `crates/mt-harness/src/runtime.c` | 257-262, 292-296 | WR-03: `struct mt_ksigaction` mask at offset 16 instead of 12, so bytes 12-15 are uninitialised stack and become part of the blocked-signal mask | WARNING | Open and skipped (disposition: skipped). It sits in the runtime whose purpose is deterministic replay. No effect has been observed (identical outputs in 100-run and twice-run checks, and the handler only exits), but the value is unspecified. Fixing it moves every driver hash in the sample and needs a CI regeneration. |
-| `crates/mt-harness/src/runtime.c` | 108, 129, 177, 737, 787 | IN-01: `MAP_FIXED` without a collision check; no assert on the input mapping | INFO | Deferred. Unreachable at the default 65536-byte input budget. |
-| `crates/mt-harness/src/replay.rs` | 190-203, 437-453 | IN-10: `discarded_output_bytes` and the exact `has_ub_source` variant are not compared, and the doc comment's reason is wrong | INFO | Open. |
-| `docs/specs/equivalence-contract.md` | 14, 64, 149-151 | IN-11, IN-12: edit under 0.1.0 with no erratum; `\u00XX` hex case not stated (serde_json writes lowercase) | INFO | Open. IN-12 means an independent reader could compute different file names for a vector holding a control character in U+000A..U+001F other than the short escapes. |
-| TBD/FIXME/XXX/TODO, `todo!`, `unimplemented!` | n/a | None in the changed Rust files; no `process::Command` in `mt-contract`, `mt-vectors`, `mt-harness`; `forbid(unsafe_code)` present in the three crates | none | Debt-marker gate passes. |
+| `.github/workflows/testbed.yml` | 1121-1139 (comment 1034-1048) | Walk descends through an aliasing link without checking it; comment claims fail-closed | BLOCKER | The gap (CR-01). |
+| `.github/workflows/testbed.yml` | 1109 | `${line#*" $name -> "}` is unanchored; the owner column can supply the match (WR-01) | WARNING | Reproduced; builds on trusted owner names today. Same function, fix with `--numeric-owner`. |
+| `crates/mt-harness/tests/eqv_04_workflow_static.rs` | ~1361, ~1423-1593 | No alias row; shared message fragment `leaves the tree`; no outside-the-destination assertion; two error branches without rows (WR-02) | WARNING | The suite passes on an unsound guard. |
+| `crates/mt-harness/tests/eqv_04_workflow_static.rs` | ~1261 | `host_tar` checks only existence, not GNU tar or bash 4.3 (IN-01) | INFO | Linux-only project; low priority. |
+| `crates/mt-harness/src/runtime.c` | 257-262, 292-296 | WR-03 `mt_ksigaction` layout (skipped) | WARNING | Unchanged from the previous report; needs a CI sample regeneration. |
+| `runtime.c`, `replay.rs`, contract doc | | IN-01 (MAP_FIXED), IN-10, IN-11, IN-12 | INFO | Unchanged, open, tracked in the disposition. |
+| TBD/FIXME/XXX, `continue-on-error` | n/a | None in the changed files | none | Debt-marker gate passes. |
 
-No use of the two forbidden claim words in the contract or the three crates' sources.
+No use of the two forbidden claim words in the files checked.
 
 ### Human Verification Required
-
-UAT 03-UAT.md (8 of 8 pass, 2026-10-30) is not re-asked. Checked against the diff, seven of the eight judged artifacts are unchanged since the UAT:
-
-- Items 2 and 3 (D-07 overshoot, `name.N` globals keys): `runtime.c` and the globals code are unchanged; the key grammar is unchanged.
-- Item 4 (03-05 edit of its own verify command): a historical edit; nothing to re-judge.
-- Item 5 (isotp `link_unresolved`) and item 6 (smallest-seed sample): `testbed/` is unchanged, 15 corpora and the drop log are byte-identical.
-- Item 7 (`timeout` label, rc -9): `classify.rs` and the contract's outcome table are unchanged.
-- Item 8 (QEMU 10.0.2): the image's qemu pin is unchanged; the Dockerfile gained only the final `USER` line; the in-image selftest at HEAD still passes.
-
-Item 1 is the exception.
 
 #### 1. Re-read three passages of the contract that changed after the UAT
 
 **Test:** In `docs/specs/equivalence-contract.md`, read the `rc` row of the field table, the `ret` bullet under reserved `lib_state` names, and the Byte codec paragraph (commit dd1deeb).
-**Expected:** They match D-05, D-06 and D-25. What changed: a return wider than 32 bits is no longer promised to go to `lib_state_out.ret`; it is refused when the adapter is built (the code never recorded it, and before CR-01 truncated it). A struct or union return goes to `ret` with rc 0. The codec paragraph now describes serde_json's escapes and the exact file format.
-**Why human:** UAT item 1 judged the earlier wording. The edit was made under version 0.1.0 with no changelog line (IN-11). The reviewer's reasoning that no behaviour changed holds against the repository (no policy, vector or provenance depends on the withdrawn promise), but accepting an unversioned contract correction is the founder's call.
+**Expected:** They match D-05, D-06 and D-25. A return wider than 32 bits is no longer promised to go to `lib_state_out.ret`; it is refused when the adapter is built. A struct or union return goes to `ret` with rc 0. The codec paragraph describes serde_json's escapes and the exact file format.
+**Why human:** UAT item 1 judged the earlier wording; the edit was made under version 0.1.0 with no changelog line (IN-11). No file under `docs/` changed since the previous report, so this item is not resolved. Accepting an unversioned contract correction is the founder's call.
 
 ### Gaps Summary
 
-One gap, one root cause. Fix 8bdbd61 (WR-04) hardened the vectors job against a hostile tar, but its symlink guard rejects every link whose target contains a `..` component. The captures contain legitimate in-tree links of that form (nimble, nanopb), so the job stops before building any driver. The `vectors` job has been red since the first fix pass (runs 41265174150 and 41275770544), and the last in-image run of the executor build, the twice-identical runs, the determinism rerun and the sample replay is 40922236736 on 5e0d4a8. The review fixes that touched those paths (CR-01, WR-01, WR-02, WR-06, IN-04, IN-09) therefore have unit-test evidence and local-host evidence but no in-image evidence.
+One gap, narrowed from the previous report. The three missing items of the old gap are evidenced as follows: item 2 (behavioural test) closed; item 3 (green vectors job with all evidence steps, read with gh api for the last trigger-path head) closed; item 1 closed on the over-refusal it described, open on soundness of the refusal that plan 03-11 wrote into its first must-have.
 
-Why this blocks the phase and is not a footnote: the phase promised a reference result that is deterministic, and the only place the plan measured that against the pinned image is the job that is now red. Locally the executor passes everything, so this is not a defect in the contract, the schema, the adapters or the executor logic. It is a regression in a phase deliverable (`.github/workflows/testbed.yml`) that the review process did not catch.
+Root cause: the walk models the archive as a tree of directories plus a set of link names, and assumes a path reaches a link only by that link's own name. A second link that aliases a directory holding a link breaks the assumption. The reviewer's fix (refuse any push onto a stack that is an archive link, so the walk never descends through a link) is small, I checked it on a scratch copy, and it keeps every accepted shape (nanopb, nimble, the 10 local links, the accept rows). It needs a code and test change in the same two files, one new push, and one green testbed read with gh api. Deferred items: none; no later phase of the milestone covers this.
 
-Closure (small): fix the guard to test where the link resolves, add a behavioural test for it, push, and confirm a green `vectors` job, including 'Replay the committed sample'. If that replay fails on the new WR-01 provenance checks, that is a second finding to fix; the review reasoned that it will pass (the image mounts `testbed` whole, and `check_corpus_location` accepts `/opt/mt/testbed/vectors-sample/<target>/default/<entry>`), but nothing has run it.
+The phase is not shippable until T-03-42 is closed. WR-01 and WR-02 of the review should go in the same plan, since they are in the same function and test.
 
-Not gaps, tracked in the review disposition: WR-03 (skipped) and IN-01 (deferred) need a `runtime.c` change plus a sample regeneration in CI; IN-10, IN-11, IN-12 are open info items. No later phase of the milestone covers them, so none is moved to `deferred`.
-
-Limits of this verification: the pinned image is not on this host, so the local runs use the host arm-none-eabi-gcc 13.2.1 and qemu-arm 8.2.2, not GCC 14.3 and qemu 10.0.2; driver and ELF hashes of the committed sample therefore could not be compared here. I did not re-run `cargo clippy`, `cargo fmt --check` or `cargo deny check`, and no network or model was used.
+Limits of this verification: no pinned image on this host (not needed for the guard checks, which are host bash and GNU tar, the same versions as the ubuntu-24.04 runner per the plan); `cargo deny check` and the ignored local proofs were not re-run; annotation text of the CI run was not re-read (conclusions only); the committed notices were compared with 02-22 as files.
 
 ---
 
-_Verified: 2026-11-03_
+_Verified: 2026-11-03T23:42:13Z_
 _Verifier: Claude (gsd-verifier)_
