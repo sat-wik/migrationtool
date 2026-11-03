@@ -155,7 +155,7 @@ Plans:
   3. At least 10 test-bed targets have an entry-point adapter declaring the function and its argument roles, so bytes in produce return code, output buffer and library state out as a vector.
   4. The C reference executor runs any vector against the target's original C build and stores the result in a schema-valid vector; running the same vector twice gives byte-identical results.
 
-**Plans:** 10/10 plans complete
+**Plans:** 10/11 plans complete (03-11 is gap closure)
 
 **Execution order (D-31 gap insertion, binding):** 03-01 Tracer and Task 2 (done) → 03-09 → 03-10 → 03-01 Task 3 (round trip 3, the founder's `extend 1`) → 03-02 → 03-03 .. 03-08. The frontmatter encodes it: 03-09 is wave 1, 03-10 wave 2 (depends on 03-09), 03-02 wave 3 (depends on 03-01 and 03-10), 03-03 .. 03-08 waves 4 .. 9. 03-01 is half executed and stays wave 1; its Task 3 precondition requires 03-10-SUMMARY.md to record the founder's merge, the approved re-baseline and the Current image digest, so it halts until 03-10 has finished.
 
@@ -187,6 +187,9 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8 completion)*
 - [x] 03-08-PLAN.md — Bounded attempts of the remaining entries, completeness test, committed CI-produced vector sample, final full run
+
+**Wave 10** *(gap closure; blocked on Wave 9 completion)*
+- [ ] 03-11-PLAN.md — Truth 4 / EQV-04 gap (WR-04 regression): safe_untar refuses a symlink only when it is absolute or leaves the tree as resolved from its own directory; behavioural test that runs the workflow's own function on 19 real-tar cases; one green vectors job with build, twice-run vectors, determinism and the committed-sample replay in the pinned image
 
 ### Phase 4: UB Detection and Decision Log
 
