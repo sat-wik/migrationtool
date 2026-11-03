@@ -9,7 +9,7 @@ findings:
     title: "`struct mt_ksigaction` does not match the kernel `sigaction` layout (uninitialised padding becomes the signal mask)"
   - id: IN-01
     severity: info
-    disposition: open
+    disposition: deferred
     title: "`MAP_FIXED` mappings silently replace whatever is already at the address, and no assert covers the input mapping"
   - id: IN-10
     severity: info
@@ -87,9 +87,9 @@ findings:
     severity: warning
     disposition: fixed
     title: "Identifier grammars for target ids and configuration names disagree between the manifest, the policy loader and the vector schema"
-open: 4
+open: 3
 total: 21
-recorded: 2026-11-03T05:07:00.457Z
+recorded: 2026-11-03T05:07:11.711Z
 ---
 
 # Phase 03: Code Review Disposition
@@ -97,7 +97,7 @@ recorded: 2026-11-03T05:07:00.457Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | WR-03 | warning | skipped | 03-REVIEW-FIX.md |
-| IN-01 | info | open | - |
+| IN-01 | info | deferred | skipped by fix iteration 2 (03-REVIEW-FIX.md): the fix is in runtime.c, which feeds the committed sample's driver hashes; owed with WR-03 and a sample regeneration |
 | IN-10 | info | open | - |
 | IN-11 | info | open | - |
 | IN-12 | info | open | - |
