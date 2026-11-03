@@ -2,114 +2,108 @@
 phase: 03-equivalence-contract-and-test-vector-schema
 reviewed: 2026-11-03T00:00:00Z
 depth: standard
-files_reviewed: 20
+files_reviewed: 2
 files_reviewed_list:
-  - Cargo.lock
-  - container/Dockerfile
-  - crates/mt-cli/src/main.rs
-  - crates/mt-contract/Cargo.toml
-  - crates/mt-contract/src/policy.rs
-  - crates/mt-contract/tests/eqv_01_contract_document.rs
-  - crates/mt-contract/tests/eqv_01_policy.rs
-  - crates/mt-harness/src/adapter.rs
-  - crates/mt-harness/src/driver.rs
-  - crates/mt-harness/src/replay.rs
-  - crates/mt-harness/src/run.rs
-  - crates/mt-harness/src/sample.rs
-  - crates/mt-harness/tests/eqv_03_adapter.rs
-  - crates/mt-harness/tests/eqv_03_driver_golden.rs
-  - crates/mt-harness/tests/eqv_04_replay_provenance.rs
-  - crates/mt-toolchain/tests/container_static.rs
-  - crates/mt-vectors/src/state.rs
-  - crates/mt-vectors/tests/eqv_02_state_and_compare.rs
-  - docs/specs/equivalence-contract.md
-  - crates/mt-harness/src/runtime.c
+  - .github/workflows/testbed.yml
+  - crates/mt-harness/tests/eqv_04_workflow_static.rs
 findings:
-  critical: 0
-  warning: 1
-  info: 4
-  total: 5
+  critical: 1
+  warning: 2
+  info: 1
+  total: 4
 status: issues_found
 ---
 
-# Phase 3: Code Review Report (re-review after fix iteration 2)
+# Phase 3: Code Review Report (incremental, plan 03-11)
 
 **Reviewed:** 2026-11-03
 **Depth:** standard
-**Files Reviewed:** 20
+**Scope:** incremental since a03811d (`git diff a03811d HEAD`), covering plan 03-11 only: the body of `safe_untar` and its comment in the vectors job step "Unpack the captures of the testbed job", and the behavioural test added to `eqv_04_workflow_static.rs`. This replaces the earlier phase-3 review, which is already dispositioned in 03-REVIEW-DISPOSITION.md.
+**Files Reviewed:** 2
 **Status:** issues_found
 
 ## Summary
 
-This is an incremental re-review of fix iteration 2 (commits 09f4a96..90767fd, `git diff 7c77cd6 HEAD`) on the 19 listed files. `crates/mt-harness/src/runtime.c` was re-read for the two carried-forward findings (WR-03, IN-01).
+The change does what the plan asks for the shapes it lists. I ran the workflow's own function (extracted with awk, under `set -euo pipefail`, GNU tar 1.35, bash 5.2.21) and `cargo test -p mt-harness --test eqv_04_workflow_static`: 14 of 14 pass. The nanopb and nimble in-tree links are accepted, and absolute, past-top, top-level `..`, `..` member names, hard links and the empty archive are refused. Names holding ` -> `, `@`, `*`, `]`, `$(...)` and an embedded newline cause no injection and no mis-pairing of the two listings. A 30,000-symlink archive takes about 6 s, so cost is linear.
 
-No critical issue and no regression was found in the iteration-2 code. Every fix that was applied does what its commit message says. The remaining findings are one carried-forward Warning (WR-03), one carried-forward Info (IN-01) and three new Info items. Two of the new items come from the contract-document edit, and one is a narrowing of the old WR-01.
+The guard is not a sound implementation of the rule it states, though. The walk tracks links by their exact archive name, so a second link that aliases a directory hides the link from the walk, and a link that resolves outside the destination is accepted (CR-01). The test table has no row for this shape, so the suite passes anyway.
 
-Checks run here: `cargo test --offline` for `mt-contract`, `mt-vectors` and `mt-cli` (all pass). For `mt-harness`, the tests `eqv_04_replay_provenance`, `eqv_03_driver_golden` and `eqv_03_adapter` pass. `container_static` `tool_03_final_stage_runs_as_the_unprivileged_user` passes. The CI-only paths were not run: the image build, the in-image `mt vectors replay --tree` of the committed sample and the workflow steps. By reading, the new replay checks use only values the replay already holds or reads from the mounted `testbed` directory. `/opt/mt/testbed/vectors-sample/<target>/default/<entry>` ends in the three names the index holds, so `check_corpus_location` accepts it. The `eqv_04_exec` replay test builds `corpus/<target>/<config>/<entry>` and so satisfies it too.
+I did not find a way to write outside the destination. GNU tar 1.35 refuses to extract a member through the escaping link (`Cannot open: Not a directory`). The guard's own claim is broken, and what remains is one layer that it does not control.
 
-CLAUDE.md tool-code rules checked on the new code: no new `unsafe`; no new `unwrap` or `expect` outside tests (the new `.get()` in `sample.rs` replaces an index); no direct `std::process::Command`; `BTreeMap` throughout; new tests carry requirement names (`eqv_04_`, `eqv_03_`, `eqv_02_`, `eqv_01_`, `tool_03_`); no use of "certified" or "compliant" in the changed text.
+## Critical Issues
 
-### The contract versioning question (dd1deeb, IN-02)
+### CR-01: `safe_untar` accepts a symlink that resolves outside the destination when a second link aliases a directory holding a link
 
-The document says: "A change to the contract bumps the version, adds a line to the changelog, and moves `CONTRACT_VERSION` and every policy file under `testbed/policy` together." Commit dd1deeb edited the `rc` row, the `ret` bullet and the byte-codec paragraph and left the version at 0.1.0 with no changelog line.
+**File:** `.github/workflows/testbed.yml:1049-1144` (the second-pass walk, especially the `islink` lookup at line 1133); the stated rule is in the comment at lines 1034-1048.
+**Issue:** The walk is purely lexical and recognises a link only by the exact normalised name of an archive member. A `..` is refused only when the stack, joined, equals a recorded link name. A link `X -> m/n` makes `X/d/p` an alias of `m/n/d/p`. The key `X/d/p` is never in `islink`, so a `..` after it is treated as popping a real directory. The kernel does follow `p`.
 
-Determination: this is a correction of wording, not a change to the contract as the rule means it, so no version bump is due. It does need a small finding (IN-11), because the rule has no exception for corrections and the edit left no trace in the document.
+I built this archive with Python `tarfile` and ran the extracted function on it:
 
-- **Byte codec.** The old text (`\u00XX` for control characters) never described what the code writes. The committed sample's bytes and file names are unchanged. Only the description moved to match them.
-- **`rc` and `ret`.** The old text promised that a return wider than 32 bits goes to `lib_state_out.ret`. No version of the code ever did that. It was truncated before 6c58482 and refused after it. No committed policy, vector or provenance record depends on the promise (`grep` of `testbed/policy` finds nothing about wide returns). The version and `policy_sha256` exist to pin behaviour that vectors and policies depend on, and none of that moved.
-- **Release status.** 0.1.0 has one changelog line ("contract v0 for Phase 3") and there are no git tags, so no copy of the old text has been published to a reader.
-- **Why not bump.** A bump would move every policy file, every `policy_sha256` and `contract_version` in the sample, and force a regeneration. That cost is not the reason it is unneeded. The reason is that no behaviour changed.
+```
+m/            dir
+m/n/          dir
+m/n/d/        dir
+m/n/d/p -> ../../..      (resolves to the top of the tree: accepted, as accept_up_to_top is)
+X -> m/n                 (all pushes: accepted)
+e -> X/d/p/..            (guard: stack [X,d,p], one pop, ends at [X,d], accepted)
+```
 
-The rule itself should say this, and the changelog should record the correction. See IN-11.
+The function exited 0 and extracted `e`. `readlink -f dest/e` is the parent of the destination, and `ls dest/e` listed the runner's `ci-lib.sh` next to `work/`. In the workflow that parent is `$RUNNER_TEMP`, which holds `ci-lib.sh`, sourced by every later step.
 
-## Resolved since last review
+Consequences, as observed:
 
-- **WR-02** (listing of only `no_roles` rows passes): fixed in 975103a. `BuildRow::did_work` (state `Built`) and `RunRow::did_work` (state `Ran`) feed `listing_failed`'s first argument. Re-verified in `main.rs:1104-1142`: a non-empty listing with no worked row now exits 1, and the printed count stays `rows.len()`. The test covers `no_roles` only, `no_roles` plus a built row, and the run side. The `adapters` listing still passes `rows.len()`. That is acceptable, because it lists without running anything and has `--check-floor` as its gate.
-- **IN-02** (document describes two behaviours the code does not have): fixed in dd1deeb. The new text matches the code. I checked `is_wide_return` (spelling), `resolved_return_kind` (DWARF size, float, array) and `Vector::render` (`to_vec_pretty`, field order, trailing newline). Two follow-ups are IN-11 and IN-12.
-- **IN-03** (sorted `Map` assumption, unexplained indexings): fixed in 4ab3b0c. I checked the invariant comments against `state.rs:200-225` and `332-345`, and they are true. The `sample.rs` index became `.get()` with an `Input` error. The new test fails if `preserve_order` is enabled in the graph under test (the pre-merge `cargo test` over the workspace unifies features, so it covers the whole workspace).
-- **IN-04** (duplicated helpers): fixed in 31e36b3. `build_driver` now uses `link::healthy` and `link::failure`. The old copy and the shared one test and format the same way, so there is no behaviour change. `selftest_command` calls `exec_context`, which is the same load, validate, tools and runner-config sequence.
-- **IN-05** (no default non-root user): fixed in 7df5e88. `USER 65534:65534` is the last instruction of the `final` stage. Every `docker run` of the image in `testbed.yml` and `container.yml` passes `--user` (the one without it, in `pin-discovery.yml`, runs the `snapshot-sources` target). Nothing is built `FROM final`. The new test checks the last `USER` of the stage.
-- **IN-06** (denylist versus allowlist): fixed in c74f962 for `driver_flags`, which now refuses any argument starting with `@`. The remaining part, that `recompile_arguments` (`probe.rs:258-286`) is a denylist, is dropped as a reasonable design choice, not kept as a finding. That function must reproduce the flags the object was built with so that the DWARF layout matches the object, so narrowing it to the driver allowlist could change recorded layouts. It works on commands from a verified capture. Those commands come from the same upstream build that already ran in the capture job, and the recompile happens in the no-network, read-only, capability-dropped container. An `@file` kept there is expanded by the compiler exactly as it was for the object, which is the faithful behaviour.
-- **IN-07** (non-UTF-8 policy file name skipped): fixed in ad8fc28. `load_dir` reports it as an issue. The test is `cfg(unix)` and creates a `0xff` file name, which a Linux filesystem accepts.
-- **IN-08** (split doc comment): fixed in 09f4a96. The doc lines now sit above the right functions.
-- **IN-09** (trigraph splice, probe path unchecked): fixed in 4e35d59. `joins_or_comments` also refuses `??/`. `include_lines()` (`run.rs:473-492`) checks every line with `is_prefix_line` before the probe and the driver see it. Accepted lines render the same text, so no hash moves. The golden driver test passes. The false refusal of `/*` inside a string literal is kept on the safe side, as the fix report says.
-- **WR-01** (replay does not compare most provenance fields): fixed in 90767fd for everything that can be checked against a trusted value. `provenance_mismatches` compares `seed`, `scalars`, `executor_version`, `contract_version`, `budgets`, `policy_sha256` and the record shape (which includes `outcome` against the vector's own class). `check_corpus_location` ties the directory to `<target>/<config>/<entry>`. Re-verified against `replay.rs:190-267, 445-453`, the sample tests, and `policy_of` (the same function the run uses to write the field, so a replay reads the same hash). The remaining parts:
-  - `image` is dropped as a reasonable design choice. It names the image that made the corpus, and the Dockerfile changed in this very iteration (IN-05), so every image rebuild would fail the committed sample for no change in tool output. The driver, archive and object hashes already pin the tool output.
-  - `has_ub_source`, `unobserved`, `discarded_output_bytes` and `replay`: `unobserved` and the fit of `has_ub_source` to the vector are already checked by `Provenance::issues`, and `replay` cannot be derived. The two that a replay could still check are the subject of IN-10, because the stated reason for skipping them is wrong.
+- The guard's documented contract ("any symlink whose target, walked from the link's own directory, leaves the tree" is refused) is false for this input.
+- A follow-up member `e/ci-lib.sh` (file, symlink or directory) did not write outside the destination. GNU tar 1.35 itself refused each one with `Not a directory`. That is behaviour of the tar on the runner, not of the guard, and it is the only thing stopping the write. Threat T-03-42 names it as a "second layer", but here the first layer does not hold.
+- The escaping link stays in `$RUNNER_TEMP/work`. Any later host-side step that follows it (a `cp -L`, `find -L`, `realpath`, or a tool that opens `work/e/...`) reaches `$RUNNER_TEMP`.
+
+The comment claims the walk "fails closed where it cannot tell from the listing where a path lands". It does not for this shape, because the walk cannot tell that `X/d/p` is `m/n/d/p`.
+
+**Fix:** Never let the walk descend through a link, so that the logical path always equals the physical one and the existing pop-of-link test is exact. Before pushing a component onto a non-empty stack, look up the joined stack in `islink` and refuse if it is a link. The same rule applies to the name's own directory parts, because they are the initial stack. For example, in the second pass:
+
+```bash
+if [ "$comp" != ".." ]; then
+  if [ "${#stack[@]}" -gt 0 ]; then
+    printf -v joined '%s/' "${stack[@]}"
+    joined="${joined%/}"
+    if [ -n "${islink[$joined]+x}" ]; then
+      left=1
+    fi
+  fi
+  stack+=("$comp")
+elif ...
+```
+
+I applied this patch to a scratch copy. It refuses the archive above (`e -> X/d/p/..`, exit 1). No in-tree shape of nanopb or nimble pushes through a link, so the planned accept rows keep passing. I did not re-run the Rust table against the patched copy. Add the rows from WR-02 and update the comment so it states the real rule: a link target may not pass through any archive link, and not only pop one.
 
 ## Warnings
 
-### WR-03: `struct mt_ksigaction` does not match the kernel `sigaction` layout (uninitialised padding becomes the signal mask)
+### WR-01: the target is cut from the verbose line by the first occurrence of ` NAME -> `, so the owner field can forge it
 
-**File:** `crates/mt-harness/src/runtime.c:257-262, 292-296`
-**Issue:** Carried forward unchanged and re-verified against current source (`git diff 7c77cd6 HEAD -- runtime.c` is empty). The fix was skipped because editing `runtime.c` changes every `driver_source` and `driver_elf` hash in the committed sample. The ARM kernel `struct sigaction` is `{handler, flags, restorer, sigset_t mask[2 x u32]}`, with the mask at offset 12. The driver declares `unsigned long long mask`, which AAPCS aligns to 8, so the member sits at offset 16 and bytes 12-15 are uninitialised stack padding. `act.mask = 0` initialises the member, not the padding. `act` is a plain automatic variable, so the padding is whatever was on the stack. The kernel and qemu-user read `sa_mask` from offset 12, so the set of signals blocked while the handler runs is stack garbage and can differ between runs. The handler only calls `mt_exit`, so the visible effect today is small, but the layout is wrong and the value is nondeterministic, in a runtime whose purpose is deterministic replay.
-**Fix:** Declare `unsigned long mask[2];` (offset 12, 8 bytes, matching `MT_SIGSET_SIZE`), zero both words, and `memset(&act, 0, sizeof act)` before filling the struct. Regenerate `testbed/vectors-sample` in CI in the same change, since the driver hashes move.
+**File:** `.github/workflows/testbed.yml:1109` (`target="${line#*" $name -> "}"`)
+**Issue:** `${line#*pattern}` removes the shortest prefix, so it matches the first ` NAME -> ` anywhere in the line, including the owner/group column that `tar -tvf` prints from the archive header. The comment and T-03-43 say the name is matched "after that name", which is not anchored. I forged a header (Python `tarfile`, `uname="u a -> p/q/r/s/t"`) for the link `a -> ../../../../etc`. GNU tar prints `... u a -> p/q/r/s/t/g 0 ... a -> ../../../../etc`. The guard took `p/q/r/s/t/g 0 1970-01-01 00:00 a -> ../../../../etc` as the target, saw enough pushes to absorb the four pops, and exited 0.
+
+In the described flow the owner names come from the image's `/etc/passwd` through the trusted `tar -cf`, so the build container cannot choose them. That is why this is a warning and not a blocker. The guard should not depend on that fact. A numeric owner column would remove it.
+
+**Fix:** List with `tar --numeric-owner -tvf "$archive"`. The owner column is then digits and a slash (checked: `0/0`), and it can never contain ` -> `. As a second layer, require that the match begins at the expected column by anchoring the removal on the fixed prefix, for example `[[ $line =~ ^l[^\ ]+\ [0-9]+/[0-9]+\ +[0-9]+\ [0-9-]+\ [0-9:]+\  ]]` before cutting.
+
+### WR-02: the test table does not pin the shape of CR-01, and some refuse rows can pass for the wrong reason
+
+**File:** `crates/mt-harness/tests/eqv_04_workflow_static.rs:1423-1593` (the test and its table; `refuse_up_through_link` is at line 1551) and `check_untar_case` at line 1361.
+**Issue:**
+- The only "through a link" row is `refuse_up_through_link`, where the link that is popped is itself named in the stack. There is no row where a second link makes an alias path (`X -> m/n`, `m/n/d/p -> ../../..`, `e -> X/d/p/..`). Because the table lacks it, the suite passes on a guard that accepts an escaping link.
+- Every refused link row asserts the fragment `leaves the tree`. The member-name message ("holds a member name that is absolute or leaves the tree") contains the same fragment, so a link row whose archive also trips the name check would pass for the wrong reason. The current rows do not, but the assertion cannot tell the two apart.
+- The branches `cannot read the target of the symlink` and `tar -tf and tar -tvf list different members` have no row.
+- The test asserts only an empty destination for refused rows. It does not assert that nothing outside the destination was touched, which is the property that matters.
+
+**Fix:** Add a `refuse_alias_up_through_link` row with the six members of CR-01, in that archive order. Give the link-walk refusal a message that does not share a fragment with the name check (for example `symlink ... leaves the tree`), and assert that fragment on the link rows. Add a sentinel file beside `dest` in `check_untar_case` and assert that the directory outside `dest` is unchanged and contains no new entries after every row.
 
 ## Info
 
-### IN-01: `MAP_FIXED` mappings silently replace whatever is already at the address, and no assert covers the input mapping
+### IN-01: the test needs GNU tar and bash 4.3 or later on the host, but only checks that `/bin/bash` exists
 
-**File:** `crates/mt-harness/src/runtime.c:108, 129, 177, 737, 787`
-**Issue:** Carried forward and re-verified. `MT_MAP_RW_FIXED` is `0x32`, which is `MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS`, so a mapping that lands on existing memory replaces it without error. The `_Static_assert` at line 108 covers only the output mapping against `MT_STATE_BASE`. Nothing checks `MT_IN_BASE` plus the input mapping against `MT_OUT_BASE`, and `mt_fields[1].len` is bounded only through `MT_REQ_MAX` (`MT_MAX_INPUT + 4096`, line 454), not by `MT_MAX_INPUT`. With `Budgets::DEFAULT` (`max_input` 65536) the input mapping is about 20 pages inside a 16 MiB gap, so the overlap is unreachable today and a static image would have to reach 64 MiB to hit `0x04000000`. This is defence in depth. `MT_MAX_INPUT` is a template placeholder, so a later change of the budget could create the overlap silently, and the failure would be wrong vectors, not a driver error.
-**Fix:** Use `MAP_FIXED_NOREPLACE` (`0x100000`) so a collision returns an error and exits with `MT_EXIT_MAP`. Add `_Static_assert(MT_IN_BASE + (MT_MAX_INPUT / MT_PAGE + 3u) * MT_PAGE <= MT_OUT_BASE, ...)`. Reject `mt_fields[1].len > MT_MAX_INPUT` in `mt_main`, as `out_cap` already is at line 734. Regenerate the sample together with WR-03.
-
-### IN-10: Replay re-runs every vector but does not compare `discarded_output_bytes` or the derived `has_ub_source`, and the comment that excuses it is wrong
-
-**File:** `crates/mt-harness/src/replay.rs:190-203, 437-453`; `crates/mt-harness/src/run.rs:962-974`
-**Issue:** (Narrowed from the old WR-01.) The doc comment of `provenance_mismatches` and the fix report say that `has_ub_source`, `discarded_output_bytes`, `unobserved` and `replay` are "not compared" because "only a full re-run observes them". But `replay_corpus` is a full re-run: `run_vector_twice` returns an `Observed` with `discarded` and `outcome` at line 437, and the provenance loop runs right after it. `unobserved` and the fit of `has_ub_source` to the vector's `has_ub` label are already checked by `Provenance::issues`. What is not checked: `discarded_output_bytes` against `observed.discarded`, and the exact `has_ub_source` variant (for example `observed_crash` against `observed_abort` against `oob_write`, all of which pass the "labelled" test) against `has_ub_source(&observed.outcome)`. Both are carried in the provenance as evidence and never verified. This is low impact: they are informational counters, and an edited vector or driver is already caught elsewhere. But the stated reason is false, and the replay is described as the tamper check for the sample.
-**Fix:** Make `has_ub_source` in `run.rs` `pub(crate)`. After `run_vector_twice` returns `Ok(done)`, push `"discarded_output_bytes"` when `u64::from(done.discarded) != provenance.discarded_output_bytes`, and push `"has_ub_source"` when `provenance.has_ub_source != has_ub_source(&done.outcome)`, skipping the second when the record says `Phase4` (written later by Phase 4). Correct the doc comment to say that only `image` and `replay` are not compared, and why.
-
-### IN-11: The contract document was edited under version 0.1.0 with no changelog line, and its versioning rule has no exception for corrections
-
-**File:** `docs/specs/equivalence-contract.md:14, 149-151`
-**Issue:** See "The contract versioning question" in the Summary for the determination. dd1deeb is a correction of wording and needs no bump. But the rule as written ("A change to the contract bumps the version, adds a line to the changelog...") has no carve-out, and the changelog says only `- 0.1.0 (2026-10-21): contract v0 for Phase 3.` The `rc` row, the `ret` bullet and the byte-codec paragraph were changed in a way that is visible only in git. A reader holding the earlier text, or a later phase that quotes it, has no way to learn that the wide-return promise was withdrawn. The test `eqv_01_contract_document_has_version_and_changelog` requires only a line starting with `- 0.1.0`, so an erratum line does not break it.
-**Fix:** Add an indented erratum line under the 0.1.0 entry, for example `  - erratum (2026-11-01): the rc and ret entries and the byte codec paragraph now describe what the code does (wide integer returns are refused, never recorded; the serde_json escapes). No behavior, vector, policy or version changed.` Add one sentence to the versioning rule: a correction that changes no behavior is recorded as an erratum under the current version and moves nothing else. Any change to what a conforming vector, policy or comparator must do still bumps the version and moves the policies.
-
-### IN-12: The byte-codec paragraph still leaves out the hex case of `\u00XX`, so an independent reader cannot reproduce the file names
-
-**File:** `docs/specs/equivalence-contract.md:64`; `crates/mt-contract/tests/eqv_01_contract_document.rs:146-163`
-**Issue:** The rewritten paragraph says "an independent reader must reproduce exactly those bytes" and writes the escape as `\u00XX`. `serde_json` writes the two hex digits in lowercase (`HEX_DIGITS = b"0123456789abcdef"`, `ser.rs`), for example `\u001f`. A reader who follows the document and writes `\u001F` computes a different sha256 and so a different file name. The new test would not catch it: it checks for the substrings `serde_json` and `` `\n` `` and the absence of one old sentence, not the escape form.
-**Fix:** Write the escape as "`\u00` followed by two lowercase hex digits" in the document, and add `u001f` (lowercase) to the substring test, or better, have the test serialise a string with U+001F and compare it with the form the document states.
+**File:** `crates/mt-harness/tests/eqv_04_workflow_static.rs:1261` (`host_tar`) and the assertion at the top of the test.
+**Issue:** `host_tar` is documented as "the GNU tar of this host", but it only checks that `/usr/bin/tar` or `/bin/tar` exists. The function under test uses `mapfile` and `local -A`, which `/bin/bash` 3.2 on macOS lacks, and the `tar -tvf` format it parses is GNU's. On such a host the test fails with an obscure shell or `tar -P` error instead of a message naming the missing tool. The plan's Tracer precondition asked for exactly this check (`tar --version` containing `GNU tar`), and the test does not make it. The project is Linux-only (CLAUDE.md), so this stays low priority.
+**Fix:** Run `tar --version` and `bash -c 'echo ${BASH_VERSINFO[0]}'` through the runner at the start of the test, and assert `GNU tar` and a major version of 4 or more with a message that names the requirement.
 
 ---
 
