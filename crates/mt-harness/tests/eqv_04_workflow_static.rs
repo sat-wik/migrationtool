@@ -1220,6 +1220,8 @@ enum Member {
     File,
     /// A symlink with this target.
     Link(&'static str),
+    /// A hard link to this path of the same tree.
+    HardLink(&'static str),
 }
 
 /// How a `safe_untar` case archive is made.
@@ -1227,6 +1229,13 @@ enum Archive {
     /// A tree of (path below the archive root, member), archived with
     /// `tar -cf ARCHIVE -C ROOT <top-level names>` like `-C /work capture run`.
     Tree(Vec<(&'static str, Member)>),
+    /// A regular file stored under this name (for example `../outside`) by
+    /// `tar -P -cf ARCHIVE -C ROOT/sub NAME`.
+    StoredName(&'static str),
+    /// A regular file stored under its absolute path by `tar -P -cf`.
+    AbsoluteName,
+    /// An archive with no members, made with `tar -cf ARCHIVE -T /dev/null`.
+    Empty,
 }
 
 /// One row of the `safe_untar` table.
@@ -1274,28 +1283,45 @@ fn safe_untar_script() -> String {
 /// Build the archive of one case under `dir` and return its path.
 fn build_case_archive(dir: &Path, case: &UntarCase) -> PathBuf {
     let archive = dir.join("case.tar");
-    let Archive::Tree(members) = &case.archive;
     let src = dir.join("src");
     fs::create_dir_all(&src).unwrap();
-    let mut tops = BTreeSet::new();
-    for (path, member) in members {
-        let full = src.join(path);
-        fs::create_dir_all(full.parent().unwrap()).unwrap();
-        match member {
-            Member::Dir => fs::create_dir_all(&full).unwrap(),
-            Member::File => fs::write(&full, b"content\n").unwrap(),
-            Member::Link(target) => std::os::unix::fs::symlink(target, &full).unwrap(),
+    let mut argv: Vec<OsString> = vec![host_tar().into_os_string()];
+    match &case.archive {
+        Archive::Tree(members) => {
+            let mut tops = BTreeSet::new();
+            for (path, member) in members {
+                let full = src.join(path);
+                fs::create_dir_all(full.parent().unwrap()).unwrap();
+                match member {
+                    Member::Dir => fs::create_dir_all(&full).unwrap(),
+                    Member::File => fs::write(&full, b"content\n").unwrap(),
+                    Member::Link(target) => std::os::unix::fs::symlink(target, &full).unwrap(),
+                    Member::HardLink(of) => fs::hard_link(src.join(of), &full).unwrap(),
+                }
+                tops.insert((*path).split('/').next().unwrap().to_owned());
+            }
+            argv.extend(["-cf".into(), archive.clone().into_os_string()]);
+            argv.extend(["-C".into(), src.into_os_string()]);
+            argv.extend(tops.into_iter().map(OsString::from));
         }
-        tops.insert((*path).split('/').next().unwrap().to_owned());
+        Archive::StoredName(name) => {
+            let sub = src.join("sub");
+            fs::create_dir_all(&sub).unwrap();
+            fs::write(sub.join(name), b"content\n").unwrap();
+            argv.extend(["-P".into(), "-cf".into(), archive.clone().into_os_string()]);
+            argv.extend(["-C".into(), sub.into_os_string(), (*name).into()]);
+        }
+        Archive::AbsoluteName => {
+            let plain = dir.join("plain.txt");
+            fs::write(&plain, b"content\n").unwrap();
+            argv.extend(["-P".into(), "-cf".into(), archive.clone().into_os_string()]);
+            argv.push(plain.into_os_string());
+        }
+        Archive::Empty => {
+            argv.extend(["-cf".into(), archive.clone().into_os_string()]);
+            argv.extend(["-T".into(), "/dev/null".into()]);
+        }
     }
-    let mut argv: Vec<OsString> = vec![
-        host_tar().into_os_string(),
-        "-cf".into(),
-        archive.clone().into_os_string(),
-        "-C".into(),
-        src.into_os_string(),
-    ];
-    argv.extend(tops.into_iter().map(OsString::from));
     let made = run_tool("tar", argv, dir);
     assert_eq!(
         made.record.exit.code,
@@ -1343,12 +1369,15 @@ fn check_untar_case(case: &UntarCase) -> Option<String> {
         if code != Some(0) {
             return report("accepted (exit 0)", "the guard did not accept it");
         }
-        let Archive::Tree(members) = &case.archive;
+        let Archive::Tree(members) = &case.archive else {
+            return report("accepted", "only a tree archive can be an accepted row");
+        };
         for (path, member) in members {
             let extracted = dest.join(path);
             let ok = match member {
                 Member::Dir => extracted.is_dir(),
                 Member::File => extracted.is_file(),
+                Member::HardLink(_) => false,
                 Member::Link(target) => {
                     fs::symlink_metadata(&extracted).is_ok_and(|meta| meta.is_symlink())
                         && fs::read_link(&extracted).is_ok_and(|read| read == Path::new(target))
@@ -1453,6 +1482,96 @@ fn eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_
             ]),
             accepted: false,
             message: "leaves the tree",
+        },
+        UntarCase {
+            label: "accept_up_to_top",
+            archive: Archive::Tree(vec![("a", Member::Dir), ("a/up", Member::Link(".."))]),
+            accepted: true,
+            message: "",
+        },
+        UntarCase {
+            label: "refuse_one_past_top",
+            archive: Archive::Tree(vec![("a", Member::Dir), ("a/up2", Member::Link("../.."))]),
+            accepted: false,
+            message: "leaves the tree",
+        },
+        UntarCase {
+            label: "refuse_top_level_up",
+            archive: Archive::Tree(vec![("a", Member::Link("../x"))]),
+            accepted: false,
+            message: "leaves the tree",
+        },
+        UntarCase {
+            label: "refuse_down_then_up",
+            archive: Archive::Tree(vec![("a", Member::Link("b/../../x"))]),
+            accepted: false,
+            message: "leaves the tree",
+        },
+        UntarCase {
+            label: "accept_dot_components",
+            archive: Archive::Tree(vec![
+                ("a", Member::Dir),
+                ("a/dot", Member::Link("./b/./c")),
+                ("a/dots", Member::Link("..x/y.h")),
+            ]),
+            accepted: true,
+            message: "",
+        },
+        UntarCase {
+            label: "accept_plain_members",
+            archive: Archive::Tree(vec![
+                ("f", Member::File),
+                ("d", Member::Dir),
+                ("d/g", Member::File),
+            ]),
+            accepted: true,
+            message: "",
+        },
+        UntarCase {
+            label: "accept_arrow_in_name",
+            archive: Archive::Tree(vec![("p -> q", Member::Link("r"))]),
+            accepted: true,
+            message: "",
+        },
+        UntarCase {
+            label: "refuse_arrow_in_name",
+            archive: Archive::Tree(vec![("x -> y", Member::Link("../evil"))]),
+            accepted: false,
+            message: "leaves the tree",
+        },
+        UntarCase {
+            label: "refuse_up_through_link",
+            archive: Archive::Tree(vec![
+                ("d", Member::Dir),
+                ("d/up", Member::Link("..")),
+                ("e", Member::Link("d/up/..")),
+            ]),
+            accepted: false,
+            message: "leaves the tree",
+        },
+        UntarCase {
+            label: "refuse_dotdot_member_name",
+            archive: Archive::StoredName("../outside"),
+            accepted: false,
+            message: "member name",
+        },
+        UntarCase {
+            label: "refuse_absolute_member_name",
+            archive: Archive::AbsoluteName,
+            accepted: false,
+            message: "member name",
+        },
+        UntarCase {
+            label: "refuse_hard_link",
+            archive: Archive::Tree(vec![("f", Member::File), ("g", Member::HardLink("f"))]),
+            accepted: false,
+            message: "not a file, directory or symlink",
+        },
+        UntarCase {
+            label: "refuse_empty_archive",
+            archive: Archive::Empty,
+            accepted: false,
+            message: "no members",
         },
     ];
     let failures: Vec<String> = cases.iter().filter_map(check_untar_case).collect();
