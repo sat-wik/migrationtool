@@ -1055,21 +1055,29 @@ fn eqv_04_workflow_static_captures_travel_by_artifact() {
 fn eqv_04_workflow_static_restore_vets_the_archives_before_unpacking() {
     // WR-04: the tars come from directories the untrusted build container could
     // write. The restore step lists each one and refuses non-regular members and
-    // links that leave the tree, and unpacks without owner or permissions.
+    // links that leave the tree, and unpacks without owner or permissions. What the
+    // function accepts and refuses is pinned by the behavioural test
+    // `eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_ones`;
+    // this one pins the shape around it: the listings are read, the single
+    // extraction keeps its flags, and both archives go through the function with
+    // nothing appended to the call.
     let vectors = vectors_job();
     let restore = step_text(&vectors, RESTORE_STEP);
     let code = code_lines(&restore).join("\n");
     assert!(code.contains("safe_untar()"), "{code}");
     assert!(code.contains("tar -tvf"), "{code}");
+    assert!(code.contains("tar -tf"), "{code}");
     assert!(
         code.contains("--no-same-owner") && code.contains("--no-same-permissions"),
         "{code}"
     );
-    for archive in ["work.tar", "replay.tar"] {
+    for call in [
+        r#"safe_untar "$RUNNER_TEMP/handoff/work.tar" "$RUNNER_TEMP/work""#,
+        r#"safe_untar "$RUNNER_TEMP/handoff/replay.tar" "$RUNNER_TEMP/out""#,
+    ] {
         assert!(
-            code.lines()
-                .any(|line| line.trim_start().starts_with("safe_untar ") && line.contains(archive)),
-            "{archive} is not unpacked through safe_untar:\n{code}"
+            code.lines().any(|line| line.trim() == call),
+            "{call} is not a call line of the restore step, exactly:\n{code}"
         );
     }
     let bare: Vec<&str> = code

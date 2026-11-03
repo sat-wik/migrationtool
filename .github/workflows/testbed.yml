@@ -1033,20 +1033,31 @@ jobs:
           set -euo pipefail
           # WR-04: these tars were made from directories the untrusted build container
           # could write, and are unpacked here as the runner user. List each one first and
-          # refuse any member that is not a regular file, a directory or a symlink, and any
+          # refuse an empty archive, any member that is not a regular file, a directory or
+          # a symlink, any member name that is absolute or has a `..` component, and any
           # symlink whose target is absolute or, walked from the link's own directory,
           # leaves the tree, so no later member can be written through a link to somewhere
           # outside the destination. A `..` alone is not refused: nanopb and nimble ship
-          # in-tree `..` links (plan 03-11). The test
+          # in-tree `..` links (plan 03-11). The walk is on names, so it fails closed
+          # where it cannot tell from the listing where a path lands: a `..` that would
+          # pop a component that is itself a symlink of the same archive (`d/up -> ..`,
+          # then `e -> d/up/..`) is refused even where the link would land inside the
+          # tree (`c -> a/../z` with `a` a link). Neither nanopb's nor nimble's links have
+          # that shape. The test
           # eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_ones
           # runs this function on real tars.
           safe_untar() {
             local archive="$1" dest="$2"
             local listing names
             local -a lines members parts tparts stack
-            local n i name line target comp left
+            local -A islink=()
+            local n i name line target comp left joined
             listing="$(tar -tvf "$archive")"
             names="$(tar -tf "$archive")"
+            if [ -z "$listing" ]; then
+              echo "::error::$archive has no members"
+              return 1
+            fi
             if printf '%s\n' "$listing" | grep -v -E '^[-dl]'; then
               echo "::error::$archive holds a member that is not a file, directory or symlink"
               return 1
@@ -1058,6 +1069,33 @@ jobs:
               return 1
             fi
             n="${#lines[@]}"
+            # First pass over every member: the names, and which of them are symlinks.
+            i=0
+            while [ "$i" -lt "$n" ]; do
+              name="${members[$i]}"
+              case "/$name/" in
+                //* | */../*)
+                  echo "::error::$archive holds a member name that is absolute or leaves the tree: $name"
+                  return 1
+                  ;;
+              esac
+              if [ "${lines[$i]:0:1}" = "l" ]; then
+                IFS=/ read -ra parts <<<"$name"
+                stack=()
+                for comp in "${parts[@]}"; do
+                  if [ -n "$comp" ] && [ "$comp" != "." ]; then
+                    stack+=("$comp")
+                  fi
+                done
+                if [ "${#stack[@]}" -gt 0 ]; then
+                  printf -v joined '%s/' "${stack[@]}"
+                  joined="${joined%/}"
+                  islink["$joined"]=1
+                fi
+              fi
+              i=$((i + 1))
+            done
+            # Second pass: where each symlink lands.
             i=0
             while [ "$i" -lt "$n" ]; do
               line="${lines[$i]}"
@@ -1090,7 +1128,13 @@ jobs:
                 elif [ "${#stack[@]}" -eq 0 ]; then
                   left=1
                 else
-                  unset 'stack[${#stack[@]}-1]'
+                  printf -v joined '%s/' "${stack[@]}"
+                  joined="${joined%/}"
+                  if [ -n "${islink[$joined]+x}" ]; then
+                    left=1
+                  else
+                    unset 'stack[${#stack[@]}-1]'
+                  fi
                 fi
               done
               if [ "$left" -eq 1 ]; then
