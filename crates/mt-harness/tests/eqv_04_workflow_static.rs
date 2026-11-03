@@ -1390,7 +1390,7 @@ fn eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_
     // `npl_sycfg.h -> ../syscfg/syscfg.h`), so the vectors job never got past its
     // restore step. This runs the function the workflow holds, on real tars.
     assert!(Path::new("/bin/bash").exists(), "/bin/bash is required");
-    let cases = vec![
+    let cases = [
         UntarCase {
             label: "accept_one_up",
             archive: Archive::Tree(vec![

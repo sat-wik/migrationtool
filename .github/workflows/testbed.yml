@@ -1034,19 +1034,70 @@ jobs:
           # WR-04: these tars were made from directories the untrusted build container
           # could write, and are unpacked here as the runner user. List each one first and
           # refuse any member that is not a regular file, a directory or a symlink, and any
-          # symlink whose target is absolute or leaves the tree, so no later member can be
-          # written through a link to somewhere outside the destination.
+          # symlink whose target is absolute or, walked from the link's own directory,
+          # leaves the tree, so no later member can be written through a link to somewhere
+          # outside the destination. A `..` alone is not refused: nanopb and nimble ship
+          # in-tree `..` links (plan 03-11). The test
+          # eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_ones
+          # runs this function on real tars.
           safe_untar() {
-            local archive="$1" dest="$2" listing
+            local archive="$1" dest="$2"
+            local listing names
+            local -a lines members parts tparts stack
+            local n i name line target comp left
             listing="$(tar -tvf "$archive")"
+            names="$(tar -tf "$archive")"
             if printf '%s\n' "$listing" | grep -v -E '^[-dl]'; then
               echo "::error::$archive holds a member that is not a file, directory or symlink"
               return 1
             fi
-            if printf '%s\n' "$listing" | grep -E '^l.* -> (/|(.*/)?\.\.(/|$))'; then
-              echo "::error::$archive holds a symlink that is absolute or leaves the tree"
+            mapfile -t lines <<<"$listing"
+            mapfile -t members <<<"$names"
+            if [ "${#lines[@]}" -ne "${#members[@]}" ]; then
+              echo "::error::$archive: tar -tf and tar -tvf list different members"
               return 1
             fi
+            n="${#lines[@]}"
+            i=0
+            while [ "$i" -lt "$n" ]; do
+              line="${lines[$i]}"
+              name="${members[$i]}"
+              i=$((i + 1))
+              if [ "${line:0:1}" != "l" ]; then
+                continue
+              fi
+              # The name is the exact tar -tf name; the target is what follows that
+              # name and ` -> ` in the verbose line, so a name holding ` -> ` is safe.
+              target="${line#*" $name -> "}"
+              if [ "$target" = "$line" ]; then
+                echo "::error::$archive: cannot read the target of the symlink $name"
+                return 1
+              fi
+              left=0
+              if [ "${target:0:1}" = "/" ]; then
+                left=1
+              fi
+              IFS=/ read -ra parts <<<"$name"
+              unset 'parts[${#parts[@]}-1]'
+              IFS=/ read -ra tparts <<<"$target"
+              stack=()
+              for comp in "${parts[@]}" "${tparts[@]}"; do
+                if [ "$left" -eq 1 ] || [ -z "$comp" ] || [ "$comp" = "." ]; then
+                  continue
+                fi
+                if [ "$comp" != ".." ]; then
+                  stack+=("$comp")
+                elif [ "${#stack[@]}" -eq 0 ]; then
+                  left=1
+                else
+                  unset 'stack[${#stack[@]}-1]'
+                fi
+              done
+              if [ "$left" -eq 1 ]; then
+                echo "::error::$archive holds a symlink that is absolute or leaves the tree: $name -> $target"
+                return 1
+              fi
+            done
             tar -xf "$archive" -C "$dest" --no-same-owner --no-same-permissions
           }
           safe_untar "$RUNNER_TEMP/handoff/work.tar" "$RUNNER_TEMP/work"
