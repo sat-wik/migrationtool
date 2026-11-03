@@ -3,6 +3,26 @@ phase: 03
 review: 03-REVIEW.md
 titles: json
 findings:
+  - id: WR-03
+    severity: warning
+    disposition: skipped
+    title: "`struct mt_ksigaction` does not match the kernel `sigaction` layout (uninitialised padding becomes the signal mask)"
+  - id: IN-01
+    severity: info
+    disposition: open
+    title: "`MAP_FIXED` mappings silently replace whatever is already at the address, and no assert covers the input mapping"
+  - id: IN-10
+    severity: info
+    disposition: open
+    title: "Replay re-runs every vector but does not compare `discarded_output_bytes` or the derived `has_ub_source`, and the comment that excuses it is wrong"
+  - id: IN-11
+    severity: info
+    disposition: open
+    title: "The contract document was edited under version 0.1.0 with no changelog line, and its versioning rule has no exception for corrections"
+  - id: IN-12
+    severity: info
+    disposition: open
+    title: "The byte-codec paragraph still leaves out the hex case of `\\u00XX`, so an independent reader cannot reproduce the file names"
   - id: WR-01
     severity: warning
     disposition: fixed
@@ -11,14 +31,6 @@ findings:
     severity: warning
     disposition: fixed
     title: "A listing whose rows are all `no_roles` still prints `result: passed` and exits 0"
-  - id: WR-03
-    severity: warning
-    disposition: skipped
-    title: "`struct mt_ksigaction` does not match the kernel `sigaction` layout (uninitialised padding becomes the signal mask)"
-  - id: IN-01
-    severity: info
-    disposition: skipped
-    title: "`MAP_FIXED` mappings silently replace whatever is already at the address"
   - id: IN-02
     severity: info
     disposition: fixed
@@ -75,27 +87,30 @@ findings:
     severity: warning
     disposition: fixed
     title: "Identifier grammars for target ids and configuration names disagree between the manifest, the policy loader and the vector schema"
-open: 0
-total: 18
-recorded: 2026-11-01T05:09:09.485Z
+open: 4
+total: 21
+recorded: 2026-11-03T05:07:00.457Z
 ---
 
 # Phase 03: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | fixed | 03-REVIEW-FIX.md |
-| WR-02 | warning | fixed | 03-REVIEW-FIX.md |
 | WR-03 | warning | skipped | 03-REVIEW-FIX.md |
-| IN-01 | info | skipped | 03-REVIEW-FIX.md |
-| IN-02 | info | fixed | 03-REVIEW-FIX.md |
-| IN-03 | info | fixed | 03-REVIEW-FIX.md |
-| IN-04 | info | fixed | 03-REVIEW-FIX.md |
-| IN-05 | info | fixed | 03-REVIEW-FIX.md |
-| IN-06 | info | fixed | 03-REVIEW-FIX.md |
-| IN-07 | info | fixed | 03-REVIEW-FIX.md |
-| IN-08 | info | fixed | 03-REVIEW-FIX.md |
-| IN-09 | info | fixed | 03-REVIEW-FIX.md |
+| IN-01 | info | open | - |
+| IN-10 | info | open | - |
+| IN-11 | info | open | - |
+| IN-12 | info | open | - |
+| WR-01 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| WR-02 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| IN-02 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| IN-03 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| IN-04 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| IN-05 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| IN-06 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| IN-07 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| IN-08 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| IN-09 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | CR-01 | critical | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | WR-04 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | WR-05 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
