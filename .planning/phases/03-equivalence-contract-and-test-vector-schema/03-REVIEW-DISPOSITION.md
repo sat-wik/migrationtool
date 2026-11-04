@@ -5,7 +5,7 @@ titles: json
 findings:
   - id: CR-01
     severity: critical
-    disposition: open
+    disposition: fixed
     title: "`safe_untar` accepts a symlink that resolves outside the destination when a second link aliases a directory holding a link"
   - id: WR-01
     severity: warning
@@ -87,7 +87,7 @@ findings:
     severity: warning
     disposition: fixed
     title: "Identifier grammars for target ids and configuration names disagree between the manifest, the policy loader and the vector schema"
-open: 7
+open: 6
 total: 21
 recorded: 2026-11-03T23:38:46.806Z
 ---
@@ -96,7 +96,7 @@ recorded: 2026-11-03T23:38:46.806Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | open | - |
+| CR-01 | critical | fixed | 03-12-SUMMARY.md (plan 03-12; testbed run 41881917020) |
 | WR-01 | warning | open | - |
 | WR-02 | warning | open | - |
 | IN-01 | info | open | - |
