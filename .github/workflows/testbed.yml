@@ -1035,15 +1035,22 @@ jobs:
           # could write, and are unpacked here as the runner user. List each one first and
           # refuse an empty archive, any member that is not a regular file, a directory or
           # a symlink, any member name that is absolute or has a `..` component, and any
-          # symlink whose target is absolute or, walked from the link's own directory,
-          # leaves the tree, so no later member can be written through a link to somewhere
-          # outside the destination. A `..` alone is not refused: nanopb and nimble ship
-          # in-tree `..` links (plan 03-11). The walk is on names, so it fails closed
-          # where it cannot tell from the listing where a path lands: a `..` that would
-          # pop a component that is itself a symlink of the same archive (`d/up -> ..`,
-          # then `e -> d/up/..`) is refused even where the link would land inside the
-          # tree (`c -> a/../z` with `a` a link). Neither nanopb's nor nimble's links have
-          # that shape. The test
+          # symlink whose target is absolute, leaves the tree, or passes through another
+          # symlink of the same archive, so no later member can be written through a link
+          # to somewhere outside the destination. A `..` alone is not refused: nanopb and
+          # nimble ship in-tree `..` links (plan 03-11).
+          # CR-01: a link target may not step into or out of an archive symlink. The walk
+          # goes from the link's own directory, one component at a time; before a
+          # component is pushed or popped, if the stack built so far names a symlink
+          # member of the archive, the link is refused. The walk on names therefore never
+          # crosses an archive link, so it follows the path the kernel resolves and
+          # whether it leaves the tree is decided exactly, whatever the member order.
+          # The price is fail-closed: a target that steps through a link and lands inside
+          # the tree is refused too (`c -> X/y` with `X -> m/n`, and `c -> X/y/..`).
+          # A target whose last component names another link is allowed (`a -> b`, with
+          # `b -> c/..`), because that link is vetted on its own line. Neither nanopb's
+          # nor nimble's links have either shape (plan 03-12 local check of the capture
+          # and run trees). The test
           # eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_ones
           # runs this function on real tars.
           safe_untar() {
@@ -1051,7 +1058,7 @@ jobs:
             local listing names
             local -a lines members parts tparts stack
             local -A islink=()
-            local n i name line target comp left joined
+            local n i name line target comp why joined
             listing="$(tar -tvf "$archive")"
             names="$(tar -tf "$archive")"
             if [ -z "$listing" ]; then
@@ -1111,34 +1118,36 @@ jobs:
                 echo "::error::$archive: cannot read the target of the symlink $name"
                 return 1
               fi
-              left=0
+              why=""
               if [ "${target:0:1}" = "/" ]; then
-                left=1
+                why="is absolute or leaves the tree"
               fi
               IFS=/ read -ra parts <<<"$name"
               unset 'parts[${#parts[@]}-1]'
               IFS=/ read -ra tparts <<<"$target"
               stack=()
               for comp in "${parts[@]}" "${tparts[@]}"; do
-                if [ "$left" -eq 1 ] || [ -z "$comp" ] || [ "$comp" = "." ]; then
+                if [ -n "$why" ] || [ -z "$comp" ] || [ "$comp" = "." ]; then
                   continue
+                fi
+                if [ "${#stack[@]}" -gt 0 ]; then
+                  printf -v joined '%s/' "${stack[@]}"
+                  joined="${joined%/}"
+                  if [ -n "${islink[$joined]+x}" ]; then
+                    why="passes through a symlink of the archive"
+                    continue
+                  fi
                 fi
                 if [ "$comp" != ".." ]; then
                   stack+=("$comp")
                 elif [ "${#stack[@]}" -eq 0 ]; then
-                  left=1
+                  why="is absolute or leaves the tree"
                 else
-                  printf -v joined '%s/' "${stack[@]}"
-                  joined="${joined%/}"
-                  if [ -n "${islink[$joined]+x}" ]; then
-                    left=1
-                  else
-                    unset 'stack[${#stack[@]}-1]'
-                  fi
+                  unset 'stack[${#stack[@]}-1]'
                 fi
               done
-              if [ "$left" -eq 1 ]; then
-                echo "::error::$archive holds a symlink that is absolute or leaves the tree: $name -> $target"
+              if [ -n "$why" ]; then
+                echo "::error::$archive holds a symlink that $why: $name -> $target"
                 return 1
               fi
             done
