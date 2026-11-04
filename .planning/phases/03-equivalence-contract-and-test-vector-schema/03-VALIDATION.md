@@ -7,7 +7,7 @@ status: validated
 nyquist_compliant: true
 wave_0_complete: true
 created: "2026-10-21"
-updated: "2026-11-03"
+updated: "2026-11-04"
 ---
 
 # Phase 03 — Validation Strategy
@@ -69,6 +69,8 @@ Task IDs are filled in by the planner and plan checker. The rows below are the r
 | 03-10-T3 | 03-10 | 2 | EQV-04 | T-03-38, T-03-39 | Main's image-a `qemu-mprofile` notice ends `exit code: 42` (fail-closed gate before anything is recorded); Current image names only the digest main's publish job verified; the first testbed run on it has its eight Phase 2 steps green; 02-22-CI-NOTICES.md changes from line 5 on only after the founder's `rebaseline` reply. | CI plus founder gate | testbed workflow; `diff <(sed '1,4d' 02-22-CI-NOTICES.md) <(sed '1,4d' 03-10-CI-NOTICES.md)` | ✅ | ✅ green |
 | 03-11-T1, 03-11-T2 | 03-11 | 10 | EQV-04 (gap closure) | T-03-42, T-03-43, T-03-44 | The vectors job's `safe_untar`, taken from `testbed.yml` itself (no copy), runs on 19 GNU-tar archives built by the test. It accepts the in-tree nanopb and nimble `..` links. It refuses an absolute target, a target that leaves the tree, a `..` that pops an archive link named by its own path, an absolute or `..` member name, a hard link and an empty archive, and each refusal leaves the destination empty. This row proves the exact-name case only: a path that reached a link through a second, aliasing link stayed accepted until plan 03-12 (code review CR-01); the plan 03-12 rows below carry that case. | behavioural (host bash + GNU tar through the mt-toolchain runner) | `cargo test -p mt-harness --test eqv_04_workflow_static` | ✅ | ✅ green |
 | 03-11-T3 | 03-11 | 10 | EQV-04 (D-01, D-02, D-19, D-21, D-32) | T-03-45 | The vectors job is green at the last trigger-path head, and its seven evidence steps all have conclusion success. All 15 sample corpora replay `identical 1`. The testbed-* notices equal 02-22 from line 5 on. | CI (read with gh api) | testbed run 41735869792 on `752badf` (`03-11-VECTORS-NOTICES.md`, `03-11-CI-NOTICES.md`) | ✅ | ✅ green |
+| 03-12-T1, 03-12-T2 | 03-12 | 11 | EQV-04 (gap closure) | T-03-42, T-03-43, T-03-47, T-03-48, T-03-49 | The vectors job's `safe_untar`, taken from `testbed.yml` itself (no copy), runs on 27 archives: 24 made by GNU tar (the 19 rows of plan 03-11, the four Tracer rows and refuse_forged_owner) and 3 fake listings (refuse_forged_owner_listing, refuse_unreadable_target, refuse_listing_mismatch). It refuses a target that steps into or out of an archive link (CR-01's alias shape in both member orders, and a descent through a link), an absolute target and a pop past the top, an absolute or `..` member name, a hard link and an empty archive, a forged owner column, and the two listing faults. It accepts the in-tree nanopb and nimble links and a link to a link. Each refusal asserts its own message, an empty destination and an unchanged case directory, and the host tools are asserted to be GNU tar and bash 4.3 or later. | behavioural (host bash, GNU tar and a fake tar through the mt-toolchain runner) | `cargo test -p mt-harness --test eqv_04_workflow_static` | ✅ | ✅ green |
+| 03-12-T3 | 03-12 | 11 | EQV-04 (D-01, D-02, D-19, D-21, D-32) | T-03-44, T-03-45 | The vectors job is green at the last trigger-path head `adfd2bd`, and its seven evidence steps (Unpack the captures of the testbed job, Build the reference drivers, Publish the state layouts, Run the reference vectors twice, Run the vectors again and compare, Fixture vectors sample, Replay the committed sample) all have conclusion success. All 15 sample corpora replay `identical 1`, and the vectors notices equal plan 03-11's from line 5 on. | CI (read with gh api) | testbed run 41881917020 on `adfd2bd` (`03-12-VECTORS-NOTICES.md`, `03-12-CI-NOTICES.md`) | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -99,6 +101,11 @@ WR-03 and IN-01 (both in `runtime.c`) were skipped by the fix passes because edi
 - All 23 ignored local proofs pass: `MT_LOCAL_CAPTURES=$PWD/.mt-work/capture MT_LOCAL_TRACTOR=$PWD/.mt-work/tractor/37960ee08a7c644ee66e29855eca33903f702e67/tree cargo test --workspace --locked -- --ignored` (23 passed, 0 failed), including `eqv_02_tractor_vectors_load_unchanged`, `eqv_04_run_twice_is_byte_identical`, `eqv_04_sentinel_prefill_recorded`, `eqv_04_replay_reproduces_stored_vectors` and `eqv_04_sample_is_chosen_and_replays_from_a_tree`. These ran with the host toolchain, not the pinned image.
 - In the pinned image (QEMU 10.0.2, GCC 14.3), the CI rows were green in testbed run 40922236736 on `5e0d4a8` (`03-08-VECTORS-NOTICES.md`: selftest 17 rows, TRACTOR 6 of 6, every target `twice=identical`, the sample step), in the container runs recorded in `03-09-SUMMARY.md` and `03-10-SUMMARY.md` (`qemu-mprofile` `exit code: 42`), and through the founder's `rebaseline` reply (`03-10-SUMMARY.md`).
 - Not yet run in CI: the code-review fix commits `6c58482..90767fd` (including the `testbed.yml` changes for WR-04 and WR-05 and the Dockerfile `USER` line) postdate the last testbed and container runs. Their static and offline tests pass; the next testbed and container runs are their first in the pinned image.
+
+### Evidence (audit 2026-11-04, HEAD `68e3d7a`)
+
+- `cargo test -p mt-harness --test eqv_04_workflow_static` passes at HEAD (14 passed, 0 failed), including `eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_ones` on the 27-row table (24 GNU tar archives, 3 fake listings). The last code commit is `adfd2bd`; everything since is documents.
+- Testbed run 41881917020 (`.github/workflows/testbed.yml`, head `adfd2bdbbe229b63df6d682efc48199447776599`) reads conclusion success with gh api; the vectors job 126760859985 ran its seven evidence steps in the pinned image. The 03-11 row above held only for the exact-name case; CR-01's alias shape was accepted until plan 03-12 (`03-12-SUMMARY.md`).
 
 ---
 
@@ -140,3 +147,13 @@ Status: UAT test 1 passed on 2026-10-30 against the 0.1.0 text (`03-UAT.md`). Co
 | Gaps found | 0 |
 | Resolved | 0 |
 | Escalated | 0 |
+
+## Validation Audit 2026-11-04
+
+| Metric | Count |
+|---|---|
+| Gaps found | 1 |
+| Resolved | 1 |
+| Escalated | 0 |
+
+The gap was the 03-11-T1/T2 row's claim of a general through-link refusal, which held only for the exact-name case. The row now says so, and rows 03-12-T1, 03-12-T2 and 03-12-T3 carry the alias shape and the CI run.

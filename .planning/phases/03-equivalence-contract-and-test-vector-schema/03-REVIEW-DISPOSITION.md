@@ -9,15 +9,15 @@ findings:
     title: "`safe_untar` accepts a symlink that resolves outside the destination when a second link aliases a directory holding a link"
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "the target is cut from the verbose line by the first occurrence of ` NAME -> `, so the owner field can forge it"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "the test table does not pin the shape of CR-01, and some refuse rows can pass for the wrong reason"
   - id: IN-01
     severity: info
-    disposition: open
+    disposition: fixed
     title: "the test needs GNU tar and bash 4.3 or later on the host, but only checks that `/bin/bash` exists"
   - id: WR-03
     severity: warning
@@ -87,7 +87,7 @@ findings:
     severity: warning
     disposition: fixed
     title: "Identifier grammars for target ids and configuration names disagree between the manifest, the policy loader and the vector schema"
-open: 6
+open: 3
 total: 21
 recorded: 2026-11-03T23:38:46.806Z
 ---
@@ -97,9 +97,9 @@ recorded: 2026-11-03T23:38:46.806Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | CR-01 | critical | fixed | 03-12-SUMMARY.md (plan 03-12; testbed run 41881917020) |
-| WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
-| IN-01 | info | open | - |
+| WR-01 | warning | fixed | 03-12-SUMMARY.md (plan 03-12; testbed run 41881917020) |
+| WR-02 | warning | fixed | 03-12-SUMMARY.md (plan 03-12; testbed run 41881917020) |
+| IN-01 | info | fixed | 03-12-SUMMARY.md (plan 03-12; testbed run 41881917020) |
 | WR-03 | warning | skipped | 03-REVIEW-FIX.md (not in the current review) |
 | IN-10 | info | open | - (not in the current review) |
 | IN-11 | info | open | - (not in the current review) |
