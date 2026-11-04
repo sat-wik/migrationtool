@@ -1,14 +1,18 @@
 ---
-status: complete
+status: testing
 phase: 03-equivalence-contract-and-test-vector-schema
 source: [03-VERIFICATION.md]
 started: 2026-10-30T02:00:00Z
-updated: 2026-10-30T14:22:42.114Z
+updated: 2026-11-04T18:44:18Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 9
+name: Re-read the three contract passages changed after UAT item 1 (commit dd1deeb)
+expected: |
+  The rc row, the ret bullet and the Byte codec paragraph match D-05, D-06 and D-25, and you accept (or reject) the correction standing under version 0.1.0 with no changelog line (review IN-11).
+awaiting: user response
 
 ## Tests
 
@@ -51,12 +55,17 @@ expected: Explicit acceptance that D-31's version number was not followed. The c
 result: pass
 note: "Founder accepts QEMU 1:10.0.2+ds-2+deb13u1~bpo12+1 in place of D-31's 8.2.x: the M-profile commpage cause D-31 names is gone and every vectors job is green."
 
+### 9. Re-read the three passages of docs/specs/equivalence-contract.md changed after UAT item 1 (commit dd1deeb, 2026-11-01): the `rc` row, the `ret` bullet under Library state, and the Byte codec paragraph
+expected: (a) A struct or union return goes to lib_state_out.ret with rc 0. (b) An integer or enum return wider than 32 bits is refused when the adapter is built. (c) The codec paragraph names serde_json escapes and says the vector file is serde_json::to_vec_pretty output with sorted maps and one trailing newline. Decide whether an unversioned correction under 0.1.0 is acceptable (review IN-11).
+result: [pending]
+source: 03-VERIFICATION.md re-verification 2026-11-04T18:44:18Z (human_needed)
+
 ## Summary
 
-total: 8
+total: 9
 passed: 8
 issues: 0
-pending: 0
+pending: 1
 skipped: 0
 blocked: 0
 
