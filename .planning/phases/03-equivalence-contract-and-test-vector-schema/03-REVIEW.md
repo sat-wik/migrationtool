@@ -1,112 +1,107 @@
 ---
 phase: 03-equivalence-contract-and-test-vector-schema
-reviewed: 2026-11-03T00:00:00Z
+reviewed: 2026-11-04T00:00:00Z
 depth: standard
 files_reviewed: 2
 files_reviewed_list:
   - .github/workflows/testbed.yml
   - crates/mt-harness/tests/eqv_04_workflow_static.rs
 findings:
-  critical: 1
-  warning: 2
-  info: 1
+  critical: 0
+  warning: 1
+  info: 3
   total: 4
 status: issues_found
 ---
 
-# Phase 3: Code Review Report (incremental, plan 03-11)
+# Phase 3: Code Review Report (incremental, plan 03-12)
 
-**Reviewed:** 2026-11-03
+**Reviewed:** 2026-11-04
 **Depth:** standard
-**Scope:** incremental since a03811d (`git diff a03811d HEAD`), covering plan 03-11 only: the body of `safe_untar` and its comment in the vectors job step "Unpack the captures of the testbed job", and the behavioural test added to `eqv_04_workflow_static.rs`. This replaces the earlier phase-3 review, which is already dispositioned in 03-REVIEW-DISPOSITION.md.
+**Scope:** incremental since 17ce931 (`git diff 17ce931 HEAD`), covering plan 03-12 only: the `safe_untar` function of the vectors job step "Unpack the captures of the testbed job" in `.github/workflows/testbed.yml`, and its behavioural table in `crates/mt-harness/tests/eqv_04_workflow_static.rs`. This replaces the review of plan 03-11 (CR-01, WR-01, WR-02, IN-01), which plan 03-12 set out to fix.
 **Files Reviewed:** 2
 **Status:** issues_found
 
 ## Summary
 
-The change does what the plan asks for the shapes it lists. I ran the workflow's own function (extracted with awk, under `set -euo pipefail`, GNU tar 1.35, bash 5.2.21) and `cargo test -p mt-harness --test eqv_04_workflow_static`: 14 of 14 pass. The nanopb and nimble in-tree links are accepted, and absolute, past-top, top-level `..`, `..` member names, hard links and the empty archive are refused. Names holding ` -> `, `@`, `*`, `]`, `$(...)` and an embedded newline cause no injection and no mis-pairing of the two listings. A 30,000-symlink archive takes about 6 s, so cost is linear.
+The fixes for the previous CR-01, WR-01, WR-02 and IN-01 hold. I found no blocker.
 
-The guard is not a sound implementation of the rule it states, though. The walk tracks links by their exact archive name, so a second link that aliases a directory hides the link from the walk, and a link that resolves outside the destination is accepted (CR-01). The test table has no row for this shape, so the suite passes anyway.
+How I checked, with GNU tar 1.35 and bash 5.2.21:
 
-I did not find a way to write outside the destination. GNU tar 1.35 refuses to extract a member through the escaping link (`Cannot open: Not a directory`). The guard's own claim is broken, and what remains is one layer that it does not control.
+- `cargo test -p mt-harness --test eqv_04_workflow_static --offline`: 14 of 14 pass.
+- I extracted `safe_untar` from the workflow with awk and ran it under `set -euo pipefail`.
+- **CR-01 (symlink walk).** The exact archive from the previous review (`m/n/d/p -> ../../..`, `X -> m/n`, `e -> X/d/p/..`) is now refused with "passes through a symlink of the archive". It is refused whichever way the members are ordered. The same holds when the names carry a `./` prefix, when the target carries `./` components, and when the link's own directory part passes through a link (`X/q -> ../..`).
+- I also fuzzed the function: about 8,000 random archives of dirs, files and links over the names a/b/c with `..` targets, in random member order. 2,051 were accepted, and each was extracted with the real `tar -xf`. In none did any extracted symlink resolve (`realpath`) outside the destination, and nothing appeared outside the destination. The rule "never push onto or pop from a stack that names an archive symlink" keeps the logical path equal to the physical one, so the walk is exact.
+- Keys and names that could break the `islink` lookup caused no escape and no mis-pairing: `@`, `*`, `]`, spaces, quotes, tab, backslash, a newline, a non-ASCII byte, a leading `-`, `~`, `:`, a control byte. GNU tar escapes these identically in `-tf` and `-tvf`.
+- **WR-01 (forged owner column).** `--numeric-owner` makes the text before the name the mode, `N/N`, size, date and time, so the first ` NAME -> ` is the real one. `owner_re` additionally refuses any line whose owner column is not digits. The forged `uname="u a -> p/q/r/s/t"` archive of the previous review is now read correctly and refused with "leaves the tree" (the row `refuse_forged_owner`, on a real tar).
+- **WR-02 (test table).** Every refused row whose archive can trip two checks asserts a fragment that only its own check prints. The member-name refusal says "holds a member name", the link refusals say "holds a symlink that is absolute or leaves the tree" or "holds a symlink that passes through a symlink of the archive", and the listing-shape refusals say "cannot read the target" or "list different members". The new `snapshot_outside_dest` comparison runs around every row. The one exception, two branches that print the same text, is IN-01 below.
+- **IN-01 (host tools).** `assert_host_tools` now fails, with no skip path, unless `tar --version` says GNU tar and `/bin/bash` is 4.3 or later. The bash floor is slightly wrong (IN-02 below).
 
-## Critical Issues
-
-### CR-01: `safe_untar` accepts a symlink that resolves outside the destination when a second link aliases a directory holding a link
-
-**File:** `.github/workflows/testbed.yml:1049-1144` (the second-pass walk, especially the `islink` lookup at line 1133); the stated rule is in the comment at lines 1034-1048.
-**Issue:** The walk is purely lexical and recognises a link only by the exact normalised name of an archive member. A `..` is refused only when the stack, joined, equals a recorded link name. A link `X -> m/n` makes `X/d/p` an alias of `m/n/d/p`. The key `X/d/p` is never in `islink`, so a `..` after it is treated as popping a real directory. The kernel does follow `p`.
-
-I built this archive with Python `tarfile` and ran the extracted function on it:
-
-```
-m/            dir
-m/n/          dir
-m/n/d/        dir
-m/n/d/p -> ../../..      (resolves to the top of the tree: accepted, as accept_up_to_top is)
-X -> m/n                 (all pushes: accepted)
-e -> X/d/p/..            (guard: stack [X,d,p], one pop, ends at [X,d], accepted)
-```
-
-The function exited 0 and extracted `e`. `readlink -f dest/e` is the parent of the destination, and `ls dest/e` listed the runner's `ci-lib.sh` next to `work/`. In the workflow that parent is `$RUNNER_TEMP`, which holds `ci-lib.sh`, sourced by every later step.
-
-Consequences, as observed:
-
-- The guard's documented contract ("any symlink whose target, walked from the link's own directory, leaves the tree" is refused) is false for this input.
-- A follow-up member `e/ci-lib.sh` (file, symlink or directory) did not write outside the destination. GNU tar 1.35 itself refused each one with `Not a directory`. That is behaviour of the tar on the runner, not of the guard, and it is the only thing stopping the write. Threat T-03-42 names it as a "second layer", but here the first layer does not hold.
-- The escaping link stays in `$RUNNER_TEMP/work`. Any later host-side step that follows it (a `cp -L`, `find -L`, `realpath`, or a tool that opens `work/e/...`) reaches `$RUNNER_TEMP`.
-
-The comment claims the walk "fails closed where it cannot tell from the listing where a path lands". It does not for this shape, because the walk cannot tell that `X/d/p` is `m/n/d/p`.
-
-**Fix:** Never let the walk descend through a link, so that the logical path always equals the physical one and the existing pop-of-link test is exact. Before pushing a component onto a non-empty stack, look up the joined stack in `islink` and refuse if it is a link. The same rule applies to the name's own directory parts, because they are the initial stack. For example, in the second pass:
-
-```bash
-if [ "$comp" != ".." ]; then
-  if [ "${#stack[@]}" -gt 0 ]; then
-    printf -v joined '%s/' "${stack[@]}"
-    joined="${joined%/}"
-    if [ -n "${islink[$joined]+x}" ]; then
-      left=1
-    fi
-  fi
-  stack+=("$comp")
-elif ...
-```
-
-I applied this patch to a scratch copy. It refuses the archive above (`e -> X/d/p/..`, exit 1). No in-tree shape of nanopb or nimble pushes through a link, so the planned accept rows keep passing. I did not re-run the Rust table against the patched copy. Add the rows from WR-02 and update the comment so it states the real rule: a link target may not pass through any archive link, and not only pop one.
+What remains is a coverage gap in the table (WR-01) and three low-priority items.
 
 ## Warnings
 
-### WR-01: the target is cut from the verbose line by the first occurrence of ` NAME -> `, so the owner field can forge it
+### WR-01: the table has no row for the two guard inputs that are not covered by any other row
 
-**File:** `.github/workflows/testbed.yml:1109` (`target="${line#*" $name -> "}"`)
-**Issue:** `${line#*pattern}` removes the shortest prefix, so it matches the first ` NAME -> ` anywhere in the line, including the owner/group column that `tar -tvf` prints from the archive header. The comment and T-03-43 say the name is matched "after that name", which is not anchored. I forged a header (Python `tarfile`, `uname="u a -> p/q/r/s/t"`) for the link `a -> ../../../../etc`. GNU tar prints `... u a -> p/q/r/s/t/g 0 ... a -> ../../../../etc`. The guard took `p/q/r/s/t/g 0 1970-01-01 00:00 a -> ../../../../etc` as the target, saw enough pushes to absorb the four pops, and exited 0.
+**File:** `crates/mt-harness/tests/eqv_04_workflow_static.rs:1648-1901` (the `cases` table). The code involved is `.github/workflows/testbed.yml:1094-1107` (first pass, name normalisation) and `1135-1136` (the name's directory parts as the initial stack).
+**Issue:** two paths of the guard are guarded by no row, and each is a path on which CR-01 could silently come back:
 
-In the described flow the owner names come from the image's `/etc/passwd` through the trusted `tar -cf`, so the build container cannot choose them. That is why this is a warning and not a blocker. The guard should not depend on that fact. A numeric owner column would remove it.
+- Normalisation of member names. The first pass builds the `islink` keys with empty and `.` components skipped, and the second pass skips them again. No row has a `./`-prefixed or `a/./b` member name. If the first pass stopped skipping `.`, the key of `./X` would be `./X` and would never match the stack `X`. CR-01 would reopen for any archive made with `tar -C dir .`. I checked by hand that the current code refuses such an archive, and no test would fail if that changed. The real CI archives name `capture` and `run`, so this is not exploitable today.
+- A symlink whose own name passes through another archive symlink (`X -> m/n`, then `X/q -> ../..`). The walk starts from the name's directory parts, and the link check runs while the parts are pushed. I checked that this refuses today. No row pins it, and several rows only prove that the first component is pushed.
 
-**Fix:** List with `tar --numeric-owner -tvf "$archive"`. The owner column is then digits and a slash (checked: `0/0`), and it can never contain ` -> `. As a second layer, require that the match begins at the expected column by anchoring the removal on the fixed prefix, for example `[[ $line =~ ^l[^\ ]+\ [0-9]+/[0-9]+\ +[0-9]+\ [0-9-]+\ [0-9:]+\  ]]` before cutting.
+**Fix:** add two rows to the table, both with `accepted: false` and the message "holds a symlink that passes through a symlink of the archive":
 
-### WR-02: the test table does not pin the shape of CR-01, and some refuse rows can pass for the wrong reason
+```rust
+UntarCase {
+    label: "refuse_alias_up_through_link_dot_names",
+    archive: Archive::Ordered(vec![
+        ("./m", Member::Dir),
+        ("./m/n", Member::Dir),
+        ("./m/n/d", Member::Dir),
+        ("./m/n/d/p", Member::Link("../../..")),
+        ("./X", Member::Link("m/n")),
+        ("./e", Member::Link("./X/./d/p/..")),
+    ]),
+    accepted: false,
+    message: "holds a symlink that passes through a symlink of the archive",
+},
+UntarCase {
+    label: "refuse_name_through_link",
+    archive: Archive::Ordered(vec![
+        ("m", Member::Dir),
+        ("m/n", Member::Dir),
+        ("X", Member::Link("m/n")),
+        ("X/q", Member::Link("../..")),
+    ]),
+    accepted: false,
+    message: "holds a symlink that passes through a symlink of the archive",
+},
+```
 
-**File:** `crates/mt-harness/tests/eqv_04_workflow_static.rs:1423-1593` (the test and its table; `refuse_up_through_link` is at line 1551) and `check_untar_case` at line 1361.
-**Issue:**
-- The only "through a link" row is `refuse_up_through_link`, where the link that is popped is itself named in the stack. There is no row where a second link makes an alias path (`X -> m/n`, `m/n/d/p -> ../../..`, `e -> X/d/p/..`). Because the table lacks it, the suite passes on a guard that accepts an escaping link.
-- Every refused link row asserts the fragment `leaves the tree`. The member-name message ("holds a member name that is absolute or leaves the tree") contains the same fragment, so a link row whose archive also trips the name check would pass for the wrong reason. The current rows do not, but the assertion cannot tell the two apart.
-- The branches `cannot read the target of the symlink` and `tar -tf and tar -tvf list different members` have no row.
-- The test asserts only an empty destination for refused rows. It does not assert that nothing outside the destination was touched, which is the property that matters.
-
-**Fix:** Add a `refuse_alias_up_through_link` row with the six members of CR-01, in that archive order. Give the link-walk refusal a message that does not share a fragment with the name check (for example `symlink ... leaves the tree`), and assert that fragment on the link rows. Add a sentinel file beside `dest` in `check_untar_case` and assert that the directory outside `dest` is unchanged and contains no new entries after every row.
+I ran equivalent archives through the function by hand: both exit 1 with that message. Check that GNU tar 1.35 archives these member orders without error before committing the rows.
 
 ## Info
 
-### IN-01: the test needs GNU tar and bash 4.3 or later on the host, but only checks that `/bin/bash` exists
+### IN-01: two different refusals print the same text, so a row cannot tell which one fired
 
-**File:** `crates/mt-harness/tests/eqv_04_workflow_static.rs:1261` (`host_tar`) and the assertion at the top of the test.
-**Issue:** `host_tar` is documented as "the GNU tar of this host", but it only checks that `/usr/bin/tar` or `/bin/tar` exists. The function under test uses `mapfile` and `local -A`, which `/bin/bash` 3.2 on macOS lacks, and the `tar -tvf` format it parses is GNU's. On such a host the test fails with an obscure shell or `tar -P` error instead of a message naming the missing tool. The plan's Tracer precondition asked for exactly this check (`tar --version` containing `GNU tar`), and the test does not make it. The project is Linux-only (CLAUDE.md), so this stays low priority.
-**Fix:** Run `tar --version` and `bash -c 'echo ${BASH_VERSINFO[0]}'` through the runner at the start of the test, and assert `GNU tar` and a major version of 4 or more with a message that names the requirement.
+**File:** `.github/workflows/testbed.yml:1123` and `1128`; rows `refuse_forged_owner_listing` and `refuse_unreadable_target` at `crates/mt-harness/tests/eqv_04_workflow_static.rs:1874-1891`.
+**Issue:** the owner-column refusal and the no-match refusal print byte-identical messages ("cannot read the target of the symlink $name in the listing line: $line"). Both rows assert the same fragment. The rows do not mask each other today: each input satisfies only one of the two checks, and removing either check makes its row exit 99 (the fake tar's extraction) instead of 1. The stated aim, a message that only its own refusal prints, does not hold for this pair.
+**Fix:** give the owner-column refusal its own words, for example `::error::$archive: the owner column of the symlink $name is not numeric: $line`, and assert "owner column" in `refuse_forged_owner_listing`. The two rows then fail on the same mutation for a different reason, and the message says which check fired.
+
+### IN-02: the bash floor of the host-tool check is 4.3, but the function needs 4.4
+
+**File:** `crates/mt-harness/tests/eqv_04_workflow_static.rs:1537-1540` (the 4.3 check); function at `.github/workflows/testbed.yml:1060-1165`.
+**Issue:** the function runs under `set -u` and expands `"${parts[@]}"` and `"${tparts[@]}"`, which are empty for a link at the top level (`parts` is empty after the `unset`) and for an empty target. Bash 4.3 and earlier treat an empty array expansion under `set -u` as an unbound variable. Bash 4.4 fixed that. The same file already works around it elsewhere with `${cache[@]+"${cache[@]}"}` (line 247). On a 4.3 host the assertion would pass and the first accept row would then die with an obscure "unbound variable". I did not have bash 4.3 to confirm, so this is from the documented 4.4 behaviour change. The runner has bash 5.2, so it does not affect CI.
+**Fix:** require 4.4 in `assert_host_tools` (`major > 4 || (major == 4 && minor >= 4)`) and say so in its message. Alternatively guard the expansions with `${parts[@]+"${parts[@]}"}`.
+
+### IN-03: the sentinel snapshot covers only the case directory, one level above `dest`
+
+**File:** `crates/mt-harness/tests/eqv_04_workflow_static.rs:1470-1500` (`snapshot_outside_dest`) and `1549-1585`.
+**Issue:** the snapshot walks `dir` (the tempdir) minus `dest`. An escape of one level lands in `dir` and is caught. Rows whose links climb further (`../../../../etc`, `../../../x`) would write into the parent of the tempdir or beyond, which the snapshot does not see. In practice every wrong acceptance is also caught by the exit-code assertion, and GNU tar refuses to write through such a link, so this is not a hole today. It does overstate the comment "no row writes anywhere but into dest".
+**Fix:** nest the case one level deeper (`dir/case/{src,dest,...}` with `dir` itself as the snapshot root, plus a sentinel next to `case`), or soften the comment to "no row writes into the case directory outside dest".
 
 ---
 
-_Reviewed: 2026-11-03_
+_Reviewed: 2026-11-04_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
