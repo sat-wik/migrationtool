@@ -16,7 +16,7 @@
     {
       "number": "3",
       "name": "Equivalence Contract and Test-Vector Schema",
-      "status": "complete"
+      "status": "in_progress"
     },
     {
       "number": "4",
@@ -69,5 +69,5 @@
     "label": "Advance to the next step",
     "reason": "Phase 03 of 12 · executing"
   },
-  "updated_at": "2026-11-03T23:22:56.601Z"
+  "updated_at": "2026-11-04T16:28:21.636Z"
 }
