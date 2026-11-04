@@ -1237,6 +1237,10 @@ enum Archive {
     /// A tree of (path below the archive root, member), archived with
     /// `tar -cf ARCHIVE -C ROOT <top-level names>` like `-C /work capture run`.
     Tree(Vec<(&'static str, Member)>),
+    /// The same tree as `Tree`, archived in the row's own member order with
+    /// `tar -cf ARCHIVE -C ROOT --no-recursion <paths in order>`, so the order
+    /// shows in `tar -tf` and a path may precede its parent directory (CR-01).
+    Ordered(Vec<(&'static str, Member)>),
     /// A regular file stored under this name (for example `../outside`) by
     /// `tar -P -cf ARCHIVE -C ROOT/sub NAME`.
     StoredName(&'static str),
@@ -1288,6 +1292,18 @@ fn safe_untar_script() -> String {
     format!("set -euo pipefail\nsafe_untar() {{\n{body}\n}}\nsafe_untar \"$1\" \"$2\"\n")
 }
 
+/// Make one member of a case tree under `src`.
+fn make_member(src: &Path, path: &str, member: &Member) {
+    let full = src.join(path);
+    fs::create_dir_all(full.parent().unwrap()).unwrap();
+    match member {
+        Member::Dir => fs::create_dir_all(&full).unwrap(),
+        Member::File => fs::write(&full, b"content\n").unwrap(),
+        Member::Link(target) => std::os::unix::fs::symlink(target, &full).unwrap(),
+        Member::HardLink(of) => fs::hard_link(src.join(of), &full).unwrap(),
+    }
+}
+
 /// Build the archive of one case under `dir` and return its path.
 fn build_case_archive(dir: &Path, case: &UntarCase) -> PathBuf {
     let archive = dir.join("case.tar");
@@ -1298,19 +1314,20 @@ fn build_case_archive(dir: &Path, case: &UntarCase) -> PathBuf {
         Archive::Tree(members) => {
             let mut tops = BTreeSet::new();
             for (path, member) in members {
-                let full = src.join(path);
-                fs::create_dir_all(full.parent().unwrap()).unwrap();
-                match member {
-                    Member::Dir => fs::create_dir_all(&full).unwrap(),
-                    Member::File => fs::write(&full, b"content\n").unwrap(),
-                    Member::Link(target) => std::os::unix::fs::symlink(target, &full).unwrap(),
-                    Member::HardLink(of) => fs::hard_link(src.join(of), &full).unwrap(),
-                }
+                make_member(&src, path, member);
                 tops.insert((*path).split('/').next().unwrap().to_owned());
             }
             argv.extend(["-cf".into(), archive.clone().into_os_string()]);
             argv.extend(["-C".into(), src.into_os_string()]);
             argv.extend(tops.into_iter().map(OsString::from));
+        }
+        Archive::Ordered(members) => {
+            for (path, member) in members {
+                make_member(&src, path, member);
+            }
+            argv.extend(["-cf".into(), archive.clone().into_os_string()]);
+            argv.extend(["-C".into(), src.into_os_string(), "--no-recursion".into()]);
+            argv.extend(members.iter().map(|(path, _)| OsString::from(*path)));
         }
         Archive::StoredName(name) => {
             let sub = src.join("sub");
@@ -1377,7 +1394,7 @@ fn check_untar_case(case: &UntarCase) -> Option<String> {
         if code != Some(0) {
             return report("accepted (exit 0)", "the guard did not accept it");
         }
-        let Archive::Tree(members) = &case.archive else {
+        let (Archive::Tree(members) | Archive::Ordered(members)) = &case.archive else {
             return report("accepted", "only a tree archive can be an accepted row");
         };
         for (path, member) in members {
@@ -1426,6 +1443,14 @@ fn eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_
     // (nanopb's `spm_headers/nanopb/pb.h -> ../../pb.h`, nimble's
     // `npl_sycfg.h -> ../syscfg/syscfg.h`), so the vectors job never got past its
     // restore step. This runs the function the workflow holds, on real tars.
+    //
+    // The re-verification after plan 03-11 found CR-01: a link that aliases a
+    // directory holding a link (`X -> m/n`, with `m/n/d/p -> ../../..`) hid that
+    // link from the walk, so `e -> X/d/p/..` was accepted although it lands outside
+    // the tree. The rows refuse_alias_up_through_link and
+    // refuse_alias_up_through_link_reordered pin the shape in both member orders,
+    // refuse_descend_through_link pins the fail-closed price, and
+    // accept_link_to_link pins what stays accepted.
     assert!(Path::new("/bin/bash").exists(), "/bin/bash is required");
     let cases = [
         UntarCase {
@@ -1555,7 +1580,61 @@ fn eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_
                 ("e", Member::Link("d/up/..")),
             ]),
             accepted: false,
-            message: "leaves the tree",
+            message: "holds a symlink that passes through a symlink of the archive",
+        },
+        // CR-01 (the re-verification after plan 03-11): `X -> m/n` aliases a
+        // directory whose `p` is a link to `../../..`; `e -> X/d/p/..` then pops
+        // a name the walk never saw as a link and lands outside the tree.
+        UntarCase {
+            label: "refuse_alias_up_through_link",
+            archive: Archive::Ordered(vec![
+                ("m", Member::Dir),
+                ("m/n", Member::Dir),
+                ("m/n/d", Member::Dir),
+                ("m/n/d/p", Member::Link("../../..")),
+                ("X", Member::Link("m/n")),
+                ("e", Member::Link("X/d/p/..")),
+            ]),
+            accepted: false,
+            message: "holds a symlink that passes through a symlink of the archive",
+        },
+        UntarCase {
+            label: "refuse_alias_up_through_link_reordered",
+            archive: Archive::Ordered(vec![
+                ("e", Member::Link("X/d/p/..")),
+                ("X", Member::Link("m/n")),
+                ("m/n/d/p", Member::Link("../../..")),
+                ("m/n/d", Member::Dir),
+                ("m/n", Member::Dir),
+                ("m", Member::Dir),
+            ]),
+            accepted: false,
+            message: "holds a symlink that passes through a symlink of the archive",
+        },
+        // The fail-closed price: `c` lands inside the tree but steps through `X`.
+        UntarCase {
+            label: "refuse_descend_through_link",
+            archive: Archive::Ordered(vec![
+                ("m", Member::Dir),
+                ("m/n", Member::Dir),
+                ("m/n/y", Member::File),
+                ("X", Member::Link("m/n")),
+                ("c", Member::Link("X/y")),
+            ]),
+            accepted: false,
+            message: "holds a symlink that passes through a symlink of the archive",
+        },
+        // A link whose last target component names another link is vetted on its
+        // own and is accepted: `a -> b`, `b -> c/..`.
+        UntarCase {
+            label: "accept_link_to_link",
+            archive: Archive::Tree(vec![
+                ("c", Member::Dir),
+                ("b", Member::Link("c/..")),
+                ("a", Member::Link("b")),
+            ]),
+            accepted: true,
+            message: "",
         },
         UntarCase {
             label: "refuse_dotdot_member_name",
