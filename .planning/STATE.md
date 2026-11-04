@@ -4,18 +4,18 @@ milestone: v1.0
 milestone_name: MVP
 current_phase: 03
 current_phase_name: Equivalence Contract and Test-Vector Schema
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 03-12-PLAN.md
-last_updated: "2026-11-04T18:14:06.981Z"
+stopped_at: Completed 03-13-PLAN.md
+last_updated: "2026-11-04T18:26:24.298Z"
 last_activity: 2026-11-04
 last_activity_desc: Phase 03 execution started
-state_head: 4e0917a710854b6fe534a5ec3d9cfd9a0b03f707
+state_head: 6e14de31c8bd8fb2d1925983c17cbf2c8aef3b3a
 progress:
   total_phases: 12
   completed_phases: 3
   total_plans: 44
-  completed_plans: 43
+  completed_plans: 44
 ---
 
 # Project State
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 ## Current Position
 
 Phase: 03 (Equivalence Contract and Test-Vector Schema) — EXECUTING
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 13
-Plan: 2 of 13
+Plan: 3 of 13
 Status: Ready to execute
 Last activity: 2026-11-04 — Phase 03 execution started
 
@@ -95,6 +95,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P08 | 1h 30m | 3 tasks | 22 files |
 | Phase 03 P11 | 31 min | 3 tasks | 4 files |
 | Phase 03 P12 | 27 min | 3 tasks | 4 files |
+| Phase 03 P13 | 7 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -174,6 +175,7 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 03]: 03-11: safe_untar refuses a '..' that pops an archive symlink even where it would land inside the tree (fail closed); member names come from tar -tf, not from splitting the -tv line
 - [Phase 03]: 03-12: safe_untar refuses a link target that steps into or out of an archive symlink even where it lands inside the tree (CR-01 closed; fail-closed price pinned by refuse_descend_through_link; a link to a link stays accepted) — The lexical walk on names is exact only if it never crosses an archive link; run 41881917020 (head adfd2bd) green with the corrected guard, 1 of 3 round trips
 - [Phase 03]: 03-12: the safe_untar listing is tar --numeric-owner -tvf and a symlink line whose owner column is not digits/digits is refused (WR-01) — With a numeric owner no column before the name can hold '>', so the first ' NAME -> ' is the real one; the 27-row table includes a forged-uname GNU tar archive and a fake-tar listing
+- [Phase 03]: 03-13: T-03-42 closed and threats_open 0 on plan 03-12's 27-row test at HEAD and testbed run 41881917020 read with gh api; CR-01, WR-01, WR-02, IN-01 fixed (open: 3); the 03-11 validation row states the exact-name case only — Records follow the evidence of plan 03-12, not the other way round; the re-opening history of T-03-42 stays in the cell; REQUIREMENTS.md and phase status marks are left to /gsd-verify-work 3
 
 ### Pending Todos
 
@@ -213,6 +215,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-04T18:14:00.124Z
-Stopped at: Completed 03-12-PLAN.md
+Last session: 2026-11-04T18:26:24.079Z
+Stopped at: Completed 03-13-PLAN.md
 Resume file: None
