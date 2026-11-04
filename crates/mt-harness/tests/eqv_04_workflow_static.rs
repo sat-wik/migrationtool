@@ -1057,7 +1057,8 @@ fn eqv_04_workflow_static_captures_travel_by_artifact() {
 fn eqv_04_workflow_static_restore_vets_the_archives_before_unpacking() {
     // WR-04: the tars come from directories the untrusted build container could
     // write. The restore step lists each one and refuses non-regular members and
-    // links that leave the tree, and unpacks without owner or permissions. What the
+    // links that leave the tree or pass through a link, and unpacks without owner or
+    // permissions. What the
     // function accepts and refuses is pinned by the behavioural test
     // `eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_ones`;
     // this one pins the shape around it: the listings are read, the single
@@ -1067,7 +1068,18 @@ fn eqv_04_workflow_static_restore_vets_the_archives_before_unpacking() {
     let restore = step_text(&vectors, RESTORE_STEP);
     let code = code_lines(&restore).join("\n");
     assert!(code.contains("safe_untar()"), "{code}");
-    assert!(code.contains("tar -tvf"), "{code}");
+    assert!(
+        code.contains("tar --numeric-owner -tvf \"$archive\""),
+        "{code}"
+    );
+    // WR-01: every verbose listing is numeric-owner, so the owner column cannot
+    // forge the target.
+    for line in code
+        .lines()
+        .filter(|line| line.contains("-tvf \"$archive\""))
+    {
+        assert!(line.contains("--numeric-owner"), "{line}");
+    }
     assert!(code.contains("tar -tf"), "{code}");
     assert!(
         code.contains("--no-same-owner") && code.contains("--no-same-permissions"),

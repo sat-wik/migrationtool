@@ -1039,6 +1039,10 @@ jobs:
           # symlink of the same archive, so no later member can be written through a link
           # to somewhere outside the destination. A `..` alone is not refused: nanopb and
           # nimble ship in-tree `..` links (plan 03-11).
+          # WR-01: the listing is numeric-owner, so the text before the name is the mode,
+          # digits, the size, the date and the time, and none of these can hold `>`. The
+          # first ` NAME -> ` is therefore the real one, and a line whose owner column is
+          # not digits is refused.
           # CR-01: a link target may not step into or out of an archive symlink. The walk
           # goes from the link's own directory, one component at a time; before a
           # component is pushed or popped, if the stack built so far names a symlink
@@ -1058,8 +1062,9 @@ jobs:
             local listing names
             local -a lines members parts tparts stack
             local -A islink=()
-            local n i name line target comp why joined
-            listing="$(tar -tvf "$archive")"
+            local n i name line target comp why joined owner_re
+            owner_re='^l[^ ]* [0-9]+/[0-9]+ '
+            listing="$(tar --numeric-owner -tvf "$archive")"
             names="$(tar -tf "$archive")"
             if [ -z "$listing" ]; then
               echo "::error::$archive has no members"
@@ -1113,9 +1118,14 @@ jobs:
               fi
               # The name is the exact tar -tf name; the target is what follows that
               # name and ` -> ` in the verbose line, so a name holding ` -> ` is safe.
+              # The owner column must be digits, or the line is not read (WR-01).
+              if ! [[ $line =~ $owner_re ]]; then
+                echo "::error::$archive: cannot read the target of the symlink $name in the listing line: $line"
+                return 1
+              fi
               target="${line#*" $name -> "}"
               if [ "$target" = "$line" ]; then
-                echo "::error::$archive: cannot read the target of the symlink $name"
+                echo "::error::$archive: cannot read the target of the symlink $name in the listing line: $line"
                 return 1
               fi
               why=""
