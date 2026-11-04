@@ -155,7 +155,7 @@ Plans:
   3. At least 10 test-bed targets have an entry-point adapter declaring the function and its argument roles, so bytes in produce return code, output buffer and library state out as a vector.
   4. The C reference executor runs any vector against the target's original C build and stores the result in a schema-valid vector; running the same vector twice gives byte-identical results.
 
-**Plans:** 11/11 plans executed (03-11 is gap closure)
+**Plans:** 11/13 plans executed (03-11 to 03-13 are gap closure)
 
 **Execution order (D-31 gap insertion, binding):** 03-01 Tracer and Task 2 (done) → 03-09 → 03-10 → 03-01 Task 3 (round trip 3, the founder's `extend 1`) → 03-02 → 03-03 .. 03-08. The frontmatter encodes it: 03-09 is wave 1, 03-10 wave 2 (depends on 03-09), 03-02 wave 3 (depends on 03-01 and 03-10), 03-03 .. 03-08 waves 4 .. 9. 03-01 is half executed and stays wave 1; its Task 3 precondition requires 03-10-SUMMARY.md to record the founder's merge, the approved re-baseline and the Current image digest, so it halts until 03-10 has finished.
 
@@ -190,6 +190,12 @@ Plans:
 
 **Wave 10** *(gap closure; blocked on Wave 9 completion)*
 - [x] 03-11-PLAN.md — Truth 4 / EQV-04 gap (WR-04 regression): safe_untar refuses a symlink only when it is absolute or leaves the tree as resolved from its own directory; behavioural test that runs the workflow's own function on 19 real-tar cases; one green vectors job with build, twice-run vectors, determinism and the committed-sample replay in the pinned image
+
+**Wave 11** *(gap closure; blocked on Wave 10 completion)*
+- [ ] 03-12-PLAN.md — EQV-04 gap after 03-11 (CR-01, WR-01, WR-02, IN-01): safe_untar's walk never steps into or out of an archive symlink, numeric-owner listing with an owner-column check; 27-row behavioural table (CR-01 alias rows in both orders, forged owner, fake-listing branches, outside-destination snapshot, GNU tar and bash checks); one green vectors job with notices equal to 03-11's
+
+**Wave 12** *(gap closure; blocked on Wave 11 completion)*
+- [ ] 03-13-PLAN.md — Records of the 03-12 fix: CR-01, WR-01, WR-02, IN-01 fixed in the review disposition; T-03-42 closed and T-03-43..T-03-46 re-evidenced, T-03-47..T-03-50 registered, threats_open 0; 03-11 validation row corrected and 03-12 rows added; docs push with ci green
 
 ### Phase 4: UB Detection and Decision Log
 
