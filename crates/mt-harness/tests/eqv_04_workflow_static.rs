@@ -3,8 +3,9 @@
 //! `.github/workflows/testbed.yml`. They read the repository file and run under
 //! plain `cargo test`, with no Docker and no network. One test, the one for
 //! `safe_untar`, also runs the restore step's function with the host's bash and
-//! GNU tar through the mt-toolchain runner, on tars it builds in a temporary
-//! directory; it still uses no Docker and no network.
+//! GNU tar, and with a fake tar for the listing branches GNU tar cannot reach,
+//! through the mt-toolchain runner, on tars it builds in a temporary directory;
+//! it still uses no Docker and no network.
 //!
 //! The Phase 3 steps live in their own job, `vectors` (CONTEXT D-32), so that
 //! they have an annotation budget of their own: the `testbed` job is at GitHub's
@@ -14,6 +15,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use mt_toolchain::runner::{self, RunOutput, RunRequest, RunnerConfig};
@@ -1248,6 +1250,21 @@ enum Archive {
     AbsoluteName,
     /// An archive with no members, made with `tar -cf ARCHIVE -T /dev/null`.
     Empty,
+    /// The same tree as `Tree`, archived with `--owner=OWNER --group=GROUP`, so the
+    /// header holds those names and a verbose listing prints them before the
+    /// member name (WR-01). `OWNER` and `GROUP` are `NAME:ID` as GNU tar reads them.
+    Owned {
+        owner: &'static str,
+        group: &'static str,
+        members: Vec<(&'static str, Member)>,
+    },
+    /// An empty `case.tar` and a fake `tar` first on the child's PATH that prints
+    /// `verbose` for `-tvf`, `names` for `-tf` and exits 99 on `-xf`: the listing
+    /// branches that GNU tar cannot reach.
+    FakeListing {
+        verbose: &'static str,
+        names: &'static str,
+    },
 }
 
 /// One row of the `safe_untar` table.
@@ -1260,8 +1277,8 @@ struct UntarCase {
     message: &'static str,
 }
 
-/// The GNU tar of this host. There is no skip path: a vacuous pass is how the
-/// WR-04 regression got through.
+/// The GNU tar of this host (`assert_host_tools` checks that it is GNU tar). There
+/// is no skip path: a vacuous pass is how the WR-04 regression got through.
 fn host_tar() -> PathBuf {
     ["/usr/bin/tar", "/bin/tar"]
         .iter()
@@ -1270,10 +1287,14 @@ fn host_tar() -> PathBuf {
         .expect("GNU tar is at neither /usr/bin/tar nor /bin/tar")
 }
 
-/// One tool run through the mt-toolchain runner, as the other harness tests do.
-fn run_tool(tool_name: &str, argv: Vec<OsString>, cwd: &Path) -> RunOutput {
+/// The PATH of every child that runs the host's real tar.
+const HOST_PATH: &str = "/usr/bin:/bin";
+
+/// One tool run through the mt-toolchain runner, as the other harness tests do,
+/// with the child's PATH set to `path`.
+fn run_tool(tool_name: &str, argv: Vec<OsString>, cwd: &Path, path: &str) -> RunOutput {
     runner::run(
-        &RunnerConfig::new("/usr/bin:/bin", "1791158400"),
+        &RunnerConfig::new(path, "1791158400"),
         &RunRequest {
             tool_name: tool_name.to_owned(),
             argv,
@@ -1311,6 +1332,26 @@ fn build_case_archive(dir: &Path, case: &UntarCase) -> PathBuf {
     fs::create_dir_all(&src).unwrap();
     let mut argv: Vec<OsString> = vec![host_tar().into_os_string()];
     match &case.archive {
+        Archive::FakeListing { .. } => {
+            fs::write(&archive, b"").unwrap();
+            return archive;
+        }
+        Archive::Owned {
+            owner,
+            group,
+            members,
+        } => {
+            let mut tops = BTreeSet::new();
+            for (path, member) in members {
+                make_member(&src, path, member);
+                tops.insert((*path).split('/').next().unwrap().to_owned());
+            }
+            argv.push(format!("--owner={owner}").into());
+            argv.push(format!("--group={group}").into());
+            argv.extend(["-cf".into(), archive.clone().into_os_string()]);
+            argv.extend(["-C".into(), src.into_os_string()]);
+            argv.extend(tops.into_iter().map(OsString::from));
+        }
         Archive::Tree(members) => {
             let mut tops = BTreeSet::new();
             for (path, member) in members {
@@ -1347,7 +1388,7 @@ fn build_case_archive(dir: &Path, case: &UntarCase) -> PathBuf {
             argv.extend(["-T".into(), "/dev/null".into()]);
         }
     }
-    let made = run_tool("tar", argv, dir);
+    let made = run_tool("tar", argv, dir, HOST_PATH);
     assert_eq!(
         made.record.exit.code,
         Some(0),
@@ -1358,20 +1399,133 @@ fn build_case_archive(dir: &Path, case: &UntarCase) -> PathBuf {
     archive
 }
 
-/// Run the workflow's `safe_untar` on `archive` into `dest`.
-fn run_safe_untar(dir: &Path, archive: &Path, dest: &Path) -> RunOutput {
+/// Write the script of `safe_untar_script` into `dir` and return its path.
+fn write_safe_untar_script(dir: &Path) -> PathBuf {
     let script = dir.join("safe_untar.sh");
     fs::write(&script, safe_untar_script()).unwrap();
+    script
+}
+
+/// Run the workflow's `safe_untar` (the script written by
+/// `write_safe_untar_script`) on `archive` into `dest`, with the child's PATH set
+/// to `path`.
+fn run_safe_untar(dir: &Path, script: &Path, archive: &Path, dest: &Path, path: &str) -> RunOutput {
     run_tool(
         "bash",
         vec![
             OsString::from("/bin/bash"),
-            script.into_os_string(),
+            script.as_os_str().to_owned(),
             archive.as_os_str().to_owned(),
             dest.as_os_str().to_owned(),
         ],
         dir,
+        path,
     )
+}
+
+/// Write the fake tar of a `FakeListing` row below `dir` and return the directory
+/// that holds it (`<dir>/fakebin`, to be put first on the child's PATH). The two
+/// listings are files next to the script, each ending in a newline.
+fn write_fake_tar(dir: &Path, verbose: &str, names: &str) -> PathBuf {
+    let bin = dir.join("fakebin");
+    fs::create_dir_all(&bin).unwrap();
+    fs::write(bin.join("verbose"), format!("{verbose}\n")).unwrap();
+    fs::write(bin.join("names"), format!("{names}\n")).unwrap();
+    let tar = bin.join("tar");
+    fs::write(
+        &tar,
+        concat!(
+            "#!/bin/bash\n",
+            "here=\"${BASH_SOURCE[0]%/*}\"\n",
+            "for arg in \"$@\"; do\n",
+            "  case \"$arg\" in\n",
+            "    -tvf) cat \"$here/verbose\"; exit 0 ;;\n",
+            "    -tf) cat \"$here/names\"; exit 0 ;;\n",
+            "    -xf) echo 'fake tar: extraction reached' >&2; exit 99 ;;\n",
+            "  esac\n",
+            "done\n",
+            "exit 98\n",
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&tar, fs::Permissions::from_mode(0o755)).unwrap();
+    bin
+}
+
+/// Every path of the case directory `dir` outside `dest`, relative to `dir`, with
+/// its kind and its file bytes (hex) or link target. Links are read, never
+/// followed, so a link that points outside is recorded by its text only.
+fn snapshot_outside_dest(dir: &Path, dest: &Path) -> BTreeMap<PathBuf, String> {
+    fn walk(root: &Path, at: &Path, dest: &Path, out: &mut BTreeMap<PathBuf, String>) {
+        for entry in fs::read_dir(at).unwrap() {
+            let path = entry.unwrap().path();
+            if path == dest {
+                continue;
+            }
+            let rel = path.strip_prefix(root).unwrap().to_path_buf();
+            let meta = fs::symlink_metadata(&path).unwrap();
+            if meta.is_symlink() {
+                let target = fs::read_link(&path).unwrap();
+                out.insert(rel, format!("link -> {}", target.display()));
+            } else if meta.is_dir() {
+                out.insert(rel, "dir".to_owned());
+                walk(root, &path, dest, out);
+            } else if meta.is_file() {
+                let hex: String = fs::read(&path)
+                    .unwrap()
+                    .iter()
+                    .map(|byte| format!("{byte:02x}"))
+                    .collect();
+                out.insert(rel, format!("file {hex}"));
+            } else {
+                out.insert(rel, "other".to_owned());
+            }
+        }
+    }
+    let mut out = BTreeMap::new();
+    walk(dir, dir, dest, &mut out);
+    out
+}
+
+/// IN-01: the safe_untar test is only evidence on the runner's kind of tools, so
+/// it fails (there is no skip path) unless the host tar is GNU tar and
+/// `/bin/bash` is 4.3 or later.
+fn assert_host_tools() {
+    let dir = tempfile::tempdir().unwrap();
+    let tar = run_tool(
+        "tar",
+        vec![host_tar().into_os_string(), "--version".into()],
+        dir.path(),
+        HOST_PATH,
+    );
+    let tar_out = String::from_utf8_lossy(&tar.stdout).into_owned();
+    let first = tar_out.lines().next().unwrap_or("");
+    assert!(
+        tar.record.exit.code == Some(0) && first.contains("GNU tar"),
+        "the safe_untar test needs GNU tar, as on the ubuntu-24.04 runners, but `tar --version` printed {first:?}"
+    );
+    let bash = run_tool(
+        "bash",
+        vec![
+            "/bin/bash".into(),
+            "-c".into(),
+            r#"printf '%s %s\n' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}""#.into(),
+        ],
+        dir.path(),
+        HOST_PATH,
+    );
+    let bash_out = String::from_utf8_lossy(&bash.stdout).into_owned();
+    let mut numbers = bash_out
+        .split_whitespace()
+        .map(|part| part.parse::<u32>().ok());
+    let (major, minor) = (
+        numbers.next().flatten().unwrap_or(0),
+        numbers.next().flatten().unwrap_or(0),
+    );
+    assert!(
+        bash.record.exit.code == Some(0) && (major > 4 || (major == 4 && minor >= 3)),
+        "the safe_untar test needs bash 4.3 or later, as on the ubuntu-24.04 runners, but /bin/bash reports {bash_out:?}"
+    );
 }
 
 /// Run one row; `None` when it behaves as expected, else a description.
@@ -1380,7 +1534,20 @@ fn check_untar_case(case: &UntarCase) -> Option<String> {
     let archive = build_case_archive(dir.path(), case);
     let dest = dir.path().join("dest");
     fs::create_dir_all(&dest).unwrap();
-    let out = run_safe_untar(dir.path(), &archive, &dest);
+    // WR-02: a sentinel beside dest, and a snapshot of everything outside dest taken
+    // around the run, show that no row writes anywhere but into dest.
+    fs::write(dir.path().join("sentinel"), "sentinel\n").unwrap();
+    let path = match &case.archive {
+        Archive::FakeListing { verbose, names } => {
+            let bin = write_fake_tar(dir.path(), verbose, names);
+            format!("{}:{HOST_PATH}", bin.display())
+        }
+        _ => HOST_PATH.to_owned(),
+    };
+    let script = write_safe_untar_script(dir.path());
+    let before = snapshot_outside_dest(dir.path(), &dest);
+    let out = run_safe_untar(dir.path(), &script, &archive, &dest, &path);
+    let after = snapshot_outside_dest(dir.path(), &dest);
     let code = out.record.exit.code;
     let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
     let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
@@ -1390,6 +1557,20 @@ fn check_untar_case(case: &UntarCase) -> Option<String> {
             case.label
         ))
     };
+    if before != after {
+        let changed: Vec<String> = before
+            .keys()
+            .chain(after.keys())
+            .filter(|key| before.get(*key) != after.get(*key))
+            .map(|key| key.display().to_string())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect();
+        return report(
+            "nothing outside dest changed",
+            &format!("these paths changed: {changed:?}"),
+        );
+    }
     if case.accepted {
         if code != Some(0) {
             return report("accepted (exit 0)", "the guard did not accept it");
@@ -1451,7 +1632,7 @@ fn eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_
     // refuse_alias_up_through_link_reordered pin the shape in both member orders,
     // refuse_descend_through_link pins the fail-closed price, and
     // accept_link_to_link pins what stays accepted.
-    assert!(Path::new("/bin/bash").exists(), "/bin/bash is required");
+    assert_host_tools();
     let cases = [
         UntarCase {
             label: "accept_one_up",
@@ -1505,7 +1686,7 @@ fn eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_
             label: "refuse_absolute",
             archive: Archive::Tree(vec![("a", Member::Link("/etc/passwd"))]),
             accepted: false,
-            message: "leaves the tree",
+            message: "holds a symlink that is absolute or leaves the tree",
         },
         UntarCase {
             label: "refuse_past_top",
@@ -1514,7 +1695,7 @@ fn eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_
                 ("a/b", Member::Link("../../../x")),
             ]),
             accepted: false,
-            message: "leaves the tree",
+            message: "holds a symlink that is absolute or leaves the tree",
         },
         UntarCase {
             label: "accept_up_to_top",
@@ -1526,19 +1707,19 @@ fn eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_
             label: "refuse_one_past_top",
             archive: Archive::Tree(vec![("a", Member::Dir), ("a/up2", Member::Link("../.."))]),
             accepted: false,
-            message: "leaves the tree",
+            message: "holds a symlink that is absolute or leaves the tree",
         },
         UntarCase {
             label: "refuse_top_level_up",
             archive: Archive::Tree(vec![("a", Member::Link("../x"))]),
             accepted: false,
-            message: "leaves the tree",
+            message: "holds a symlink that is absolute or leaves the tree",
         },
         UntarCase {
             label: "refuse_down_then_up",
             archive: Archive::Tree(vec![("a", Member::Link("b/../../x"))]),
             accepted: false,
-            message: "leaves the tree",
+            message: "holds a symlink that is absolute or leaves the tree",
         },
         UntarCase {
             label: "accept_dot_components",
@@ -1570,7 +1751,7 @@ fn eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_
             label: "refuse_arrow_in_name",
             archive: Archive::Tree(vec![("x -> y", Member::Link("../evil"))]),
             accepted: false,
-            message: "leaves the tree",
+            message: "holds a symlink that is absolute or leaves the tree",
         },
         UntarCase {
             label: "refuse_up_through_link",
@@ -1640,13 +1821,13 @@ fn eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_
             label: "refuse_dotdot_member_name",
             archive: Archive::StoredName("../outside"),
             accepted: false,
-            message: "member name",
+            message: "holds a member name that is absolute or leaves the tree",
         },
         UntarCase {
             label: "refuse_absolute_member_name",
             archive: Archive::AbsoluteName,
             accepted: false,
-            message: "member name",
+            message: "holds a member name that is absolute or leaves the tree",
         },
         UntarCase {
             label: "refuse_hard_link",
@@ -1658,7 +1839,52 @@ fn eqv_04_workflow_static_safe_untar_accepts_in_tree_links_and_refuses_escaping_
             label: "refuse_empty_archive",
             archive: Archive::Empty,
             accepted: false,
-            message: "no members",
+            message: "has no members",
+        },
+        // WR-01: the owner column of a plain `tar -tvf` listing is free text. A
+        // header whose uname is `u a -> p/q/r/s/t` makes the first ` a -> ` of the
+        // line fall in the owner column, so the cut target would be a forged
+        // `p/q/r/s/t/g 0 ... a -> ../../../../etc` that stays in the tree.
+        UntarCase {
+            label: "refuse_forged_owner",
+            archive: Archive::Owned {
+                owner: "u a -> p/q/r/s/t:0",
+                group: "g:0",
+                members: vec![
+                    ("a", Member::Link("../../../../etc")),
+                    ("p/q/r/s/t", Member::Dir),
+                ],
+            },
+            accepted: false,
+            message: "holds a symlink that is absolute or leaves the tree",
+        },
+        // The same forgery as a listing line, for the owner-column check.
+        UntarCase {
+            label: "refuse_forged_owner_listing",
+            archive: Archive::FakeListing {
+                verbose: "lrwxrwxrwx u a -> p/q/r/s/t/g 0 1970-01-01 00:00 a -> ../../../../etc",
+                names: "a",
+            },
+            accepted: false,
+            message: "cannot read the target of the symlink",
+        },
+        UntarCase {
+            label: "refuse_unreadable_target",
+            archive: Archive::FakeListing {
+                verbose: "lrwxrwxrwx 0/0 0 2026-01-01 00:00 other -> x",
+                names: "a",
+            },
+            accepted: false,
+            message: "cannot read the target of the symlink",
+        },
+        UntarCase {
+            label: "refuse_listing_mismatch",
+            archive: Archive::FakeListing {
+                verbose: "lrwxrwxrwx 0/0 0 2026-01-01 00:00 a -> b\n-rw-r--r-- 0/0 8 2026-01-01 00:00 c",
+                names: "a",
+            },
+            accepted: false,
+            message: "tar -tf and tar -tvf list different members",
         },
     ];
     let failures: Vec<String> = cases.iter().filter_map(check_untar_case).collect();
