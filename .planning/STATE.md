@@ -4,18 +4,18 @@ milestone: v1.0
 milestone_name: MVP
 current_phase: 03
 current_phase_name: Equivalence Contract and Test-Vector Schema
-current_plan: 1
+current_plan: 2
 status: executing
-stopped_at: Completed 03-11-PLAN.md
-last_updated: "2026-11-04T17:42:24.171Z"
+stopped_at: Completed 03-12-PLAN.md
+last_updated: "2026-11-04T18:14:06.981Z"
 last_activity: 2026-11-04
 last_activity_desc: Phase 03 execution started
-state_head: 58a7bf1d8a29cb08b9ed78ed0e5d5ff1eb58211a
+state_head: 4e0917a710854b6fe534a5ec3d9cfd9a0b03f707
 progress:
   total_phases: 12
   completed_phases: 3
   total_plans: 44
-  completed_plans: 42
+  completed_plans: 43
 ---
 
 # Project State
@@ -30,10 +30,10 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 ## Current Position
 
 Phase: 03 (Equivalence Contract and Test-Vector Schema) — EXECUTING
-Current Plan: 1
+Current Plan: 2
 Total Plans in Phase: 13
-Plan: 1 of 13
-Status: Executing Phase 03
+Plan: 2 of 13
+Status: Ready to execute
 Last activity: 2026-11-04 — Phase 03 execution started
 
 Progress: [███░░░░░░░] 25%
@@ -94,6 +94,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P07 | 19h 25m (spans a container restart and a usage-limit pause) | 3 tasks | 28 files |
 | Phase 03 P08 | 1h 30m | 3 tasks | 22 files |
 | Phase 03 P11 | 31 min | 3 tasks | 4 files |
+| Phase 03 P12 | 27 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,8 @@ Full log in PROJECT.md (`<decisions>` D-01 to D-14, Key Decisions table). Recent
 - [Phase 03]: 03-08: the committed sample rule is the default configuration, the first drivable entry by name, the vector of the first scalar combination with the smallest seed (ties by seed sha256); mt vectors sample fails closed and the files come only from the fixture vectors-sample notice after its tar sha256 is checked — D-21, T-03-29; testbed run 40922236736 replayed all 15 identical and regenerated the same tar
 - [Phase 03 UAT]: Founder decisions 2026-10-30: keep D-07 whole-buffer record (lz4 overshoot compared); globals keys stay C identifiers (name.N statics fail the run until a target needs them); isotp stays link_unresolved, no C shim; smallest-seed sample adequate; timeout label `timeout` rc -9 confirmed; QEMU 10.0.2 accepted over D-31's 8.2.x
 - [Phase 03]: 03-11: safe_untar refuses a '..' that pops an archive symlink even where it would land inside the tree (fail closed); member names come from tar -tf, not from splitting the -tv line
+- [Phase 03]: 03-12: safe_untar refuses a link target that steps into or out of an archive symlink even where it lands inside the tree (CR-01 closed; fail-closed price pinned by refuse_descend_through_link; a link to a link stays accepted) — The lexical walk on names is exact only if it never crosses an archive link; run 41881917020 (head adfd2bd) green with the corrected guard, 1 of 3 round trips
+- [Phase 03]: 03-12: the safe_untar listing is tar --numeric-owner -tvf and a symlink line whose owner column is not digits/digits is refused (WR-01) — With a numeric owner no column before the name can hold '>', so the first ' NAME -> ' is the real one; the 27-row table includes a forged-uname GNU tar archive and a fake-tar listing
 
 ### Pending Todos
 
@@ -210,6 +213,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-03T23:22:57.687Z
-Stopped at: Completed 03-11-PLAN.md
+Last session: 2026-11-04T18:14:00.124Z
+Stopped at: Completed 03-12-PLAN.md
 Resume file: None
