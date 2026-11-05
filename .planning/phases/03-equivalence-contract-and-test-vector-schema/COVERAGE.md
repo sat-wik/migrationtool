@@ -1,1 +1,1 @@
-No external API integration: Phase 3 builds the equivalence contract, the vector schema, the adapters and the C reference executor inside the tool; GitHub's REST API is only read with `gh` to collect evidence of the project's own CI runs (plan 03-11 included), and the TRACTOR corpus is fetched with git at a pinned commit, so neither is an integration the product ships.
+No external API integration: Phase 3 builds the contract, schema, adapters and C executor in the tool; gh reads only this repo's CI, and the TRACTOR corpus is a pinned git fetch.
