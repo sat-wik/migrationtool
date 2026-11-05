@@ -24,7 +24,7 @@ Full list, IDs and traceability: `.planning/REQUIREMENTS.md`. Roadmap: `.plannin
 ### Validated
 
 - ✓ Pinned, reproducible container with one LLVM (16) for all C-side analysis; analysers run as subprocesses (TOOL-01..04) — Phase 1 (verified 2026-10-12; image ghcr.io/sat-wik/migrationtool-toolchain@sha256:0f5a5d2594b0405931ad7e85d5c6d2f5e3f2d5099d769059870817ee50e152ee, manifest-identical builds; LLVM pin provisional until Phase 6 R1)
-- ✓ Equivalence contract v0 (refinement) and a TRACTOR-compatible test-vector schema, with a C reference executor (EQV) — Phase 3 (verified 2026-10-30; contract 0.1.0, 15 drivable targets, executor under qemu-arm -cpu cortex-m4 identical on a second run, testbed run 40922236736)
+- ✓ Equivalence contract v0 (refinement) and a TRACTOR-compatible test-vector schema, with a C reference executor (EQV) — Phase 3 (verified 2026-10-30; contract 0.1.0, 15 drivable targets, executor under qemu-arm -cpu cortex-m4 identical on a second run, testbed run 40922236736; re-verified 2026-11-05 after gap closure 03-11..03-13: vectors-job safe_untar refuses archive-link aliasing and forged owners, testbed run 41881917020)
 
 ### Active
 
@@ -178,6 +178,7 @@ For the open-source test bed the UB-decision approver is recorded as the founder
 | globals keys stay C identifiers; a changed `name.N` static fails the run (Phase 3 UAT) | Key grammar is costly to reverse (D-06); no committed target triggers it | Revisit when a target changes one |
 | isotp_on_can_message stays link_unresolved; no per-target C shim (Phase 3 UAT) | D-11 forbids per-target hand-written C; floor met with 15 drivable targets | Done — Phase 3 |
 | Smallest-seed committed sample; timeout = has_ub `timeout`, rc -9 (Phase 3 UAT) | Deterministic offline reference; timeouts never count as a pass | Done — Phase 3 |
+| Contract corrections of dd1deeb (rc row, ret bullet, Byte codec) stand under 0.1.0 with no changelog line (Phase 3 UAT 9, IN-11) | The wording now matches D-05, D-06, D-25 and the code; founder accepted it | Done — Phase 3 |
 | QEMU 10.0.2 (bookworm-backports) accepted in place of D-31's 8.2.x (Phase 3 UAT) | M-profile commpage cause is gone; every vectors job green | Done — Phase 3 |
 
 ## Assumptions to Confirm
@@ -213,4 +214,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-30 after Phase 3*
+*Last updated: 2026-11-05 after Phase 3 (gap closure re-verified)*

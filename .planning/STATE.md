@@ -2,46 +2,47 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 milestone_name: MVP
-current_phase: 03
-current_phase_name: Equivalence Contract and Test-Vector Schema
-current_plan: 3
-status: executing
-stopped_at: Completed 03-13-PLAN.md
-last_updated: "2026-11-04T18:26:24.298Z"
-last_activity: 2026-11-04
-last_activity_desc: Phase 03 execution started
-state_head: 6e14de31c8bd8fb2d1925983c17cbf2c8aef3b3a
+current_phase: 4
+current_phase_name: UB Detection and Decision Log
+current_plan: Not started
+status: planning
+stopped_at: Phase 3 complete, ready to plan Phase 4
+last_updated: "2026-11-05T17:01:20.088Z"
+last_activity: 2026-11-05
+last_activity_desc: Phase 3 complete, transitioned to Phase 4
+state_head: f423af9d0d9c73cb9d6b92937a2480cf672b07d6
 progress:
   total_phases: 12
   completed_phases: 3
   total_plans: 44
   completed_plans: 44
+  percent: 25
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-30)
+See: .planning/PROJECT.md (updated 2026-11-05)
 
 **Core value:** Every migrated module ships with evidence, from a harness proven to catch planted bugs, that the Rust matches the C on every defined-behavior input; metric is the share of C modules reaching full evidence with zero divergences.
-**Current focus:** Phase 03 — Equivalence Contract and Test-Vector Schema
+**Current focus:** Phase 04 — UB Detection and Decision Log
 
 ## Current Position
 
-Phase: 03 (Equivalence Contract and Test-Vector Schema) — EXECUTING
-Current Plan: 3
-Total Plans in Phase: 13
-Plan: 3 of 13
-Status: Ready to execute
-Last activity: 2026-11-04 — Phase 03 execution started
+Phase: 4 — UB Detection and Decision Log
+Current Plan: Not started
+Total Plans in Phase: not planned
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-05 — Phase 3 complete, transitioned to Phase 4
 
-Progress: [███░░░░░░░] 25%
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 41
+- Total plans completed: 44
 - Average duration: - min
 - Total execution time: 0.0 hours
 
@@ -51,7 +52,7 @@ Progress: [███░░░░░░░] 25%
 |-------|-------|-------|----------|
 | 01 | 9 | - | - |
 | 2 | 22 | - | - |
-| 03 | 10 | - | - |
+| 3 | 13 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: none yet
@@ -183,6 +184,8 @@ None yet.
 
 ### Blockers/Concerns
 
+- [Phase 03]: Container workflow run 41881916942 (head adfd2bd) is not green: image-b failed on snapshot.debian.org 503/504 and image-a was still building. Nothing under container/ changed since the green run at 752badf; re-run it before shipping.
+- [Phase 03]: Incremental review of plan 03-12 (03-REVIEW.md, 84b1240) has 1 warning and 3 info findings with no disposition rows: their ids reuse WR-01, IN-01, IN-02, IN-03, so the disposition builder would drop the fixed rows. Record them under new ids or by hand.
 - [Phase 01]: Runner residual WR-13: after a normal exit a `setsid` escapee holding an output pipe is not killed (record shows `exit.tree_kill_sent` and `complete: false`). Close (pipe-holder lookup via /proc/*/fd + pidfd) before KLEE or any forking analyser runs through the runner. 21 Info findings stay open in 01-REVIEW-DISPOSITION.md.
 
 - [Init]: A-01 "full evidence" definition is a roadmapper proposal; confirm before Phase 11 builds the predicate (earlier if Phase 5 or 6 planning needs the fuzz-budget number).
@@ -215,6 +218,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-04T18:26:24.079Z
-Stopped at: Completed 03-13-PLAN.md
+Last session: 2026-11-05T17:01:43.192Z
+Stopped at: Phase 3 complete, ready to plan Phase 4
 Resume file: None
