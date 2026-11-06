@@ -209,7 +209,44 @@ Plans:
   4. Plain `char` signedness, integer and pointer sizes and the layout of every struct crossing the interface are extracted from the target configuration (not assumed) and logged for sign-off.
   5. The UB decisions log has site or input class, decision, rationale, approver and date for every detected entry, pre-filled with "return error"; the tool refuses to mark a module UB-complete while any entry lacks a decision.
 
-**Plans**: TBD
+**Plans:** 14 plans
+
+**Execution order (D-26, binding):** WR-13 and the image first, then the log, facts, `mt ub check` and the known-UB fixtures, then host ASan+UBSan, MSan, the `-O0` differential and KLEE up to its floor of 3. Cut list (founder-triggered only, via the SZ line in 04-04-SUMMARY.md or a later `cut` reply): 1. trap UBSan on target (04-14); 2. KLEE beyond the floor of 3 (04-13 Task 3). Plans 04-02, 04-07 and 04-10 carry named re-slice points for the per-plan context budget.
+
+Plans:
+**Wave 1**
+- [ ] 04-01-PLAN.md — WR-13: kill whatever still holds the run's output pipes after a normal exit or timeout (pidfd); two runner tests rewritten test-first; run record v3; shared rules and planner assumptions PA-01..PA-15
+- [ ] 04-02-PLAN.md — D-27 branch side: pin the clang-16 sanitizer runtimes and i386 libc after pin discovery; in-image smoke runs of i386 ASan, i386 UBSan and x86-64 MSan gating the publish; probes for A-08, D-18 and the ASLR setting; notices become parser fixtures
+- [ ] 04-04-PLAN.md — Founder decision checkpoint (PA-01/03/05/06/15 and SZ sizing acceptance); UB log schema; `mt ub check` and `mt ub sign`; policy/log cross-check (UB-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 04-03-PLAN.md — D-27 publish: image PR, founder merge, merge-back, new Current image digest, one testbed run, founder re-baseline
+- [ ] 04-05-PLAN.md — New `mt-ub` crate; implementation-defined facts from the pinned GCC (`mt ub facts`); log merge rules D-30/D-31 (UB-04, UB-05)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 04-06-PLAN.md — Sanitizer report parser (fails closed); host flags derived from the facts; shared host runtime template and generated driver (UB-01)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 04-07-PLAN.md — Host ASan+UBSan end to end; known-UB fixtures self-test; new `ub` CI job (the phase's CI tracer) (UB-01, UB-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 04-08-PLAN.md — MSan on x86-64 (LP64 fallback, A-08 settled); uninitialised-read fixture; CI step (UB-01)
+- [ ] 04-09-PLAN.md — Offline relabelling in fixed source order, crash refinement, timeouts keep their label; `ub_checked` provenance; error-code proposals (UB-01, UB-02, UB-05)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 04-10-PLAN.md — Relabelling switched on in CI; contract 0.2.0 and index schema 2; committed sample regenerated; first `testbed/ub-log/*.toml` committed; `ub-check` notice (UB-01, UB-04, UB-05)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 04-11-PLAN.md — `-O0` optimiser differential on the target; optimiser-sensitive fixture labelled `optdiff`; committed logs refreshed (UB-02)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [ ] 04-12-PLAN.md — KLEE first slice: harness, x86-64 bitcode, fixed budget run twice, `.err`/`.ktest`/`info` parsed in Rust; corejson in CI (UB-03)
+
+**Wave 9** *(blocked on Wave 8 completion)*
+- [ ] 04-13-PLAN.md — KLEE test cases replayed as witnesses, `confirmed_by` link, floor of 3 targets enforced by a test; Task 3 every drivable entry (cut list item 2) (UB-03)
+
+**Wave 10** *(blocked on Wave 9 completion)*
+- [ ] 04-14-PLAN.md — Trap-mode UBSan on the target (cut list item 1) (UB-01)
 
 ### Phase 5: Target-Matched Differential Harness
 
